@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { quoteHourly, quoteTransfer } from '../booking/pricing';
-import { assertLeadTime, localToInstant, toIsoWithOffset } from '../booking/time';
+import { formatEuro, quoteHourly, quoteTransfer } from '../booking/pricing';
+import { assertLeadTime, formatLocal, localToInstant, toIsoWithOffset } from '../booking/time';
 import { BookingError } from '../booking/types';
 import {
   BookingRequest,
@@ -673,6 +673,140 @@ export async function bookingStatus(orderCode: string) {
     reference: rows[0].reference,
     status: rows[0].status,
     paymentStatus: rows[0].payment_status,
+  };
+}
+
+export type NotCompletedView =
+  | { kind: 'expired' }
+  | {
+      kind: 'live';
+      reference: string;
+      holdExpiresAt: string;
+      holdExpiresAtMs: number;
+    };
+
+/** Pending booking with a live hold for this visitor, looked up by Viva order code. */
+export async function notCompletedView(
+  orderCode: string | null | undefined,
+  visitorKey: string | undefined,
+): Promise<NotCompletedView> {
+  if (!orderCode || !visitorKey) return { kind: 'expired' };
+  const { rows } = await db().query<{
+    reference: string;
+    status: string;
+    payment_status: string;
+    hold_expires_at: Date | null;
+  }>(
+    `select reference, status, payment_status, hold_expires_at
+       from public.bookings
+      where viva_order_code = $1::bigint and visitor_key = $2`,
+    [orderCode, visitorKey],
+  );
+  const b = rows[0];
+  if (!b || b.status !== 'pending' || b.payment_status !== 'unpaid' || !b.hold_expires_at) {
+    return { kind: 'expired' };
+  }
+  const expiresMs = new Date(b.hold_expires_at).getTime();
+  if (expiresMs <= Date.now()) return { kind: 'expired' };
+  const settings = await getSettings();
+  return {
+    kind: 'live',
+    reference: b.reference,
+    holdExpiresAt: toIsoWithOffset(new Date(b.hold_expires_at), settings.timezone),
+    holdExpiresAtMs: expiresMs,
+  };
+}
+
+/** End a pending hold so the visitor can pick another vehicle. */
+export async function releasePendingBooking(raw: unknown, visitorKey: string): Promise<void> {
+  rejectMoneyFields(raw);
+  if (
+    !raw ||
+    typeof raw !== 'object' ||
+    !('reference' in raw) ||
+    typeof (raw as { reference: unknown }).reference !== 'string'
+  ) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'reference required',
+    });
+  }
+  const reference = (raw as { reference: string }).reference;
+  const { rowCount } = await db().query(
+    `update public.bookings
+        set status = 'expired',
+            hold_expires_at = least(coalesce(hold_expires_at, now()), now())
+      where reference = $1
+        and visitor_key = $2
+        and status = 'pending'
+        and payment_status = 'unpaid'`,
+    [reference, visitorKey],
+  );
+  if (!rowCount) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'booking not releasable',
+    });
+  }
+}
+
+export type CancelPageView =
+  | { kind: 'invalid' }
+  | { kind: 'tooLate' }
+  | {
+      kind: 'ok';
+      reference: string;
+      pickupLabel: string;
+      tripLabel: string;
+      refundCents: number;
+      refundLabel: string;
+    };
+
+/** Server data for `/booking/cancel/[token]` (never returns personal data). */
+export async function cancelPageView(token: string): Promise<CancelPageView> {
+  if (!token || token.length < 16) return { kind: 'invalid' };
+  const hash = hashCancelToken(token);
+  const { rows } = await db().query<{
+    reference: string;
+    pickup_at: Date;
+    booking_type: string;
+    duration_minutes: number;
+    price_cents: number;
+    payment_status: string;
+    status: string;
+    from_name: string | null;
+    to_name: string | null;
+  }>(
+    `select b.reference, b.pickup_at, b.booking_type, b.duration_minutes, b.price_cents,
+            b.payment_status, b.status,
+            zf.name as from_name, zt.name as to_name
+       from public.bookings b
+       left join public.zones zf on zf.id = b.from_zone_id
+       left join public.zones zt on zt.id = b.to_zone_id
+      where b.cancel_token_hash = $1`,
+    [hash],
+  );
+  const b = rows[0];
+  if (!b || b.status === 'cancelled') return { kind: 'invalid' };
+
+  const settings = await getSettings();
+  const cutoff = new Date(b.pickup_at).getTime() - settings.cancelWindowHours * 3600_000;
+  if (Date.now() > cutoff) return { kind: 'tooLate' };
+
+  const refundCents =
+    b.payment_status === 'paid' || b.payment_status === 'partially_refunded' ? b.price_cents : 0;
+  const tripLabel =
+    b.booking_type === 'hourly'
+      ? `${Math.round(b.duration_minutes / 60)} h`
+      : `${b.from_name ?? '—'} → ${b.to_name ?? '—'}`;
+
+  return {
+    kind: 'ok',
+    reference: b.reference,
+    pickupLabel: `${formatLocal(new Date(b.pickup_at), settings.timezone)} (Athens)`,
+    tripLabel,
+    refundCents,
+    refundLabel: formatEuro(refundCents),
   };
 }
 

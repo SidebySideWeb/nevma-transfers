@@ -1,0 +1,92 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getSiteSettings, loadUiStrings } from '../../lib/sanity/content';
+import { notCompletedView } from '../../lib/server/booking-service';
+import { readVisitorKey } from '../../lib/server/visitor';
+import { t } from '../../lib/strings';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+
+await loadUiStrings();
+const settings = await getSiteSettings();
+const orderCode = Astro.url.searchParams.get('s')?.trim() || null;
+const visitorKey = readVisitorKey(Astro.cookies);
+const view = await notCompletedView(orderCode, visitorKey);
+
+const pageTitle = t('booking.notCompleted.title');
+const body = t('booking.notCompleted.body');
+const expired = t('booking.hold.expired');
+const tryAgain = t('booking.retry');
+const chooseVehicle = t('booking.notCompleted.chooseVehicle');
+const startAgain = t('booking.notCompleted.startAgain');
+const timerTemplate = t('booking.notCompleted.timer');
+const handoffTitle = t('booking.handoff.title');
+const handoffBody = t('booking.handoff.body');
+const handoffFallback = t('booking.handoff.fallback');
+const loading = t('booking.loading');
+---
+
+<BaseLayout
+  title={`${pageTitle} — ${settings.companyName}`}
+  description={body}
+  robots="noindex,nofollow"
+>
+  <section class="section">
+    <div
+      class="narrow"
+      id="not-completed-root"
+      data-mode={view.kind}
+      data-reference={view.kind === 'live' ? view.reference : ''}
+      data-expires-at-ms={view.kind === 'live' ? String(view.holdExpiresAtMs) : ''}
+      data-timer-template={timerTemplate}
+    >
+      {
+        view.kind === 'live' ? (
+          <>
+            <div id="live-panel" class="card stack notice-danger">
+              <h1 tabindex="-1">{pageTitle}</h1>
+              <p>{body}</p>
+              <p class="timer" role="status" aria-live="polite">
+                <span id="hold-remain">
+                  {timerTemplate.replace('{time}', '—')}
+                </span>
+              </p>
+              <p id="not-completed-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
+              <div class="row">
+                <button type="button" class="btn" id="try-again" data-loading={loading}>
+                  {tryAgain}
+                </button>
+                <a class="btn btn-ghost" href="/book#vehicle" id="choose-vehicle">
+                  {chooseVehicle}
+                </a>
+              </div>
+            </div>
+            <div id="handoff" class="card center stack" role="status" aria-live="polite" hidden>
+              <div class="row" style="justify-content: center">
+                <div class="spinner" aria-hidden="true" />
+              </div>
+              <h1 id="handoff-title" tabindex="-1">{handoffTitle}</h1>
+              <p class="muted">{handoffBody}</p>
+              <p>
+                <a class="btn" id="handoff-link" href="#">{handoffFallback}</a>
+              </p>
+            </div>
+          </>
+        ) : (
+          <div class="card stack notice-danger">
+            <h1 tabindex="-1">{pageTitle}</h1>
+            <p>{expired}</p>
+            <a class="btn" href="/book">{startAgain}</a>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import '../../scripts/not-completed';
+</script>

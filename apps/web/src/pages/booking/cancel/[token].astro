@@ -1,0 +1,108 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getSiteSettings, loadUiStrings } from '../../../lib/sanity/content';
+import { cancelPageView } from '../../../lib/server/booking-service';
+import { t } from '../../../lib/strings';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+
+await loadUiStrings();
+const settings = await getSiteSettings();
+const token = Astro.params.token ?? '';
+const view = await cancelPageView(token);
+
+const pageTitle = t('booking.cancel.title');
+const doneMsg = t('booking.cancel.done');
+const tooLate = t('booking.cancel.tooLate');
+const invalid = t('booking.cancel.invalid');
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+---
+
+<BaseLayout
+  title={`${pageTitle} — ${settings.companyName}`}
+  description={pageTitle}
+  robots="noindex,nofollow"
+>
+  <section class="section">
+    <div class="narrow stack">
+      {
+        view.kind === 'invalid' && (
+          <div class="notice" role="status">
+            <h1 tabindex="-1">{invalid}</h1>
+            <p>
+              <a href={`tel:${settings.phone.replace(/\s/g, '')}`}>{settings.phone}</a>
+              {' · '}
+              <a href={`mailto:${settings.email}`}>{settings.email}</a>
+            </p>
+          </div>
+        )
+      }
+
+      {
+        view.kind === 'tooLate' && (
+          <div class="notice" role="status">
+            <h1 tabindex="-1">{tooLate}</h1>
+            <p>
+              <a href={`tel:${settings.phone.replace(/\s/g, '')}`}>{settings.phone}</a>
+              {' · '}
+              <a href={`mailto:${settings.email}`}>{settings.email}</a>
+            </p>
+          </div>
+        )
+      }
+
+      {
+        view.kind === 'ok' && (
+          <div
+            id="cancel-root"
+            data-token={token}
+            data-turnstile-site-key={turnstileSiteKey}
+          >
+            <section id="cancel-card" class="card stack" aria-labelledby="c-h">
+              <h1 id="c-h" tabindex="-1">{pageTitle}</h1>
+              <dl class="summary">
+                <div>
+                  <dt>{t('booking.cancel.booking')}</dt>
+                  <dd>{view.reference}</dd>
+                </div>
+                <div>
+                  <dt>{t('booking.cancel.pickup')}</dt>
+                  <dd>{view.pickupLabel}</dd>
+                </div>
+                <div>
+                  <dt>{t('booking.cancel.trip')}</dt>
+                  <dd>{view.tripLabel}</dd>
+                </div>
+                <div>
+                  <dt>{t('booking.cancel.refund')}</dt>
+                  <dd>{t('booking.cancel.refundToCard', { amount: view.refundLabel })}</dd>
+                </div>
+              </dl>
+              <p id="cancel-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
+              <form id="cancel-form">
+                <button id="cancel-submit" class="btn btn-danger btn-block" type="submit">
+                  {t('booking.cancel.confirm', { reference: view.reference })}
+                </button>
+              </form>
+            </section>
+            <div
+              id="cancel-done"
+              class="notice notice-success"
+              role="status"
+              hidden
+            >
+              <h1 id="cancel-done-title" tabindex="-1">{doneMsg}</h1>
+            </div>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import '../../../scripts/cancel-page';
+</script>
