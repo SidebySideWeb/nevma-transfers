@@ -1,5 +1,5 @@
 import 'server-only';
-import { getServiceClient } from './supabase';
+import { bookingDb } from './db';
 
 export type AppSettings = {
   holdMinutes: number;
@@ -33,13 +33,10 @@ export async function getSettings(): Promise<AppSettings> {
     return cache.value;
   }
 
-  const sb = getServiceClient();
-  const { data, error } = await sb.from('settings').select('key, value');
-  if (error) {
-    throw new Error(`Failed to load settings: ${error.message}`);
-  }
-
-  const map = new Map((data ?? []).map((row) => [row.key, row.value]));
+  const { rows } = await bookingDb().query<{ key: string; value: unknown }>(
+    `select key, value from public.settings`,
+  );
+  const map = new Map(rows.map((row) => [row.key, row.value]));
 
   const value: AppSettings = {
     holdMinutes: asNumber(map.get('hold_minutes'), 'hold_minutes'),

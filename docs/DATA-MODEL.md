@@ -74,8 +74,19 @@ Trigger `payments_refund_limit`: locks the booking and rejects any refund (`pend
 
 Functions:
 - `class_availability(class_id, range, exclude_booking default null) → int`: active vehicles not blocked in the range, minus overlapping `confirmed`/`assigned` bookings and `pending` bookings whose hold has not expired, minus active unexpired holds not yet converted. Expired holds never count, whether or not the cron has run.
-- `create_hold(class_key, pickup, duration_minutes, visitor_key) → slot_holds`: locks the class row (`for update`), checks the visitor's active holds (`too_many_holds`), checks availability (`unavailable`), inserts a hold for `hold_minutes`. Raises `invalid_request` for an unknown class. Two visitors can never both take the last vehicle (test AC-05).
+- `create_hold(class_key, pickup, duration_minutes, visitor_key[, booking_type, from_zone_id, to_zone_id, hours]) → slot_holds`: locks the class row (`for update`), checks the visitor's active holds (`too_many_holds`), checks availability (`unavailable`), inserts a hold for `hold_minutes`. Optional trip columns (0007) snapshot the search so `/api/bookings` cannot change it. Raises `invalid_request` for an unknown class. Two visitors can never both take the last vehicle (test AC-05).
 - `expire_holds() → int`: marks ended holds `expired` and unpaid `pending` bookings past their hold `expired`.
+
+## Rate limits, hold trip snapshot, booking-from-hold (0007)
+
+| Table / column | Rules |
+| --- | --- |
+| `rate_limits(key, window_start, count)` | Fixed-window counters. RLS on, no policies (service role only). `hit_rate_limit(key, window_seconds, max) → boolean`. Limits: 30 quotes/min/IP; 6 holds and 6 bookings per hour per IP and per visitor (`docs/BOOKING-RULES.md` §11). |
+| `slot_holds` trip columns | `booking_type`, `from_zone_id`, `to_zone_id`, `hours`, `pickup_at`, `duration_minutes` — set by `create_hold`; used by `create_booking_from_hold`. |
+| `bookings.visitor_key` | Ownership for `/api/bookings/pay`. |
+
+Functions:
+- `create_booking_from_hold(...) → jsonb`: one transaction — lock hold + class; require active unexpired hold for this visitor; recompute base and extras from tables (copy prices); insert `bookings` (`pending`, `hold_expires_at` = hold expiry, `cancel_token_hash` null) and `booking_extras`; hold → `converted`. Cancel token is created later on confirmation (prompt 07).
 
 ## Security (0005)
 
@@ -92,4 +103,4 @@ Functions:
 
 ## Acceptance coverage in `packages/db/tests`
 
-AC-02 overlap, AC-03 type rules, AC-04 hold expiry, AC-05 last-vehicle race and hold limit, AC-07 duplicate transaction and idempotency key, AC-08 refund limit, AC-09 VIP flag, AC-10 RLS and staff rights, AC-14 DST range, plus the DEMO seed checks.
+AC-02 overlap, AC-03 type rules, AC-04 hold expiry, AC-05 last-vehicle race and hold limit, AC-07 duplicate transaction and idempotency key, AC-08 refund limit, AC-09 VIP flag, AC-10 RLS and staff rights, AC-14 DST range, 0007 rate limits + booking-from-hold, plus the DEMO seed checks.

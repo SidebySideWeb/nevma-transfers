@@ -13,6 +13,8 @@ All endpoints live in `apps/web/src/pages/api/`. JSON in and out, `Cache-Control
 
 Viva endpoints and event ids below follow Viva's developer docs at the time of writing (developer.viva.com). **Check them against the current docs in prompt 07.**
 
+**Implemented (prompt 06):** public endpoints below use Postgres (`create_hold`, `class_availability`, `blocked_range_for`, `create_booking_from_hold`, `hit_rate_limit`), Turnstile, visitor cookie `tem_vid`, and a `PaymentProvider` interface (`FakePaymentProvider` until prompt 07 adds Viva). Cancel token is created on confirmation (07), not at booking create. Rate-limit table and hold trip snapshot: migration `0007`.
+
 ---
 
 ## Public
