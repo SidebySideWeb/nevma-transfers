@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { bookingDb } from './db';
 import { fireOnConfirmed, fireOnLateRefund } from './hooks';
 import { getPaymentProvider } from './payments';
+import { extractJsonIntegerString } from './viva';
 
 const EVENT_PAYMENT_CREATED = 1796;
 const EVENT_PAYMENT_FAILED = 1798;
@@ -30,7 +31,7 @@ export async function handleVivaGet(): Promise<{ Key: string }> {
   return { Key };
 }
 
-export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
+export async function handleVivaPost(body: unknown, rawBody?: string): Promise<{ ok: true }> {
   const event = body as {
     EventTypeId?: number;
     EventData?: {
@@ -44,7 +45,9 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
   const data = event.EventData ?? {};
 
   if (typeId === EVENT_PAYMENT_FAILED) {
-    const orderCode = data.OrderCode != null ? String(data.OrderCode) : null;
+    const orderCode =
+      (rawBody ? extractJsonIntegerString(rawBody, ['OrderCode', 'orderCode']) : null) ??
+      (data.OrderCode != null ? String(data.OrderCode) : null);
     const txId = data.TransactionId;
     if (orderCode && txId) {
       await bookingDb().query(

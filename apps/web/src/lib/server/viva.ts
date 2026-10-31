@@ -44,6 +44,19 @@ export function majorToCents(amount: number | string): number {
   return Math.round(n * 100);
 }
 
+/**
+ * Read a large integer JSON field as a decimal string.
+ * Viva order codes can exceed Number.MAX_SAFE_INTEGER; JSON.parse would corrupt them.
+ */
+export function extractJsonIntegerString(raw: string, keys: string[]): string | null {
+  for (const key of keys) {
+    const re = new RegExp(`"${key}"\\s*:\\s*(\\d+)`, 'i');
+    const m = raw.match(re);
+    if (m?.[1]) return m[1];
+  }
+  return null;
+}
+
 type FetchLike = typeof fetch;
 
 export type VivaConfig = {
@@ -71,7 +84,7 @@ export class VivaPaymentProvider implements PaymentProvider {
     url: string,
     init: RequestInit,
     auth: 'bearer' | 'basic',
-  ): Promise<{ ok: boolean; status: number; json: unknown }> {
+  ): Promise<{ ok: boolean; status: number; json: unknown; text: string }> {
     const headers = new Headers(init.headers);
     if (auth === 'bearer') {
       headers.set('Authorization', `Bearer ${await this.accessToken()}`);
@@ -95,7 +108,7 @@ export class VivaPaymentProvider implements PaymentProvider {
         } catch {
           json = null;
         }
-        return { ok: res.ok, status: res.status, json };
+        return { ok: res.ok, status: res.status, json, text };
       } finally {
         clearTimeout(t);
       }
@@ -172,7 +185,7 @@ export class VivaPaymentProvider implements PaymentProvider {
 
   async createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
     const customerTrns = input.customerTrns ?? `Booking ${input.reference}`;
-    const { ok, json } = await this.request(
+    const { ok, json, text } = await this.request(
       `${this.h.api}/checkout/v2/orders`,
       {
         method: 'POST',
@@ -192,11 +205,7 @@ export class VivaPaymentProvider implements PaymentProvider {
       },
       'bearer',
     );
-    const orderCode = String(
-      (json as { orderCode?: unknown; OrderCode?: unknown } | null)?.orderCode ??
-        (json as { OrderCode?: unknown } | null)?.OrderCode ??
-        '',
-    );
+    const orderCode = extractJsonIntegerString(text, ['orderCode', 'OrderCode']) ?? '';
     if (!ok || !orderCode) {
       this.failViva((json as { ErrorCode?: unknown } | null)?.ErrorCode);
     }
@@ -207,7 +216,7 @@ export class VivaPaymentProvider implements PaymentProvider {
   }
 
   async getTransaction(transactionId: string): Promise<TransactionResult> {
-    const { ok, json } = await this.request(
+    const { ok, json, text } = await this.request(
       `${this.h.api}/checkout/v2/transactions/${encodeURIComponent(transactionId)}`,
       { method: 'GET' },
       'bearer',
@@ -215,13 +224,13 @@ export class VivaPaymentProvider implements PaymentProvider {
     if (!ok || !json || typeof json !== 'object') this.failViva('txn');
     const t = json as {
       amount?: number | string;
-      orderCode?: number | string;
       statusId?: string;
     };
     const amountCents = majorToCents(t.amount ?? NaN);
+    const orderCode = extractJsonIntegerString(text, ['orderCode', 'OrderCode']) ?? '';
     return {
       transactionId,
-      orderCode: String(t.orderCode ?? ''),
+      orderCode,
       amountCents,
       succeeded: t.statusId === 'F',
     };
