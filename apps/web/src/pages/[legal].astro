@@ -1,0 +1,37 @@
+---
+export const prerender = true;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Sections from '../components/sections/Sections.astro';
+import { getSiteSettings } from '../lib/sanity/content';
+import { getPageBySlug, LEGAL_SLUGS, type LegalSlug } from '../lib/sanity/pages';
+import { resolveSeo } from '../lib/seo';
+
+export async function getStaticPaths() {
+  return LEGAL_SLUGS.map((legal) => ({ params: { legal } }));
+}
+
+const legal = Astro.params.legal as LegalSlug;
+if (!LEGAL_SLUGS.includes(legal)) {
+  throw new Error(`Unknown legal slug "${legal}". Expected one of: ${LEGAL_SLUGS.join(', ')}.`);
+}
+
+const settings = await getSiteSettings();
+const page = await getPageBySlug(legal);
+const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
+  /\/$/,
+  '',
+);
+
+const seo = resolveSeo({
+  pageTitle: page.title,
+  pageSeo: page.seo ?? null,
+  settings,
+  pathname: `/${legal}`,
+  siteUrl,
+});
+---
+
+<BaseLayout seo={seo}>
+  <Sections sections={page.sections} />
+</BaseLayout>

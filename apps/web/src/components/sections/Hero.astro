@@ -1,0 +1,54 @@
+---
+import { ctaHref } from '../../lib/seo';
+import { responsiveImage, type SanityImage } from '../../lib/sanity/image';
+
+interface Props {
+  heading: string;
+  subheading?: string;
+  ctaLabel?: string;
+  ctaTarget?: 'book' | 'url' | string;
+  ctaUrl?: string;
+  image?: SanityImage;
+}
+
+const { heading, subheading, ctaLabel, ctaTarget, ctaUrl, image } = Astro.props;
+const href = ctaHref(ctaTarget, ctaUrl);
+const img = responsiveImage(image ?? null, { fallbackWidth: 1600, fallbackHeight: 1000 });
+const headingId = 'hero-h';
+---
+
+<section class="hero" aria-labelledby={headingId}>
+  <div class="wrap">
+    <div class="stack">
+      <h1 id={headingId}>{heading}</h1>
+      {subheading && <p class="muted">{subheading}</p>}
+      {
+        ctaLabel && (
+          <div class="row">
+            <a class="btn" href={href}>
+              {ctaLabel}
+            </a>
+          </div>
+        )
+      }
+    </div>
+    {
+      img ? (
+        <div class="hero-media">
+          <img
+            src={img.src}
+            srcset={img.srcset}
+            sizes="(min-width: 56.25rem) 50vw, 100vw"
+            width={img.width}
+            height={img.height}
+            alt={img.alt}
+            fetchpriority="high"
+            decoding="async"
+          />
+        </div>
+      ) : (
+        <div class="hero-media" role="img" aria-label={image?.alt || 'Hero'} />
+      )
+    }
+  </div>
+</section>

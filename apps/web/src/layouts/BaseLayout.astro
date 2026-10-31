@@ -2,6 +2,7 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
+import type { ResolvedSeo } from '../lib/seo';
 import '../styles/tokens.css';
 import '../styles/base.css';
 
@@ -10,19 +11,25 @@ interface Props {
   description?: string;
   robots?: string;
   ogImage?: string;
+  seo?: ResolvedSeo;
+  jsonLd?: unknown[];
 }
 
 await loadUiStrings();
 const settings = await getSiteSettings();
 
 const {
-  title = settings.defaultSeo?.title || settings.companyName,
-  description = settings.defaultSeo?.description || settings.tagline || '',
-  robots = 'index,follow',
-  ogImage = settings.defaultSeo?.image?.asset?.url || settings.logo?.asset?.url,
+  seo,
+  jsonLd = [],
+  title = seo?.title || settings.defaultSeo?.title || settings.companyName,
+  description = seo?.description || settings.defaultSeo?.description || settings.tagline || '',
+  robots = seo?.robots || 'index,follow',
+  ogImage = seo?.ogImage || settings.defaultSeo?.image?.asset?.url || settings.logo?.asset?.url,
 } = Astro.props;
 
-const canonical = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:4321').href;
+const canonical =
+  seo?.canonical || new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:4321').href;
+const twitterCard = seo?.twitterCard || (ogImage ? 'summary_large_image' : 'summary');
 ---
 
 <!doctype html>
@@ -39,6 +46,15 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:43
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
     {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={twitterCard} />
+    <meta name="twitter:title" content={title} />
+    {description && <meta name="twitter:description" content={description} />}
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+    {
+      jsonLd.map((block) => (
+        <script type="application/ld+json" set:html={JSON.stringify(block)} />
+      ))
+    }
     <link
       rel="preload"
       href="/fonts/inter-latin-wght-normal.woff2"

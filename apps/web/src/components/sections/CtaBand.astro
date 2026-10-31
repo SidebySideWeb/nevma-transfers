@@ -1,0 +1,25 @@
+---
+import { ctaHref } from '../../lib/seo';
+
+interface Props {
+  heading: string;
+  text?: string;
+  ctaLabel: string;
+  ctaTarget?: 'book' | 'url' | string;
+  ctaUrl?: string;
+}
+
+const { heading, text, ctaLabel, ctaTarget, ctaUrl } = Astro.props;
+const href = ctaHref(ctaTarget, ctaUrl);
+const headingId = 'cta-band-h';
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class="wrap card row between cta-band">
+    <div class="stack">
+      <h2 id={headingId}>{heading}</h2>
+      {text && <p class="muted">{text}</p>}
+    </div>
+    <a class="btn" href={href}>{ctaLabel}</a>
+  </div>
+</section>

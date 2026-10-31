@@ -1,0 +1,19 @@
+---
+/**
+ * Portable Text link mark. External http(s) links get rel="noopener".
+ * Props follow astro-portabletext mark component shape (`node` / `value`).
+ */
+type MarkProps = {
+  node?: { markDef?: { href?: string }; href?: string };
+  value?: { href?: string };
+  href?: string;
+};
+
+const props = Astro.props as MarkProps;
+const href = props.href || props.value?.href || props.node?.markDef?.href || props.node?.href || '#';
+const external = /^https?:\/\//i.test(href);
+---
+
+<a href={href} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+  <slot />
+</a>

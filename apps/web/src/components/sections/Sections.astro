@@ -1,0 +1,47 @@
+---
+import type { PageSection } from '../../lib/sanity/pages';
+import CtaBand from './CtaBand.astro';
+import Faq from './Faq.astro';
+import Hero from './Hero.astro';
+import RichText from './RichText.astro';
+
+interface Props {
+  sections: PageSection[];
+}
+
+const { sections } = Astro.props;
+---
+
+{
+  sections.map((section) => {
+    switch (section._type) {
+      case 'hero':
+        return (
+          <Hero
+            heading={section.heading}
+            subheading={section.subheading}
+            ctaLabel={section.ctaLabel}
+            ctaTarget={section.ctaTarget}
+            ctaUrl={section.ctaUrl}
+            image={section.image}
+          />
+        );
+      case 'richText':
+        return <RichText heading={section.heading} body={section.body} />;
+      case 'ctaBand':
+        return (
+          <CtaBand
+            heading={section.heading}
+            text={section.text}
+            ctaLabel={section.ctaLabel}
+            ctaTarget={section.ctaTarget}
+            ctaUrl={section.ctaUrl}
+          />
+        );
+      case 'faq':
+        return <Faq heading={section.heading} items={section.items} />;
+      default:
+        return null;
+    }
+  })
+}

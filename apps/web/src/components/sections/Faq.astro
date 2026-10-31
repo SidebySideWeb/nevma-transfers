@@ -1,0 +1,25 @@
+---
+interface Props {
+  heading?: string;
+  items: Array<{ question: string; answer: string; _key?: string }>;
+}
+
+const { heading, items } = Astro.props;
+const headingId = 'faq-h';
+---
+
+<section class="section" id="faq" aria-labelledby={headingId}>
+  <div class="narrow stack">
+    <h2 id={headingId}>{heading || 'Questions'}</h2>
+    {
+      items.map((item) => (
+        <details class="card faq-item">
+          <summary>
+            <strong>{item.question}</strong>
+          </summary>
+          <p class="muted">{item.answer}</p>
+        </details>
+      ))
+    }
+  </div>
+</section>

@@ -70,7 +70,7 @@ Vercel Cron ── GET /api/cron/reminders every 15 min (24-hour reminder, once)
 pg_cron ── expire_holds() every minute (tidy-up only; queries never trust stale holds)
 ```
 
-Rendering: home and legal pages are prerendered from Sanity at build time; a Sanity webhook on publish triggers a Vercel deploy hook (prompt 13). `/book` is a static shell with the island. `/booking/*` and `/api/*` render on demand.
+Rendering: home and legal pages are prerendered from Sanity at build time. A Sanity webhook (filter: published documents of types `page`, `siteSettings`, `uiStrings`, `vehicleClass`) POSTs to the Vercel deploy hook of the `tem-web` project so the site rebuilds on content publish (hook URL is set in prompt 13; create the webhook in the Sanity project → API → Webhooks). `/book` is a static shell with the island. `/booking/*` and `/api/*` render on demand.
 
 ## 5. Security model
 
@@ -80,7 +80,7 @@ Rendering: home and legal pages are prerendered from Sanity at build time; a San
 - Public write endpoints (`/api/holds`, `/api/bookings`, `/api/bookings/cancel`) need Turnstile and are rate limited (per IP and per visitor cookie `tem_vid`).
 - Cancel links carry a random 32-byte token; the database stores only its SHA-256 hash.
 - Logs carry ids and error codes only: no names, emails, phone numbers, tokens or Viva payloads.
-- `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options: DENY` (admin and booking pages), `Referrer-Policy: strict-origin-when-cross-origin` (prompt 13).
+- `Content-Security-Policy` (self, Sanity CDN images, Cloudflare Turnstile script/frame, form/navigation to Viva checkout hosts), `Strict-Transport-Security`, `X-Frame-Options: DENY` on `/book` and `/booking/*`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` locking camera/mic/geolocation — set in `apps/web/vercel.json` (prompt 12).
 
 ## 6. Environment variables
 

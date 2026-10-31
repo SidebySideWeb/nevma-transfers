@@ -1,4 +1,5 @@
 import { createSanityClient } from './client';
+import type { SanityImage } from './image';
 import { SITE_SETTINGS_QUERY, UI_STRINGS_QUERY } from './queries';
 import { setStringOverrides, type UiStringKey } from '../strings';
 
@@ -15,9 +16,9 @@ export type SiteSettings = {
     title?: string;
     description?: string;
     noindex?: boolean;
-    image?: { alt?: string; asset?: { url?: string } | null } | null;
+    image?: SanityImage;
   } | null;
-  logo?: { alt?: string; asset?: { url?: string } | null } | null;
+  logo?: SanityImage;
   internalNote?: string;
 };
 

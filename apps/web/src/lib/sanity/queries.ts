@@ -1,5 +1,14 @@
 import { defineQuery } from 'groq';
 
+const imageProjection = /* groq */ `
+  alt,
+  asset->{
+    _id,
+    url,
+    metadata { dimensions { width, height } }
+  }
+`;
+
 export const SITE_SETTINGS_QUERY = defineQuery(`
   *[_type == "siteSettings" && _id == "siteSettings"][0]{
     companyName,
@@ -10,12 +19,14 @@ export const SITE_SETTINGS_QUERY = defineQuery(`
     address,
     openingHours,
     timezone,
-    defaultSeo,
+    defaultSeo{
+      title,
+      description,
+      noindex,
+      image{ ${imageProjection} }
+    },
     logo{
-      alt,
-      asset->{
-        url
-      }
+      ${imageProjection}
     },
     internalNote
   }
@@ -38,10 +49,7 @@ export const VEHICLE_CLASSES_QUERY = defineQuery(`
     name,
     tagline,
     photos[]{
-      alt,
-      asset->{
-        url
-      }
+      ${imageProjection}
     },
     specs[]{
       label,
@@ -58,22 +66,38 @@ export const PAGE_BY_SLUG_QUERY = defineQuery(`
     title,
     "slug": slug.current,
     sections[]{
-      ...,
+      _type,
+      _key,
       _type == "hero" => {
         heading,
         subheading,
         ctaLabel,
         ctaTarget,
         ctaUrl,
-        image{
-          alt,
-          asset->{
-            url
-          }
-        }
+        image{ ${imageProjection} }
+      },
+      _type == "richText" => {
+        heading,
+        body
+      },
+      _type == "ctaBand" => {
+        heading,
+        text,
+        ctaLabel,
+        ctaTarget,
+        ctaUrl
+      },
+      _type == "faq" => {
+        heading,
+        items[]{ question, answer, _key }
       }
     },
-    seo,
+    seo{
+      title,
+      description,
+      noindex,
+      image{ ${imageProjection} }
+    },
     internalNote
   }
 `);

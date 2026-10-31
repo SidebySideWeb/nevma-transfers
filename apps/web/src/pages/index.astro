@@ -1,20 +1,42 @@
 ---
+export const prerender = true;
+
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Sections from '../components/sections/Sections.astro';
+import { getSiteSettings } from '../lib/sanity/content';
+import { getPageBySlug } from '../lib/sanity/pages';
+import {
+  faqPageJsonLd,
+  organizationJsonLd,
+  resolveSeo,
+  type FaqItem,
+} from '../lib/seo';
+
+const settings = await getSiteSettings();
+const page = await getPageBySlug('home');
+const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
+  /\/$/,
+  '',
+);
+
+const seo = resolveSeo({
+  pageTitle: page.title,
+  pageSeo: page.seo ?? null,
+  settings,
+  pathname: '/',
+  siteUrl,
+});
+
+const faqItems: FaqItem[] = page.sections
+  .filter((s) => s._type === 'faq')
+  .flatMap((s) => (s._type === 'faq' ? s.items : []));
+
+const jsonLd: unknown[] = [organizationJsonLd(settings, siteUrl)];
+if (faqItems.length > 0) {
+  jsonLd.push(faqPageJsonLd(faqItems));
+}
 ---
 
-<BaseLayout>
-  <section class="hero" aria-labelledby="hero-h">
-    <div class="wrap">
-      <div class="stack">
-        <h1 id="hero-h">Arrive on time. Travel protected.</h1>
-        <p class="muted">
-          Premium transfers and hourly chauffeur service in Athens, with optional VIP security.
-        </p>
-        <div class="row">
-          <a class="btn" href="/book">Book now</a>
-        </div>
-      </div>
-      <div class="hero-media" role="img" aria-label="Transfer vehicle"></div>
-    </div>
-  </section>
+<BaseLayout seo={seo} jsonLd={jsonLd}>
+  <Sections sections={page.sections} />
 </BaseLayout>

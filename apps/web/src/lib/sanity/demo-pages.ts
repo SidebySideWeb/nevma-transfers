@@ -1,0 +1,178 @@
+import type { CmsPage } from './pages';
+
+/** Offline DEMO pages when Sanity env is not configured (local e2e / smoke). */
+export const DEMO_PAGES: Record<string, CmsPage> = {
+  home: {
+    kind: 'home',
+    title: 'Home',
+    slug: 'home',
+    seo: {
+      title: 'TEM Protection (DEMO)',
+      description: 'DEMO home description.',
+    },
+    sections: [
+      {
+        _type: 'hero',
+        heading: 'DEMO Arrive on time. Travel protected.',
+        subheading:
+          'DEMO Premium transfers and hourly chauffeur service in Athens, with optional VIP security.',
+        ctaLabel: 'Book now',
+        ctaTarget: 'book',
+      },
+      {
+        _type: 'richText',
+        heading: 'DEMO Why TEM Protection',
+        body: [
+          {
+            _type: 'block',
+            _key: 'b1',
+            style: 'normal',
+            markDefs: [],
+            children: [
+              {
+                _type: 'span',
+                _key: 's1',
+                text: 'DEMO paragraph about the service promise. Replace with the client\'s copy.',
+                marks: [],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        _type: 'faq',
+        heading: 'DEMO Questions',
+        items: [
+          {
+            question: 'DEMO How is the price set?',
+            answer: 'DEMO Fixed prices per area and vehicle, shown before you pay.',
+          },
+          {
+            question: 'DEMO Can I cancel?',
+            answer:
+              'DEMO Yes, from the link in your confirmation email, within the cancellation window.',
+          },
+        ],
+      },
+      {
+        _type: 'ctaBand',
+        heading: 'DEMO Ready to book?',
+        text: 'DEMO Choose your trip and pay securely online.',
+        ctaLabel: 'Book now',
+        ctaTarget: 'book',
+      },
+    ],
+  },
+  privacy: {
+    kind: 'legal',
+    title: 'Privacy policy',
+    slug: 'privacy',
+    seo: { title: 'Privacy policy (DEMO)' },
+    sections: [
+      {
+        _type: 'richText',
+        heading: 'Privacy policy',
+        body: [
+          {
+            _type: 'block',
+            _key: 'b1',
+            style: 'normal',
+            markDefs: [],
+            children: [
+              {
+                _type: 'span',
+                _key: 's1',
+                text: 'DEMO privacy policy text. The client supplies the final legal text.',
+                marks: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  cookies: {
+    kind: 'legal',
+    title: 'Cookie policy',
+    slug: 'cookies',
+    seo: { title: 'Cookie policy (DEMO)' },
+    sections: [
+      {
+        _type: 'richText',
+        heading: 'Cookie policy',
+        body: [
+          {
+            _type: 'block',
+            _key: 'b1',
+            style: 'normal',
+            markDefs: [],
+            children: [
+              {
+                _type: 'span',
+                _key: 's1',
+                text: 'DEMO cookie policy text. The client supplies the final legal text.',
+                marks: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  terms: {
+    kind: 'legal',
+    title: 'Terms of service',
+    slug: 'terms',
+    seo: { title: 'Terms of service (DEMO)' },
+    sections: [
+      {
+        _type: 'richText',
+        heading: 'Terms of service',
+        body: [
+          {
+            _type: 'block',
+            _key: 'b1',
+            style: 'normal',
+            markDefs: [],
+            children: [
+              {
+                _type: 'span',
+                _key: 's1',
+                text: 'DEMO terms of service text. The client supplies the final legal text.',
+                marks: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  cancellation: {
+    kind: 'legal',
+    title: 'Cancellation and refunds',
+    slug: 'cancellation',
+    seo: { title: 'Cancellation and refunds (DEMO)' },
+    sections: [
+      {
+        _type: 'richText',
+        heading: 'Cancellation and refunds',
+        body: [
+          {
+            _type: 'block',
+            _key: 'b1',
+            style: 'normal',
+            markDefs: [],
+            children: [
+              {
+                _type: 'span',
+                _key: 's1',
+                text: 'DEMO cancellation and refunds text. The client supplies the final legal text.',
+                marks: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};

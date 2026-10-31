@@ -247,6 +247,13 @@
     display: grid;
     place-items: center;
     color: var(--color-muted);
+    overflow: hidden;
+  }
+  .hero-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
   @media (min-width: 56.25rem) {
     .hero .wrap {
@@ -256,6 +263,40 @@
 
   .section {
     padding-block: var(--space-7);
+  }
+  .narrow {
+    max-width: 40rem;
+    margin-inline: auto;
+    padding-inline: var(--space-4);
+  }
+  .prose :where(p, ul, ol) {
+    margin: 0 0 var(--space-3);
+  }
+  .prose :where(ul, ol) {
+    padding-inline-start: 1.25rem;
+  }
+  .prose a {
+    color: var(--color-accent, var(--color-text));
+    text-decoration: underline;
+  }
+  .faq-item {
+    margin: 0;
+  }
+  .faq-item summary {
+    cursor: pointer;
+    list-style: none;
+    min-height: var(--tap);
+    display: flex;
+    align-items: center;
+  }
+  .faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+  .faq-item[open] summary {
+    margin-bottom: var(--space-3);
+  }
+  .cta-band {
+    gap: var(--space-4);
   }
   .card {
     background: var(--color-surface);

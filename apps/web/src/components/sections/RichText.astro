@@ -1,0 +1,33 @@
+---
+import { PortableText } from 'astro-portabletext';
+import PortableLink from './PortableLink.astro';
+
+interface Props {
+  heading?: string;
+  // Portable Text blocks from Sanity; cast at the boundary for astro-portabletext.
+  body: Record<string, unknown>[];
+}
+
+const { heading, body } = Astro.props;
+const portableValue = body as Parameters<typeof PortableText>[0]['value'];
+const headingId = heading
+  ? `rt-${heading
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .slice(0, 40)}`
+  : undefined;
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class="wrap narrow stack prose">
+    {heading && <h2 id={headingId}>{heading}</h2>}
+    <PortableText
+      value={portableValue}
+      components={{
+        mark: {
+          link: PortableLink,
+        },
+      }}
+    />
+  </div>
+</section>
