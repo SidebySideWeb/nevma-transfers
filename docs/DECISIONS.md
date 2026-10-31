@@ -37,18 +37,20 @@ D = decided by the user (date). P = proposed in this kit, change if needed. O = 
 
 ## Open with the client
 
-| # | Question | Due | Kit 1 behaviour until answered |
-| --- | --- | --- | --- |
-| O1 | Zone list, price matrix, fleet classes, vehicles per class, buffer between trips | Fri 6 Nov | DEMO seed |
-| O2 | VIP security: inclusions, price, provider, legal wording, instant or approved confirmation | Fri 6 Nov | DEMO price, neutral wording, instant |
-| O3 | Night surcharge automatic by pick-up time or customer-picked | Fri 6 Nov | customer-picked extra |
-| O4 | Round trips (which routes, how the return is priced) | Fri 6 Nov | not built |
-| O5 | Brand: logo, colours, fonts, photos | Fri 6 Nov | neutral tokens, DEMO images |
-| O6 | Hourly hire: min and max hours, overtime rule, any kilometre allowance | Fri 6 Nov | 3–12 h, overtime with the office, no allowance |
-| O7 | Cancellation and refund policy | Fri 4 Dec | full refund until 24 h before (DEMO) |
-| O8 | Privacy and cookie text; retention period for booking data | Fri 4 Dec | DEMO legal pages |
-| O9 | Accountant confirms manual invoicing | Fri 4 Dec | manual invoices |
-| O10 | Pre-authorisation for near-term bookings | Fri 4 Dec | not built |
-| O11 | Payment methods enabled on Viva | Fri 27 Nov (test access) | as Viva offers |
-| O12 | Minimum lead time | Fri 6 Nov | 120 minutes (DEMO) |
-| O13 | Billing of the scope additions (hourly hire, standalone admin) as a change request | internal | — |
+Updated 31 Oct 2026 (prompt 14 QA): still awaiting written answers; kit 1 continues on DEMO / proposed defaults. Live Viva (O11) required for AC-22 before Fri 15 Jan 2027.
+
+| # | Question | Due | Kit 1 behaviour until answered | Status 31 Oct |
+| --- | --- | --- | --- | --- |
+| O1 | Zone list, price matrix, fleet classes, vehicles per class, buffer between trips | Fri 6 Nov | DEMO seed | Open |
+| O2 | VIP security: inclusions, price, provider, legal wording, instant or approved confirmation | Fri 6 Nov | DEMO price, neutral wording, instant | Open |
+| O3 | Night surcharge automatic by pick-up time or customer-picked | Fri 6 Nov | customer-picked extra | Open |
+| O4 | Round trips (which routes, how the return is priced) | Fri 6 Nov | not built | Open |
+| O5 | Brand: logo, colours, fonts, photos | Fri 6 Nov | neutral tokens, DEMO images | Open |
+| O6 | Hourly hire: min and max hours, overtime rule, any kilometre allowance | Fri 6 Nov | 3–12 h, overtime with the office, no allowance | Open |
+| O7 | Cancellation and refund policy | Fri 4 Dec | full refund until 24 h before (DEMO) | Open |
+| O8 | Privacy and cookie text; retention period for booking data | Fri 4 Dec | DEMO legal pages | Open |
+| O9 | Accountant confirms manual invoicing | Fri 4 Dec | manual invoices | Open |
+| O10 | Pre-authorisation for near-term bookings | Fri 4 Dec | not built | Open |
+| O11 | Payment methods enabled on Viva | Fri 27 Nov (test); live Fri 15 Jan 2027 | demo credentials; `PUBLIC_BOOKING_OPEN=false` in prod until live | Open |
+| O12 | Minimum lead time | Fri 6 Nov | 120 minutes (DEMO) | Open |
+| O13 | Billing of the scope additions (hourly hire, standalone admin) as a change request | internal | — | Open |

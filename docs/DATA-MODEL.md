@@ -81,7 +81,7 @@ Functions:
 
 | Table / column | Rules |
 | --- | --- |
-| `rate_limits(key, window_start, count)` | Fixed-window counters. RLS on, no policies (service role only). `hit_rate_limit(key, window_seconds, max) → boolean`. Limits: 30 quotes/min/IP; 6 holds and 6 bookings per hour per IP and per visitor (`docs/BOOKING-RULES.md` §11). |
+| `rate_limits` | `key`, `window_start`, `count` — fixed-window counters. RLS on, no policies (service role only). `hit_rate_limit(key, window_seconds, max) → boolean`. Limits: 30 quotes/min/IP; 6 holds and 6 bookings per hour per IP and per visitor (`docs/BOOKING-RULES.md` §11). |
 | `slot_holds` trip columns | `booking_type`, `from_zone_id`, `to_zone_id`, `hours`, `pickup_at`, `duration_minutes` — set by `create_hold`; used by `create_booking_from_hold`. |
 | `bookings.visitor_key` | Ownership for `/api/bookings/pay`. |
 

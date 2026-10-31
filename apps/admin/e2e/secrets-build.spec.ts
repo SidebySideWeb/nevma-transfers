@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('AC-24 admin build output contains no secrets', async () => {
+test('AC-24 admin build output contains no secrets', async ({}, testInfo) => {
+  // Parallel phone/desktop both building races pnpm symlinks on Windows.
+  test.skip(testInfo.project.name !== 'desktop', 'build once on desktop project');
   test.setTimeout(300_000);
   const signing =
     process.env.ADMIN_TO_WEB_SIGNING_SECRET || 'admin-web-signing-secret-for-local-dev-only-32';

@@ -15,6 +15,9 @@
     "check:placeholders": "node scripts/check-placeholders.mjs",
     "check:live": "node scripts/check-live-demo.mjs",
     "check:live:dry": "node scripts/check-live-demo.mjs --dry-run",
+    "qa:security-api": "node scripts/qa-security-api.mjs",
+    "qa:anon-rls": "node scripts/qa-anon-rls.mjs",
+    "qa:secrets-build": "node scripts/check-secrets-in-build.mjs",
     "format": "prettier --write .",
     "db:types": "node scripts/db-types.mjs"
   },

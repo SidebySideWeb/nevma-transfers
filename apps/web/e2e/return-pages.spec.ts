@@ -69,7 +69,9 @@ async function insertCancellable(opts: {
 }): Promise<{ reference: string }> {
   const hash = hashToken(opts.token);
   const priceCents = opts.priceCents ?? 22000;
-  const orderCode = opts.orderCode ?? String(888_000_000_000_000n + BigInt(Date.now() % 1_000_000_000));
+  const orderCode =
+    opts.orderCode ??
+    String(888_000_000_000_000n + BigInt(Date.now() % 1_000_000_000) * 1000n + BigInt(Math.floor(Math.random() * 1000)));
   return withDb(async (c) => {
     const { rows } = await c.query<{ reference: string; id: string }>(
       `insert into public.bookings (
@@ -158,12 +160,13 @@ test('AC-06: confirmed page waits; webhook flips to confirmed; pending unchanged
 
 test('AC-12: cancel inside window once; reload invalid; outside shows tooLate', async ({
   page,
-}) => {
+}, testInfo) => {
+  const suffix = `${Date.now()}${testInfo.project.name === 'phone' ? '1' : '2'}${Math.floor(Math.random() * 1e6)}`;
   const tokenOk = randomBytes(32).toString('base64url');
   const { reference } = await insertCancellable({
     token: tokenOk,
     pickupHoursFromNow: 48,
-    orderCode: '8881000000000001',
+    orderCode: `8881${suffix}`.slice(0, 18),
   });
 
   await page.goto(`/booking/cancel/${tokenOk}`);
@@ -185,7 +188,7 @@ test('AC-12: cancel inside window once; reload invalid; outside shows tooLate', 
   await insertCancellable({
     token: tokenLate,
     pickupHoursFromNow: 2,
-    orderCode: '8881000000000002',
+    orderCode: `8882${suffix}`.slice(0, 18),
   });
   await page.goto(`/booking/cancel/${tokenLate}`);
   await expect(page.getByText(/can no longer be cancelled online/i)).toBeVisible();

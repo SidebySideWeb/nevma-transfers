@@ -7,6 +7,7 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 120_000,
   fullyParallel: false,
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
   use: {
@@ -17,7 +18,8 @@ export default defineConfig({
     command:
       'pnpm exec astro dev stop 2>nul & pnpm exec astro dev --port 4321 --host 127.0.0.1 --force',
     url: `${baseURL}/book`,
-    reuseExistingServer: true,
+    // Fresh server so TURNSTILE dummy keys and DATABASE_URL from this config win over a leftover .env server.
+    reuseExistingServer: false,
     timeout: 180_000,
     env: {
       ...process.env,
