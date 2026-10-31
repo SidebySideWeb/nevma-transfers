@@ -67,7 +67,9 @@ describe('Viva payments (prompt 07)', () => {
     payments = resetPaymentProvider();
     clearConfirmedCalls();
     lateEmails = [];
-    setOnConfirmed(async () => {});
+    setOnConfirmed(async () => {
+      /* no emails in payment unit tests */
+    });
     setOnLateRefund(async (ref) => {
       lateEmails.push(ref);
     });

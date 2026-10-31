@@ -1,15 +1,24 @@
 import 'server-only';
+import {
+  sendCancellationEmails,
+  sendConfirmationEmails,
+  sendLateRefundEmails,
+} from './booking-emails';
 
-/** Placeholder until prompt 08 wires Resend. Logs reference only. */
-export type ConfirmedHook = (reference: string) => void | Promise<void>;
+export type ConfirmedHook = (reference: string, cancelToken: string) => void | Promise<void>;
 export type LateRefundHook = (reference: string) => void | Promise<void>;
+export type CancelledHook = (reference: string, refundCents: number) => void | Promise<void>;
 
-let onConfirmed: ConfirmedHook = async (reference) => {
-  console.error(JSON.stringify({ level: 'info', code: 'on_confirmed', reference }));
+let onConfirmed: ConfirmedHook = async (reference, cancelToken) => {
+  await sendConfirmationEmails(reference, cancelToken);
 };
 
 let onLateRefund: LateRefundHook = async (reference) => {
-  console.error(JSON.stringify({ level: 'info', code: 'on_late_refund', reference }));
+  await sendLateRefundEmails(reference);
+};
+
+let onCancelled: CancelledHook = async (reference, refundCents) => {
+  await sendCancellationEmails(reference, refundCents);
 };
 
 const confirmedCalls: string[] = [];
@@ -30,11 +39,43 @@ export function setOnLateRefund(fn: LateRefundHook): void {
   onLateRefund = fn;
 }
 
-export async function fireOnConfirmed(reference: string): Promise<void> {
+export function setOnCancelled(fn: CancelledHook): void {
+  onCancelled = fn;
+}
+
+export function resetEmailHooks(): void {
+  onConfirmed = async (reference, cancelToken) => {
+    await sendConfirmationEmails(reference, cancelToken);
+  };
+  onLateRefund = async (reference) => {
+    await sendLateRefundEmails(reference);
+  };
+  onCancelled = async (reference, refundCents) => {
+    await sendCancellationEmails(reference, refundCents);
+  };
+}
+
+export async function fireOnConfirmed(reference: string, cancelToken: string): Promise<void> {
   confirmedCalls.push(reference);
-  await onConfirmed(reference);
+  try {
+    await onConfirmed(reference, cancelToken);
+  } catch {
+    console.error(JSON.stringify({ level: 'error', code: 'on_confirmed_failed', reference }));
+  }
 }
 
 export async function fireOnLateRefund(reference: string): Promise<void> {
-  await onLateRefund(reference);
+  try {
+    await onLateRefund(reference);
+  } catch {
+    console.error(JSON.stringify({ level: 'error', code: 'on_late_refund_failed', reference }));
+  }
+}
+
+export async function fireOnCancelled(reference: string, refundCents: number): Promise<void> {
+  try {
+    await onCancelled(reference, refundCents);
+  } catch {
+    console.error(JSON.stringify({ level: 'error', code: 'on_cancelled_failed', reference }));
+  }
 }

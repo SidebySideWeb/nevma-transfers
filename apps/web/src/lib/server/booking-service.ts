@@ -12,6 +12,7 @@ import {
 } from '../booking/validation';
 import { bookingDb, type BookingDb } from './db';
 import { mapPgBookingError } from './http';
+import { fireOnCancelled } from './hooks';
 import { getPaymentProvider } from './payments';
 import { assertRateLimit, RATE } from './rate-limit';
 import { getSettings } from './settings';
@@ -760,6 +761,8 @@ export async function cancelBooking(raw: unknown, ip?: string) {
       where id = $1::uuid`,
     [b.id],
   );
+
+  await fireOnCancelled(b.reference, refundCents);
 
   return {
     reference: b.reference,

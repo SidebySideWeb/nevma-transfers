@@ -11,15 +11,14 @@ function logOutcome(fields: Record<string, unknown>): void {
   console.error(JSON.stringify({ level: 'info', code: 'viva_webhook', ...fields }));
 }
 
-async function storeCancelToken(bookingId: string): Promise<void> {
+async function storeCancelToken(bookingId: string): Promise<string> {
   const token = randomBytes(32).toString('base64url');
   const hash = createHash('sha256').update(token, 'utf8').digest('hex');
   await bookingDb().query(
     `update public.bookings set cancel_token_hash = $1 where id = $2::uuid and cancel_token_hash is null`,
     [hash, bookingId],
   );
-  // Plain token only for email (prompt 08); until then discarded after hash store.
-  void token;
+  return token;
 }
 
 export async function handleVivaGet(): Promise<{ Key: string }> {
@@ -98,8 +97,8 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
   logOutcome({ event: 'payment_created', outcome, orderCode: txn.orderCode, reference });
 
   if (outcome === 'confirmed' && reference && bookingId) {
-    await storeCancelToken(bookingId);
-    await fireOnConfirmed(reference);
+    const cancelToken = await storeCancelToken(bookingId);
+    await fireOnConfirmed(reference, cancelToken);
   }
 
   if (outcome === 'late_unavailable' && reference && bookingId) {

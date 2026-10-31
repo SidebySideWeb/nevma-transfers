@@ -2,6 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import { BookingError } from '../booking/types';
 import { bookingDb } from './db';
+import { fireOnCancelled } from './hooks';
 import { getPaymentProvider } from './payments';
 
 const RefundBody = z
@@ -225,6 +226,8 @@ export async function internalCancel(raw: unknown, staffUserId: string) {
       where id = $1::uuid and status <> 'cancelled'`,
     [booking.id],
   );
+
+  await fireOnCancelled(body.reference, refundCents);
 
   return { status: 'cancelled' as const, refundedCents: refundCents };
 }
