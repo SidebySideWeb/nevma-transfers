@@ -14,7 +14,8 @@ export const GET: APIRoute = async ({ url }) => {
         message: 'missing s',
       });
     }
-    const data = await bookingStatus(s);
+    const t = url.searchParams.get('t');
+    const data = await bookingStatus(s, t);
     return json(data);
   } catch (e) {
     return fail(e);

@@ -72,17 +72,39 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
     return { ok: true };
   }
 
+  await confirmVerifiedVivaTransaction(transactionId);
+  return { ok: true };
+}
+
+/**
+ * Confirm (or late-refund) after verifying the transaction with Viva's API.
+ * Used by the webhook and by /api/booking-status?t= when the webhook is delayed/missing.
+ * Optional expectedOrderCode must match the verified transaction (redirect reconcile).
+ */
+export async function confirmVerifiedVivaTransaction(
+  transactionId: string,
+  expectedOrderCode?: string,
+): Promise<{ outcome: string; orderCode?: string; reference?: string }> {
   let txn;
   try {
     txn = await getPaymentProvider().getTransaction(transactionId);
   } catch {
     logOutcome({ event: 'lookup_failed', transactionId: transactionId.slice(0, 8) });
-    return { ok: true };
+    return { outcome: 'lookup_failed' };
   }
 
   if (!txn.succeeded || !txn.orderCode) {
     logOutcome({ event: 'not_success', orderCode: txn.orderCode });
-    return { ok: true };
+    return { outcome: 'not_success', orderCode: txn.orderCode };
+  }
+
+  if (expectedOrderCode && txn.orderCode !== expectedOrderCode) {
+    logOutcome({
+      event: 'order_mismatch',
+      orderCode: txn.orderCode,
+      expected: expectedOrderCode,
+    });
+    return { outcome: 'order_mismatch', orderCode: txn.orderCode };
   }
 
   const { rows } = await bookingDb().query<{ j: Record<string, unknown> }>(
@@ -127,5 +149,5 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
     }
   }
 
-  return { ok: true };
+  return { outcome, orderCode: txn.orderCode, reference };
 }

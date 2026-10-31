@@ -11,6 +11,7 @@ type StatusPayload = {
 const confirmedRoot = document.getElementById('confirmed-root');
 if (confirmedRoot) {
   const orderCode = confirmedRoot.dataset.orderCode ?? '';
+  const transactionId = confirmedRoot.dataset.transactionId ?? '';
   const waitingEl = document.getElementById('confirmed-waiting');
   const okEl = document.getElementById('confirmed-ok');
   const timeoutEl = document.getElementById('confirmed-timeout');
@@ -24,7 +25,9 @@ if (confirmedRoot) {
   async function poll(): Promise<void> {
     if (!orderCode) return;
     try {
-      const res = await fetch(`/api/booking-status?s=${encodeURIComponent(orderCode)}`, {
+      const qs = new URLSearchParams({ s: orderCode });
+      if (transactionId) qs.set('t', transactionId);
+      const res = await fetch(`/api/booking-status?${qs}`, {
         headers: { accept: 'application/json' },
         credentials: 'same-origin',
       });
