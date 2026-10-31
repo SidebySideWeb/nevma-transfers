@@ -85,3 +85,51 @@ pnpm db:types
 ```
 
 Writes `apps/web/src/lib/server/database.types.ts` and `apps/admin/src/lib/database.types.ts`. Requires `supabase login` (or `SUPABASE_ACCESS_TOKEN`).
+
+## Backup restore test (prompt 13)
+
+Weekly production backups are encrypted with `age` (see `.github/workflows/backup.yml`). Before launch, run this restore drill once against a **scratch** database (never production).
+
+### 1. Take a dump from a scratch source
+
+```bash
+# Example: local Postgres with migrations + DEMO seed already applied
+export SOURCE_URL=postgres://postgres:postgres@127.0.0.1:54322/postgres
+# Prefer public schema only for scratch drills (avoids pg_cron / realtime / vault noise on restore)
+pg_dump --format=custom --no-owner --no-acl --schema=public --file=/tmp/tem-scratch.dump "$SOURCE_URL"
+```
+
+Optional: encrypt/decrypt round-trip with the client's age keypair:
+
+```bash
+age -r "$AGE_RECIPIENT" -o /tmp/tem-scratch.dump.age /tmp/tem-scratch.dump
+age -d -i ~/tem-backup-key.txt -o /tmp/tem-restored.dump /tmp/tem-scratch.dump.age
+```
+
+### 2. Restore into an empty scratch database
+
+```bash
+export SCRATCH_URL=postgres://postgres:postgres@127.0.0.1:54322/tem_restore_scratch
+psql "$SOURCE_URL" -c "drop database if exists tem_restore_scratch;"
+psql "$SOURCE_URL" -c "create database tem_restore_scratch;"
+pg_restore --no-owner --no-acl --dbname="$SCRATCH_URL" /tmp/tem-scratch.dump
+# or /tmp/tem-restored.dump after age decrypt
+```
+
+### 3. Smoke-check
+
+```bash
+psql "$SCRATCH_URL" -c "select count(*) as zones from public.zones;"
+psql "$SCRATCH_URL" -c "select count(*) as classes from public.vehicle_classes;"
+psql "$SCRATCH_URL" -c "select key, is_demo from public.settings order by key;"
+```
+
+Expect: tables present, row counts match the source dump. Drop the scratch database when finished:
+
+```bash
+psql "$SOURCE_URL" -c "drop database if exists tem_restore_scratch;"
+```
+
+Sanity restore (from the weekly `.tar.gz.age` export): decrypt with `age`, then `sanity dataset import <file.tar.gz> <scratch-dataset> --replace` against a non-production dataset.
+
+A restore test was run locally on 31 Oct 2026 against Postgres on `127.0.0.1` (scratch DB `tem_restore_scratch`): dump → create empty DB → `pg_restore` → smoke counts (`zones=4`, `vehicle_classes=3` with DEMO seed). Repeat on the client's staging project before launch and note the date here.

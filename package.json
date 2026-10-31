@@ -13,6 +13,8 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test && node --test \"scripts/*.test.mjs\"",
     "check:placeholders": "node scripts/check-placeholders.mjs",
+    "check:live": "node scripts/check-live-demo.mjs",
+    "check:live:dry": "node scripts/check-live-demo.mjs --dry-run",
     "format": "prettier --write .",
     "db:types": "node scripts/db-types.mjs"
   },

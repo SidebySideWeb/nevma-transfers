@@ -3,6 +3,7 @@ export const prerender = true;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BookingApp from '../components/booking/BookingApp';
+import { isBookingOpen } from '../lib/booking-open';
 import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
 import { t } from '../lib/strings';
 import type { UiStringKey } from '../lib/strings';
@@ -10,14 +11,15 @@ import { uiStringDefaults } from '@studio-strings';
 
 await loadUiStrings();
 const settings = await getSiteSettings();
+const bookingOpen = isBookingOpen();
 
-// Templates with `{placeholders}` stay unresolved; the island fills them at runtime.
 const strings: Record<string, string> = {};
 for (const entry of uiStringDefaults) {
   strings[entry.key] = t(entry.key as UiStringKey);
 }
 
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 ---
 
 <BaseLayout
@@ -25,10 +27,24 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
   description="Book a transfer or hourly hire with TEM Protection."
   robots="noindex,nofollow"
 >
-  <BookingApp
-    client:load
-    strings={strings}
-    turnstileSiteKey={turnstileSiteKey}
-    contact={{ phone: settings.phone, email: settings.email }}
-  />
+  {
+    bookingOpen ? (
+      <BookingApp
+        client:load
+        strings={strings}
+        turnstileSiteKey={turnstileSiteKey}
+        contact={{ phone: settings.phone, email: settings.email }}
+      />
+    ) : (
+      <section class="section">
+        <div class="wrap narrow stack">
+          <h1 tabindex="-1">Online booking is not open yet</h1>
+          <p class="muted">
+            Please call <a href={phoneHref}>{settings.phone}</a> or email{' '}
+            <a href={`mailto:${settings.email}`}>{settings.email}</a> to arrange a transfer.
+          </p>
+        </div>
+      </section>
+    )
+  }
 </BaseLayout>

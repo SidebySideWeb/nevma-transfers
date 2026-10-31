@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev --port 4321",
-    "build": "astro build",
+    "build": "node ./scripts/prebuild.mjs && astro build",
+    "check:live": "node ../../scripts/check-live-demo.mjs",
     "preview": "astro preview",
     "lint": "eslint .",
     "typecheck": "astro check",

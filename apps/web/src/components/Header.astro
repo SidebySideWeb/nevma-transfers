@@ -1,5 +1,6 @@
 ---
 import type { SiteSettings } from '../lib/sanity/content';
+import { isBookingOpen } from '../lib/booking-open';
 
 interface Props {
   settings: SiteSettings;
@@ -8,6 +9,7 @@ interface Props {
 const { settings } = Astro.props;
 const logoUrl = settings.logo?.asset?.url;
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const bookingOpen = isBookingOpen();
 ---
 
 <header class="site-header">
@@ -23,7 +25,7 @@ const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
     </a>
     <div class="header-actions">
       <a class="muted" href={phoneHref}>{settings.phone}</a>
-      <a class="btn" href="/book">Book now</a>
+      {bookingOpen ? <a class="btn" href="/book">Book now</a> : null}
     </div>
   </div>
 </header>

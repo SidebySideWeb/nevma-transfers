@@ -118,4 +118,10 @@ Sanity (TEM Protection project) Â· Supabase Pro project (EU region, Frankfurt) Â
 
 ## 9. Backups
 
-Supabase Pro daily backups, plus a weekly encrypted export of the Sanity dataset and a dump of the bookings database to the agreed storage (prompt 13). A restore test runs before launch.
+Supabase Pro daily backups, plus a weekly GitHub Actions job (Sunday 02:00 UTC, `.github/workflows/backup.yml`): Sanity `dataset export`, `pg_dump` (custom format), `age` encryption to the client's public key, upload to the agreed object storage; retain 8 weekly and 12 monthly copies; failure opens a GitHub issue labelled `backup-failure`. Restore drill: `packages/db/README.md`. Deploy / env checklist: `docs/DEPLOY.md`.
+
+## 10. Launch guard and monitoring
+
+- **AC-21** `pnpm check:live` (`scripts/check-live-demo.mjs`) blocks `tem-web` production builds (`VERCEL_ENV=production`) while DEMO placeholders, Sanity `internalNote` DEMO notes, DEMO-labelled ops rows, or `settings.is_demo` remain.
+- **Cron:** `/api/cron/reminders` every 15 minutes; `/api/cron/stuck-payments` daily (office email if any `pending` + `payment_status=paid`). Both require `Authorization: Bearer $CRON_SECRET`.
+- **Alerts:** configure Vercel log drains / 5xx alerts on `/api/*` in the `tem-web` project (client team).

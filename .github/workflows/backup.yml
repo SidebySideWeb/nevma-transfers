@@ -1,0 +1,124 @@
+# Weekly encrypted Sanity + Postgres backups (prompt 13 / ARCHITECTURE §9).
+# Required repository secrets (never commit values):
+#   SANITY_AUTH_TOKEN       — token that can export the production dataset
+#   SANITY_PROJECT_ID
+#   SANITY_DATASET          — usually "production"
+#   DATABASE_URL            — production Postgres connection string
+#   AGE_RECIPIENT           — age public key (client holds the private key)
+#   BACKUP_S3_BUCKET        — destination bucket name
+#   BACKUP_S3_ENDPOINT      — optional (R2 / MinIO); omit for AWS
+#   BACKUP_AWS_ACCESS_KEY_ID
+#   BACKUP_AWS_SECRET_ACCESS_KEY
+#   BACKUP_AWS_REGION       — default eu-central-1
+name: Backups
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client age
+          npm install -g @sanity/cli@3
+          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+
+      - name: Export and encrypt
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_AUTH_TOKEN }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          STAMP=$(date -u +%Y%m%d)
+          mkdir -p backup-out
+          echo "Exporting Sanity dataset (no token logged)…"
+          sanity dataset export "$SANITY_DATASET" "backup-out/sanity-${STAMP}.tar.gz" \
+            --project "$SANITY_PROJECT_ID"
+          echo "Dumping Postgres public schema (custom format)…"
+          pg_dump --format=custom --no-owner --no-acl --schema=public --file="backup-out/postgres-${STAMP}.dump" "$DATABASE_URL"
+          echo "Encrypting with age…"
+          age -r "$AGE_RECIPIENT" -o "backup-out/sanity-${STAMP}.tar.gz.age" "backup-out/sanity-${STAMP}.tar.gz"
+          age -r "$AGE_RECIPIENT" -o "backup-out/postgres-${STAMP}.dump.age" "backup-out/postgres-${STAMP}.dump"
+          rm -f "backup-out/sanity-${STAMP}.tar.gz" "backup-out/postgres-${STAMP}.dump"
+          ls -la backup-out
+
+      - name: Upload to object storage
+        env:
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+          BACKUP_AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          BACKUP_AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          BACKUP_AWS_REGION: ${{ secrets.BACKUP_AWS_REGION }}
+        run: |
+          set -euo pipefail
+          REGION="${BACKUP_AWS_REGION:-eu-central-1}"
+          if [ -n "${BACKUP_S3_ENDPOINT:-}" ]; then
+            mc alias set backup "$BACKUP_S3_ENDPOINT" "$BACKUP_AWS_ACCESS_KEY_ID" "$BACKUP_AWS_SECRET_ACCESS_KEY"
+          else
+            mc alias set backup "https://s3.${REGION}.amazonaws.com" "$BACKUP_AWS_ACCESS_KEY_ID" "$BACKUP_AWS_SECRET_ACCESS_KEY"
+          fi
+          STAMP=$(date -u +%Y%m%d)
+          YEAR=$(date -u +%Y)
+          MONTH=$(date -u +%m)
+          WEEK=$(date -u +%V)
+          # Weekly path
+          mc cp --recursive backup-out/ "backup/${BACKUP_S3_BUCKET}/weekly/${YEAR}-W${WEEK}/"
+          # Monthly snapshot on the first Sunday of the month (day-of-month 1–7)
+          DOM=$(date -u +%-d)
+          if [ "$DOM" -le 7 ]; then
+            mc cp --recursive backup-out/ "backup/${BACKUP_S3_BUCKET}/monthly/${YEAR}-${MONTH}/"
+          fi
+          # Retention: keep 8 weekly, 12 monthly
+          mc ls "backup/${BACKUP_S3_BUCKET}/weekly/" | awk '{print $NF}' | sort -r | tail -n +9 | while read -r d; do
+            [ -n "$d" ] && mc rm --recursive --force "backup/${BACKUP_S3_BUCKET}/weekly/${d}" || true
+          done
+          mc ls "backup/${BACKUP_S3_BUCKET}/monthly/" | awk '{print $NF}' | sort -r | tail -n +13 | while read -r d; do
+            [ -n "$d" ] && mc rm --recursive --force "backup/${BACKUP_S3_BUCKET}/monthly/${d}" || true
+          done
+
+      - name: Open GitHub issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Backup failed (${new Date().toISOString().slice(0, 10)})`;
+            const body = [
+              'The weekly Sanity + Postgres backup workflow failed.',
+              '',
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'Do not paste secrets into this issue. Check Actions logs and storage credentials.',
+            ].join('\n');
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'backup-failure',
+            });
+            if (issues.data.some((i) => i.title === title)) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['backup-failure'],
+            });
