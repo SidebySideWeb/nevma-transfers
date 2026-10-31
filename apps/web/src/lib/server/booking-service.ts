@@ -136,25 +136,24 @@ export async function bookingOptions() {
   const classes = [];
   for (const row of classRows) {
     const content = byKey.get(row.key);
-    if (!content) {
-      if (!missingSanityLogged.has(row.key)) {
-        missingSanityLogged.add(row.key);
-        console.error(JSON.stringify({ level: 'warn', code: 'missing_sanity_class', key: row.key }));
-      }
-      continue;
+    if (!content && !missingSanityLogged.has(row.key)) {
+      missingSanityLogged.add(row.key);
+      console.error(JSON.stringify({ level: 'warn', code: 'missing_sanity_class', key: row.key }));
     }
-    const photo = content.photos?.[0];
+    // Fall back to the Postgres key so booking still works when Sanity is empty/offline.
+    const name = content?.name ?? row.key;
+    const photo = content?.photos?.[0];
     classes.push({
       key: row.key,
-      name: content.name,
+      name,
       maxPassengers: row.max_passengers,
       maxLuggage: row.max_luggage,
       hourly:
         row.min_hours != null && row.max_hours != null
           ? { minHours: row.min_hours, maxHours: row.max_hours }
           : null,
-      photo: photo?.url ? { url: photo.url, alt: photo.alt ?? content.name } : null,
-      tagline: content.tagline ?? null,
+      photo: photo?.url ? { url: photo.url, alt: photo.alt ?? name } : null,
+      tagline: content?.tagline ?? null,
     });
   }
 

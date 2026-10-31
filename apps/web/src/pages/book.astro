@@ -1,0 +1,34 @@
+---
+export const prerender = true;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import BookingApp from '../components/booking/BookingApp';
+import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
+import { t } from '../lib/strings';
+import type { UiStringKey } from '../lib/strings';
+import { uiStringDefaults } from '@studio-strings';
+
+await loadUiStrings();
+const settings = await getSiteSettings();
+
+// Templates with `{placeholders}` stay unresolved; the island fills them at runtime.
+const strings: Record<string, string> = {};
+for (const entry of uiStringDefaults) {
+  strings[entry.key] = t(entry.key as UiStringKey);
+}
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+---
+
+<BaseLayout
+  title={`Book — ${settings.companyName}`}
+  description="Book a transfer or hourly hire with TEM Protection."
+  robots="noindex,nofollow"
+>
+  <BookingApp
+    client:load
+    strings={strings}
+    turnstileSiteKey={turnstileSiteKey}
+    contact={{ phone: settings.phone, email: settings.email }}
+  />
+</BaseLayout>

@@ -60,7 +60,18 @@ export const uiStringDefaults = [
   { area: 'booking', key: 'booking.cancel.confirm', value: 'Yes, cancel booking {reference}' },
   { area: 'booking', key: 'booking.cancel.done', value: 'Your booking has been cancelled. If you are due a refund we will send it back to your card.' },
   { area: 'booking', key: 'booking.cancel.tooLate', value: 'This booking can no longer be cancelled online. Please contact us.' },
+  { area: 'booking', key: 'booking.back', value: 'Back' },
+  { area: 'booking', key: 'booking.continue', value: 'Continue to review' },
+  { area: 'booking', key: 'booking.change', value: 'Change' },
+  { area: 'booking', key: 'booking.consent', value: 'I accept the terms and have read the privacy policy.' },
+  { area: 'booking', key: 'booking.retry', value: 'Try again' },
+  { area: 'booking', key: 'booking.loading', value: 'Please wait…' },
+  { area: 'booking', key: 'booking.athensHint', value: 'Athens time' },
+  { area: 'booking', key: 'booking.handoff.fallback', value: 'Continue to payment' },
+  { area: 'booking', key: 'booking.errors.summary', value: 'Please fix the following:' },
+  { area: 'booking', key: 'booking.network', value: 'We could not reach the server. Check your connection and try again.' },
   // --- errors (one per API error code, plus field errors) ---
+
   { area: 'errors', key: 'error.no_price', value: 'There is no online price for this trip. Please contact us.' },
   { area: 'errors', key: 'error.unavailable', value: 'No vehicle is available at that time. Please try another time or vehicle.' },
   { area: 'errors', key: 'error.invalid_request', value: 'Please check the highlighted fields and try again.' },

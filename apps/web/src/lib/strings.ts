@@ -40,7 +40,8 @@ function fillPlaceholders(
     if (vars && Object.prototype.hasOwnProperty.call(vars, name)) {
       return String(vars[name]);
     }
-    if (strictMissing) {
+    // Only enforce placeholders when the caller passed a vars object.
+    if (strictMissing && vars) {
       throw new Error(`Missing placeholder variable: ${name}`);
     }
     return match;

@@ -15,6 +15,7 @@ export function json(data: unknown, status = 200, headers: HeadersInit = {}): Re
     headers: {
       'content-type': 'application/json',
       'cache-control': 'no-store',
+      date: new Date().toUTCString(),
       ...headers,
     },
   });
