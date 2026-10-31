@@ -1,0 +1,30 @@
+{
+  "name": "@tem/studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "package.json",
+  "scripts": {
+    "dev": "sanity dev --port 3333",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "schema:validate": "sanity schema validate",
+    "typegen": "sanity schema extract --path schema.json && sanity typegen generate",
+    "seed": "sanity dataset import ../../seed/tem-seed.tar.gz production --replace",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sanity/vision": "^6.21.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sanity": "^6.21.0",
+    "styled-components": "^6.1.15"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

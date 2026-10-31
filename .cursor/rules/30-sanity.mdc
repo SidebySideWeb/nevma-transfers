@@ -1,0 +1,19 @@
+---
+description: Sanity Studio and content queries
+globs: apps/studio/**, apps/web/src/lib/sanity/**, seed/**
+alwaysApply: false
+---
+
+# Sanity rules
+
+Doc: `docs/CONTENT-MODEL.md`. The Studio in `apps/studio` is provided and validated (0 errors, 0 warnings). **Do not redesign the schema.**
+
+- Content only: `siteSettings`, `uiStrings`, `vehicleClass`, `page`. Zones, prices, hourly rates, extras, vehicles and bookings never go in Sanity.
+- `vehicleClass.key` equals `vehicle_classes.key` in Postgres. It is lowercase and unique. A class that exists on one side only is reported (admin warning and build log), not silently skipped.
+- Document IDs use hyphens, never dots. Singletons have fixed IDs (`siteSettings`, `uiStrings`).
+- Queries use `defineQuery` from `groq`, live in `src/lib/sanity/queries.ts`, project only the fields used, and run with perspective `published`.
+- Run `pnpm --filter @tem/studio typegen` after any query or schema change; commit the generated types.
+- `uiStrings` keys are listed in `docs/CONTENT-MODEL.md`. A missing key falls back to the code default and logs a build warning.
+- Portable Text is rendered with the official renderer; no `set:html` of editor content.
+- The dataset is `production`. If it is private, the site reads with `SANITY_READ_TOKEN` at build time only.
+- Seed content is DEMO. Real content replaces it before launch.

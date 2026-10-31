@@ -1,0 +1,19 @@
+---
+description: Postgres migrations and data rules
+globs: packages/db/**, **/*.sql
+alwaysApply: false
+---
+
+# Database rules
+
+Doc: `docs/DATA-MODEL.md`.
+
+- Migrations are numbered and immutable once applied anywhere. A change is a new migration (`0007_...`). Update `docs/DATA-MODEL.md` and the tests in the same change.
+- Money is `int` cents with a `check (>= 0)`; currency `char(3)` defaults to `EUR`. Times are `timestamptz`. Ranges are `tstzrange`.
+- Every table has row-level security on. No policy grants anything to `anon`. Staff policies check `exists (select 1 from staff where user_id = auth.uid())`. The web API uses the service role on the server only.
+- Overlapping bookings on one vehicle are prevented by the exclusion constraint, not only by application code.
+- Prices, extras and the VIP security flag are copied onto the booking at creation; later edits to the price tables never change an existing booking.
+- No soft-delete flags. Bookings keep a status; reference data uses `active`.
+- `pg_cron` jobs live only in `0006_cron.sql` and run on Supabase. Tests call `expire_holds()` directly.
+- The DEMO seed (`packages/db/seed/demo.sql`) is for development and staging only. Production gets real zones, prices and vehicles through the admin or a reviewed import.
+- Backups: Supabase Pro daily backups plus the weekly export described in `prompts/13-deploy-cron-backups.md`. Personal data in exports is encrypted.

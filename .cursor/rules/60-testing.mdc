@@ -1,0 +1,18 @@
+---
+description: Testing rules and acceptance ids
+globs: **/*.test.*, apps/**/tests/**, packages/db/tests/**
+alwaysApply: false
+---
+
+# Testing rules
+
+Doc: `docs/ACCEPTANCE.md`.
+
+- Write the failing test first. The test name starts with its acceptance id, for example `AC-07 duplicate webhook changes nothing`.
+- `apps/web` and `apps/admin` use Vitest; `packages/db` uses the Node test runner against a real PostgreSQL 16 (see `packages/db/README.md`).
+- Pricing, blocked range and availability are pure functions with table-driven tests: transfer, hourly, hours at the limits (2, 3, 12, 13, 0, negative, fractional), same-zone transfer, missing price, DST change nights (last Sunday of March and October in Europe/Athens), pickup in the past, pickup inside the lead time.
+- Concurrency: two parallel holds on the last vehicle, exactly one succeeds (`AC-05`).
+- Payments run against Viva's demo environment. No real card is charged before prompt 14, and prompt 14 uses one real payment and one real refund, by hand.
+- Mock only at the edge (Viva, Resend, Turnstile). Never mock the database for booking logic.
+- Playwright covers the full booking path on a phone viewport and a desktop viewport.
+- Tests never contain real customer data or secrets.

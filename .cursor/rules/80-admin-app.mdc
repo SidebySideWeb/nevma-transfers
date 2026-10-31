@@ -1,0 +1,19 @@
+---
+description: Standalone admin app (apps/admin)
+globs: apps/admin/**
+alwaysApply: false
+---
+
+# Admin app rules
+
+Docs: `docs/ARCHITECTURE.md`, `docs/PAGES.md` (admin routes), `docs/API.md` (`/api/internal/refund`).
+
+- `apps/admin` is its own deployment and domain: Astro with `output: 'server'` on Vercel, `@supabase/ssr` cookie sessions, React islands only for interactive tables. It is `noindex` everywhere and has no public pages except the sign-in screen.
+- The admin writes directly only: vehicle assignment, status `assigned`/`completed`, security notes, invoice fields, blocked slots, prices, hourly rates, extras, vehicles. Cancellations and refunds always go through the web app's signed internal routes, so Viva and the customer emails stay in step. The database only lets staff update those booking columns.
+- Authentication is Supabase Auth. Only users with a row in `staff` get in; everyone else is signed out with a neutral message. Check on the server for every route and every mutation, not only in the UI.
+- The admin uses the Supabase anon key plus the signed-in user's session. It never holds the service role key or the Viva secret.
+- Refunds and cancellations go through the web app's `POST /api/internal/refund` and `POST /api/internal/cancel` with an HMAC signature, timestamp and an idempotency key. Show the refundable amount and block over-refunds in the UI as well as on the server.
+- Screens: bookings list (filters: status, date, type, VIP security, invoice status), booking detail (assign vehicle, security notes, invoice status and number, cancel, refund), blocked slots, zone prices, hourly rates, extras (including the `vip-security` price), vehicles. A banner lists vehicle classes that exist in Postgres but not in Sanity.
+- Prices and rates are edited in euros in the UI and stored as cents. Changing a price never touches existing bookings.
+- Tables are keyboard accessible, sortable, and usable at 1024 px and wider; phone view only needs the bookings list and booking detail.
+- Destructive actions (cancel, refund) need a confirmation step that restates amount and customer reference.

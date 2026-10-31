@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Admin: prices and rates — TEM Protection (wireframe)</title>
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="screens.css">
+</head>
+<body>
+<div class="admin">
+  <nav class="admin-nav" aria-label="Admin">
+    <a class="logo" href="#">TEM Admin</a>
+    <ul><li><a href="admin-bookings.html">Bookings</a></li><li><a href="#">Blocked slots</a></li><li><a href="admin-prices.html" aria-current="page">Prices and rates</a></li><li><a href="#">Extras</a></li><li><a href="#">Fleet</a></li><li><a href="#">Zones</a></li><li><a href="#">Settings</a></li></ul>
+  </nav>
+  <main class="admin-main stack">
+    <h1>Prices and rates</h1>
+    <p class="muted">Prices in euros. Changes apply to new bookings only. An empty cell means no online price: customers are asked to call.</p>
+
+    <section class="stack" aria-labelledby="z-h">
+      <div class="row between"><h2 id="z-h">Transfer prices</h2>
+        <div class="field"><label for="cls">Vehicle class</label><select id="cls" class="input"><option>Executive sedan</option><option>Premium SUV</option><option>Executive van</option></select></div></div>
+      <div class="table-wrap matrix" role="region" tabindex="0" aria-label="Scrollable table"><table>
+        <thead><tr><th scope="col">From \ To</th><th scope="col">Airport</th><th scope="col">Centre</th><th scope="col">Port</th><th scope="col">North</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Airport</th><td>—</td><td><input class="input" aria-label="Airport to Centre" value="70.00"></td><td><input class="input" aria-label="Airport to Port" value="75.00"></td><td><input class="input" aria-label="Airport to North" value="65.00"></td></tr>
+          <tr><th scope="row">Centre</th><td><input class="input" aria-label="Centre to Airport" value="70.00"></td><td>—</td><td><input class="input" aria-label="Centre to Port" value="60.00"></td><td><input class="input" aria-label="Centre to North" value="60.00"></td></tr>
+          <tr><th scope="row">Port</th><td><input class="input" aria-label="Port to Airport" value="75.00"></td><td><input class="input" aria-label="Port to Centre" value="60.00"></td><td>—</td><td><input class="input" aria-label="Port to North" value="70.00"></td></tr>
+          <tr><th scope="row">North</th><td><input class="input" aria-label="North to Airport" value="65.00"></td><td><input class="input" aria-label="North to Centre" value="60.00"></td><td><input class="input" aria-label="North to Port" value=""></td><td>—</td></tr>
+        </tbody>
+      </table></div>
+      <button class="btn" type="button">Save transfer prices</button>
+    </section>
+
+    <section class="stack" aria-labelledby="h-h">
+      <h2 id="h-h">Hourly rates</h2>
+      <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table"><table>
+        <thead><tr><th scope="col">Class</th><th scope="col" class="num">Rate per hour (€)</th><th scope="col" class="num">Min hours</th><th scope="col" class="num">Max hours</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Executive sedan</th><td class="num"><input class="input" aria-label="Sedan rate" value="55.00"></td><td class="num"><input class="input" aria-label="Sedan min hours" value="3"></td><td class="num"><input class="input" aria-label="Sedan max hours" value="12"></td></tr>
+          <tr><th scope="row">Executive van</th><td class="num"><input class="input" aria-label="Van rate" value="75.00"></td><td class="num"><input class="input" aria-label="Van min hours" value="3"></td><td class="num"><input class="input" aria-label="Van max hours" value="12"></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="stack" aria-labelledby="e-h">
+      <h2 id="e-h">Extras</h2>
+      <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table"><table>
+        <thead><tr><th scope="col">Code</th><th scope="col">Name</th><th scope="col" class="num">Price (€)</th><th scope="col">Active</th></tr></thead>
+        <tbody>
+          <tr><td>vip-security</td><td><input class="input" aria-label="VIP security name" value="VIP security"></td><td class="num"><input class="input" aria-label="VIP security price" value="150.00"></td><td><input type="checkbox" checked aria-label="VIP security active"></td></tr>
+          <tr><td>night-surcharge</td><td><input class="input" aria-label="Night surcharge name" value="Night surcharge"></td><td class="num"><input class="input" aria-label="Night surcharge price" value="15.00"></td><td><input type="checkbox" checked aria-label="Night surcharge active"></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

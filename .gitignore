@@ -1,0 +1,15 @@
+node_modules
+.env
+.env.*
+!.env.example
+dist
+.astro
+.vercel
+.turbo
+*.log
+.DS_Store
+apps/studio/.sanity
+apps/studio/dist
+tem-protection-build-kit.zip
+playwright-report
+test-results

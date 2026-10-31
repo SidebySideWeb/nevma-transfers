@@ -1,0 +1,23 @@
+---
+description: API, security and Viva payments
+globs: apps/web/src/pages/api/**, apps/web/src/lib/server/**, apps/web/src/lib/booking/**
+alwaysApply: false
+---
+
+# API, security and payments
+
+Docs: `docs/API.md`, `docs/BOOKING-RULES.md`.
+
+- **Price comes from the server.** Request bodies carry type, zone codes or hours, class key, pickup time and extra codes. Any body containing `price`, `amount` or `total` is rejected with `invalid_request`.
+- Re-check everything inside one database transaction when creating a booking: zone pair price, hours limits, extras active, lead time, availability. Copy prices onto the booking and its extras at creation.
+- `/api/holds` and `/api/bookings` require a valid Turnstile token and are rate limited per IP and per visitor key. A visitor can hold at most 2 slots at once.
+- Viva: create the order server side; the browser only receives the checkout URL. The webhook handler verifies the event by fetching the transaction from Viva's API before changing anything, then records the payment idempotently (`viva_transaction_id` is unique).
+- A late payment (hold expired) re-checks the slot: confirm if free, otherwise refund automatically and email the customer.
+- Viva's webhook URL check (`GET /api/webhooks/viva`) returns the webhook key from Viva's API. The Viva order's payment timeout equals the seconds left on the hold.
+- Cron routes (`/api/cron/*`) require `Authorization: Bearer CRON_SECRET`.
+- Admin cancellations go through `POST /api/internal/cancel` (same signature rules as refunds) so the customer email and any refund always happen.
+- Refunds are issued only through `POST /api/internal/refund`, called by the admin with an HMAC signature (`ADMIN_TO_WEB_SIGNING_SECRET`), a timestamp (reject if older than 5 minutes) and a body hash. The amount may not exceed what is still refundable; a repeated refund request with the same idempotency key returns the original result.
+- The cancel link carries a random 32-byte token; only its hash is stored (`bookings.cancel_token_hash`). Compare in constant time.
+- Never log request bodies, emails, phone numbers, tokens or Viva payloads. Log ids and codes only.
+- All inputs are validated with `zod`; unknown fields are rejected. Errors use the shared shape and never leak stack traces.
+- CORS: the API answers only the site origin; the internal refund route also requires the signature.

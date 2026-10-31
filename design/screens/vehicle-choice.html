@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book: vehicle — TEM Protection (wireframe)</title>
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="screens.css">
+</head>
+<body>
+<header class="site-header"><div class="wrap"><a class="logo" href="home.html">TEM Protection</a><a class="muted" href="tel:+302100000000">+30 210 000 0000</a></div></header>
+<main class="section"><div class="narrow">
+  <ol class="steps" aria-label="Booking steps">
+    <li><span class="dot">1</span>Trip</li><li aria-current="step"><span class="dot">2</span>Vehicle</li><li><span class="dot">3</span>Details</li><li><span class="dot">4</span>Pay</li>
+  </ol>
+  <h1 tabindex="-1">booking.vehicle.title: Choose your vehicle</h1>
+  <p class="muted">Airport → City centre · Tue 1 Dec 2026, 10:00 (Athens) · 2 passengers · <a href="search.html">Change</a></p>
+
+  <div class="stack">
+    <article class="card vehicle">
+      <div class="photo" role="img" aria-label="vehicleClass.photos[0].alt">photo</div>
+      <div class="stack">
+        <div><h2>Executive sedan</h2><p class="muted">vehicleClass.tagline · booking.vehicle.capacity: Up to 3 passengers, 3 bags</p></div>
+        <div class="meta"><span class="price">€ 70.00</span><a class="btn" href="details.html">booking.vehicle.select: Select</a></div>
+      </div>
+    </article>
+    <article class="card vehicle">
+      <div class="photo" role="img" aria-label="vehicleClass.photos[0].alt">photo</div>
+      <div class="stack">
+        <div><h2>Premium SUV</h2><p class="muted">Up to 4 passengers, 4 bags</p></div>
+        <div class="meta"><span class="price">€ 80.00</span><a class="btn" href="details.html">Select</a></div>
+      </div>
+    </article>
+    <article class="card vehicle" aria-disabled="true">
+      <div class="photo" role="img" aria-label="vehicleClass.photos[0].alt">photo</div>
+      <div class="stack">
+        <div><h2>Executive van</h2><p class="muted">Up to 7 passengers, 7 bags</p></div>
+        <div class="meta"><span class="badge badge-warning">error.unavailable</span><span class="muted">No vehicle free at that time</span></div>
+      </div>
+    </article>
+    <div class="notice"><strong>No price example (error.no_price)</strong><p class="muted">booking.contactUs: We cannot price this trip online. Please call or email us and we will help you.</p>
+      <div class="row"><a class="btn btn-ghost" href="tel:+302100000000">siteSettings.phone</a><a class="btn btn-ghost" href="mailto:hello@example.com">siteSettings.email</a></div></div>
+  </div>
+</div></main>
+</body>
+</html>

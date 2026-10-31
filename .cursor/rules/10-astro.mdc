@@ -1,0 +1,19 @@
+---
+description: Astro public site (apps/web)
+globs: apps/web/**/*.astro, apps/web/**/*.ts, apps/web/**/*.tsx, apps/web/astro.config.*
+alwaysApply: false
+---
+
+# Astro rules (apps/web)
+
+Doc: `docs/ARCHITECTURE.md`, `docs/PAGES.md`.
+
+- Static first. Pages are prerendered (`export const prerender = true`) except `/api/*`, `/booking/*` and `/book/pay-return`, which render on demand through the Vercel adapter.
+- The booking flow is one React island, loaded only on `/book` with `client:load`. Every other page ships no framework JavaScript.
+- API routes are Astro endpoints in `src/pages/api/`. Each returns JSON with the shared error shape, sets `Cache-Control: no-store`, and validates input with `zod` before any logic.
+- Business logic lives in `src/lib/booking/` as pure functions (no I/O) and `src/lib/server/` for Supabase, Viva and Resend. Endpoints are thin: parse, call, respond.
+- Content comes from Sanity at build time through `src/lib/sanity/` using `defineQuery`; types come from `sanity typegen`. UI strings come from `uiStrings` through one helper `t(key)` with code defaults in `src/lib/strings.ts`.
+- Images use `astro:assets`; alt text is required; photos come from Sanity image URLs with width and format parameters.
+- Environment variables are read only in `src/lib/env.ts`, validated at startup. `PUBLIC_` names are limited to the site URL, admin URL and the Turnstile site key.
+- Admin routes do not exist in this app. The admin is `apps/admin`.
+- Every page sets title, description, canonical, Open Graph and a robots value; booking and return pages are `noindex`.

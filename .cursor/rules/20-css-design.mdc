@@ -1,0 +1,18 @@
+---
+description: CSS, tokens and design fidelity
+globs: apps/**/*.css, apps/**/*.astro, apps/**/*.tsx
+alwaysApply: false
+---
+
+# CSS and design rules
+
+Doc: `docs/DESIGN-SYSTEM.md`. Reference: `design/index.html`, `design/screens/*.html`.
+
+- All colour, spacing, radius and type values come from the custom properties in `src/styles/tokens.css`, copied from `design/tokens.css`. No hex values, no magic pixel sizes in components. A brand swap changes `tokens.css` only.
+- Mobile first. Design targets are 390 px and 1440 px; nothing may overflow horizontally at either.
+- Plain CSS with cascade layers (`@layer tokens, base, components, utilities`). No CSS framework. Component styles are scoped in `.astro` files or CSS modules in the island.
+- Touch targets are at least 44 px. Focus is always visible (`:focus-visible` outline using `--color-accent`). Text meets 4.5:1 contrast (3:1 for large text).
+- Motion uses transform and opacity only, and respects `prefers-reduced-motion`.
+- Forms: visible labels, inline error text tied with `aria-describedby`, error summary focus on submit.
+- Price and time are always shown with currency symbol and local time zone label (Europe/Athens unless `siteSettings` says otherwise).
+- The VIP security option is a clearly labelled checkbox with its price; never pre-selected.

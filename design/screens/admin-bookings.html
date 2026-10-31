@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Admin: bookings — TEM Protection (wireframe)</title>
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="screens.css">
+</head>
+<body>
+<div class="admin">
+  <nav class="admin-nav" aria-label="Admin">
+    <a class="logo" href="#">TEM Admin</a>
+    <ul>
+      <li><a href="admin-bookings.html" aria-current="page">Bookings</a></li>
+      <li><a href="#">Blocked slots</a></li>
+      <li><a href="admin-prices.html">Prices and rates</a></li>
+      <li><a href="#">Extras</a></li>
+      <li><a href="#">Fleet</a></li>
+      <li><a href="#">Zones</a></li>
+      <li><a href="#">Settings</a></li>
+    </ul>
+  </nav>
+  <main class="admin-main">
+    <p class="banner" role="note">Vehicle class "demo-limo" exists in the database but has no Sanity content. 2 settings are still DEMO (min_lead_minutes, cancel_window_hours).</p>
+    <div class="row between"><h1>Bookings</h1><span class="muted">Signed in as office@example.com</span></div>
+    <form class="toolbar" aria-label="Filters">
+      <div class="field"><label for="st">Status</label><select id="st" class="input"><option>All active</option><option>Pending</option><option>Confirmed</option><option>Assigned</option><option>Completed</option><option>Cancelled</option></select></div>
+      <div class="field"><label for="fr">From</label><input id="fr" class="input" type="date" value="2026-12-01"></div>
+      <div class="field"><label for="tt">To</label><input id="tt" class="input" type="date" value="2026-12-07"></div>
+      <div class="field"><label for="ty">Type</label><select id="ty" class="input"><option>All</option><option>Transfer</option><option>Hourly</option></select></div>
+      <label class="check"><input type="checkbox"> VIP security only</label>
+      <div class="field"><label for="iv">Invoice</label><select id="iv" class="input"><option>All</option><option>Requested</option><option>Issued</option></select></div>
+    </form>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
+      <table>
+        <caption class="sr-only">Bookings, sorted by pick-up time</caption>
+        <thead><tr><th scope="col">Reference</th><th scope="col">Pick-up</th><th scope="col">Type</th><th scope="col">Trip</th><th scope="col">Class</th><th scope="col">Vehicle</th><th scope="col">Customer</th><th scope="col" class="num">Total</th><th scope="col">Status</th><th scope="col">Payment</th><th scope="col">Flags</th></tr></thead>
+        <tbody>
+          <tr><td><a href="admin-booking.html">TEM-7K3QX2</a></td><td>1 Dec 10:00</td><td>Transfer</td><td>Airport → Centre</td><td>Sedan</td><td>—</td><td>A. Customer</td><td class="num">€ 220.00</td><td><span class="badge badge-success">Confirmed</span></td><td>Paid</td><td><span class="badge badge-accent">VIP security</span> <span class="badge">Invoice</span></td></tr>
+          <tr><td><a href="admin-booking.html">TEM-Q4MZ8P</a></td><td>1 Dec 14:00</td><td>Hourly</td><td>Centre · 4 h</td><td>Van</td><td>VAN-1</td><td>B. Customer</td><td class="num">€ 300.00</td><td><span class="badge">Assigned</span></td><td>Paid</td><td></td></tr>
+          <tr><td><a href="admin-booking.html">TEM-HB2N7W</a></td><td>2 Dec 09:30</td><td>Transfer</td><td>Port → Airport</td><td>SUV</td><td>—</td><td>C. Customer</td><td class="num">€ 115.00</td><td><span class="badge badge-warning">Pending</span></td><td>Unpaid</td><td></td></tr>
+          <tr><td><a href="admin-booking.html">TEM-9XRT3C</a></td><td>3 Dec 18:00</td><td>Transfer</td><td>Airport → North</td><td>Sedan</td><td>—</td><td>D. Customer</td><td class="num">€ 65.00</td><td><span class="badge badge-danger">Cancelled</span></td><td>Refunded</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

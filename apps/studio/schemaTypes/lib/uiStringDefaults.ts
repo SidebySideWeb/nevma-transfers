@@ -1,0 +1,85 @@
+// Single source of truth for UI string keys and their code defaults.
+// The Sanity `uiStrings` singleton overrides these values; apps/web falls back to them.
+// Placeholders in {braces} are filled by the app. Keep keys stable: they are referenced from code.
+export type UiStringArea = 'booking' | 'errors' | 'emails';
+
+export interface UiStringDefault {
+  area: UiStringArea;
+  key: string;
+  value: string;
+}
+
+export const uiStringDefaults: UiStringDefault[] = [
+  // --- booking flow ---
+  { area: 'booking', key: 'booking.search.title', value: 'Book your ride' },
+  { area: 'booking', key: 'booking.toggle.transfer', value: 'Transfer' },
+  { area: 'booking', key: 'booking.toggle.hourly', value: 'By the hour' },
+  { area: 'booking', key: 'booking.pickup.zone', value: 'Pick-up area' },
+  { area: 'booking', key: 'booking.dropoff.zone', value: 'Drop-off area' },
+  { area: 'booking', key: 'booking.pickup.address', value: 'Pick-up address' },
+  { area: 'booking', key: 'booking.dropoff.address', value: 'Drop-off address' },
+  { area: 'booking', key: 'booking.pickup.datetime', value: 'Pick-up date and time' },
+  { area: 'booking', key: 'booking.hours.label', value: 'Number of hours' },
+  { area: 'booking', key: 'booking.hours.hint', value: 'Minimum {min} hours, maximum {max} hours.' },
+  { area: 'booking', key: 'booking.passengers', value: 'Passengers' },
+  { area: 'booking', key: 'booking.luggage', value: 'Luggage items' },
+  { area: 'booking', key: 'booking.flight', value: 'Flight number (optional)' },
+  { area: 'booking', key: 'booking.search.submit', value: 'See vehicles and prices' },
+  { area: 'booking', key: 'booking.vehicle.title', value: 'Choose your vehicle' },
+  { area: 'booking', key: 'booking.vehicle.select', value: 'Select' },
+  { area: 'booking', key: 'booking.vehicle.capacity', value: 'Up to {passengers} passengers, {luggage} bags' },
+  { area: 'booking', key: 'booking.details.title', value: 'Your details' },
+  { area: 'booking', key: 'booking.details.name', value: 'Full name' },
+  { area: 'booking', key: 'booking.details.email', value: 'Email' },
+  { area: 'booking', key: 'booking.details.phone', value: 'Phone' },
+  { area: 'booking', key: 'booking.details.notes', value: 'Notes for the driver (optional)' },
+  { area: 'booking', key: 'booking.invoice.toggle', value: 'I need an invoice' },
+  { area: 'booking', key: 'booking.invoice.company', value: 'Company name' },
+  { area: 'booking', key: 'booking.invoice.vat', value: 'VAT number' },
+  { area: 'booking', key: 'booking.invoice.taxOffice', value: 'Tax office' },
+  { area: 'booking', key: 'booking.invoice.address', value: 'Company address' },
+  { area: 'booking', key: 'booking.extras.title', value: 'Extras' },
+  { area: 'booking', key: 'booking.extras.night', value: 'Night surcharge' },
+  { area: 'booking', key: 'booking.extras.vip', value: 'VIP security' },
+  { area: 'booking', key: 'booking.extras.vip.hint', value: 'Add VIP security to this booking. The office confirms the details with you.' },
+  { area: 'booking', key: 'booking.review.title', value: 'Review and pay' },
+  { area: 'booking', key: 'booking.total', value: 'Total' },
+  { area: 'booking', key: 'booking.pay', value: 'Pay securely' },
+  { area: 'booking', key: 'booking.hold.timer', value: 'Your vehicle is held for {minutes} minutes.' },
+  { area: 'booking', key: 'booking.hold.warning', value: 'Your hold ends in 2 minutes.' },
+  { area: 'booking', key: 'booking.hold.expired', value: 'Your hold has ended. Please choose a vehicle again.' },
+  { area: 'booking', key: 'booking.contactUs', value: 'We cannot price this trip online. Please call or email us and we will help you.' },
+  { area: 'booking', key: 'booking.handoff.title', value: 'Taking you to Viva' },
+  { area: 'booking', key: 'booking.handoff.body', value: 'You are being sent to Viva to pay securely. Do not close this page.' },
+  { area: 'booking', key: 'booking.confirmed.title', value: 'Booking confirmed' },
+  { area: 'booking', key: 'booking.confirmed.body', value: 'Thank you. Your booking {reference} is confirmed. We have emailed you the details.' },
+  { area: 'booking', key: 'booking.confirmed.waiting', value: 'We are confirming your payment. This page updates by itself.' },
+  { area: 'booking', key: 'booking.notCompleted.title', value: 'Payment not completed' },
+  { area: 'booking', key: 'booking.notCompleted.body', value: 'Your payment was not completed. Your vehicle is still held for a short time: you can try again or choose another vehicle.' },
+  { area: 'booking', key: 'booking.cancel.title', value: 'Cancel your booking' },
+  { area: 'booking', key: 'booking.cancel.confirm', value: 'Yes, cancel booking {reference}' },
+  { area: 'booking', key: 'booking.cancel.done', value: 'Your booking has been cancelled. If you are due a refund we will send it back to your card.' },
+  { area: 'booking', key: 'booking.cancel.tooLate', value: 'This booking can no longer be cancelled online. Please contact us.' },
+  // --- errors (one per API error code, plus field errors) ---
+  { area: 'errors', key: 'error.no_price', value: 'There is no online price for this trip. Please contact us.' },
+  { area: 'errors', key: 'error.unavailable', value: 'No vehicle is available at that time. Please try another time or vehicle.' },
+  { area: 'errors', key: 'error.invalid_request', value: 'Please check the highlighted fields and try again.' },
+  { area: 'errors', key: 'error.payment_failed', value: 'We could not start the payment. Please try again.' },
+  { area: 'errors', key: 'error.lead_time', value: 'Please choose a pick-up time at least {hours} hours from now, or contact us.' },
+  { area: 'errors', key: 'error.hours_range', value: 'Please choose between {min} and {max} hours.' },
+  { area: 'errors', key: 'error.turnstile', value: 'We could not verify that you are human. Please try again.' },
+  // --- emails ---
+  { area: 'emails', key: 'email.confirmation.subject', value: 'Your booking {reference} is confirmed' },
+  { area: 'emails', key: 'email.confirmation.body', value: 'Thank you for booking with us. Your booking {reference} is confirmed for {pickupAt}.' },
+  { area: 'emails', key: 'email.confirmation.vip', value: 'VIP security is included in this booking. The office will contact you with the details.' },
+  { area: 'emails', key: 'email.confirmation.cancelLink', value: 'To cancel, use this link: {cancelUrl}' },
+  { area: 'emails', key: 'email.reminder.subject', value: 'Reminder: your transfer is tomorrow ({reference})' },
+  { area: 'emails', key: 'email.reminder.body', value: 'This is a reminder of your booking {reference} on {pickupAt}.' },
+  { area: 'emails', key: 'email.cancelled.subject', value: 'Your booking {reference} was cancelled' },
+  { area: 'emails', key: 'email.cancelled.body', value: 'Your booking {reference} has been cancelled.' },
+  { area: 'emails', key: 'email.refunded.body', value: 'A refund of {amount} has been issued to your card.' },
+  { area: 'emails', key: 'email.lateRefund.subject', value: 'Your payment for {reference} was refunded' },
+  { area: 'emails', key: 'email.lateRefund.body', value: 'Your payment arrived after the vehicle hold ended and the vehicle was no longer free, so we refunded it in full.' },
+  { area: 'emails', key: 'email.office.new.subject', value: 'New booking {reference}' },
+  { area: 'emails', key: 'email.office.cancelled.subject', value: 'Booking cancelled {reference}' },
+];

@@ -1,0 +1,30 @@
+---
+description: TEM Protection project rules, always on
+alwaysApply: true
+---
+
+# Project rules (always on)
+
+Read `AGENTS.md` first. Its golden rules apply to every change. Details: `docs/ARCHITECTURE.md`.
+
+## How to work
+- Read the docs a prompt names before writing code. If a doc and the prompt disagree, stop and ask.
+- Tests first for pricing, availability, holds, payments and refunds. Cite the acceptance id (`AC-xx`, see `docs/ACCEPTANCE.md`) in the test name.
+- Small steps: do one numbered step, run its check, then continue.
+- Do not invent design. Match `design/screens/*.html` and use only tokens from `design/tokens.css`.
+- Do not change `apps/studio` schemas or existing files in `packages/db/migrations`. A database change is a new numbered migration, and `docs/DATA-MODEL.md` is updated in the same change.
+- Ask before adding a dependency that is not in the prompt. Prefer the platform and small libraries.
+
+## Never
+- Accept a price, amount, total or booking status from the browser.
+- Confirm a booking from a redirect, a query string or a client call.
+- Put the Supabase service role key, the Viva secret or any token in client code, `PUBLIC_` variables, logs or commits.
+- Hard-code user-facing copy, contact details or prices in components.
+- Add NEVMA names, logos or colours.
+- Remove a DEMO label. Real client content replaces it; `pnpm check:placeholders` proves it.
+
+## Always
+- Money in integer cents (EUR); times as ISO 8601 with offset.
+- One error shape: `{ "error": "<code>", "message": "..." }` with codes `no_price`, `unavailable`, `invalid_request`, `payment_failed`.
+- Accessible, keyboard-operable, mobile first (390 px and 1440 px).
+- When a prompt's Check list is done, report each item as pass or fail.

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Admin: booking TEM-7K3QX2 — TEM Protection (wireframe)</title>
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="screens.css">
+</head>
+<body>
+<div class="admin">
+  <nav class="admin-nav" aria-label="Admin">
+    <a class="logo" href="#">TEM Admin</a>
+    <ul><li><a href="admin-bookings.html" aria-current="page">Bookings</a></li><li><a href="#">Blocked slots</a></li><li><a href="admin-prices.html">Prices and rates</a></li><li><a href="#">Extras</a></li><li><a href="#">Fleet</a></li><li><a href="#">Zones</a></li><li><a href="#">Settings</a></li></ul>
+  </nav>
+  <main class="admin-main stack">
+    <a href="admin-bookings.html">← Bookings</a>
+    <div class="row between"><h1>TEM-7K3QX2</h1><div class="row"><span class="badge badge-success">Confirmed</span><span class="badge">Paid</span><span class="badge badge-accent">VIP security</span></div></div>
+
+    <div class="grid grid-2">
+      <section class="card stack" aria-labelledby="t-h">
+        <h2 id="t-h">Trip</h2>
+        <dl class="summary">
+          <div><dt>Type</dt><dd>Transfer</dd></div>
+          <div><dt>Pick-up</dt><dd>Tue 1 Dec 2026, 10:00 (Athens)</dd></div>
+          <div><dt>From</dt><dd>Athens International Airport · Arrivals gate</dd></div>
+          <div><dt>To</dt><dd>Athens city centre · Street 2</dd></div>
+          <div><dt>Flight</dt><dd>A3 123</dd></div>
+          <div><dt>Passengers</dt><dd>2 · 2 bags</dd></div>
+          <div><dt>Class</dt><dd>Executive sedan</dd></div>
+        </dl>
+        <form class="stack" aria-label="Assign vehicle">
+          <div class="field"><label for="veh">Vehicle (free vehicles of this class only)</label><select id="veh" class="input"><option>— Not assigned —</option><option>SEDAN-1</option><option>SEDAN-2</option></select></div>
+          <div class="row"><button class="btn" type="button">Assign</button><button class="btn btn-ghost" type="button" disabled>Mark completed</button></div>
+        </form>
+      </section>
+
+      <section class="card stack" aria-labelledby="c-h">
+        <h2 id="c-h">Customer</h2>
+        <dl class="summary"><div><dt>Name</dt><dd>A. Customer</dd></div><div><dt>Email</dt><dd>customer@example.com</dd></div><div><dt>Phone</dt><dd>+30 690 000 0000</dd></div><div><dt>Notes</dt><dd>—</dd></div></dl>
+        <h3>VIP security</h3>
+        <div class="field"><label for="sec">Security notes (agents or partner)</label><textarea id="sec" class="input">Two agents from partner — confirm 30 Nov.</textarea></div>
+        <h3>Invoice</h3>
+        <p class="muted">Company Example Ltd · VAT EL000000000 · Tax office A' Athens · Street 3</p>
+        <div class="grid grid-2">
+          <div class="field"><label for="ist">Invoice status</label><select id="ist" class="input"><option>Requested</option><option>Issued</option></select></div>
+          <div class="field"><label for="inr">Invoice number</label><input id="inr" class="input"></div>
+        </div>
+        <button class="btn btn-ghost" type="button">Save notes and invoice</button>
+      </section>
+    </div>
+
+    <section class="card stack" aria-labelledby="p-h">
+      <h2 id="p-h">Payments</h2>
+      <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table"><table>
+        <thead><tr><th scope="col">When</th><th scope="col">Kind</th><th scope="col" class="num">Amount</th><th scope="col">Status</th><th scope="col">By</th></tr></thead>
+        <tbody>
+          <tr><td>30 Nov 18:07</td><td>Payment</td><td class="num">€ 220.00</td><td>Succeeded</td><td>Viva</td></tr>
+        </tbody>
+      </table></div>
+      <dl class="summary"><div><dt>Executive sedan</dt><dd>€ 70.00</dd></div><div><dt>VIP security</dt><dd>€ 150.00</dd></div><div><dt>Refundable</dt><dd>€ 220.00</dd></div></dl>
+      <div class="row">
+        <button class="btn btn-ghost" type="button">Refund…</button>
+        <button class="btn btn-danger" type="button">Cancel booking…</button>
+      </div>
+      <p class="muted">Both open a confirmation step that repeats the reference, customer and amount; they call the web app's signed internal API.</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

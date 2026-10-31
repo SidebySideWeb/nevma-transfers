@@ -1,0 +1,18 @@
+---
+description: Client scripts, React island and accessibility
+globs: apps/web/src/components/**, apps/web/src/scripts/**, apps/admin/src/**
+alwaysApply: false
+---
+
+# Scripts and accessibility
+
+Doc: `docs/PAGES.md`, `docs/ACCEPTANCE.md`.
+
+- Only the booking island uses React. Other pages use no client framework; small vanilla TypeScript modules are loaded only where needed.
+- The booking island keeps its state in one reducer. Steps: search, vehicle choice, details, review and pay. The island never computes a price: it displays what `/api/quote` returns.
+- The hold countdown is derived from the server `expiresAt`, not from a local timer start. Announce time left politely (`aria-live="polite"`, at most every minute) and a final warning at 2 minutes.
+- On hold expiry, show a clear message and return to vehicle choice without losing the entered details.
+- Every interactive control works with the keyboard; focus moves to the step heading after each step change; errors move focus to the error summary.
+- Run axe on every route in the QA prompt; zero serious or critical violations.
+- Public pages: LCP under 2.5 s, INP under 200 ms, CLS under 0.1. The booking island budget is PROPOSED: under 100 KB gzip.
+- Turnstile loads only on the pages that submit (`/book` review step); no tracking or analytics scripts before consent.
