@@ -91,6 +91,7 @@ Every variable is listed in `.env.example`. Where each is used:
 | `SUPABASE_URL` | server | server + browser | | |
 | `SUPABASE_ANON_KEY` | | server + browser | | admin sign-in and staff queries |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | never | | |
+| `DATABASE_URL` | server only | | | Postgres connection for booking API (`pg`); use Supabase pooler URL in Production |
 | `SANITY_PROJECT_ID`, `SANITY_DATASET` | build + server | server (class names) | | |
 | `SANITY_READ_TOKEN` | build + server | server | | private dataset |
 | `SANITY_STUDIO_PROJECT_ID`, `SANITY_STUDIO_DATASET` | | | yes | |
@@ -105,6 +106,7 @@ Every variable is listed in `.env.example`. Where each is used:
 | `CRON_SECRET` | server | | | Vercel sends it as a Bearer token |
 | `PUBLIC_SITE_URL`, `PUBLIC_ADMIN_URL` | yes | yes | | |
 | `BOOKING_OPEN` | server | | | `true`/`false`; server-only so Production can toggle without rebuild. Default closed. |
+| `SKIP_LAUNCH_GUARD` | server (build) | | | set `true` only to bypass AC-21 DEMO checks on a Production deploy until real content replaces DEMO |
 
 ## 7. Accounts (owned by the client; vendor fees are billed to them)
 
