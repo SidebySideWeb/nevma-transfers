@@ -1,0 +1,11 @@
+---
+/**
+ * Viva payment source failure URL is /booking/fail.
+ * Kit return page is /booking/not-completed.
+ */
+export const prerender = false;
+
+const target = new URL('/booking/not-completed', Astro.url);
+target.search = Astro.url.search;
+return Astro.redirect(target.pathname + target.search, 302);
+---
