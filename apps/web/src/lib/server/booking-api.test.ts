@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestDb } from '@tem/db-harness';
+import { hasDatabaseUrl } from '../../test/has-database';
 import {
   bookingStatus,
   cancelBooking,
@@ -51,15 +52,12 @@ const soonLocal = () => {
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
 };
 
-describe('booking API (prompt 06)', () => {
+describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
   let db: TestDb;
   let payments: FakePaymentProvider;
   const ip = '203.0.113.10';
 
   beforeEach(async () => {
-    if (!process.env.DATABASE_URL) {
-      process.env.DATABASE_URL = 'postgres://postgres:postgres@127.0.0.1:54329/postgres';
-    }
     db = await createTestDb({ seed: true });
     setBookingDb(dbFromPool(db.pool));
     clearSettingsCache();
@@ -77,7 +75,7 @@ describe('booking API (prompt 06)', () => {
     resetTurnstileVerifier();
     setSanityVehicleClasses(null);
     clearSettingsCache();
-    await db.drop();
+    await db?.drop();
   });
 
   it('AC-01: a body with amount → 400; total = base + extras', async () => {

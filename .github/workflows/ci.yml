@@ -52,3 +52,10 @@ jobs:
       - run: pnpm --filter @tem/db test
         env:
           DATABASE_URL: postgres://postgres:ci_tem_db_only@localhost:5432/postgres
+      # Web booking/payment/email suites that need Postgres (skipped in the check job).
+      - run: pnpm --filter @tem/web test
+        env:
+          DATABASE_URL: postgres://postgres:ci_tem_db_only@localhost:5432/postgres
+          ADMIN_TO_WEB_SIGNING_SECRET: ci-admin-web-signing-secret-32chars
+          CRON_SECRET: ci-cron-secret
+

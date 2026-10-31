@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestDb } from '@tem/db-harness';
+import { hasDatabaseUrl } from '../../test/has-database';
 import { dbFromPool, setBookingDb } from './db';
 import { clearConfirmedCalls, getConfirmedCalls, setOnConfirmed, setOnLateRefund } from './hooks';
 import { fail } from './http';
@@ -53,13 +54,12 @@ async function insertPending(pool: TestDb['pool'], opts: {
   };
 }
 
-describe('Viva payments (prompt 07)', () => {
+describe.skipIf(!hasDatabaseUrl)('Viva payments (prompt 07)', () => {
   let db: TestDb;
   let payments: FakePaymentProvider;
   let lateEmails: string[];
 
   beforeEach(async () => {
-    process.env.DATABASE_URL ??= 'postgres://postgres:postgres@127.0.0.1:54329/postgres';
     process.env.ADMIN_TO_WEB_SIGNING_SECRET = SECRET;
     db = await createTestDb({ seed: true });
     setBookingDb(dbFromPool(db.pool));
@@ -78,7 +78,7 @@ describe('Viva payments (prompt 07)', () => {
   afterEach(async () => {
     setBookingDb(null);
     clearSettingsCache();
-    await db.drop();
+    await db?.drop();
   });
 
   it('AC-06: success redirect alone leaves pending; verified event confirms; bad txn leaves unchanged', async () => {

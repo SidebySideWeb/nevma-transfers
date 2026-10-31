@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestDb } from '@tem/db-harness';
+import { hasDatabaseUrl } from '../../test/has-database';
 import { sendConfirmationEmails, runReminderCron } from './booking-emails';
 import { dbFromPool, setBookingDb } from './db';
 import { setEmailTransport, type SendEmailInput } from './email';
@@ -150,8 +151,7 @@ describe('emails (prompt 08)', () => {
     expect(officeNo.text).not.toContain('VIP SECURITY');
   });
 
-  it('AC-13: Resend failure after payment does not change booking status', async () => {
-    process.env.DATABASE_URL ??= 'postgres://postgres:postgres@127.0.0.1:54329/postgres';
+  it.skipIf(!hasDatabaseUrl)('AC-13: Resend failure after payment does not change booking status', async () => {
     const db = await createTestDb({ seed: true });
     setBookingDb(dbFromPool(db.pool));
     clearSettingsCache();
@@ -193,11 +193,10 @@ describe('emails (prompt 08)', () => {
   });
 });
 
-describe('AC-13 reminder cron', () => {
+describe.skipIf(!hasDatabaseUrl)('AC-13 reminder cron', () => {
   let db: TestDb;
 
   beforeEach(async () => {
-    process.env.DATABASE_URL ??= 'postgres://postgres:postgres@127.0.0.1:54329/postgres';
     process.env.CRON_SECRET = 'cron-test-secret';
     db = await createTestDb({ seed: true });
     setBookingDb(dbFromPool(db.pool));
@@ -209,7 +208,7 @@ describe('AC-13 reminder cron', () => {
     setBookingDb(null);
     setEmailTransport(null);
     clearSettingsCache();
-    await db.drop();
+    await db?.drop();
   });
 
   it('AC-13: two concurrent reminder runs send exactly one email per booking; cron without secret → 401', async () => {
