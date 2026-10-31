@@ -37,10 +37,18 @@ function loadScript(): Promise<void> {
   return scriptPromise;
 }
 
+/** Cloudflare always-pass test sitekey — no widget / challenge platform needed. */
+const TURNSTILE_TEST_PASS_SITEKEY = '1x0000000000000000000000000000000AA';
+
 /** Obtain a Turnstile token. Tests may set `window.__TEM_TURNSTILE_TOKEN__`. */
 export async function getTurnstileToken(siteKey: string): Promise<string> {
   if (typeof window !== 'undefined' && window.__TEM_TURNSTILE_TOKEN__) {
     return window.__TEM_TURNSTILE_TOKEN__;
+  }
+  // Demo / CI: skip challenges.cloudflare.com when using the official dummy sitekey.
+  // Server `verifyTurnstile` already accepts any token for the matching dummy secret.
+  if (!siteKey || siteKey === TURNSTILE_TEST_PASS_SITEKEY) {
+    return 'XXXX.DUMMY.TOKEN.XXXX';
   }
   await loadScript();
   if (!window.turnstile) throw new Error('turnstile_missing');

@@ -1,5 +1,9 @@
 async function getTurnstileToken(siteKey: string): Promise<string> {
   if (window.__TEM_TURNSTILE_TOKEN__) return window.__TEM_TURNSTILE_TOKEN__;
+  // Cloudflare always-pass test sitekey — skip challenge platform (demo / CI).
+  if (!siteKey || siteKey === '1x0000000000000000000000000000000AA') {
+    return 'XXXX.DUMMY.TOKEN.XXXX';
+  }
   await new Promise<void>((resolve, reject) => {
     if (window.turnstile) {
       resolve();
