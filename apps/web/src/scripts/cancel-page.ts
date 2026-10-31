@@ -1,22 +1,3 @@
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (
-        el: HTMLElement,
-        opts: {
-          sitekey: string;
-          size?: string;
-          callback?: (token: string) => void;
-          'error-callback'?: () => void;
-        },
-      ) => string;
-      execute: (widgetId: string) => void;
-      remove: (widgetId: string) => void;
-    };
-    __TEM_TURNSTILE_TOKEN__?: string;
-  }
-}
-
 async function getTurnstileToken(siteKey: string): Promise<string> {
   if (window.__TEM_TURNSTILE_TOKEN__) return window.__TEM_TURNSTILE_TOKEN__;
   await new Promise<void>((resolve, reject) => {
@@ -49,22 +30,27 @@ async function getTurnstileToken(siteKey: string): Promise<string> {
       }
       host.remove();
     };
-    const id = window.turnstile.render(host, {
+    const ts = window.turnstile;
+    if (!ts) {
+      reject(new Error('turnstile_missing'));
+      return;
+    }
+    const id = ts.render(host, {
       sitekey: siteKey,
       size: 'invisible',
       callback: (token) => finish(() => resolve(token)),
       'error-callback': () => finish(() => reject(new Error('turnstile_failed'))),
     });
-    window.turnstile.execute(id);
+    ts.execute(id);
     setTimeout(() => finish(() => reject(new Error('turnstile_timeout'))), 20_000);
   });
 }
 
-const root = document.getElementById('cancel-root');
+const cancelRoot = document.getElementById('cancel-root');
 const form = document.getElementById('cancel-form');
-if (root && form instanceof HTMLFormElement) {
-  const token = root.dataset.token ?? '';
-  const siteKey = root.dataset.turnstileSiteKey ?? '';
+if (cancelRoot && form instanceof HTMLFormElement) {
+  const token = cancelRoot.dataset.token ?? '';
+  const siteKey = cancelRoot.dataset.turnstileSiteKey ?? '';
   const errEl = document.getElementById('cancel-error');
   const doneEl = document.getElementById('cancel-done');
   const cardEl = document.getElementById('cancel-card');

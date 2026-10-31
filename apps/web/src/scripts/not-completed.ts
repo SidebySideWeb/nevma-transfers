@@ -5,12 +5,12 @@ function formatRemain(ms: number): string {
   return `${mm}:${ss}`;
 }
 
-const root = document.getElementById('not-completed-root');
-if (root?.dataset.mode === 'live') {
-  const expiresAt = Number(root.dataset.expiresAtMs ?? '0');
+const notCompletedRoot = document.getElementById('not-completed-root');
+if (notCompletedRoot?.dataset.mode === 'live') {
+  const expiresAt = Number(notCompletedRoot.dataset.expiresAtMs ?? '0');
   const timerEl = document.getElementById('hold-remain');
-  const timerTemplate = root.dataset.timerTemplate ?? '{time}';
-  const reference = root.dataset.reference ?? '';
+  const timerTemplate = notCompletedRoot.dataset.timerTemplate ?? '{time}';
+  const reference = notCompletedRoot.dataset.reference ?? '';
 
   const tick = () => {
     const left = expiresAt - Date.now();

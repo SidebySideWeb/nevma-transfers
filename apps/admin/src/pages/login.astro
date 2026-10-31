@@ -1,0 +1,90 @@
+---
+export const prerender = false;
+
+import '../styles/tokens.css';
+import '../styles/base.css';
+import { createSupabaseServerClient } from '../lib/supabase';
+import { assertLoginRateLimit } from '../lib/login-rate-limit';
+import { getStaffSession, signOut } from '../lib/auth';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+Astro.response.headers.set('X-Robots-Tag', 'noindex');
+Astro.response.headers.set('X-Frame-Options', 'DENY');
+
+const existing = await getStaffSession(Astro.cookies);
+if (existing) {
+  return Astro.redirect('/bookings');
+}
+
+let formError: string | null = null;
+if (Astro.url.searchParams.get('error') === 'auth') {
+  formError = 'Sign in failed. Check your email and password.';
+}
+
+if (Astro.request.method === 'POST') {
+  const ip = Astro.clientAddress || 'unknown';
+  if (!assertLoginRateLimit(ip)) {
+    formError = 'Too many attempts. Try again in a minute.';
+  } else {
+    const data = await Astro.request.formData();
+    const email = String(data.get('email') || '');
+    const password = String(data.get('password') || '');
+    const supabase = createSupabaseServerClient(Astro.cookies);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      formError = 'Sign in failed. Check your email and password.';
+    } else {
+      const staff = await getStaffSession(Astro.cookies);
+      if (!staff) {
+        await signOut(Astro.cookies);
+        formError = 'Sign in failed. Check your email and password.';
+      } else {
+        return Astro.redirect('/bookings');
+      }
+    }
+  }
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Sign in — TEM Admin</title>
+  </head>
+  <body>
+    <main class="section">
+      <div class="narrow card stack" style="margin: var(--space-8) auto; max-width: 24rem;">
+        <h1 tabindex="-1">TEM Admin</h1>
+        <p class="muted">Sign in with your office account.</p>
+        {
+          formError && (
+            <p class="notice notice-danger" role="alert">
+              {formError}
+            </p>
+          )
+        }
+        <form method="post" class="stack">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" class="input" type="email" name="email" required autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input
+              id="password"
+              class="input"
+              type="password"
+              name="password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <button class="btn btn-block" type="submit">Sign in</button>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>

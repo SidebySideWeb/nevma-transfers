@@ -1,0 +1,140 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../layouts/AdminLayout.astro';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const { data: classes } = await supabase
+  .from('vehicle_classes')
+  .select('id, key, max_passengers, max_luggage, buffer_minutes, active, sort_order')
+  .order('sort_order');
+const { data: vehicles } = await supabase
+  .from('vehicles')
+  .select('id, label, status, class_id, vehicle_classes(key)')
+  .order('label');
+---
+
+<AdminLayout title="Fleet — TEM Admin" current="fleet" staffEmail={staff.email}>
+  <h1>Fleet</h1>
+
+  <section class="stack" aria-labelledby="c-h">
+    <h2 id="c-h">Vehicle classes</h2>
+    {
+      (classes ?? []).map((c) => (
+        <form method="POST" action={actions.saveFleet} class="card stack">
+          <input type="hidden" name="kind" value="class" />
+          <input
+            type="hidden"
+            name="payloadJson"
+            value={JSON.stringify({
+              id: c.id,
+              maxPassengers: String(c.max_passengers),
+              maxLuggage: String(c.max_luggage),
+              bufferMinutes: String(c.buffer_minutes),
+              active: String(c.active),
+              sortOrder: String(c.sort_order),
+            })}
+            class="payload"
+          />
+          <h3>{c.key}</h3>
+          <div class="grid grid-2">
+            <div class="field">
+              <label for={`mp-${c.id}`}>Max passengers</label>
+              <input class="input mp" id={`mp-${c.id}`} value={c.max_passengers} />
+            </div>
+            <div class="field">
+              <label for={`ml-${c.id}`}>Max luggage</label>
+              <input class="input ml" id={`ml-${c.id}`} value={c.max_luggage} />
+            </div>
+            <div class="field">
+              <label for={`buf-${c.id}`}>Buffer minutes</label>
+              <input class="input buf" id={`buf-${c.id}`} value={c.buffer_minutes} />
+            </div>
+            <label class="check">
+              <input type="checkbox" class="act" checked={c.active} /> Active
+            </label>
+          </div>
+          <button class="btn btn-ghost" type="submit">Save class</button>
+        </form>
+      ))
+    }
+  </section>
+
+  <section class="stack" aria-labelledby="v-h">
+    <h2 id="v-h">Vehicles</h2>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Label</th>
+            <th scope="col">Class</th>
+            <th scope="col">Status</th>
+            <th scope="col">Save</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            (vehicles ?? []).map((v) => {
+              const ck = (v.vehicle_classes as { key?: string } | null)?.key ?? '—';
+              return (
+                <tr>
+                  <td colspan="4">
+                    <form method="POST" action={actions.saveFleet} class="row" style="align-items:end;gap:var(--space-2)">
+                      <input type="hidden" name="kind" value="vehicle" />
+                      <input type="hidden" name="payloadJson" class="payload" value="" />
+                      <input type="hidden" class="vid" value={v.id} />
+                      <div class="field">
+                        <label for={`vl-${v.id}`}>Label</label>
+                        <input class="input label" id={`vl-${v.id}`} value={v.label} />
+                      </div>
+                      <div class="field">
+                        <label for={`vc-${v.id}`}>Class</label>
+                        <input class="input" id={`vc-${v.id}`} value={ck} disabled />
+                      </div>
+                      <div class="field">
+                        <label for={`vs-${v.id}`}>Status</label>
+                        <select class="input status" id={`vs-${v.id}`}>
+                          <option value="active" selected={v.status === 'active'}>active</option>
+                          <option value="inactive" selected={v.status === 'inactive'}>inactive</option>
+                        </select>
+                      </div>
+                      <button class="btn btn-ghost" type="submit">Save</button>
+                    </form>
+                  </td>
+                </tr>
+              );
+            })
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  document.querySelectorAll('form').forEach((form) => {
+    form.addEventListener('submit', () => {
+      const kind = (form.querySelector('input[name="kind"]') as HTMLInputElement)?.value;
+      const payload = form.querySelector('.payload') as HTMLInputElement;
+      if (kind === 'class') {
+        payload.value = JSON.stringify({
+          id: JSON.parse(payload.value).id,
+          maxPassengers: (form.querySelector('.mp') as HTMLInputElement).value,
+          maxLuggage: (form.querySelector('.ml') as HTMLInputElement).value,
+          bufferMinutes: (form.querySelector('.buf') as HTMLInputElement).value,
+          active: String((form.querySelector('.act') as HTMLInputElement).checked),
+          sortOrder: '0',
+        });
+      } else if (kind === 'vehicle') {
+        payload.value = JSON.stringify({
+          id: (form.querySelector('.vid') as HTMLInputElement).value,
+          label: (form.querySelector('.label') as HTMLInputElement).value,
+          status: (form.querySelector('.status') as HTMLSelectElement).value,
+        });
+      }
+    });
+  });
+</script>

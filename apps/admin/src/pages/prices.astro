@@ -1,0 +1,147 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../layouts/AdminLayout.astro';
+import { centsToEuroInput } from '../lib/money';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const classKey = Astro.url.searchParams.get('class') || '';
+
+const { data: classes } = await supabase
+  .from('vehicle_classes')
+  .select('id, key')
+  .eq('active', true)
+  .order('sort_order');
+const selected =
+  (classes ?? []).find((c) => c.key === classKey) ?? (classes ?? [])[0] ?? null;
+
+const { data: zones } = await supabase
+  .from('zones')
+  .select('id, code, name')
+  .eq('active', true)
+  .order('sort_order');
+
+const { data: prices } = selected
+  ? await supabase.from('zone_prices').select('from_zone_id, to_zone_id, price_cents').eq('class_id', selected.id)
+  : { data: [] };
+
+const priceMap = new Map(
+  (prices ?? []).map((p) => [`${p.from_zone_id}:${p.to_zone_id}`, p.price_cents]),
+);
+
+const { data: routes } = await supabase
+  .from('zone_routes')
+  .select('from_zone_id, to_zone_id, duration_minutes');
+---
+
+<AdminLayout title="Prices — TEM Admin" current="prices" staffEmail={staff.email}>
+  <h1>Prices and rates</h1>
+  <p class="muted">
+    Prices in euros. Changes apply to new bookings only. An empty cell means no online price.
+  </p>
+
+  <form method="get" class="toolbar">
+    <div class="field">
+      <label for="cls">Vehicle class</label>
+      <select id="cls" class="input" name="class" onchange="this.form.submit()">
+        {
+          (classes ?? []).map((c) => (
+            <option value={c.key} selected={selected?.id === c.id}>
+              {c.key}
+            </option>
+          ))
+        }
+      </select>
+    </div>
+  </form>
+
+  {
+    selected && (
+      <form method="POST" action={actions.saveZonePrices} class="stack">
+        <input type="hidden" name="classId" value={selected.id} />
+        <input type="hidden" name="cellsJson" id="cellsJson" value="{}" />
+        <div class="table-wrap matrix" role="region" tabindex="0" aria-label="Scrollable table">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">From \ To</th>
+                {(zones ?? []).map((z) => (
+                  <th scope="col">{z.name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(zones ?? []).map((fromZ) => (
+                <tr>
+                  <th scope="row">{fromZ.name}</th>
+                  {(zones ?? []).map((toZ) => {
+                    if (fromZ.id === toZ.id) return <td>—</td>;
+                    const cents = priceMap.get(`${fromZ.id}:${toZ.id}`);
+                    return (
+                      <td>
+                        <input
+                          class="input price-cell"
+                          data-key={`${fromZ.id}:${toZ.id}`}
+                          aria-label={`${fromZ.name} to ${toZ.name}`}
+                          value={cents != null ? centsToEuroInput(cents) : ''}
+                          inputmode="decimal"
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button class="btn" type="submit" id="save-prices">Save transfer prices</button>
+      </form>
+    )
+  }
+
+  <section class="stack" aria-labelledby="r-h">
+    <h2 id="r-h">Routes (duration minutes)</h2>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">From</th>
+            <th scope="col">To</th>
+            <th scope="col" class="num">Minutes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            (routes ?? []).map((r) => {
+              const from = (zones ?? []).find((z) => z.id === r.from_zone_id)?.name ?? r.from_zone_id;
+              const to = (zones ?? []).find((z) => z.id === r.to_zone_id)?.name ?? r.to_zone_id;
+              return (
+                <tr>
+                  <td>{from}</td>
+                  <td>{to}</td>
+                  <td class="num">{r.duration_minutes}</td>
+                </tr>
+              );
+            })
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  const form = document.querySelector('form[action]') as HTMLFormElement | null;
+  const hidden = document.getElementById('cellsJson') as HTMLInputElement | null;
+  form?.addEventListener('submit', () => {
+    const cells: Record<string, string> = {};
+    document.querySelectorAll<HTMLInputElement>('.price-cell').forEach((el) => {
+      const key = el.dataset.key;
+      if (key) cells[key] = el.value;
+    });
+    if (hidden) hidden.value = JSON.stringify(cells);
+  });
+</script>

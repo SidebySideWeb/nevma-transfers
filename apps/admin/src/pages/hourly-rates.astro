@@ -1,0 +1,76 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../layouts/AdminLayout.astro';
+import { centsToEuroInput } from '../lib/money';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const { data: classes } = await supabase
+  .from('vehicle_classes')
+  .select('id, key, hourly_rates(price_per_hour_cents, min_hours, max_hours)')
+  .eq('active', true)
+  .order('sort_order');
+---
+
+<AdminLayout title="Hourly rates — TEM Admin" current="hourly-rates" staffEmail={staff.email}>
+  <h1>Hourly rates</h1>
+  <form method="POST" action={actions.saveHourlyRates} class="stack">
+    <input type="hidden" name="rowsJson" id="rowsJson" value="[]" />
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Class</th>
+            <th scope="col" class="num">Rate per hour (€)</th>
+            <th scope="col" class="num">Min hours</th>
+            <th scope="col" class="num">Max hours</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            (classes ?? []).map((c) => {
+              const rate = Array.isArray(c.hourly_rates) ? c.hourly_rates[0] : c.hourly_rates;
+              return (
+                <tr data-class-id={c.id}>
+                  <th scope="row">{c.key}</th>
+                  <td class="num">
+                    <input
+                      class="input rate"
+                      aria-label={`${c.key} rate`}
+                      value={rate ? centsToEuroInput(rate.price_per_hour_cents) : ''}
+                    />
+                  </td>
+                  <td class="num">
+                    <input class="input min" aria-label={`${c.key} min hours`} value={rate?.min_hours ?? 3} />
+                  </td>
+                  <td class="num">
+                    <input class="input max" aria-label={`${c.key} max hours`} value={rate?.max_hours ?? 12} />
+                  </td>
+                </tr>
+              );
+            })
+          }
+        </tbody>
+      </table>
+    </div>
+    <button class="btn" type="submit">Save hourly rates</button>
+  </form>
+</AdminLayout>
+
+<script>
+  document.querySelector('form')?.addEventListener('submit', () => {
+    const rows: { classId: string; rateEuros: string; minHours: string; maxHours: string }[] = [];
+    document.querySelectorAll<HTMLTableRowElement>('tbody tr[data-class-id]').forEach((tr) => {
+      rows.push({
+        classId: tr.dataset.classId!,
+        rateEuros: (tr.querySelector('.rate') as HTMLInputElement).value,
+        minHours: String((tr.querySelector('.min') as HTMLInputElement).value),
+        maxHours: String((tr.querySelector('.max') as HTMLInputElement).value),
+      });
+    });
+    (document.getElementById('rowsJson') as HTMLInputElement).value = JSON.stringify(rows);
+  });
+</script>

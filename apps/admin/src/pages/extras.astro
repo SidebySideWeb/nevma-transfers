@@ -1,0 +1,74 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../layouts/AdminLayout.astro';
+import { centsToEuroInput } from '../lib/money';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const { data: extras } = await supabase.from('extras').select('*').order('code');
+---
+
+<AdminLayout title="Extras — TEM Admin" current="extras" staffEmail={staff.email}>
+  <h1>Extras</h1>
+  <form method="POST" action={actions.saveExtras} class="stack">
+    <input type="hidden" name="rowsJson" id="rowsJson" value="[]" />
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Code</th>
+            <th scope="col">Name</th>
+            <th scope="col" class="num">Price (€)</th>
+            <th scope="col">Active</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            (extras ?? []).map((e) => (
+              <tr data-id={e.id}>
+                <td>{e.code}</td>
+                <td>
+                  <input class="input name" aria-label={`${e.code} name`} value={e.name} />
+                </td>
+                <td class="num">
+                  <input
+                    class="input price"
+                    aria-label={`${e.code} price`}
+                    value={centsToEuroInput(e.price_cents)}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    class="active"
+                    checked={e.active}
+                    aria-label={`${e.code} active`}
+                  />
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <button class="btn" type="submit">Save extras</button>
+  </form>
+</AdminLayout>
+
+<script>
+  document.querySelector('form')?.addEventListener('submit', () => {
+    const rows: { id: string; name: string; priceEuros: string; active: string }[] = [];
+    document.querySelectorAll<HTMLTableRowElement>('tbody tr[data-id]').forEach((tr) => {
+      rows.push({
+        id: tr.dataset.id!,
+        name: (tr.querySelector('.name') as HTMLInputElement).value,
+        priceEuros: (tr.querySelector('.price') as HTMLInputElement).value,
+        active: (tr.querySelector('.active') as HTMLInputElement).checked ? 'true' : 'false',
+      });
+    });
+    (document.getElementById('rowsJson') as HTMLInputElement).value = JSON.stringify(rows);
+  });
+</script>

@@ -1,0 +1,111 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../layouts/AdminLayout.astro';
+import { formatAthens } from '../lib/time';
+import { createSupabaseServerClient } from '../lib/supabase';
+import { parseTstzRange } from '../lib/range';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const nowMs = Date.now();
+
+const { data: vehicles } = await supabase
+  .from('vehicles')
+  .select('id, label, status')
+  .eq('status', 'active')
+  .order('label');
+
+const { data: slots } = await supabase
+  .from('blocked_slots')
+  .select('id, vehicle_id, range, reason, vehicles(label)')
+  .order('created_at', { ascending: false })
+  .limit(100);
+
+const rows = (slots ?? []).map((s) => {
+  const bounds = parseTstzRange(s.range);
+  return {
+    ...s,
+    startsAt: bounds?.start ?? null,
+    endsAt: bounds?.end ?? null,
+    label: (s.vehicles as { label?: string } | null)?.label ?? s.vehicle_id,
+  };
+});
+---
+
+<AdminLayout title="Blocked slots — TEM Admin" current="blocked-slots" staffEmail={staff.email}>
+  <h1>Blocked slots</h1>
+
+  <section class="card stack" aria-labelledby="c-h">
+    <h2 id="c-h">Create block</h2>
+    <form method="POST" action={actions.createBlockedSlot} class="stack">
+      <div class="field">
+        <label for="vehicleId">Vehicle</label>
+        <select class="input" id="vehicleId" name="vehicleId" required>
+          <option value="">Select…</option>
+          {(vehicles ?? []).map((v) => <option value={v.id}>{v.label}</option>)}
+        </select>
+      </div>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="fromLocal">From (Athens)</label>
+          <input class="input" id="fromLocal" name="fromLocal" type="datetime-local" required />
+        </div>
+        <div class="field">
+          <label for="toLocal">To (Athens)</label>
+          <input class="input" id="toLocal" name="toLocal" type="datetime-local" required />
+        </div>
+      </div>
+      <div class="field">
+        <label for="reason">Reason</label>
+        <input class="input" id="reason" name="reason" maxlength="200" />
+      </div>
+      <button class="btn" type="submit">Create</button>
+    </form>
+  </section>
+
+  <section class="stack" aria-labelledby="l-h">
+    <h2 id="l-h">Existing</h2>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Vehicle</th>
+            <th scope="col">From</th>
+            <th scope="col">To</th>
+            <th scope="col">Reason</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            rows.map((s) => {
+              const future = s.endsAt != null && s.endsAt.getTime() > nowMs;
+              return (
+                <tr>
+                  <td>{s.label}</td>
+                  <td>{s.startsAt ? formatAthens(s.startsAt) : '—'}</td>
+                  <td>{s.endsAt ? formatAthens(s.endsAt) : '—'}</td>
+                  <td>{s.reason ?? '—'}</td>
+                  <td>
+                    {future ? (
+                      <form method="POST" action={actions.deleteBlockedSlot}>
+                        <input type="hidden" name="id" value={s.id} />
+                        <button class="btn btn-ghost" type="submit">
+                          Delete
+                        </button>
+                      </form>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+              );
+            })
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>

@@ -732,17 +732,18 @@ export async function releasePendingBooking(raw: unknown, visitorKey: string): P
     });
   }
   const reference = (raw as { reference: string }).reference;
-  const { rowCount } = await db().query(
+  const expired = await db().query(
     `update public.bookings
         set status = 'expired',
             hold_expires_at = least(coalesce(hold_expires_at, now()), now())
       where reference = $1
         and visitor_key = $2
         and status = 'pending'
-        and payment_status = 'unpaid'`,
+        and payment_status = 'unpaid'
+      returning id`,
     [reference, visitorKey],
   );
-  if (!rowCount) {
+  if (!expired.rows[0]) {
     throw new BookingError('invalid_request', {
       stringKey: 'error.invalid_request',
       message: 'booking not releasable',

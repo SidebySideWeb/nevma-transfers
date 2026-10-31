@@ -8,15 +8,15 @@ type StatusPayload = {
   paymentStatus?: string;
 };
 
-const root = document.getElementById('confirmed-root');
-if (root) {
-  const orderCode = root.dataset.orderCode ?? '';
+const confirmedRoot = document.getElementById('confirmed-root');
+if (confirmedRoot) {
+  const orderCode = confirmedRoot.dataset.orderCode ?? '';
   const waitingEl = document.getElementById('confirmed-waiting');
   const okEl = document.getElementById('confirmed-ok');
   const timeoutEl = document.getElementById('confirmed-timeout');
   const bodyEl = document.getElementById('confirmed-body');
   const titleEl = document.getElementById('confirmed-title');
-  const bodyTemplate = root.dataset.bodyTemplate ?? '';
+  const bodyTemplate = confirmedRoot.dataset.bodyTemplate ?? '';
   const pollMs = 3000;
   const maxMs = 120_000;
   const started = Date.now();

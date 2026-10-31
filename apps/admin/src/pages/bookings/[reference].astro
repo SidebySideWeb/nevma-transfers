@@ -1,0 +1,384 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formatEuro } from '../../lib/money';
+import { parseTstzRange, rangesOverlap } from '../../lib/range';
+import { createSupabaseServerClient } from '../../lib/supabase';
+import { formatAthens, formatAthensShort } from '../../lib/time';
+
+const staff = Astro.locals.staff!;
+const reference = Astro.params.reference!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+const { data: booking, error } = await supabase
+  .from('bookings')
+  .select(
+    `
+    *,
+    from_zone:zones!bookings_from_zone_id_fkey(name),
+    to_zone:zones!bookings_to_zone_id_fkey(name),
+    class:vehicle_classes!bookings_class_id_fkey(id, key, buffer_minutes),
+    vehicle:vehicles!bookings_vehicle_id_fkey(id, label)
+  `,
+  )
+  .eq('reference', reference)
+  .maybeSingle();
+
+if (error || !booking) {
+  return new Response('Not found', { status: 404 });
+}
+
+const { data: extras } = await supabase
+  .from('booking_extras')
+  .select('price_cents, quantity, extras(code, name)')
+  .eq('booking_id', booking.id);
+
+const { data: payments } = await supabase
+  .from('payments')
+  .select('created_at, kind, amount_cents, status, created_by')
+  .eq('booking_id', booking.id)
+  .order('created_at', { ascending: true });
+
+const paid = (payments ?? [])
+  .filter((p) => p.kind === 'payment' && p.status === 'succeeded')
+  .reduce((s, p) => s + p.amount_cents, 0);
+const refunded = (payments ?? [])
+  .filter((p) => p.kind === 'refund' && p.status === 'succeeded')
+  .reduce((s, p) => s + p.amount_cents, 0);
+const refundable = Math.max(0, paid - refunded);
+
+const ownRange = parseTstzRange(booking.blocked_range);
+const classId = (booking.class as { id: string } | null)?.id;
+let classVehicles: { id: string; label: string; busy: boolean }[] = [];
+if (classId) {
+  const { data: vehicles } = await supabase
+    .from('vehicles')
+    .select('id, label')
+    .eq('class_id', classId)
+    .eq('status', 'active')
+    .order('label');
+
+  const busy = new Set<string>();
+  if (ownRange) {
+    const { data: busyBookings } = await supabase
+      .from('bookings')
+      .select('id, vehicle_id, blocked_range, status')
+      .eq('class_id', classId)
+      .not('vehicle_id', 'is', null)
+      .in('status', ['pending', 'confirmed', 'assigned']);
+
+    const { data: blocks } = await supabase.from('blocked_slots').select('vehicle_id, range');
+
+    for (const b of busyBookings ?? []) {
+      if (b.id === booking.id || !b.vehicle_id) continue;
+      const r = parseTstzRange(b.blocked_range);
+      if (r && rangesOverlap(ownRange, r)) busy.add(b.vehicle_id);
+    }
+    for (const s of blocks ?? []) {
+      const r = parseTstzRange(s.range);
+      if (r && rangesOverlap(ownRange, r)) busy.add(s.vehicle_id);
+    }
+  }
+
+  // List all active vehicles of the class; mark overlaps. Exclusion constraint is the final guard.
+  classVehicles = (vehicles ?? []).map((v) => ({
+    id: v.id,
+    label: busy.has(v.id) && v.id !== booking.vehicle_id ? `${v.label} (busy)` : v.label,
+    busy: busy.has(v.id) && v.id !== booking.vehicle_id,
+  }));
+}
+
+const fromName = (booking.from_zone as { name?: string } | null)?.name;
+const toName = (booking.to_zone as { name?: string } | null)?.name;
+const classKey = (booking.class as { key?: string } | null)?.key ?? '—';
+
+function actionErr(
+  result: { error?: { message?: string } | Error } | undefined,
+): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const actionError =
+  actionErr(Astro.getActionResult?.(actions.assignVehicle)) ||
+  actionErr(Astro.getActionResult?.(actions.saveNotesInvoice)) ||
+  actionErr(Astro.getActionResult?.(actions.refundBooking)) ||
+  actionErr(Astro.getActionResult?.(actions.cancelBooking));
+---
+
+<AdminLayout title={`${reference} — TEM Admin`} current="bookings" staffEmail={staff.email}>
+  <a href="/bookings">← Bookings</a>
+  <div class="row between">
+    <h1>{reference}</h1>
+    <div class="row">
+      <span class="badge badge-success">{booking.status}</span>
+      <span class="badge">{booking.payment_status}</span>
+      {booking.vip_security && <span class="badge badge-accent">VIP security</span>}
+    </div>
+  </div>
+
+  {
+    actionError && (
+      <p class="notice notice-danger" role="alert">
+        {actionError}
+      </p>
+    )
+  }
+
+  <div class="grid grid-2">
+    <section class="card stack" aria-labelledby="t-h">
+      <h2 id="t-h">Trip</h2>
+      <dl class="summary">
+        <div>
+          <dt>Type</dt>
+          <dd>{booking.booking_type === 'hourly' ? 'Hourly' : 'Transfer'}</dd>
+        </div>
+        <div>
+          <dt>Pick-up</dt>
+          <dd>{formatAthens(booking.pickup_at)} (Athens)</dd>
+        </div>
+        <div>
+          <dt>From</dt>
+          <dd>
+            {fromName ?? '—'}
+            {booking.pickup_address ? ` · ${booking.pickup_address}` : ''}
+          </dd>
+        </div>
+        {
+          booking.booking_type === 'transfer' && (
+            <div>
+              <dt>To</dt>
+              <dd>
+                {toName ?? '—'}
+                {booking.dropoff_address ? ` · ${booking.dropoff_address}` : ''}
+              </dd>
+            </div>
+          )
+        }
+        {
+          booking.booking_type === 'hourly' && (
+            <div>
+              <dt>Hours</dt>
+              <dd>{Math.round((booking.duration_minutes || 0) / 60)}</dd>
+            </div>
+          )
+        }
+        <div>
+          <dt>Flight</dt>
+          <dd>{booking.flight_number || '—'}</dd>
+        </div>
+        <div>
+          <dt>Passengers</dt>
+          <dd>{booking.passengers} · {booking.luggage} bags</dd>
+        </div>
+        <div>
+          <dt>Class</dt>
+          <dd>{classKey}</dd>
+        </div>
+      </dl>
+
+      <form method="POST" action={actions.assignVehicle} class="stack" aria-label="Assign vehicle">
+        <input type="hidden" name="reference" value={reference} />
+        <div class="field">
+          <label for="veh">Vehicle (active vehicles of this class)</label>
+          <select id="veh" class="input" name="vehicleId">
+            <option value="">— Not assigned —</option>
+            {
+              classVehicles.map((v) => (
+                <option value={v.id} selected={booking.vehicle_id === v.id}>
+                  {v.label}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="row">
+          <button class="btn" type="submit">Assign</button>
+        </div>
+      </form>
+      {
+        booking.status === 'assigned' && (
+          <form method="POST" action={actions.markCompleted}>
+            <input type="hidden" name="reference" value={reference} />
+            <button class="btn btn-ghost" type="submit">Mark completed</button>
+          </form>
+        )
+      }
+    </section>
+
+    <section class="card stack" aria-labelledby="c-h">
+      <h2 id="c-h">Customer</h2>
+      <dl class="summary">
+        <div><dt>Name</dt><dd>{booking.customer_name}</dd></div>
+        <div><dt>Email</dt><dd>{booking.customer_email}</dd></div>
+        <div><dt>Phone</dt><dd>{booking.customer_phone}</dd></div>
+        <div><dt>Notes</dt><dd>{booking.notes || '—'}</dd></div>
+      </dl>
+      <form method="POST" action={actions.saveNotesInvoice} class="stack">
+        <input type="hidden" name="reference" value={reference} />
+        <h3>VIP security</h3>
+        <div class="field">
+          <label for="sec">Security notes (agents or partner)</label>
+          <textarea id="sec" class="input" name="securityNotes" rows="3">{booking.security_notes ?? ''}</textarea>
+        </div>
+        <h3>Invoice</h3>
+        {
+          booking.invoice_company && (
+            <p class="muted">
+              {booking.invoice_company}
+              {booking.invoice_vat ? ` · VAT ${booking.invoice_vat}` : ''}
+              {booking.invoice_tax_office ? ` · Tax office ${booking.invoice_tax_office}` : ''}
+              {booking.invoice_address ? ` · ${booking.invoice_address}` : ''}
+            </p>
+          )
+        }
+        <div class="grid grid-2">
+          <div class="field">
+            <label for="ist">Invoice status</label>
+            <select id="ist" class="input" name="invoiceStatus">
+              <option value="not_required" selected={booking.invoice_status === 'not_required'}>Not required</option>
+              <option value="requested" selected={booking.invoice_status === 'requested'}>Requested</option>
+              <option value="issued" selected={booking.invoice_status === 'issued'}>Issued</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="inr">Invoice number</label>
+            <input id="inr" class="input" name="invoiceNumber" value={booking.invoice_number ?? ''} />
+          </div>
+        </div>
+        <button class="btn btn-ghost" type="submit">Save notes and invoice</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="card stack" aria-labelledby="p-h">
+    <h2 id="p-h">Payments</h2>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">When</th>
+            <th scope="col">Kind</th>
+            <th scope="col" class="num">Amount</th>
+            <th scope="col">Status</th>
+            <th scope="col">By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            (payments ?? []).length === 0 ? (
+              <tr><td colspan="5">No payments yet.</td></tr>
+            ) : (
+              (payments ?? []).map((p) => (
+                <tr>
+                  <td>{formatAthensShort(p.created_at)}</td>
+                  <td>{p.kind}</td>
+                  <td class="num">{formatEuro(p.amount_cents)}</td>
+                  <td>{p.status}</td>
+                  <td>{p.created_by ? 'Staff' : 'Viva'}</td>
+                </tr>
+              ))
+            )
+          }
+        </tbody>
+      </table>
+    </div>
+    <dl class="summary">
+      <div><dt>Base</dt><dd>{formatEuro(booking.base_price_cents)}</dd></div>
+      {
+        (extras ?? []).map((e) => {
+          const ex = e.extras as { name?: string } | null;
+          return (
+            <div>
+              <dt>{ex?.name ?? 'Extra'}</dt>
+              <dd>{formatEuro(e.price_cents * e.quantity)}</dd>
+            </div>
+          );
+        })
+      }
+      <div><dt>Refundable</dt><dd>{formatEuro(refundable)}</dd></div>
+    </dl>
+    <div class="row">
+      <button class="btn btn-ghost" type="button" id="open-refund" disabled={refundable <= 0}>Refund…</button>
+      <button
+        class="btn btn-danger"
+        type="button"
+        id="open-cancel"
+        disabled={booking.status === 'cancelled' || booking.status === 'completed'}
+      >
+        Cancel booking…
+      </button>
+    </div>
+  </section>
+</AdminLayout>
+
+<dialog id="refund-dialog" aria-labelledby="refund-h">
+  <form method="POST" action={actions.refundBooking} class="card stack">
+    <h2 id="refund-h">Confirm refund</h2>
+    <p>
+      Refund for <strong>{reference}</strong> ({booking.customer_name}). Refundable{' '}
+      {formatEuro(refundable)}.
+    </p>
+    <input type="hidden" name="reference" value={reference} />
+    <input type="hidden" name="idempotencyKey" id="refund-idem" value="" />
+    <div class="field">
+      <label for="amt">Amount (€)</label>
+      <input id="amt" class="input" name="amountEuros" required value={(refundable / 100).toFixed(2)} />
+    </div>
+    <div class="field">
+      <label for="rr">Reason</label>
+      <input id="rr" class="input" name="reason" required value="Customer refund" />
+    </div>
+    <div class="row">
+      <button class="btn" type="submit">Confirm refund</button>
+      <button class="btn btn-ghost" type="button" id="close-refund">Back</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="cancel-dialog" aria-labelledby="cancel-h">
+  <form method="POST" action={actions.cancelBooking} class="card stack">
+    <h2 id="cancel-h">Cancel booking</h2>
+    <p>
+      Cancel <strong>{reference}</strong> for {booking.customer_name}. Paid amount{' '}
+      {formatEuro(paid)}.
+    </p>
+    <input type="hidden" name="reference" value={reference} />
+    <input type="hidden" name="idempotencyKey" id="cancel-idem" value="" />
+    <div class="field">
+      <label for="cr">Reason</label>
+      <input id="cr" class="input" name="reason" required value="Office cancellation" />
+    </div>
+    <div class="field">
+      <label for="rf">Refund</label>
+      <select id="rf" class="input" name="refund">
+        <option value="full">Full refund</option>
+        <option value="none">No refund</option>
+      </select>
+    </div>
+    <div class="row">
+      <button class="btn btn-danger" type="submit">Confirm cancel</button>
+      <button class="btn btn-ghost" type="button" id="close-cancel">Back</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  const refundDlg = document.getElementById('refund-dialog') as HTMLDialogElement | null;
+  const cancelDlg = document.getElementById('cancel-dialog') as HTMLDialogElement | null;
+  document.getElementById('open-refund')?.addEventListener('click', () => {
+    const el = document.getElementById('refund-idem') as HTMLInputElement | null;
+    if (el) el.value = crypto.randomUUID();
+    refundDlg?.showModal();
+  });
+  document.getElementById('close-refund')?.addEventListener('click', () => refundDlg?.close());
+  document.getElementById('open-cancel')?.addEventListener('click', () => {
+    const el = document.getElementById('cancel-idem') as HTMLInputElement | null;
+    if (el) el.value = crypto.randomUUID();
+    cancelDlg?.showModal();
+  });
+  document.getElementById('close-cancel')?.addEventListener('click', () => cancelDlg?.close());
+</script>

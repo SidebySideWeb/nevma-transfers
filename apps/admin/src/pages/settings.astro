@@ -1,0 +1,50 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../layouts/AdminLayout.astro';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const { data: settings } = await supabase.from('settings').select('*').order('key');
+
+function valueForInput(value: unknown): string {
+  return JSON.stringify(value);
+}
+---
+
+<AdminLayout title="Settings — TEM Admin" current="settings" staffEmail={staff.email}>
+  <h1>Settings</h1>
+  <p class="muted">Saving a value clears the DEMO flag for that row. Enter JSON (e.g. 20 or "Europe/Athens").</p>
+  <div class="stack">
+    {
+      (settings ?? []).map((s) => (
+        <form
+          method="POST"
+          action={actions.saveSetting}
+          class:list={['card', 'stack', { demo: s.is_demo }]}
+        >
+          <div class="row" style="justify-content:space-between">
+            <strong>{s.key}</strong>
+            {s.is_demo ? <span class="flag">DEMO</span> : null}
+          </div>
+          {s.description ? <p class="muted">{s.description}</p> : null}
+          <input type="hidden" name="key" value={s.key} />
+          <div class="field">
+            <label for={`v-${s.key}`}>Value</label>
+            <input class="input" id={`v-${s.key}`} name="value" value={valueForInput(s.value)} />
+          </div>
+          <button class="btn btn-ghost" type="submit">Save</button>
+        </form>
+      ))
+    }
+  </div>
+</AdminLayout>
+
+<style>
+  .card.demo {
+    border-color: var(--color-warning, #c9a227);
+    background: color-mix(in srgb, var(--color-warning, #c9a227) 8%, transparent);
+  }
+</style>

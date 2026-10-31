@@ -9,11 +9,14 @@
     "preview": "astro preview",
     "lint": "eslint .",
     "typecheck": "astro check",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.2",
     "@astrojs/vercel": "^11.0.17",
+    "@js-temporal/polyfill": "^0.5.1",
+    "@sanity/client": "^7.28.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.76.1",
     "astro": "^7.4.4",

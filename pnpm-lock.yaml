@@ -44,6 +44,12 @@ importers:
       '@astrojs/vercel':
         specifier: ^11.0.17
         version: 11.0.17(astro@7.4.4(@types/node@22.20.5)(@vercel/functions@3.10.5(ws@8.22.1))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(react@19.3.1)(rollup@4.67.2)(ws@8.22.1)
+      '@js-temporal/polyfill':
+        specifier: ^0.5.1
+        version: 0.5.1
+      '@sanity/client':
+        specifier: ^7.28.0
+        version: 7.28.0
       '@supabase/ssr':
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.118.0)

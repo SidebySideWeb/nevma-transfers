@@ -289,6 +289,16 @@
     margin-bottom: var(--space-4);
     font-size: var(--text-sm);
   }
+  .flag {
+    display: inline-block;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 0.1em 0.45em;
+    border: 1px solid var(--color-warning);
+    color: var(--color-warning);
+    border-radius: var(--radius-sm);
+  }
   .matrix input {
     width: 7rem;
     text-align: right;

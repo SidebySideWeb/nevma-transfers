@@ -1,14 +1,18 @@
 ---
 import '../styles/tokens.css';
 import '../styles/base.css';
+import { buildBanner } from '../lib/banner';
+import { createSupabaseServerClient } from '../lib/supabase';
 
 interface Props {
   title?: string;
   current?: string;
-  banner?: string;
+  staffEmail?: string;
 }
 
-const { title = 'TEM Admin', current = 'bookings', banner } = Astro.props;
+const { title = 'TEM Admin', current = 'bookings', staffEmail } = Astro.props;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const banner = await buildBanner(supabase);
 
 const nav = [
   { href: '/bookings', id: 'bookings', label: 'Bookings' },
@@ -61,11 +65,20 @@ const nav = [
         </ul>
       </nav>
       <main class="admin-main" id="main">
-        {banner && (
-          <p class="banner" role="note">
-            {banner}
-          </p>
-        )}
+        {
+          banner && (
+            <p class="banner" role="note">
+              {banner}
+            </p>
+          )
+        }
+        {
+          staffEmail && (
+            <p class="muted" style="margin-bottom: var(--space-3);">
+              Signed in as {staffEmail}
+            </p>
+          )
+        }
         <slot />
       </main>
     </div>

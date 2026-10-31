@@ -1,3 +1,5 @@
+export {};
+
 declare global {
   interface Window {
     turnstile?: {
@@ -60,13 +62,18 @@ export async function getTurnstileToken(siteKey: string): Promise<string> {
       }
       host.remove();
     };
-    const id = window.turnstile.render(host, {
+    const ts = window.turnstile;
+    if (!ts) {
+      reject(new Error('turnstile_missing'));
+      return;
+    }
+    const id = ts.render(host, {
       sitekey: siteKey,
       size: 'invisible',
       callback: (token) => finish(() => resolve(token)),
       'error-callback': () => finish(() => reject(new Error('turnstile_failed'))),
     });
-    window.turnstile.execute(id);
+    ts.execute(id);
     setTimeout(() => finish(() => reject(new Error('turnstile_timeout'))), 20_000);
   });
 }

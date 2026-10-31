@@ -16,8 +16,13 @@ function secret(): string {
   return s;
 }
 
+/** Pure HMAC used by admin ↔ web; keep in sync with apps/admin `signPayload`. */
+export function signWithSecret(secretValue: string, body: string, timestamp: number | string): string {
+  return createHmac('sha256', secretValue).update(`${timestamp}.${body}`).digest('hex');
+}
+
 export function sign(body: string, timestamp: number | string): string {
-  return createHmac('sha256', secret()).update(`${timestamp}.${body}`).digest('hex');
+  return signWithSecret(secret(), body, timestamp);
 }
 
 function safeEqualHex(a: string, b: string): boolean {
