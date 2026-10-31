@@ -36,4 +36,28 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['apps/web/src/lib/booking/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/lib/server', '**/lib/server/*', '../server', '../server/*', './server/*'],
+              message: 'lib/booking must stay pure: no lib/server imports.',
+            },
+            {
+              group: ['@supabase/*'],
+              message: 'lib/booking must stay pure: no Supabase imports.',
+            },
+            {
+              group: ['@sanity/*'],
+              message: 'lib/booking must stay pure: no Sanity imports.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

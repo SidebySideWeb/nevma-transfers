@@ -13,3 +13,5 @@ apps/studio/dist
 tem-protection-build-kit.zip
 playwright-report
 test-results
+coverage
+**/coverage
