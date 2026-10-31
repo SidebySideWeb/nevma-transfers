@@ -51,6 +51,6 @@ Updated 31 Oct 2026 (prompt 14 QA): still awaiting written answers; kit 1 contin
 | O8 | Privacy and cookie text; retention period for booking data | Fri 4 Dec | DEMO legal pages | Open |
 | O9 | Accountant confirms manual invoicing | Fri 4 Dec | manual invoices | Open |
 | O10 | Pre-authorisation for near-term bookings | Fri 4 Dec | not built | Open |
-| O11 | Payment methods enabled on Viva | Fri 27 Nov (test); live Fri 15 Jan 2027 | demo credentials; `PUBLIC_BOOKING_OPEN=false` in prod until live | Open |
+| O11 | Payment methods enabled on Viva | Fri 27 Nov (test); live Fri 15 Jan 2027 | demo credentials; `BOOKING_OPEN=false` in prod until live | Open |
 | O12 | Minimum lead time | Fri 6 Nov | 120 minutes (DEMO) | Open |
 | O13 | Billing of the scope additions (hourly hire, standalone admin) as a change request | internal | — | Open |

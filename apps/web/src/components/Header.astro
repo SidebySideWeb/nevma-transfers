@@ -1,6 +1,5 @@
 ---
 import type { SiteSettings } from '../lib/sanity/content';
-import { isBookingOpen } from '../lib/booking-open';
 
 interface Props {
   settings: SiteSettings;
@@ -9,7 +8,7 @@ interface Props {
 const { settings } = Astro.props;
 const logoUrl = settings.logo?.asset?.url;
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
-const bookingOpen = isBookingOpen();
+// Always link to /book; BOOKING_OPEN is enforced on the SSR /book page and /api/holds.
 ---
 
 <header class="site-header">
@@ -25,7 +24,7 @@ const bookingOpen = isBookingOpen();
     </a>
     <div class="header-actions">
       <a class="muted" href={phoneHref}>{settings.phone}</a>
-      {bookingOpen ? <a class="btn" href="/book">Book now</a> : null}
+      <a class="btn" href="/book">Book now</a>
     </div>
   </div>
 </header>

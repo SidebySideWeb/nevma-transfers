@@ -7,7 +7,7 @@ describe('webServerEnvSchema', () => {
       PUBLIC_SITE_URL: 'http://localhost:4321',
       PUBLIC_ADMIN_URL: 'http://localhost:4322',
       PUBLIC_TURNSTILE_SITE_KEY: 'test',
-      PUBLIC_BOOKING_OPEN: 'false',
+      BOOKING_OPEN: 'false',
       SUPABASE_URL: 'https://example.supabase.co',
       // SUPABASE_SERVICE_ROLE_KEY missing
       SANITY_PROJECT_ID: 'abc',

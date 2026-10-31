@@ -63,7 +63,7 @@ export default defineConfig({
         ADMIN_TO_WEB_SIGNING_SECRET: signing,
         PUBLIC_SITE_URL: 'http://127.0.0.1:4321',
         PUBLIC_ADMIN_URL: baseURL,
-        PUBLIC_BOOKING_OPEN: 'true',
+        BOOKING_OPEN: 'true',
         VIVA_ENV: 'demo',
         PUBLIC_TURNSTILE_SITE_KEY:
           process.env.PUBLIC_TURNSTILE_SITE_KEY || '1x0000000000000000000000000000000AA',
