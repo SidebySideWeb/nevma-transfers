@@ -731,11 +731,19 @@ export async function cancelBooking(raw: unknown, ip?: string) {
   let refundCents = 0;
   if (b.payment_status === 'paid' || b.payment_status === 'partially_refunded') {
     refundCents = b.price_cents;
-    if (b.viva_order_code) {
+    const { rows: payRows } = await db().query<{ viva_transaction_id: string }>(
+      `select viva_transaction_id::text
+         from public.payments
+        where booking_id = $1::uuid and kind = 'payment' and status = 'succeeded'
+          and viva_transaction_id is not null
+        order by created_at asc limit 1`,
+      [b.id],
+    );
+    const txId = payRows[0]?.viva_transaction_id;
+    if (txId) {
       await getPaymentProvider().refund({
-        orderCode: b.viva_order_code,
+        transactionId: txId,
         amountCents: refundCents,
-        idempotencyKey: `cancel:${b.reference}`,
       });
     }
   }

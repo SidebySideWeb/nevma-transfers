@@ -1,4 +1,5 @@
 import 'server-only';
+import { createVivaFromEnv } from './viva';
 
 export type CreateOrderInput = {
   amountCents: number;
@@ -7,6 +8,8 @@ export type CreateOrderInput = {
   customerName: string;
   customerPhone: string;
   paymentTimeoutSeconds: number;
+  /** Short trip text without personal data (shown on Viva). */
+  customerTrns?: string;
 };
 
 export type CreateOrderResult = {
@@ -22,21 +25,23 @@ export type TransactionResult = {
 };
 
 export type RefundInput = {
-  orderCode: string;
+  transactionId: string;
   amountCents: number;
-  idempotencyKey: string;
 };
 
 export interface PaymentProvider {
   createOrder(input: CreateOrderInput): Promise<CreateOrderResult>;
   getTransaction(transactionId: string): Promise<TransactionResult>;
   refund(input: RefundInput): Promise<{ refundedCents: number }>;
+  getWebhookKey?(): Promise<string>;
 }
 
 export class FakePaymentProvider implements PaymentProvider {
   orders: CreateOrderResult[] = [];
   refunds: RefundInput[] = [];
+  transactions = new Map<string, TransactionResult>();
   failNextOrder = false;
+  webhookKey = 'fake-webhook-key';
 
   async createOrder(input: CreateOrderInput): Promise<CreateOrderResult> {
     if (this.failNextOrder) {
@@ -54,6 +59,8 @@ export class FakePaymentProvider implements PaymentProvider {
   }
 
   async getTransaction(transactionId: string): Promise<TransactionResult> {
+    const stub = this.transactions.get(transactionId);
+    if (stub) return stub;
     return {
       transactionId,
       orderCode: this.orders[0]?.orderCode ?? '0',
@@ -66,11 +73,18 @@ export class FakePaymentProvider implements PaymentProvider {
     this.refunds.push(input);
     return { refundedCents: input.amountCents };
   }
+
+  async getWebhookKey(): Promise<string> {
+    return this.webhookKey;
+  }
 }
 
-let provider: PaymentProvider = new FakePaymentProvider();
+let provider: PaymentProvider | null = null;
 
 export function getPaymentProvider(): PaymentProvider {
+  if (provider) return provider;
+  const viva = createVivaFromEnv();
+  provider = viva ?? new FakePaymentProvider();
   return provider;
 }
 

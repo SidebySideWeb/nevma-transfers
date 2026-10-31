@@ -88,6 +88,10 @@ Functions:
 Functions:
 - `create_booking_from_hold(...) → jsonb`: one transaction — lock hold + class; require active unexpired hold for this visitor; recompute base and extras from tables (copy prices); insert `bookings` (`pending`, `hold_expires_at` = hold expiry, `cancel_token_hash` null) and `booking_extras`; hold → `converted`. Cancel token is created later on confirmation (prompt 07).
 
+## Payments flow (0008)
+
+- `record_viva_payment(order_code, transaction_id, amount_cents, raw) → jsonb`: one transaction — lock booking by `viva_order_code`; reject `amount_mismatch` / `unknown_order`; insert succeeded `payments` row (duplicate `viva_transaction_id` → `duplicate`); if `pending` and hold live → `confirmed`+`paid`; if hold expired → `class_availability(..., exclude booking)` > 0 → `confirmed`, else `late_unavailable` (app refunds and cancels). Outcomes: `confirmed`, `duplicate`, `late_unavailable`, `amount_mismatch`, `unknown_order`, `not_pending`.
+
 ## Security (0005)
 
 - RLS enabled on all 14 tables; `anon` has no rights on any table.
@@ -103,4 +107,4 @@ Functions:
 
 ## Acceptance coverage in `packages/db/tests`
 
-AC-02 overlap, AC-03 type rules, AC-04 hold expiry, AC-05 last-vehicle race and hold limit, AC-07 duplicate transaction and idempotency key, AC-08 refund limit, AC-09 VIP flag, AC-10 RLS and staff rights, AC-14 DST range, 0007 rate limits + booking-from-hold, plus the DEMO seed checks.
+AC-02 overlap, AC-03 type rules, AC-04 hold expiry, AC-05 last-vehicle race and hold limit, AC-07 duplicate transaction and idempotency key, AC-08 refund limit, AC-09 VIP flag, AC-10 RLS and staff rights, AC-14 DST range, 0007 rate limits + booking-from-hold, 0008 `record_viva_payment` outcomes, plus the DEMO seed checks.

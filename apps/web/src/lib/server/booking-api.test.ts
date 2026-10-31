@@ -355,10 +355,18 @@ describe('booking API (prompt 06)', () => {
     );
     const reference = inserted.rows[0].reference;
 
+    const txId = '11111111-1111-1111-1111-111111111111';
+    await db.pool.query(
+      `insert into public.payments (booking_id, kind, status, amount_cents, viva_transaction_id)
+       select id, 'payment', 'succeeded', 22000, $1::uuid from public.bookings where reference = $2`,
+      [txId, reference],
+    );
+
     const cancelled = await cancelBooking({ token, turnstileToken: 'ok' }, ip);
     expect(cancelled.status).toBe('cancelled');
     expect(cancelled.refundCents).toBe(22000);
     expect(payments.refunds).toHaveLength(1);
+    expect(payments.refunds[0]?.transactionId).toBe(txId);
     expect(cancelled.reference).toBe(reference);
 
     await expect(cancelBooking({ token, turnstileToken: 'ok' }, ip)).rejects.toMatchObject({

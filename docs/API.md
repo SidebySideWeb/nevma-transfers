@@ -116,12 +116,14 @@ Polled by `/booking/confirmed`. Returns no personal data.
 
 ## Viva webhook
 
+Hosts (prompt 07, checked against developer.viva.com): OAuth2 API `demo-api` / `api.vivapayments.com`; accounts `demo-accounts` / `accounts.vivapayments.com`; Basic (webhook key, refunds) `demo.vivapayments.com` / `www.vivapayments.com`; checkout `demo.vivapayments.com` / `www.vivapayments.com`. Create-order `amount` and refund query `amount` are **minor units (cents)**; retrieve-transaction `amount` is **major units** (e.g. `30.00`) — convert to cents with integer maths before comparing to `price_cents`. Create order must send `sourceCode`. Store `orderCode` as a string (JS safe-integer limit). Refund: `DELETE /api/transactions/{transactionId}?amount=<cents>&currencyCode=978&sourceCode=…` (Basic auth). Event ids still **1796** / **1798**.
+
 ### `GET /api/webhooks/viva`
 Viva's URL verification. Returns `{ "Key": "<key>" }`, where the key comes from Viva's `GET /api/messages/config/token` (basic auth `VIVA_MERCHANT_ID:VIVA_API_KEY`), cached for 1 hour.
 
 ### `POST /api/webhooks/viva`
-Event body from Viva. Handled events (ids per Viva docs; confirm in prompt 07):
-- Transaction Payment Created (1796): fetch the transaction (`GET /checkout/v2/transactions/{transactionId}`, OAuth2); require success, a known `orderCode` and `amount * 100 == price_cents`; record and confirm per `docs/BOOKING-RULES.md` §6.
+Event body from Viva. Handled events:
+- Transaction Payment Created (1796): fetch the transaction (`GET /checkout/v2/transactions/{transactionId}`, OAuth2); require `statusId = F`, a known `viva_order_code`, and amount in cents `=== price_cents`; record via `record_viva_payment` (0008) per `docs/BOOKING-RULES.md` §6.
 - Transaction Failed (1798): record a failed payment row.
 - Anything else: `200` and ignore.
 Always answer `200` quickly after recording; a verification failure is logged by order code and answered `200` (so Viva does not retry forever), and the booking is left untouched.
@@ -134,7 +136,7 @@ Headers: `X-TEM-Timestamp` (unix seconds), `X-TEM-Signature` = hex HMAC-SHA256(`
 
 ### `POST /api/internal/refund`
 `{ "reference": "TEM-7K3QX2", "amountCents": 15000, "reason": "VIP security not available", "idempotencyKey": "uuid" }`
-Inserts a `pending` refund row first (the database rejects over-refunds), calls Viva's refund (`DELETE /api/transactions/{transactionId}?amount=<cents>` with basic auth; confirm in prompt 07), then marks it `succeeded` or `failed` and updates `payment_status`; emails the customer.
+Inserts a `pending` refund row first (the database rejects over-refunds), calls Viva's refund (`DELETE /api/transactions/{transactionId}?amount=<cents>&currencyCode=978&sourceCode=…` with basic auth), then marks it `succeeded` or `failed` and updates `payment_status`; emails the customer.
 → `{ "refundedCents": 15000, "refundableCents": 7000, "paymentStatus": "partially_refunded" }`. Same `idempotencyKey` again → the first result.
 
 ### `POST /api/internal/cancel`
