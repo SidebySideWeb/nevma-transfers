@@ -1,4 +1,4 @@
-import { createSanityClient } from './client';
+import { createSanityClient, sanityConfigured } from './client';
 import type { SanityImage } from './image';
 import { SITE_SETTINGS_QUERY, UI_STRINGS_QUERY } from './queries';
 import { setStringOverrides, type UiStringKey } from '../strings';
@@ -39,16 +39,8 @@ const FALLBACK_SETTINGS: SiteSettings = {
 let settingsCache: { value: SiteSettings; expiresAt: number } | null = null;
 const CACHE_MS = 5 * 60 * 1000;
 
-function canQuery(): boolean {
-  return Boolean(
-    import.meta.env.SANITY_PROJECT_ID &&
-      import.meta.env.SANITY_DATASET &&
-      import.meta.env.SANITY_READ_TOKEN,
-  );
-}
-
 export async function loadUiStrings(): Promise<void> {
-  if (!canQuery()) return;
+  if (!sanityConfigured()) return;
   try {
     const client = createSanityClient();
     const doc = await client.fetch(UI_STRINGS_QUERY);
@@ -68,7 +60,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   if (settingsCache && Date.now() < settingsCache.expiresAt) {
     return settingsCache.value;
   }
-  if (!canQuery()) {
+  if (!sanityConfigured()) {
     return FALLBACK_SETTINGS;
   }
   try {

@@ -1,4 +1,4 @@
-import { createSanityClient } from './client';
+import { createSanityClient, sanityConfigured } from './client';
 import { DEMO_PAGES } from './demo-pages';
 import { PAGE_BY_SLUG_QUERY } from './queries';
 import type { SanityImage } from './image';
@@ -49,37 +49,42 @@ export type CmsPage = {
   } | null;
 };
 
-function canQuery(): boolean {
-  return Boolean(
-    import.meta.env.SANITY_PROJECT_ID &&
-      import.meta.env.SANITY_DATASET &&
-      import.meta.env.SANITY_READ_TOKEN,
+function demoOrThrow(slug: string, reason: string): CmsPage {
+  const demo = DEMO_PAGES[slug];
+  if (demo) {
+    console.warn(`[sanity] Using DEMO page "${slug}" (${reason}).`);
+    return demo;
+  }
+  throw new Error(
+    `Missing Sanity page for slug "${slug}" (${reason}). Create and publish document page-${slug}, or remove Sanity env vars to use DEMO fixtures.`,
   );
 }
 
-/** Fetch a page by slug. Throws with a clear message when the document is missing. */
+/** Fetch a page by slug. Falls back to DEMO fixtures when Sanity is unset, unreachable, or empty. */
 export async function getPageBySlug(slug: string): Promise<CmsPage> {
-  if (!canQuery()) {
-    const demo = DEMO_PAGES[slug];
-    if (demo) return demo;
-    throw new Error(
-      `Sanity is not configured and there is no DEMO fixture for slug "${slug}". Set SANITY_PROJECT_ID, SANITY_DATASET and SANITY_READ_TOKEN.`,
-    );
+  if (!sanityConfigured()) {
+    return demoOrThrow(slug, 'Sanity env not configured');
   }
-  const client = createSanityClient();
-  const doc = await client.fetch(PAGE_BY_SLUG_QUERY, { slug });
-  if (!doc?.title || !doc?.slug) {
-    throw new Error(
-      `Missing Sanity page for slug "${slug}". Create and publish document page-${slug} (type page) before building.`,
-    );
+
+  try {
+    const client = createSanityClient();
+    const doc = await client.fetch(PAGE_BY_SLUG_QUERY, { slug });
+    if (!doc?.title || !doc?.slug) {
+      return demoOrThrow(slug, 'document not published or not found');
+    }
+    return {
+      kind: doc.kind,
+      title: doc.title,
+      slug: doc.slug,
+      sections: (doc.sections ?? []) as PageSection[],
+      seo: doc.seo ?? null,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'fetch failed';
+    // Re-throw our own missing-page errors that have no DEMO fallback.
+    if (msg.startsWith('Missing Sanity page') && !DEMO_PAGES[slug]) throw e;
+    return demoOrThrow(slug, msg);
   }
-  return {
-    kind: doc.kind,
-    title: doc.title,
-    slug: doc.slug,
-    sections: (doc.sections ?? []) as PageSection[],
-    seo: doc.seo ?? null,
-  };
 }
 
 export const LEGAL_SLUGS = ['privacy', 'cookies', 'terms', 'cancellation'] as const;
