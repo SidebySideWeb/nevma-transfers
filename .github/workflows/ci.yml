@@ -29,7 +29,8 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          # CI-only throwaway; not a production secret (avoids default "postgres" password scanners).
+          POSTGRES_PASSWORD: ci_tem_db_only
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
@@ -50,4 +51,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @tem/db test
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          DATABASE_URL: postgres://postgres:ci_tem_db_only@localhost:5432/postgres
