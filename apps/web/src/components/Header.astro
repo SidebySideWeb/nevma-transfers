@@ -1,0 +1,29 @@
+---
+import type { SiteSettings } from '../lib/sanity/content';
+
+interface Props {
+  settings: SiteSettings;
+}
+
+const { settings } = Astro.props;
+const logoUrl = settings.logo?.asset?.url;
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+---
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="/">
+      {
+        logoUrl ? (
+          <img src={logoUrl} alt={settings.logo?.alt || settings.companyName} width="160" height="44" />
+        ) : (
+          settings.companyName
+        )
+      }
+    </a>
+    <div class="header-actions">
+      <a class="muted" href={phoneHref}>{settings.phone}</a>
+      <a class="btn" href="/book">Book now</a>
+    </div>
+  </div>
+</header>

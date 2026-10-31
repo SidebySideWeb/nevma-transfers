@@ -1,0 +1,73 @@
+---
+import '../styles/tokens.css';
+import '../styles/base.css';
+
+interface Props {
+  title?: string;
+  current?: string;
+  banner?: string;
+}
+
+const { title = 'TEM Admin', current = 'bookings', banner } = Astro.props;
+
+const nav = [
+  { href: '/bookings', id: 'bookings', label: 'Bookings' },
+  { href: '/blocked-slots', id: 'blocked-slots', label: 'Blocked slots' },
+  { href: '/prices', id: 'prices', label: 'Prices' },
+  { href: '/hourly-rates', id: 'hourly-rates', label: 'Hourly rates' },
+  { href: '/extras', id: 'extras', label: 'Extras' },
+  { href: '/fleet', id: 'fleet', label: 'Fleet' },
+  { href: '/zones', id: 'zones', label: 'Zones' },
+  { href: '/settings', id: 'settings', label: 'Settings' },
+] as const;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{title}</title>
+    <link
+      rel="preload"
+      href="/fonts/inter-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/inter-tight-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <div class="admin">
+      <nav class="admin-nav" aria-label="Admin">
+        <a class="logo" href="/bookings">TEM Admin</a>
+        <ul>
+          {
+            nav.map((item) => (
+              <li>
+                <a href={item.href} aria-current={current === item.id ? 'page' : undefined}>
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+      <main class="admin-main" id="main">
+        {banner && (
+          <p class="banner" role="note">
+            {banner}
+          </p>
+        )}
+        <slot />
+      </main>
+    </div>
+  </body>
+</html>

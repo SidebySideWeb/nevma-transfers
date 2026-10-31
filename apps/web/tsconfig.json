@@ -5,7 +5,8 @@
     "types": ["vite/client", "node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@studio-strings": ["../studio/schemaTypes/lib/uiStringDefaults.ts"]
     }
   },
   "include": [".astro/types.d.ts", "**/*"],

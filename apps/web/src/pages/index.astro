@@ -1,12 +1,20 @@
 ---
+import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TEM Protection</title>
-  </head>
-  <body></body>
-</html>
+<BaseLayout>
+  <section class="hero" aria-labelledby="hero-h">
+    <div class="wrap">
+      <div class="stack">
+        <h1 id="hero-h">Arrive on time. Travel protected.</h1>
+        <p class="muted">
+          Premium transfers and hourly chauffeur service in Athens, with optional VIP security.
+        </p>
+        <div class="row">
+          <a class="btn" href="/book">Book now</a>
+        </div>
+      </div>
+      <div class="hero-media" role="img" aria-label="Transfer vehicle"></div>
+    </div>
+  </section>
+</BaseLayout>

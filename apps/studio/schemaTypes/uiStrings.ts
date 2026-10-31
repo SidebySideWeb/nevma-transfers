@@ -1,7 +1,7 @@
 import { defineArrayMember, defineField, defineType } from 'sanity';
 import { uiStringDefaults } from './lib/uiStringDefaults';
 
-const knownKeys = new Set(uiStringDefaults.map((d) => d.key));
+const knownKeys = new Set<string>(uiStringDefaults.map((d) => d.key));
 
 export const uiStrings = defineType({
   name: 'uiStrings',

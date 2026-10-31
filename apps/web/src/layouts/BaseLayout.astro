@@ -1,0 +1,65 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
+import '../styles/tokens.css';
+import '../styles/base.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  robots?: string;
+  ogImage?: string;
+}
+
+await loadUiStrings();
+const settings = await getSiteSettings();
+
+const {
+  title = settings.defaultSeo?.title || settings.companyName,
+  description = settings.defaultSeo?.description || settings.tagline || '',
+  robots = 'index,follow',
+  ogImage = settings.defaultSeo?.image?.asset?.url || settings.logo?.asset?.url,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:4321').href;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <meta name="robots" content={robots} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <link
+      rel="preload"
+      href="/fonts/inter-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/inter-tight-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <a class="skip-link btn" href="#main">Skip to content</a>
+    <Header settings={settings} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer settings={settings} />
+  </body>
+</html>

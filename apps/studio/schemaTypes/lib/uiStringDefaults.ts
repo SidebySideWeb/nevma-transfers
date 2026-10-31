@@ -9,7 +9,7 @@ export interface UiStringDefault {
   value: string;
 }
 
-export const uiStringDefaults: UiStringDefault[] = [
+export const uiStringDefaults = [
   // --- booking flow ---
   { area: 'booking', key: 'booking.search.title', value: 'Book your ride' },
   { area: 'booking', key: 'booking.toggle.transfer', value: 'Transfer' },
@@ -82,4 +82,6 @@ export const uiStringDefaults: UiStringDefault[] = [
   { area: 'emails', key: 'email.lateRefund.body', value: 'Your payment arrived after the vehicle hold ended and the vehicle was no longer free, so we refunded it in full.' },
   { area: 'emails', key: 'email.office.new.subject', value: 'New booking {reference}' },
   { area: 'emails', key: 'email.office.cancelled.subject', value: 'Booking cancelled {reference}' },
-];
+] as const satisfies readonly UiStringDefault[];
+
+export type UiStringKey = (typeof uiStringDefaults)[number]['key'];

@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { tDefault } from '../lib/strings';
+
+const title = 'Page not found';
+const body = tDefault('error.invalid_request');
+---
+
+<BaseLayout title={title} description={body} robots="noindex">
+  <section class="section">
+    <div class="narrow stack">
+      <h1>{title}</h1>
+      <p class="muted">{body}</p>
+      <a class="btn" href="/">Back to home</a>
+    </div>
+  </section>
+</BaseLayout>

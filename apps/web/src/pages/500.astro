@@ -1,0 +1,43 @@
+---
+// No data calls — static error shell only.
+import '../styles/tokens.css';
+import '../styles/base.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Something went wrong — TEM Protection</title>
+    <link
+      rel="preload"
+      href="/fonts/inter-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/inter-tight-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="logo" href="/">TEM Protection</a>
+      </div>
+    </header>
+    <main id="main" class="section">
+      <div class="narrow stack">
+        <h1>Something went wrong</h1>
+        <p class="muted">Please try again in a moment.</p>
+        <a class="btn" href="/">Back to home</a>
+      </div>
+    </main>
+  </body>
+</html>

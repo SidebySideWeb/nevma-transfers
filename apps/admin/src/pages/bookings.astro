@@ -1,0 +1,36 @@
+---
+import AdminLayout from '../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Bookings — TEM Admin" current="bookings">
+  <div class="row between">
+    <h1>Bookings</h1>
+  </div>
+  <form class="toolbar" aria-label="Filters">
+    <div class="field">
+      <label for="st">Status</label>
+      <select id="st" class="input">
+        <option>All active</option>
+      </select>
+    </div>
+  </form>
+  <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
+    <table>
+      <caption class="sr-only">Bookings</caption>
+      <thead>
+        <tr>
+          <th scope="col">Reference</th>
+          <th scope="col">Pick-up</th>
+          <th scope="col" class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>—</td>
+          <td>—</td>
+          <td class="num">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

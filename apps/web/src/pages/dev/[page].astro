@@ -1,0 +1,144 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { t } from '../../lib/strings';
+
+export function getStaticPaths() {
+  // DEV-only visual review page — omitted from production builds.
+  if (!import.meta.env.DEV) return [];
+  return [{ params: { page: 'kitchen-sink' } }];
+}
+
+const { page } = Astro.params;
+if (page !== 'kitchen-sink') {
+  return new Response(null, { status: 404 });
+}
+---
+
+<BaseLayout title="Kitchen sink (DEV)" robots="noindex">
+  <section class="section">
+    <div class="wrap stack">
+      <p class="eyebrow">DEV only</p>
+      <h1>Kitchen sink</h1>
+      <p class="muted">Every public component state from the wireframes.</p>
+
+      <h2>Buttons</h2>
+      <div class="row">
+        <button type="button" class="btn">Primary</button>
+        <button type="button" class="btn btn-ghost">Ghost</button>
+        <button type="button" class="btn btn-danger">Danger</button>
+        <button type="button" class="btn btn-block">Block</button>
+      </div>
+
+      <h2>Steps</h2>
+      <ol class="steps">
+        <li><span class="dot">1</span> Search</li>
+        <li aria-current="step"><span class="dot">2</span> Vehicle</li>
+        <li><span class="dot">3</span> Details</li>
+        <li><span class="dot">4</span> Review</li>
+      </ol>
+
+      <h2>Segmented</h2>
+      <div class="segmented" role="radiogroup" aria-label="Booking type">
+        <label><input type="radio" name="type" checked /><span>{t('booking.toggle.transfer')}</span></label>
+        <label><input type="radio" name="type" /><span>{t('booking.toggle.hourly')}</span></label>
+      </div>
+
+      <h2>Fields</h2>
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="ks-name">{t('booking.details.name')}</label>
+          <input id="ks-name" class="input" type="text" />
+          <p class="hint">Hint text</p>
+        </div>
+        <div class="field">
+          <label for="ks-email">{t('booking.details.email')}</label>
+          <input
+            id="ks-email"
+            class="input"
+            type="email"
+            aria-invalid="true"
+            aria-describedby="ks-email-err"
+          />
+          <p id="ks-email-err" class="error">Example error</p>
+        </div>
+      </div>
+
+      <h2>Check rows</h2>
+      <label class="check">
+        <input type="checkbox" />
+        <span>{t('booking.extras.vip')}</span>
+        <span class="price">€ 50.00</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" />
+        <span>{t('booking.invoice.toggle')}</span>
+      </label>
+
+      <h2>Vehicle cards</h2>
+      <article class="card vehicle">
+        <div class="photo" role="img" aria-label="Demo sedan">Photo</div>
+        <div class="stack">
+          <h3>Sedan</h3>
+          <p class="muted">Tagline</p>
+          <p class="muted">{t('booking.vehicle.capacity', { passengers: 3, luggage: 2 })}</p>
+          <div class="meta">
+            <span class="price">€ 70.00</span>
+            <button type="button" class="btn">{t('booking.vehicle.select')}</button>
+          </div>
+        </div>
+      </article>
+      <article class="card vehicle" aria-disabled="true">
+        <div class="photo" role="img" aria-label="Unavailable">Photo</div>
+        <div class="stack">
+          <h3>SUV (unavailable)</h3>
+          <p class="muted">{t('error.unavailable')}</p>
+        </div>
+      </article>
+
+      <h2>Timer and notices</h2>
+      <p class="timer" role="status"
+        >{t('booking.hold.timer', { minutes: 18 })} <strong>18:00</strong></p
+      >
+      <div class="notice">Neutral notice</div>
+      <div class="notice notice-success">Success notice</div>
+      <div class="notice notice-danger">Danger notice</div>
+
+      <h2>Summary</h2>
+      <dl class="summary card">
+        <div><dt>Route</dt><dd>Airport → Centre</dd></div>
+        <div><dt>Vehicle</dt><dd>Sedan</dd></div>
+        <div><dt>VIP security</dt><dd>€ 50.00</dd></div>
+      </dl>
+      <div class="total"><span>{t('booking.total')}</span><span>€ 120.00</span></div>
+
+      <h2>Badges</h2>
+      <div class="row">
+        <span class="badge">Default</span>
+        <span class="badge badge-accent">VIP security</span>
+        <span class="badge badge-success">Confirmed</span>
+        <span class="badge badge-warning">Pending</span>
+        <span class="badge badge-danger">Cancelled</span>
+      </div>
+
+      <h2>Spinner</h2>
+      <div class="spinner" role="status" aria-label="Loading"></div>
+
+      <h2>Hero / section / card / grid</h2>
+      <div class="hero">
+        <div class="wrap">
+          <div class="stack">
+            <h2>Hero heading</h2>
+            <p class="muted">Subheading</p>
+            <a class="btn" href="/book">Book now</a>
+          </div>
+          <div class="hero-media">Media</div>
+        </div>
+      </div>
+      <div class="grid grid-3">
+        <article class="card"><h3>Card</h3><p class="muted">Body</p></article>
+        <article class="card"><h3>Card</h3><p class="muted">Body</p></article>
+        <article class="card"><h3>Card</h3><p class="muted">Body</p></article>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

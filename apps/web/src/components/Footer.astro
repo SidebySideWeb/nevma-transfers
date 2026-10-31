@@ -1,0 +1,46 @@
+---
+import type { SiteSettings } from '../lib/sanity/content';
+
+interface Props {
+  settings: SiteSettings;
+}
+
+const { settings } = Astro.props;
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+---
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div>
+      <strong>{settings.companyName}</strong>
+      {settings.address && (
+        <>
+          <br />
+          {settings.address}
+        </>
+      )}
+      {settings.openingHours && (
+        <>
+          <br />
+          {settings.openingHours}
+        </>
+      )}
+    </div>
+    <div>
+      <a href={phoneHref}>{settings.phone}</a>
+      <br />
+      <a href={`mailto:${settings.email}`}>{settings.email}</a>
+    </div>
+    <nav aria-label="Legal">
+      <a href="/privacy">Privacy</a>
+      {' · '}
+      <a href="/cookies">Cookies</a>
+      {' · '}
+      <a href="/terms">Terms</a>
+      {' · '}
+      <a href="/cancellation">Cancellation</a>
+      {' · '}
+      <button type="button" class="btn-text">Cookie settings</button>
+    </nav>
+  </div>
+</footer>
