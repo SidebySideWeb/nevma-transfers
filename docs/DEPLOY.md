@@ -9,7 +9,7 @@ Do **not** create or change cloud resources until the client confirms each step.
 | Cron: reminders every 15 min | `apps/web/vercel.json` → `/api/cron/reminders` |
 | Cron: stuck paid-pending digest daily 06:00 UTC | `apps/web/vercel.json` → `/api/cron/stuck-payments` |
 | Security headers + CSP | `apps/web/vercel.json` |
-| Launch guard AC-21 | `pnpm check:live` / `pnpm check:live:dry`; runs automatically when `VERCEL_ENV=production` before `astro build` |
+| Launch guard AC-21 | `pnpm check:live` / `pnpm check:live:dry`; runs when `VERCEL_ENV=production` before `astro build`. Until real content replaces DEMO, set `SKIP_LAUNCH_GUARD=1` on the Vercel Production env (remove at go-live). |
 | Booking closed flag | `PUBLIC_BOOKING_OPEN=false` hides header “Book now”, closes `/book` UI, `/api/holds` → 503 |
 | Weekly encrypted backups | `.github/workflows/backup.yml` |
 | Restore drill | `packages/db/README.md` |
