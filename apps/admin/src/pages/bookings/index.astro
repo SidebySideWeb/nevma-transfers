@@ -2,12 +2,22 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
 import DataTable from '../../components/DataTable.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
 import Select from '../../components/Select.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import { athensDay, athensTime } from '../../lib/athens-day';
+import {
+  applyBookingsTab,
+  BOOKINGS_TAB_LABEL,
+  BOOKINGS_TABS,
+  logListError,
+  parseBookingsTab,
+  resolveListLoad,
+  type BookingsTab,
+} from '../../lib/bookings-list';
 import { formatEuro } from '../../lib/money';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
@@ -15,89 +25,91 @@ const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const q = Astro.url.searchParams;
 
-const status = q.get('status') || 'active';
+const tab = parseBookingsTab(q);
 const from = q.get('from') || '';
 const to = q.get('to') || '';
 const type = q.get('type') || '';
 const vipOnly = q.get('vip') === '1';
 const invoice = q.get('invoice') || '';
 const source = q.get('source') === 'online' || q.get('source') === 'office' ? q.get('source')! : '';
-const needsVehicle = q.get('needs_vehicle') === '1';
 const page = Math.max(1, Number(q.get('page') || 1));
 const pageSize = 50;
+const nowIso = new Date().toISOString();
+const invoices = ['not_required', 'requested', 'issued'] as const;
 
-let query = supabase
-  .from('bookings')
-  .select(
-    `
+const selectCols = `
     reference, pickup_at, booking_type, duration_minutes, price_cents, status, payment_status,
     vip_security, invoice_status, customer_name, vehicle_id, source,
     from_zone:zones!bookings_from_zone_id_fkey(name),
     to_zone:zones!bookings_to_zone_id_fkey(name),
     class:vehicle_classes!bookings_class_id_fkey(key),
     vehicle:vehicles!bookings_vehicle_id_fkey(label)
-  `,
-  )
-  .order('pickup_at', { ascending: true })
+  `;
+
+function baseListQuery() {
+  return supabase.from('bookings').select(selectCols);
+}
+
+function baseCountQuery() {
+  return supabase.from('bookings').select('id', { count: 'exact', head: true });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function withExtraFilters(query: any) {
+  let qy = query;
+  if (from) qy = qy.gte('pickup_at', `${from}T00:00:00+02:00`);
+  if (to) qy = qy.lte('pickup_at', `${to}T23:59:59+02:00`);
+  if (type === 'transfer' || type === 'hourly') qy = qy.eq('booking_type', type);
+  if (vipOnly) qy = qy.eq('vip_security', true);
+  if ((invoices as readonly string[]).includes(invoice)) {
+    qy = qy.eq('invoice_status', invoice as (typeof invoices)[number]);
+  }
+  if (source === 'online' || source === 'office') qy = qy.eq('source', source);
+  return qy;
+}
+
+const applied = applyBookingsTab(withExtraFilters(baseListQuery()), tab, nowIso);
+const { data: rows, error } = await applied.query
+  .order('pickup_at', { ascending: applied.ascending })
   .range((page - 1) * pageSize, page * pageSize - 1);
 
-const statuses = ['pending', 'confirmed', 'assigned', 'completed', 'cancelled', 'expired'] as const;
-const invoices = ['not_required', 'requested', 'issued'] as const;
+type BookingRow = {
+  reference: string;
+  pickup_at: string;
+  booking_type: string;
+  duration_minutes: number | null;
+  price_cents: number;
+  status: string;
+  payment_status: string;
+  vip_security: boolean;
+  invoice_status: string;
+  customer_name: string;
+  vehicle_id: string | null;
+  source: string | null;
+  from_zone: { name?: string } | null;
+  to_zone: { name?: string } | null;
+  class: { key?: string } | null;
+  vehicle: { label?: string } | null;
+};
 
-if (status === 'active') {
-  query = query.in('status', ['pending', 'confirmed', 'assigned']);
-} else if ((statuses as readonly string[]).includes(status)) {
-  query = query.eq('status', status as (typeof statuses)[number]);
-}
-if (from) query = query.gte('pickup_at', `${from}T00:00:00+02:00`);
-if (to) query = query.lte('pickup_at', `${to}T23:59:59+02:00`);
-if (type === 'transfer' || type === 'hourly') query = query.eq('booking_type', type);
-if (vipOnly) query = query.eq('vip_security', true);
-if ((invoices as readonly string[]).includes(invoice)) {
-  query = query.eq('invoice_status', invoice as (typeof invoices)[number]);
-}
-if (source === 'online' || source === 'office') query = query.eq('source', source);
-if (needsVehicle) {
-  query = query.eq('status', 'confirmed').is('vehicle_id', null);
+const load = resolveListLoad('bookings', rows as BookingRow[] | null, error);
+if (!load.ok) logListError('bookings_list', error!.message);
+const bookings: BookingRow[] = load.ok ? load.rows : [];
+const listError = load.ok ? null : load.message;
+
+async function countFor(t: BookingsTab): Promise<number> {
+  const { query } = applyBookingsTab(withExtraFilters(baseCountQuery()), t, nowIso);
+  const { count, error: countError } = await query;
+  if (countError) {
+    logListError('bookings_count', countError.message);
+    return 0;
+  }
+  return count ?? 0;
 }
 
-const { data: rows, error } = await query;
-if (error) {
-  console.error(JSON.stringify({ level: 'error', code: 'bookings_list', message: error.message }));
-}
-const bookings = rows ?? [];
-
-const now = new Date();
-const week = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-const [{ count: weekCount }, { count: needCount }, { count: vipCount }, { count: invCount }] =
-  await Promise.all([
-    supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .in('status', ['pending', 'confirmed', 'assigned'])
-      .gte('pickup_at', now.toISOString())
-      .lte('pickup_at', week.toISOString()),
-    supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'confirmed')
-      .is('vehicle_id', null)
-      .gte('pickup_at', now.toISOString())
-      .lte('pickup_at', week.toISOString()),
-    supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('vip_security', true)
-      .in('status', ['pending', 'confirmed', 'assigned'])
-      .gte('pickup_at', now.toISOString())
-      .lte('pickup_at', week.toISOString()),
-    supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('invoice_status', 'requested')
-      .gte('pickup_at', now.toISOString())
-      .lte('pickup_at', week.toISOString()),
-  ]);
+const tabCounts = Object.fromEntries(
+  await Promise.all(BOOKINGS_TABS.map(async (t) => [t, await countFor(t)] as const)),
+) as Record<BookingsTab, number>;
 
 const chips: { label: string; clear: string }[] = [];
 if (from || to) {
@@ -151,6 +163,9 @@ function qs(overrides: Record<string, string | null>): string {
     if (v === null) p.delete(k);
     else p.set(k, v);
   }
+  // Prefer tab=; drop legacy keys so links stay clean.
+  p.delete('status');
+  p.delete('needs_vehicle');
   p.delete('page');
   const s = p.toString();
   return s ? `?${s}` : '?';
@@ -164,47 +179,37 @@ function qs(overrides: Record<string, string | null>): string {
     <a class="btn" href="/bookings/new">New booking</a>
   </div>
 
-  <dl class="stats" aria-label="Next 7 days">
+  <dl class="stats" aria-label="Booking counts">
     <div class="stat">
-      <dt>Bookings</dt>
-      <dd>{weekCount ?? 0}<small>next 7 days</small></dd>
+      <dt>Upcoming</dt>
+      <dd>{tabCounts.upcoming}<small>confirmed &amp; assigned</small></dd>
     </div>
     <div class="stat">
       <dt>Need a vehicle</dt>
-      <dd>{needCount ?? 0}<small>confirmed, unassigned</small></dd>
+      <dd>{tabCounts.need_vehicle}<small>confirmed, unassigned</small></dd>
     </div>
     <div class="stat">
-      <dt>VIP security</dt>
-      <dd>{vipCount ?? 0}<small>notes to confirm</small></dd>
+      <dt>Pending payment</dt>
+      <dd>{tabCounts.pending}<small>live hold</small></dd>
     </div>
     <div class="stat">
-      <dt>Invoices requested</dt>
-      <dd>{invCount ?? 0}<small>not issued</small></dd>
+      <dt>All</dt>
+      <dd>{tabCounts.all}<small>every booking</small></dd>
     </div>
   </dl>
 
   <nav class="tabs" aria-label="Quick views" style="margin-top:1.25rem">
-    <a href={qs({ status: 'active', needs_vehicle: null })} aria-current={status === 'active' && !needsVehicle ? 'page' : undefined}>
-      Upcoming <span class="count">{weekCount ?? 0}</span>
-    </a>
-    <a
-      href={qs({ status: 'confirmed', needs_vehicle: '1' })}
-      aria-current={needsVehicle ? 'page' : undefined}
-    >
-      Need a vehicle <span class="count">{needCount ?? 0}</span>
-    </a>
-    <a href={qs({ status: 'pending', needs_vehicle: null })} aria-current={status === 'pending' ? 'page' : undefined}>
-      Pending payment
-    </a>
-    <a href={qs({ status: 'completed', needs_vehicle: null })} aria-current={status === 'completed' ? 'page' : undefined}>
-      Past
-    </a>
-    <a href={qs({ status: 'cancelled', needs_vehicle: null })} aria-current={status === 'cancelled' ? 'page' : undefined}>
-      Cancelled
-    </a>
+    {
+      BOOKINGS_TABS.map((t) => (
+        <a href={qs({ tab: t })} aria-current={tab === t ? 'page' : undefined}>
+          {BOOKINGS_TAB_LABEL[t]} <span class="count">{tabCounts[t]}</span>
+        </a>
+      ))
+    }
   </nav>
 
   <form class="filters" aria-label="Filters" method="get">
+    <input type="hidden" name="tab" value={tab} />
     <div class="field">
       <label for="fr">From</label>
       <input id="fr" class="input" type="date" name="from" value={from} />
@@ -249,8 +254,6 @@ function qs(overrides: Record<string, string | null>): string {
         ]}
       />
     </div>
-    <input type="hidden" name="status" value={status} />
-    {needsVehicle && <input type="hidden" name="needs_vehicle" value="1" />}
     <label class="check">
       <input type="checkbox" name="vip" value="1" checked={vipOnly} /> VIP security only
     </label>
@@ -276,7 +279,11 @@ function qs(overrides: Record<string, string | null>): string {
   }
 
   {
-    bookings.length === 0 ? (
+    listError ? (
+      <Banner tone="danger" role="alert">
+        {listError}
+      </Banner>
+    ) : bookings.length === 0 ? (
       <EmptyState title="No bookings">No bookings match these filters.</EmptyState>
     ) : (
       <DataTable label="Bookings, sorted by pick-up time" cards>
@@ -284,7 +291,7 @@ function qs(overrides: Record<string, string | null>): string {
         <thead>
           <tr>
             <th scope="col">Reference</th>
-            <th scope="col" aria-sort="ascending">
+            <th scope="col" aria-sort={applied.ascending ? 'ascending' : 'descending'}>
               Pick-up
             </th>
             <th scope="col">Trip</th>
@@ -375,40 +382,40 @@ function qs(overrides: Record<string, string | null>): string {
     )
   }
 
-  <div class="pager">
-    <span>
-      Showing {(page - 1) * pageSize + 1}–{(page - 1) * pageSize + bookings.length}
-      {bookings.length >= pageSize ? '+' : ''} · {pageSize} per page
-    </span>
-    <div class="row">
-      {
-        page > 1 ? (
-          <a
-            class="btn btn-secondary btn-sm"
-            href={`?${new URLSearchParams({ ...Object.fromEntries(q), page: String(page - 1) })}`}
-          >
-            Previous
-          </a>
-        ) : (
-          <span class="btn btn-secondary btn-sm" aria-disabled="true">
-            Previous
-          </span>
-        )
-      }
-      {
-        bookings.length >= pageSize ? (
-          <a
-            class="btn btn-secondary btn-sm"
-            href={`?${new URLSearchParams({ ...Object.fromEntries(q), page: String(page + 1) })}`}
-          >
-            Next
-          </a>
-        ) : (
-          <span class="btn btn-secondary btn-sm" aria-disabled="true">
-            Next
-          </span>
-        )
-      }
-    </div>
-  </div>
+  {
+    !listError && (
+      <div class="pager">
+        <span>
+          Showing {(page - 1) * pageSize + 1}–{(page - 1) * pageSize + bookings.length}
+          {bookings.length >= pageSize ? '+' : ''} · {pageSize} per page
+        </span>
+        <div class="row">
+          {page > 1 ? (
+            <a
+              class="btn btn-secondary btn-sm"
+              href={`?${new URLSearchParams({ ...Object.fromEntries(q), page: String(page - 1) })}`}
+            >
+              Previous
+            </a>
+          ) : (
+            <span class="btn btn-secondary btn-sm" aria-disabled="true">
+              Previous
+            </span>
+          )}
+          {bookings.length >= pageSize ? (
+            <a
+              class="btn btn-secondary btn-sm"
+              href={`?${new URLSearchParams({ ...Object.fromEntries(q), page: String(page + 1) })}`}
+            >
+              Next
+            </a>
+          ) : (
+            <span class="btn btn-secondary btn-sm" aria-disabled="true">
+              Next
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
 </AdminLayout>

@@ -4,6 +4,7 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Select from '../components/Select.astro';
+import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -22,7 +23,7 @@ const pageError =
   actionErr(Astro.getActionResult?.(actions.deleteVehicle)) ||
   actionErr(Astro.getActionResult?.(actions.deleteClass));
 
-const [{ data: classes }, { data: vehicles }, { data: bookings }, sanityKeys] = await Promise.all([
+const [classesRes, vehiclesRes, bookingsRes, sanityKeys] = await Promise.all([
   supabase
     .from('vehicle_classes')
     .select('id, key, name, max_passengers, max_luggage, buffer_minutes, active, sort_order')
@@ -56,23 +57,36 @@ const [{ data: classes }, { data: vehicles }, { data: bookings }, sanityKeys] = 
   })(),
 ]);
 
-const classById = new Map((classes ?? []).map((c) => [c.id, c]));
+const classesLoad = resolveListLoad('fleet', classesRes.data, classesRes.error);
+const vehiclesLoad = resolveListLoad('vehicles', vehiclesRes.data, vehiclesRes.error);
+if (classesRes.error) logListError('fleet_classes', classesRes.error.message);
+if (vehiclesRes.error) logListError('fleet_vehicles', vehiclesRes.error.message);
+if (bookingsRes.error) logListError('fleet_bookings', bookingsRes.error.message);
+const listError =
+  (!classesLoad.ok && classesLoad.message) ||
+  (!vehiclesLoad.ok && vehiclesLoad.message) ||
+  (bookingsRes.error ? `Could not load bookings: ${bookingsRes.error.message}` : null);
+const classes = classesLoad.ok ? classesLoad.rows : [];
+const vehicles = vehiclesLoad.ok ? vehiclesLoad.rows : [];
+const bookings = bookingsRes.error ? [] : (bookingsRes.data ?? []);
+
+const classById = new Map(classes.map((c) => [c.id, c]));
 const vehicleCount = new Map<string, number>();
-for (const v of vehicles ?? []) {
+for (const v of vehicles) {
   vehicleCount.set(v.class_id, (vehicleCount.get(v.class_id) ?? 0) + 1);
 }
 
 const bookedVehicleIds = new Set(
-  (bookings ?? []).map((b) => b.vehicle_id).filter((id): id is string => Boolean(id)),
+  bookings.map((b) => b.vehicle_id).filter((id): id is string => Boolean(id)),
 );
 const nextByVehicle = new Map<string, { pickup_at: string; reference: string }>();
-for (const b of bookings ?? []) {
+for (const b of bookings) {
   if (!b.vehicle_id || nextByVehicle.has(b.vehicle_id)) continue;
   nextByVehicle.set(b.vehicle_id, { pickup_at: b.pickup_at, reference: b.reference });
 }
 
 const waitingByClass = new Map<string, number>();
-for (const b of bookings ?? []) {
+for (const b of bookings) {
   if (b.vehicle_id || !['confirmed', 'assigned'].includes(b.status)) continue;
   waitingByClass.set(b.class_id, (waitingByClass.get(b.class_id) ?? 0) + 1);
 }
@@ -101,9 +115,9 @@ function fmtNext(iso: string) {
 
 <AdminLayout title="Fleet" current="fleet" staffEmail={staff.email}>
   {
-    pageError && (
+    (pageError || listError) && (
       <div class="banner banner-danger" role="alert">
-        <p>{pageError}</p>
+        <p>{pageError || listError}</p>
       </div>
     )
   }
@@ -129,7 +143,7 @@ function fmtNext(iso: string) {
         </thead>
         <tbody>
           {
-            (classes ?? []).map((c) => {
+            classes.map((c) => {
               const noSanity = !sanityKeys.has(c.key);
               return (
                 <tr class={c.active ? undefined : 'is-muted'}>
@@ -189,7 +203,7 @@ function fmtNext(iso: string) {
         </thead>
         <tbody>
           {
-            (vehicles ?? []).map((v) => {
+            vehicles.map((v) => {
               const cls = classById.get(v.class_id);
               const badge = statusBadge(v.status);
               const next = nextByVehicle.get(v.id);
@@ -291,7 +305,7 @@ function fmtNext(iso: string) {
             id="av-cls"
             name="classId"
             required
-            options={(classes ?? []).map((c) => ({
+            options={classes.map((c) => ({
               value: c.id,
               label: c.name,
               meta: c.active ? undefined : 'offline',
@@ -343,7 +357,7 @@ function fmtNext(iso: string) {
             id="ev-cls"
             name="classId"
             required
-            options={(classes ?? []).map((c) => ({ value: c.id, label: c.name }))}
+            options={classes.map((c) => ({ value: c.id, label: c.name }))}
           />
         </div>
         <div class="field">

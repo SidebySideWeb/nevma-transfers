@@ -3,8 +3,10 @@ export const prerender = false;
 
 import { Temporal } from '@js-temporal/polyfill';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import Banner from '../components/Banner.astro';
 import Select from '../components/Select.astro';
 import { athensTime } from '../lib/athens-day';
+import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { dayBar, parseItems, type BarView } from '../lib/calendar-items';
 import {
   athensDateKey,
@@ -48,13 +50,21 @@ const [classesRes, vehiclesRes, itemsRes] = await Promise.all([
   supabase.from('vehicles').select('id, label, class_id').eq('status', 'active').order('label'),
   supabase.from('calendar_items').select('*').filter('range', 'ov', rangeLiteral(rangeStart, rangeEnd)),
 ]);
-if (itemsRes.error) {
-  console.error(JSON.stringify({ level: 'error', code: 'calendar_items', message: itemsRes.error.message }));
-}
-const allClasses = classesRes.data ?? [];
+const classesLoad = resolveListLoad('fleet classes', classesRes.data, classesRes.error);
+const vehiclesLoad = resolveListLoad('vehicles', vehiclesRes.data, vehiclesRes.error);
+const itemsLoad = resolveListLoad('calendar', itemsRes.data, itemsRes.error);
+const listError =
+  (!classesLoad.ok && classesLoad.message) ||
+  (!vehiclesLoad.ok && vehiclesLoad.message) ||
+  (!itemsLoad.ok && itemsLoad.message) ||
+  null;
+if (classesRes.error) logListError('calendar_classes', classesRes.error.message);
+if (vehiclesRes.error) logListError('calendar_vehicles', vehiclesRes.error.message);
+if (itemsRes.error) logListError('calendar_items', itemsRes.error.message);
+const allClasses = classesLoad.ok ? classesLoad.rows : [];
 const classes = classKey ? allClasses.filter((c) => c.key === classKey) : allClasses;
-const vehicles = vehiclesRes.data ?? [];
-const items = parseItems(itemsRes.data ?? []);
+const vehicles = vehiclesLoad.ok ? vehiclesLoad.rows : [];
+const items = parseItems(itemsLoad.ok ? itemsLoad.rows : []);
 
 // Free vehicles per hour (day) or lowest per day (week), from the database function.
 const freeByClass = new Map<string, number[]>();
@@ -228,6 +238,14 @@ const regionLabel =
     {view === 'day' && <a class="btn btn-secondary" href="/blocked-slots">Block a vehicle</a>}
     <a class="btn" href="/bookings/new">New booking</a>
   </div>
+
+  {
+    listError && (
+      <Banner tone="danger" role="alert">
+        {listError}
+      </Banner>
+    )
+  }
 
   <form class="cal-toolbar" method="get" aria-label="Calendar controls">
     <input type="hidden" name="view" value={view} />

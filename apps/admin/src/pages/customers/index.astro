@@ -2,8 +2,10 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
 import Flag from '../../components/Flag.astro';
 import Select from '../../components/Select.astro';
+import { logListError, resolveListLoad } from '../../lib/bookings-list';
 import {
   buildCustomerSearchOr,
   CUSTOMER_PAGE_SIZE,
@@ -39,11 +41,11 @@ query = query
   .range((page - 1) * CUSTOMER_PAGE_SIZE, page * CUSTOMER_PAGE_SIZE - 1);
 
 const { data: rows, count, error } = await query;
-if (error) {
-  console.error(JSON.stringify({ level: 'error', code: 'customers_list', message: error.message }));
-}
-const customers = rows ?? [];
-const total = count ?? 0;
+const load = resolveListLoad('customers', rows, error);
+if (!load.ok) logListError('customers_list', error!.message);
+const customers = load.ok ? load.rows : [];
+const listError = load.ok ? null : load.message;
+const total = listError ? 0 : (count ?? 0);
 const from = total === 0 ? 0 : (page - 1) * CUSTOMER_PAGE_SIZE + 1;
 const to = Math.min(page * CUSTOMER_PAGE_SIZE, total);
 const pages = Math.max(1, Math.ceil(total / CUSTOMER_PAGE_SIZE));
@@ -80,6 +82,14 @@ const exportHref = `/customers/export.csv${qs({ page: undefined })}`;
     <a class="btn btn-secondary" href={exportHref}>Export CSV</a>
   </div>
 
+  {
+    listError && (
+      <Banner tone="danger" role="alert">
+        {listError}
+      </Banner>
+    )
+  }
+
   <form class="filters" aria-label="Find customers" method="get" id="cu-filters">
     <div class="field" style="grid-column: span 2">
       <label for="cu-q">Search</label>
@@ -115,49 +125,51 @@ const exportHref = `/customers/export.csv${qs({ page: undefined })}`;
     </div>
   </form>
 
-  <div class="table-wrap" role="region" tabindex="0" aria-labelledby="cu-cap">
-    <table class="table table-cards">
-      <caption id="cu-cap" class="sr-only">Customers</caption>
-      <thead>
-        <tr>
-          <th scope="col">Customer</th>
-          <th scope="col">Phone</th>
-          <th scope="col">Company</th>
-          <th scope="col" class="num">Bookings</th>
-          <th scope="col">Last booking</th>
-          <th scope="col" class="num">Paid in total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {
-          customers.length === 0 ? (
+  {
+    !listError && (
+      <div class="table-wrap" role="region" tabindex="0" aria-labelledby="cu-cap">
+        <table class="table table-cards">
+          <caption id="cu-cap" class="sr-only">Customers</caption>
+          <thead>
             <tr>
-              <td colspan="6">No customers match.</td>
+              <th scope="col">Customer</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Company</th>
+              <th scope="col" class="num">Bookings</th>
+              <th scope="col">Last booking</th>
+              <th scope="col" class="num">Paid in total</th>
             </tr>
-          ) : (
-            customers.map((c) => (
+          </thead>
+          <tbody>
+            {customers.length === 0 ? (
               <tr>
-                <td class="card-title" data-label="Customer">
-                  <a href={`/customers/${c.id}`}>{c.name}</a>
-                  {c.has_vip_security && <Flag kind="vip" />}
-                  <span class="sub">{c.email}</span>
-                </td>
-                <td data-label="Phone">{c.phone || '—'}</td>
-                <td data-label="Company">{c.company || '—'}</td>
-                <td class="num" data-label="Bookings">
-                  {c.bookings_count ?? 0}
-                </td>
-                <td data-label="Last booking">{fmtDay(c.last_pickup_at)}</td>
-                <td class="num" data-label="Paid in total">
-                  {formatEuro(c.paid_cents ?? 0)}
-                </td>
+                <td colspan="6">No customers match.</td>
               </tr>
-            ))
-          )
-        }
-      </tbody>
-    </table>
-  </div>
+            ) : (
+              customers.map((c) => (
+                <tr>
+                  <td class="card-title" data-label="Customer">
+                    <a href={`/customers/${c.id}`}>{c.name}</a>
+                    {c.has_vip_security && <Flag kind="vip" />}
+                    <span class="sub">{c.email}</span>
+                  </td>
+                  <td data-label="Phone">{c.phone || '—'}</td>
+                  <td data-label="Company">{c.company || '—'}</td>
+                  <td class="num" data-label="Bookings">
+                    {c.bookings_count ?? 0}
+                  </td>
+                  <td data-label="Last booking">{fmtDay(c.last_pickup_at)}</td>
+                  <td class="num" data-label="Paid in total">
+                    {formatEuro(c.paid_cents ?? 0)}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 
   <div class="pager">
     <span>

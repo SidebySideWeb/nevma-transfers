@@ -3,7 +3,9 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import Banner from '../components/Banner.astro';
 import Select from '../components/Select.astro';
+import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 
@@ -11,34 +13,56 @@ const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const classKey = Astro.url.searchParams.get('class') || '';
 
-const { data: classes } = await supabase
+const classesRes = await supabase
   .from('vehicle_classes')
   .select('id, key')
   .eq('active', true)
   .order('sort_order');
-const selected =
-  (classes ?? []).find((c) => c.key === classKey) ?? (classes ?? [])[0] ?? null;
+const classesLoad = resolveListLoad('vehicle classes', classesRes.data, classesRes.error);
+if (classesRes.error) logListError('prices_classes', classesRes.error.message);
+const classes = classesLoad.ok ? classesLoad.rows : [];
+const selected = classes.find((c) => c.key === classKey) ?? classes[0] ?? null;
 
-const { data: zones } = await supabase
+const zonesRes = await supabase
   .from('zones')
   .select('id, code, name')
   .eq('active', true)
   .order('sort_order');
+const zonesLoad = resolveListLoad('zones', zonesRes.data, zonesRes.error);
+if (zonesRes.error) logListError('prices_zones', zonesRes.error.message);
 
-const { data: prices } = selected
+const pricesRes = selected
   ? await supabase.from('zone_prices').select('from_zone_id, to_zone_id, price_cents').eq('class_id', selected.id)
-  : { data: [] };
+  : { data: [] as { from_zone_id: string; to_zone_id: string; price_cents: number }[], error: null };
+if (pricesRes.error) logListError('prices_zone_prices', pricesRes.error.message);
+const pricesLoad = resolveListLoad('zone prices', pricesRes.data, pricesRes.error);
 
 const priceMap = new Map(
-  (prices ?? []).map((p) => [`${p.from_zone_id}:${p.to_zone_id}`, p.price_cents]),
+  (pricesLoad.ok ? pricesLoad.rows : []).map((p) => [`${p.from_zone_id}:${p.to_zone_id}`, p.price_cents]),
 );
 
-const { data: routes } = await supabase
+const routesRes = await supabase
   .from('zone_routes')
   .select('from_zone_id, to_zone_id, duration_minutes');
+if (routesRes.error) logListError('prices_routes', routesRes.error.message);
+const routes = routesRes.error ? [] : (routesRes.data ?? []);
+const zones = zonesLoad.ok ? zonesLoad.rows : [];
+
+const listError =
+  (!classesLoad.ok && classesLoad.message) ||
+  (!zonesLoad.ok && zonesLoad.message) ||
+  (!pricesLoad.ok && pricesLoad.message) ||
+  (routesRes.error ? `Could not load routes: ${routesRes.error.message}` : null);
 ---
 
 <AdminLayout title="Zone prices" current="prices" staffEmail={staff.email}>
+  {
+    listError && (
+      <Banner tone="danger" role="alert">
+        {listError}
+      </Banner>
+    )
+  }
   <p class="muted">
     Prices in euros. Changes apply to new bookings only. An empty cell means no online price.
   </p>
@@ -50,7 +74,7 @@ const { data: routes } = await supabase
         id="cls"
         name="class"
         autoSubmit
-        options={(classes ?? []).map((c) => ({
+        options={classes.map((c) => ({
           value: c.key,
           label: c.key,
           selected: selected?.id === c.id,
@@ -69,16 +93,16 @@ const { data: routes } = await supabase
             <thead>
               <tr>
                 <th scope="col">From \ To</th>
-                {(zones ?? []).map((z) => (
+                {zones.map((z) => (
                   <th scope="col">{z.name}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {(zones ?? []).map((fromZ) => (
+              {zones.map((fromZ) => (
                 <tr>
                   <th scope="row">{fromZ.name}</th>
-                  {(zones ?? []).map((toZ) => {
+                  {zones.map((toZ) => {
                     if (fromZ.id === toZ.id) return <td>-</td>;
                     const cents = priceMap.get(`${fromZ.id}:${toZ.id}`);
                     return (
@@ -116,9 +140,9 @@ const { data: routes } = await supabase
         </thead>
         <tbody>
           {
-            (routes ?? []).map((r) => {
-              const from = (zones ?? []).find((z) => z.id === r.from_zone_id)?.name ?? r.from_zone_id;
-              const to = (zones ?? []).find((z) => z.id === r.to_zone_id)?.name ?? r.to_zone_id;
+            routes.map((r) => {
+              const from = zones.find((z) => z.id === r.from_zone_id)?.name ?? r.from_zone_id;
+              const to = zones.find((z) => z.id === r.to_zone_id)?.name ?? r.to_zone_id;
               return (
                 <tr>
                   <td>{from}</td>
