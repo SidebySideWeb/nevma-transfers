@@ -5,6 +5,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.astro';
 import FeatureList from '../components/v2/FeatureList.astro';
 import HomeQuickBook from '../components/home/HomeQuickBook';
+import { HomeFleetTeaser } from '../components/home/HomeFleetTeaser';
+import { isBookingOpen } from '../lib/booking-open';
 import { getSiteSettings } from '../lib/sanity/content';
 import { getPageBySlug } from '../lib/sanity/pages';
 import { createSanityClient, sanityConfigured } from '../lib/sanity/client';
@@ -75,6 +77,7 @@ const jsonLd: unknown[] = [organizationJsonLd(settings, siteUrl)];
 if (faqItems.length > 0) jsonLd.push(faqPageJsonLd(faqItems));
 
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const bookingOpen = isBookingOpen();
 const accentFleet = t('home.fleet.accent');
 const fleetTitleParts = t('home.fleet.title', { accent: accentFleet }).split(accentFleet);
 const ctaAccent = t('home.cta.accent');
@@ -120,8 +123,8 @@ const amenParts = t('home.amenities.title', { accent: amenAccent }).split(amenAc
         fromLabel={t('booking.pickup.zone')}
         toLabel={t('booking.dropoff.zone')}
         hoursLabel={t('booking.hours.label')}
-        dateLabel={t('booking.pickup.datetime')}
-        timeLabel={t('booking.pickup.datetime')}
+        dateLabel={t('home.quick.date')}
+        timeLabel={t('home.quick.time')}
         passengersLabel={t('booking.passengers')}
         submitLabel={t('home.quick.submit')}
         swapLabel={t('booking.swap')}
@@ -190,46 +193,22 @@ const amenParts = t('home.amenities.title', { accent: amenAccent }).split(amenAc
   </section>
 
   {
-    fleet.length > 0 && (
-      <section class="section home-fleet">
-        <div class="wrap home-fleet-grid">
-          <div class="home-fleet-copy">
-            <p class="eyebrow">{t('home.fleet.eyebrow')}</p>
-            <h2 class="display">
-              {fleetTitleParts[0]}
-              <em>{accentFleet}</em>
-              {fleetTitleParts[1] ?? ''}
-            </h2>
-            <p class="muted">{t('home.fleet.lead')}</p>
-            <ul class="home-fleet-tabs" role="list">
-              {fleet.map((v) => (
-                <li>
-                  <a href={`/fleet/${v.key}`}>{v.name}</a>
-                </li>
-              ))}
-            </ul>
-            <a class="link-arrow" href="/fleet">
-              {t('home.fleet.compare')} →
-            </a>
-          </div>
-          <div class="home-fleet-panel">
-            {fleet[0]?.photoUrl ? (
-              <img src={fleet[0].photoUrl} alt={fleet[0].photoAlt || fleet[0].name} loading="lazy" />
-            ) : (
-              <div class="media" aria-hidden="true" />
-            )}
-            <div class="home-fleet-panel-body">
-              <p class="eyebrow">Mercedes-Benz</p>
-              <h3 class="display accent">{fleet[0]?.name}</h3>
-              {fleet[0]?.tagline ? <p class="muted">{fleet[0].tagline}</p> : null}
-              <a class="btn btn-gold" href="/book">
-                {t('home.cta.book')}
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-    )
+    fleet.length > 0 ? (
+      <HomeFleetTeaser
+        client:load
+        items={fleet}
+        eyebrow={t('home.fleet.eyebrow')}
+        titleBefore={fleetTitleParts[0] ?? ''}
+        titleAccent={accentFleet}
+        titleAfter={fleetTitleParts[1] ?? ''}
+        lead={t('home.fleet.lead')}
+        compareLabel={t('home.fleet.compare')}
+        brandLabel={t('fleet.brand')}
+        bookLabel={t('home.cta.book')}
+        detailsLabel={t('fleet.details')}
+        bookingOpen={bookingOpen}
+      />
+    ) : null
   }
 
   <FeatureList
@@ -245,29 +224,30 @@ const amenParts = t('home.amenities.title', { accent: amenAccent }).split(amenAc
     ]}
   />
 
-  <section class="section" style="background:#0f1112;border-block:1px solid var(--color-border);">
+  <section class="section home-amenities" style="background:#0f1112;border-block:1px solid var(--color-border);">
     <div class="wrap band-split">
-      <div class="band-split-copy">
+      <div class="home-amenities-media" role="img" aria-label={t('home.amenities.eyebrow')} />
+      <div class="band-split-copy" style="flex:1 1 22rem;">
         <p class="eyebrow">{t('home.amenities.eyebrow')}</p>
         <h2 class="display" style="font-size:var(--text-2xl);">
           {amenParts[0]}
           <em>{amenAccent}</em>
           {amenParts[1] ?? ''}
         </h2>
-      </div>
-      <div class="hospitality-grid" style="flex:2 1 28rem;">
-        {
-          [
-            t('home.amenities.wifi'),
-            t('home.amenities.water'),
-            t('home.amenities.charging'),
-            t('home.amenities.luggage'),
-          ].map((label) => (
-            <div class="hospitality-item">
-              <strong>{label}</strong>
-            </div>
-          ))
-        }
+        <div class="hospitality-grid">
+          {
+            [
+              t('home.amenities.wifi'),
+              t('home.amenities.water'),
+              t('home.amenities.charging'),
+              t('home.amenities.luggage'),
+            ].map((label) => (
+              <div class="hospitality-item">
+                <strong>{label}</strong>
+              </div>
+            ))
+          }
+        </div>
       </div>
     </div>
   </section>

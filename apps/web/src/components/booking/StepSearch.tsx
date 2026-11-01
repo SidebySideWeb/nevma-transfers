@@ -60,7 +60,7 @@ export function StepSearch({
           </ul>
         </Notice>
       )}
-      <form className="card stack" onSubmit={handleSubmit} noValidate>
+      <form className="stack booking-journey" onSubmit={handleSubmit} noValidate>
         <TripTypeSwitch
           value={search.type}
           onChange={(type) => onChange({ type })}
@@ -69,8 +69,8 @@ export function StepSearch({
           groupLabel="Booking type"
         />
 
-        <div className="grid grid-2">
-          <div id="field-fromZone">
+        <div className="booking-journey-bar">
+          <div id="field-fromZone" className="booking-journey-cell">
             <ZoneSelect
               id="from"
               name="fromZone"
@@ -91,7 +91,7 @@ export function StepSearch({
           </div>
 
           {search.type === 'transfer' ? (
-            <div id="field-toZone">
+            <div id="field-toZone" className="booking-journey-cell">
               <ZoneSelect
                 id="to"
                 name="toZone"
@@ -103,7 +103,7 @@ export function StepSearch({
               />
             </div>
           ) : (
-            <div id="field-hours">
+            <div id="field-hours" className="booking-journey-cell">
               <Stepper
                 id="hours"
                 label={strings['booking.hours.label'] ?? ''}
@@ -121,7 +121,7 @@ export function StepSearch({
             </div>
           )}
 
-          <div className="field" id="field-pickupLocal">
+          <div className="field booking-journey-cell" id="field-pickupLocal">
             <label htmlFor="date">{strings['booking.pickup.datetime']}</label>
             <input
               id="date"
@@ -142,32 +142,32 @@ export function StepSearch({
               </span>
             )}
           </div>
+        </div>
 
-          {/* ponytail: plain number inputs, not Steppers. A Stepper clamps to a max, but over-capacity
-              requests must reach the server (it answers no_price/unavailable, see e2e). */}
-          <div className="grid grid-2">
-            <div className="field">
-              <label htmlFor="pax">{strings['booking.passengers']}</label>
-              <input
-                id="pax"
-                className="input"
-                type="number"
-                min={1}
-                value={search.passengers}
-                onChange={(e) => onChange({ passengers: Number(e.target.value) })}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="bags">{strings['booking.luggage']}</label>
-              <input
-                id="bags"
-                className="input"
-                type="number"
-                min={0}
-                value={search.luggage}
-                onChange={(e) => onChange({ luggage: Number(e.target.value) })}
-              />
-            </div>
+        {/* ponytail: plain number inputs, not Steppers. A Stepper clamps to a max, but over-capacity
+            requests must reach the server (it answers no_price/unavailable, see e2e). */}
+        <div className="grid grid-2">
+          <div className="field">
+            <label htmlFor="pax">{strings['booking.passengers']}</label>
+            <input
+              id="pax"
+              className="input"
+              type="number"
+              min={1}
+              value={search.passengers}
+              onChange={(e) => onChange({ passengers: Number(e.target.value) })}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="bags">{strings['booking.luggage']}</label>
+            <input
+              id="bags"
+              className="input"
+              type="number"
+              min={0}
+              value={search.luggage}
+              onChange={(e) => onChange({ luggage: Number(e.target.value) })}
+            />
           </div>
         </div>
 

@@ -203,6 +203,33 @@ const useAccentTitle = Boolean(meta.titleAccent);
   }
 
   {
+    slug === 'about' ? (
+      <section class="section" style="padding-top:0;">
+        <div class="wrap">
+          <div class="about-stats">
+            <div class="about-stat">
+              <div class="about-stat-value">{t('about.stat.247')}</div>
+              <div class="about-stat-label">{t('about.stat.247.label')}</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-value">{t('about.stat.divisions')}</div>
+              <div class="about-stat-label">{t('about.stat.divisions.label')}</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-value">{t('about.stat.classes')}</div>
+              <div class="about-stat-label">{t('about.stat.classes.label')}</div>
+            </div>
+            <div class="about-stat">
+              <div class="about-stat-value">{t('about.stat.founded')}</div>
+              <div class="about-stat-label">{t('about.stat.founded.label')}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    ) : null
+  }
+
+  {
     slug === 'contact' ? (
       <section class="section">
         <div class="wrap" style="display:flex;flex-wrap:wrap;gap:var(--space-4);">
@@ -231,6 +258,10 @@ const useAccentTitle = Boolean(meta.titleAccent);
 
   {
     rest.map((section) => {
+      const heading =
+        'heading' in section && typeof section.heading === 'string' ? section.heading : '';
+      // Hide leftover DEMO CMS chrome until client replaces copy (layout is V2-hardcoded).
+      if (heading.startsWith('DEMO')) return null;
       switch (section._type) {
         case 'richText':
           return <RichText heading={section.heading} body={section.body} />;
@@ -269,6 +300,27 @@ const useAccentTitle = Boolean(meta.titleAccent);
             <ContactDetails heading={section.heading} showHours={section.showHours} />
           );
         case 'formBlock':
+          if (slug === 'contact') {
+            const formAccent = t('contact.form.accent');
+            const formParts = t('contact.form.title', { accent: formAccent }).split(formAccent);
+            return (
+              <section class="section">
+                <div class="wrap contact-form-layout">
+                  <div class="stack" style="flex:2 1 28rem;">
+                    <p class="eyebrow">{t('contact.form.eyebrow')}</p>
+                    <h2 class="display" style="font-size:var(--text-2xl);">
+                      {formParts[0]}
+                      <em>{formAccent}</em>
+                      {formParts[1] ?? ''}
+                    </h2>
+                    <p class="muted">{t('contact.form.lead')}</p>
+                    <FormBlock heading={undefined} form={section.form} id={formBlockId} />
+                  </div>
+                  <div class="contact-form-aside" aria-hidden="true" />
+                </div>
+              </section>
+            );
+          }
           return (
             <FormBlock heading={section.heading} form={section.form} id={formBlockId} />
           );

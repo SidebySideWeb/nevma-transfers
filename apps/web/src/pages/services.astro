@@ -162,8 +162,12 @@ const seo = resolveSeo({
     routes.length > 1 ? (
       <section class="section" style="background:#0f1112;border-block:1px solid var(--color-border);">
         <div class="wrap stack">
-          <p class="eyebrow">{t('nav.services')}</p>
-          <h2 class="display">{t('nav.services')}</h2>
+          <p class="eyebrow">{t('services.routes.eyebrow')}</p>
+          <h2 class="display">
+            {t('services.routes.title', { accent: t('services.routes.accent') }).split(t('services.routes.accent'))[0]}
+            <em>{t('services.routes.accent')}</em>
+            {t('services.routes.title', { accent: t('services.routes.accent') }).split(t('services.routes.accent'))[1] ?? ''}
+          </h2>
           <div class="grid grid-3">
             {routes.map((r) => (
               <a class="card stack" href={`/routes/${r.slug}`} style="text-decoration:none;color:inherit;padding:0;overflow:hidden;border:1px solid var(--color-border);">
