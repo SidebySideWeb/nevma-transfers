@@ -7,10 +7,9 @@ import FeatureList from '../components/v2/FeatureList.astro';
 import HomeQuickBook from '../components/home/HomeQuickBook';
 import { HomeFleetTeaser } from '../components/home/HomeFleetTeaser';
 import { isBookingOpen } from '../lib/booking-open';
+import { getPublishableClasses } from '../lib/content/vehicles';
 import { getSiteSettings } from '../lib/sanity/content';
 import { getPageBySlug } from '../lib/sanity/pages';
-import { createSanityClient, sanityConfigured } from '../lib/sanity/client';
-import { VEHICLE_CLASSES_QUERY } from '../lib/sanity/queries';
 import { organizationJsonLd, resolveSeo, faqPageJsonLd, type FaqItem } from '../lib/seo';
 import { t } from '../lib/strings';
 
@@ -37,28 +36,17 @@ let fleet: Array<{
   photoUrl?: string | null;
   photoAlt?: string | null;
 }> = [];
-if (sanityConfigured()) {
-  try {
-    const client = createSanityClient();
-    type FleetRow = {
-      key?: string | null;
-      name?: string | null;
-      tagline?: string | null;
-      photos?: Array<{ alt?: string | null; asset?: { url?: string | null } | null }> | null;
-    };
-    const rows = await client.fetch<FleetRow[]>(VEHICLE_CLASSES_QUERY);
-    fleet = (rows ?? [])
-      .filter((r): r is FleetRow & { key: string; name: string } => Boolean(r?.key && r?.name))
-      .map((r) => ({
-        key: r.key,
-        name: r.name,
-        tagline: r.tagline,
-        photoUrl: r.photos?.[0]?.asset?.url ?? null,
-        photoAlt: r.photos?.[0]?.alt ?? r.name,
-      }));
-  } catch {
-    fleet = [];
-  }
+try {
+  const classes = await getPublishableClasses();
+  fleet = classes.map((c) => ({
+    key: c.key,
+    name: c.name,
+    tagline: c.tagline,
+    photoUrl: c.photos?.[0]?.url ?? c.photos?.[0]?.asset?.url ?? null,
+    photoAlt: c.photos?.[0]?.alt ?? c.name,
+  }));
+} catch {
+  fleet = [];
 }
 
 const seo = resolveSeo({
@@ -229,7 +217,7 @@ const amenParts = t('home.amenities.title', { accent: amenAccent }).split(amenAc
       <div class="home-amenities-media" role="img" aria-label={t('home.amenities.eyebrow')} />
       <div class="band-split-copy" style="flex:1 1 22rem;">
         <p class="eyebrow">{t('home.amenities.eyebrow')}</p>
-        <h2 class="display" style="font-size:var(--text-2xl);">
+        <h2 class="display">
           {amenParts[0]}
           <em>{amenAccent}</em>
           {amenParts[1] ?? ''}

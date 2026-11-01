@@ -148,7 +148,26 @@
     letter-spacing: -0.01em;
     margin: 0;
   }
-  .display em {
+  /* Keep display sizes above the element tag rules (h2 was stuck at body scale). */
+  h1.display,
+  .page-hero-title,
+  .home-hero-title,
+  .notice-block-title {
+    font-size: var(--text-3xl);
+  }
+  h2.display,
+  .home-section-head .display,
+  .feature-list-head .display,
+  .home-cta .display {
+    font-size: var(--text-2xl);
+  }
+  h3.display,
+  .fleet-card-name,
+  .home-fleet-panel-body .display {
+    font-size: var(--text-xl);
+  }
+  .display em,
+  .display.accent {
     font-style: italic;
     color: var(--color-accent);
   }
@@ -1333,8 +1352,7 @@
     gap: var(--space-5);
   }
   .home-hero-title {
-    font-size: var(--text-3xl);
-    max-width: 28rem;
+    max-width: 14ch;
   }
   .home-hero-lead {
     margin: 0;
@@ -1432,8 +1450,7 @@
     margin-bottom: var(--space-6);
   }
   .home-section-head .display {
-    font-size: var(--text-2xl);
-    max-width: 28rem;
+    max-width: 18ch;
   }
   .home-section-head .muted {
     max-width: 24rem;
@@ -1684,8 +1701,7 @@
     justify-content: space-between;
   }
   .home-cta .display {
-    font-size: var(--text-2xl);
-    max-width: 28rem;
+    max-width: 18ch;
   }
   .state-page {
     min-height: 60vh;
@@ -2070,8 +2086,7 @@
     padding-block: var(--space-7) var(--space-6);
   }
   .page-hero-title {
-    font-size: var(--text-3xl);
-    max-width: 28rem;
+    max-width: 16ch;
   }
   .page-hero-lead {
     margin: 0;
