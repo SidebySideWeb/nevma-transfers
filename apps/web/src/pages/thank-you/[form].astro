@@ -1,0 +1,74 @@
+---
+export const prerender = true;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { FORM_KEYS, isFormKey, type FormKey } from '../../lib/forms/schemas';
+import { createSanityClient, sanityConfigured } from '../../lib/sanity/client';
+import { getSiteSettings } from '../../lib/sanity/content';
+import { FORM_BY_KEY_QUERY } from '../../lib/sanity/queries';
+import { t } from '../../lib/strings';
+
+const FALLBACK: Record<FormKey, { title: string; message: string }> = {
+  'transfer-request': {
+    title: 'Thank you, we received your request',
+    message: 'We will reply with a quote as soon as we can. A copy is on its way to your inbox.',
+  },
+  'vip-security': {
+    title: 'Thank you, we received your enquiry',
+    message: 'Our security desk will reply as soon as we can.',
+  },
+  contact: {
+    title: 'Thank you, we received your message',
+    message: 'We will get back to you as soon as we can.',
+  },
+};
+
+export async function getStaticPaths() {
+  return FORM_KEYS.map((form) => ({ params: { form } }));
+}
+
+const formParam = Astro.params.form || '';
+if (!isFormKey(formParam)) {
+  throw new Error(`Unknown thank-you form "${formParam}"`);
+}
+const formKey = formParam;
+
+const settings = await getSiteSettings();
+let successTitle = FALLBACK[formKey].title;
+let successMessage = FALLBACK[formKey].message;
+
+if (sanityConfigured()) {
+  try {
+    const client = createSanityClient();
+    const doc = await client.fetch<{
+      successTitle?: string | null;
+      successMessage?: string | null;
+    } | null>(FORM_BY_KEY_QUERY, { key: formKey });
+    if (doc?.successTitle) successTitle = doc.successTitle;
+    if (doc?.successMessage) successMessage = doc.successMessage;
+  } catch {
+    /* keep fallbacks */
+  }
+}
+---
+
+<BaseLayout
+  title={`${successTitle} - ${settings.companyName}`}
+  description={successMessage}
+  robots="noindex,nofollow"
+>
+  <section class="section">
+    <div class="narrow card stack notice-success">
+      <h1 tabindex="-1" id="thank-you-h">{successTitle}</h1>
+      <p>{successMessage}</p>
+      <div class="row">
+        <a class="btn btn-ghost" href="/">{t('site.breadcrumb.home')}</a>
+        <a class="btn btn-gold" href="/book">{t('nav.book')}</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script is:inline>
+  document.getElementById('thank-you-h')?.focus();
+</script>

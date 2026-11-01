@@ -1,0 +1,25 @@
+---
+import { t } from '../../../lib/strings';
+
+interface Props {
+  id: string;
+  label: string;
+  optional?: boolean;
+  error?: string;
+  hint?: string;
+}
+
+const { id, label, optional = false, error, hint } = Astro.props;
+const errId = `${id}-err`;
+const hintId = `${id}-hint`;
+---
+
+<div class="field">
+  <label for={id}>
+    {label}
+    {optional ? <span class="muted"> {t('form.optional')}</span> : null}
+  </label>
+  <slot />
+  {hint ? <span class="hint" id={hintId}>{hint}</span> : null}
+  {error ? <span class="error" id={errId}>{error}</span> : null}
+</div>

@@ -1,0 +1,92 @@
+---
+import { t } from '../../../lib/strings';
+import Field from './Field.astro';
+
+interface Props {
+  values: Record<string, string>;
+  errors: Record<string, string>;
+}
+
+const { values, errors } = Astro.props;
+const v = (key: string) => values[key] ?? '';
+---
+
+<div class="grid grid-2">
+  <Field id="name" label={t('form.name')} error={errors.name}>
+    <input
+      id="name"
+      name="name"
+      class="input"
+      autocomplete="name"
+      required
+      value={v('name')}
+      aria-invalid={errors.name ? 'true' : undefined}
+      aria-describedby={errors.name ? 'name-err' : undefined}
+    />
+  </Field>
+  <Field id="email" label={t('form.email')} error={errors.email}>
+    <input
+      id="email"
+      name="email"
+      class="input"
+      type="email"
+      autocomplete="email"
+      required
+      value={v('email')}
+      aria-invalid={errors.email ? 'true' : undefined}
+      aria-describedby={errors.email ? 'email-err' : undefined}
+    />
+  </Field>
+  <Field id="phone" label={t('form.phone')} error={errors.phone}>
+    <input
+      id="phone"
+      name="phone"
+      class="input"
+      type="tel"
+      autocomplete="tel"
+      required
+      value={v('phone')}
+      aria-invalid={errors.phone ? 'true' : undefined}
+      aria-describedby={errors.phone ? 'phone-err' : undefined}
+    />
+  </Field>
+  <Field id="serviceType" label={t('form.serviceType')} error={errors.serviceType}>
+    <input
+      id="serviceType"
+      name="serviceType"
+      class="input"
+      required
+      value={v('serviceType')}
+      aria-invalid={errors.serviceType ? 'true' : undefined}
+      aria-describedby={errors.serviceType ? 'serviceType-err' : undefined}
+    />
+  </Field>
+  <Field id="date" label={t('form.date')} optional error={errors.date}>
+    <input
+      id="date"
+      name="date"
+      class="input"
+      type="date"
+      value={v('date')}
+      aria-invalid={errors.date ? 'true' : undefined}
+      aria-describedby={errors.date ? 'date-err' : undefined}
+    />
+  </Field>
+  <Field id="place" label={t('form.place')} optional error={errors.place}>
+    <input id="place" name="place" class="input" value={v('place')} />
+  </Field>
+  <Field id="people" label={t('form.people')} optional error={errors.people}>
+    <input
+      id="people"
+      name="people"
+      class="input"
+      type="number"
+      min="1"
+      max="1000"
+      value={v('people')}
+    />
+  </Field>
+</div>
+<Field id="message" label={t('form.message')} optional error={errors.message}>
+  <textarea id="message" name="message" class="input" rows="4">{v('message')}</textarea>
+</Field>

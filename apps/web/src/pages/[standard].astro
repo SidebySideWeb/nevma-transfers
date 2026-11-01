@@ -1,5 +1,5 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Sections from '../components/sections/Sections.astro';
@@ -8,43 +8,29 @@ import {
   getPageBySlug,
   LEGAL_SLUGS,
   STANDARD_SLUGS,
-  type CmsPage,
   type StandardSlug,
 } from '../lib/sanity/pages';
 import { organizationJsonLd, resolveSeo, serviceJsonLd } from '../lib/seo';
 
-export async function getStaticPaths() {
-  const paths: { params: { standard: StandardSlug }; props: { page: CmsPage } }[] = [];
-  for (const slug of STANDARD_SLUGS) {
-    if ((LEGAL_SLUGS as readonly string[]).includes(slug)) {
-      throw new Error(`Standard slug "${slug}" collides with a legal page slug`);
-    }
-    let page: CmsPage;
-    try {
-      page = await getPageBySlug(slug);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      throw new Error(
-        `Missing standard page "${slug}" (expected Sanity document page-${slug}). ${msg}`,
-      );
-    }
-    paths.push({ params: { standard: slug }, props: { page } });
-  }
-  return paths;
-}
-
-interface Props {
-  page: CmsPage;
-}
-
-const standard = Astro.params.standard as StandardSlug;
+const standard = Astro.params.standard as string;
 if (!(STANDARD_SLUGS as readonly string[]).includes(standard)) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+if ((LEGAL_SLUGS as readonly string[]).includes(standard)) {
+  throw new Error(`Standard slug "${standard}" collides with a legal page slug`);
+}
+
+const slug = standard as StandardSlug;
+let page;
+try {
+  page = await getPageBySlug(slug);
+} catch (e) {
+  const msg = e instanceof Error ? e.message : String(e);
   throw new Error(
-    `Unknown standard slug "${standard}". Expected one of: ${STANDARD_SLUGS.join(', ')}.`,
+    `Missing standard page "${slug}" (expected Sanity document page-${slug}). ${msg}`,
   );
 }
 
-const { page } = Astro.props;
 const settings = await getSiteSettings();
 const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
   /\/$/,
@@ -55,12 +41,12 @@ const seo = resolveSeo({
   pageTitle: page.title,
   pageSeo: page.seo ?? null,
   settings,
-  pathname: `/${standard}`,
+  pathname: `/${slug}`,
   siteUrl,
 });
 
 const jsonLd: unknown[] = [];
-if (standard === 'vip-security') {
+if (slug === 'vip-security') {
   jsonLd.push(
     serviceJsonLd({
       name: page.title,
@@ -70,13 +56,15 @@ if (standard === 'vip-security') {
       showPrice: false,
     }),
   );
-} else if (standard === 'about') {
+} else if (slug === 'about') {
   jsonLd.push(organizationJsonLd(settings, siteUrl));
-} else if (standard === 'contact') {
+} else if (slug === 'contact') {
   jsonLd.push(organizationJsonLd(settings, siteUrl, { contactPoint: true }));
 }
 
-const formBlockId = standard === 'vip-security' ? 'enquiry' : undefined;
+const formBlockId = slug === 'vip-security' ? 'enquiry' : undefined;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
 ---
 
 <BaseLayout seo={seo} jsonLd={jsonLd}>

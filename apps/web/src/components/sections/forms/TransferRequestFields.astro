@@ -1,0 +1,263 @@
+---
+import { t } from '../../../lib/strings';
+import Field from './Field.astro';
+
+interface Props {
+  zones: { code: string; name: string }[];
+  classes: { key: string; name: string }[];
+  values: Record<string, string>;
+  errors: Record<string, string>;
+}
+
+const { zones, classes, values, errors } = Astro.props;
+const v = (key: string) => values[key] ?? '';
+const fromOther = v('fromZone') === 'other';
+const toOther = v('toZone') === 'other';
+const showInvoice = v('invoice') === 'on' || v('invoice') === 'true' || v('invoice') === '1';
+---
+
+<section class="card stack">
+  <div class="grid grid-2">
+    <Field id="fromZone" label={t('form.fromZone')} error={errors.fromZone}>
+      <select
+        id="fromZone"
+        name="fromZone"
+        class="input"
+        required
+        data-other-target="fromOther-wrap"
+        aria-invalid={errors.fromZone ? 'true' : undefined}
+        aria-describedby={errors.fromZone ? 'fromZone-err' : undefined}
+      >
+        <option value=""></option>
+        {zones.map((z) => (
+          <option value={z.code} selected={v('fromZone') === z.code}>
+            {z.name}
+          </option>
+        ))}
+        <option value="other" selected={v('fromZone') === 'other'}>
+          {t('form.otherPlace')}
+        </option>
+      </select>
+    </Field>
+    <div id="fromOther-wrap" class="field" hidden={!fromOther}>
+      <label for="fromOther">{t('form.otherPlace')}</label>
+      <input
+        id="fromOther"
+        name="fromOther"
+        class="input"
+        value={v('fromOther')}
+        aria-invalid={errors.fromOther ? 'true' : undefined}
+        aria-describedby={errors.fromOther ? 'fromOther-err' : undefined}
+      />
+      {errors.fromOther ? <span class="error" id="fromOther-err">{errors.fromOther}</span> : null}
+    </div>
+    <Field id="toZone" label={t('form.toZone')} error={errors.toZone}>
+      <select
+        id="toZone"
+        name="toZone"
+        class="input"
+        required
+        data-other-target="toOther-wrap"
+        aria-invalid={errors.toZone ? 'true' : undefined}
+        aria-describedby={errors.toZone ? 'toZone-err' : undefined}
+      >
+        <option value=""></option>
+        {zones.map((z) => (
+          <option value={z.code} selected={v('toZone') === z.code}>
+            {z.name}
+          </option>
+        ))}
+        <option value="other" selected={v('toZone') === 'other'}>
+          {t('form.otherPlace')}
+        </option>
+      </select>
+    </Field>
+    <div id="toOther-wrap" class="field" hidden={!toOther}>
+      <label for="toOther">{t('form.otherPlace')}</label>
+      <input
+        id="toOther"
+        name="toOther"
+        class="input"
+        value={v('toOther')}
+        aria-invalid={errors.toOther ? 'true' : undefined}
+        aria-describedby={errors.toOther ? 'toOther-err' : undefined}
+      />
+      {errors.toOther ? <span class="error" id="toOther-err">{errors.toOther}</span> : null}
+    </div>
+    <Field id="pickupAddress" label={t('form.pickupAddress')} optional error={errors.pickupAddress}>
+      <input
+        id="pickupAddress"
+        name="pickupAddress"
+        class="input"
+        autocomplete="street-address"
+        value={v('pickupAddress')}
+      />
+    </Field>
+    <Field id="dropoffAddress" label={t('form.dropoffAddress')} optional error={errors.dropoffAddress}>
+      <input id="dropoffAddress" name="dropoffAddress" class="input" value={v('dropoffAddress')} />
+    </Field>
+    <Field
+      id="datetime"
+      label={t('form.datetime')}
+      error={errors.datetime}
+      hint={t('booking.athensHint')}
+    >
+      <input
+        id="datetime"
+        name="datetime"
+        class="input"
+        type="datetime-local"
+        required
+        value={v('datetime')}
+        aria-invalid={errors.datetime ? 'true' : undefined}
+        aria-describedby={
+          errors.datetime ? 'datetime-err datetime-hint' : 'datetime-hint'
+        }
+      />
+    </Field>
+    <Field id="vehicleClass" label={t('form.vehicleClass')} optional error={errors.vehicleClass}>
+      <select id="vehicleClass" name="vehicleClass" class="input">
+        <option value="any" selected={!v('vehicleClass') || v('vehicleClass') === 'any'}>
+          {t('form.vehicleClass.any')}
+        </option>
+        {classes.map((c) => (
+          <option value={c.key} selected={v('vehicleClass') === c.key}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </Field>
+    <Field id="passengers" label={t('form.passengers')} error={errors.passengers}>
+      <input
+        id="passengers"
+        name="passengers"
+        class="input"
+        type="number"
+        min="1"
+        max="60"
+        required
+        value={v('passengers') || '2'}
+        aria-invalid={errors.passengers ? 'true' : undefined}
+        aria-describedby={errors.passengers ? 'passengers-err' : undefined}
+      />
+    </Field>
+    <Field id="luggage" label={t('form.luggage')} optional error={errors.luggage}>
+      <input
+        id="luggage"
+        name="luggage"
+        class="input"
+        type="number"
+        min="0"
+        max="100"
+        value={v('luggage') || '0'}
+      />
+    </Field>
+  </div>
+  <label class="check">
+    <input
+      type="checkbox"
+      name="vipSecurity"
+      checked={v('vipSecurity') === 'on' || v('vipSecurity') === 'true'}
+    />
+    <span>{t('form.vipSecurity')}</span>
+  </label>
+</section>
+
+<section class="card stack">
+  <div class="grid grid-2">
+    <Field id="name" label={t('form.name')} error={errors.name}>
+      <input
+        id="name"
+        name="name"
+        class="input"
+        autocomplete="name"
+        required
+        value={v('name')}
+        aria-invalid={errors.name ? 'true' : undefined}
+        aria-describedby={errors.name ? 'name-err' : undefined}
+      />
+    </Field>
+    <Field id="email" label={t('form.email')} error={errors.email}>
+      <input
+        id="email"
+        name="email"
+        class="input"
+        type="email"
+        autocomplete="email"
+        required
+        value={v('email')}
+        aria-invalid={errors.email ? 'true' : undefined}
+        aria-describedby={errors.email ? 'email-err' : undefined}
+      />
+    </Field>
+    <Field id="phone" label={t('form.phone')} error={errors.phone}>
+      <input
+        id="phone"
+        name="phone"
+        class="input"
+        type="tel"
+        autocomplete="tel"
+        required
+        value={v('phone')}
+        aria-invalid={errors.phone ? 'true' : undefined}
+        aria-describedby={errors.phone ? 'phone-err' : undefined}
+      />
+    </Field>
+  </div>
+  <label class="check">
+    <input
+      type="checkbox"
+      name="invoice"
+      id="invoice"
+      data-invoice-toggle
+      checked={showInvoice}
+    />
+    <span>{t('form.invoice')}</span>
+  </label>
+  <div id="invoice-fields" class="grid grid-2" hidden={!showInvoice}>
+    <Field
+      id="invoiceCompany"
+      label={t('booking.invoice.company')}
+      error={errors.invoiceCompany}
+    >
+      <input
+        id="invoiceCompany"
+        name="invoiceCompany"
+        class="input"
+        value={v('invoiceCompany')}
+        autocomplete="organization"
+      />
+    </Field>
+    <Field id="invoiceVat" label={t('booking.invoice.vat')} error={errors.invoiceVat}>
+      <input id="invoiceVat" name="invoiceVat" class="input" value={v('invoiceVat')} />
+    </Field>
+    <Field
+      id="invoiceTaxOffice"
+      label={t('booking.invoice.taxOffice')}
+      error={errors.invoiceTaxOffice}
+    >
+      <input
+        id="invoiceTaxOffice"
+        name="invoiceTaxOffice"
+        class="input"
+        value={v('invoiceTaxOffice')}
+      />
+    </Field>
+    <Field
+      id="invoiceAddress"
+      label={t('booking.invoice.address')}
+      error={errors.invoiceAddress}
+    >
+      <input
+        id="invoiceAddress"
+        name="invoiceAddress"
+        class="input"
+        value={v('invoiceAddress')}
+        autocomplete="street-address"
+      />
+    </Field>
+  </div>
+  <Field id="message" label={t('form.message')} optional error={errors.message}>
+    <textarea id="message" name="message" class="input" rows="4">{v('message')}</textarea>
+  </Field>
+</section>

@@ -32,6 +32,7 @@ export default defineConfig({
       PUBLIC_SITE_URL: baseURL,
       PUBLIC_ADMIN_URL: 'http://127.0.0.1:4322',
       PUBLIC_BOOKING_OPEN: 'true',
+      FORM_E2E_MOCK: '1',
     },
   },
 

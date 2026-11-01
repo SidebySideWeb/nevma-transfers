@@ -1,0 +1,77 @@
+---
+import { t } from '../../../lib/strings';
+import Field from './Field.astro';
+
+interface Props {
+  topics: { key: string; label: string }[];
+  values: Record<string, string>;
+  errors: Record<string, string>;
+}
+
+const { topics, values, errors } = Astro.props;
+const v = (key: string) => values[key] ?? '';
+---
+
+<Field id="topic" label={t('form.topic')} error={errors.topic}>
+  <select
+    id="topic"
+    name="topic"
+    class="input"
+    required
+    aria-invalid={errors.topic ? 'true' : undefined}
+    aria-describedby={errors.topic ? 'topic-err' : undefined}
+  >
+    <option value="">{t('form.topic')}</option>
+    {topics.map((topic) => (
+      <option value={topic.key} selected={v('topic') === topic.key}>
+        {topic.label}
+      </option>
+    ))}
+  </select>
+</Field>
+<Field id="name" label={t('form.name')} error={errors.name}>
+  <input
+    id="name"
+    name="name"
+    class="input"
+    autocomplete="name"
+    required
+    value={v('name')}
+    aria-invalid={errors.name ? 'true' : undefined}
+    aria-describedby={errors.name ? 'name-err' : undefined}
+  />
+</Field>
+<Field id="email" label={t('form.email')} error={errors.email}>
+  <input
+    id="email"
+    name="email"
+    class="input"
+    type="email"
+    autocomplete="email"
+    required
+    value={v('email')}
+    aria-invalid={errors.email ? 'true' : undefined}
+    aria-describedby={errors.email ? 'email-err' : undefined}
+  />
+</Field>
+<Field id="phone" label={t('form.phone')} optional error={errors.phone}>
+  <input
+    id="phone"
+    name="phone"
+    class="input"
+    type="tel"
+    autocomplete="tel"
+    value={v('phone')}
+  />
+</Field>
+<Field id="message" label={t('form.message')} error={errors.message}>
+  <textarea
+    id="message"
+    name="message"
+    class="input"
+    rows="4"
+    required
+    aria-invalid={errors.message ? 'true' : undefined}
+    aria-describedby={errors.message ? 'message-err' : undefined}
+  >{v('message')}</textarea>
+</Field>

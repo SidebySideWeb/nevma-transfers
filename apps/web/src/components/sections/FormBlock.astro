@@ -1,39 +1,201 @@
 ---
+import { getPublishableClasses } from '../../lib/content/vehicles';
+import { FORM_FLASH_COOKIE, readFormFlash } from '../../lib/forms/form-cookie';
+import { isFormKey, type FormKey } from '../../lib/forms/schemas';
+import { getCatalog } from '../../lib/server/catalog';
+import { t } from '../../lib/strings';
+import ContactFields from './forms/ContactFields.astro';
+import TransferRequestFields from './forms/TransferRequestFields.astro';
+import VipSecurityFields from './forms/VipSecurityFields.astro';
+
 interface Props {
   heading?: string;
   form?: {
     key?: string;
     title?: string;
     intro?: string | null;
+    topics?: { key: string; label: string; recipientEmail?: string | null; _key?: string }[] | null;
+    submitLabel?: string | null;
+    successTitle?: string | null;
+    successMessage?: string | null;
   } | null;
   id?: string;
 }
 
 const { heading, form, id } = Astro.props;
+const formKey = form?.key && isFormKey(form.key) ? (form.key as FormKey) : null;
 const title = heading || form?.title || '';
 const intro = form?.intro || '';
 const headingId = title ? 'form-block-h' : undefined;
+const submitLabel = form?.submitLabel?.trim() || t('form.submit');
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+const dummyTurnstile = turnstileSiteKey.startsWith('1x0000000');
+
+const flashRaw = Astro.cookies.get(FORM_FLASH_COOKIE)?.value;
+const flash = readFormFlash(flashRaw);
+const flashForThis = flash && formKey && flash.form === formKey ? flash : null;
+if (flashForThis) {
+  Astro.cookies.delete(FORM_FLASH_COOKIE, { path: '/' });
+}
+
+const values: Record<string, string> = { ...(flashForThis?.values ?? {}) };
+const errors = flashForThis?.fields ?? {};
+const errorEntries = Object.entries(errors);
+const hasErrors = errorEntries.length > 0;
+
+let zones: { code: string; name: string }[] = [];
+let classes: { key: string; name: string }[] = [];
+if (formKey === 'transfer-request') {
+  try {
+    const [cat, publishable] = await Promise.all([getCatalog(), getPublishableClasses()]);
+    zones = cat.zones.map((z) => ({ code: z.code, name: z.name }));
+    classes = publishable.map((c) => ({ key: c.key, name: c.name }));
+  } catch {
+    zones = [];
+    classes = [];
+  }
+  // Prefill from query when no flash (also works without JS).
+  if (!flashForThis) {
+    const q = Astro.url.searchParams;
+    const from = q.get('from');
+    const to = q.get('to');
+    const classKey = q.get('class');
+    if (from && zones.some((z) => z.code === from)) values.fromZone = from;
+    if (to && zones.some((z) => z.code === to)) values.toZone = to;
+    if (classKey && classes.some((c) => c.key === classKey)) values.vehicleClass = classKey;
+  }
+}
+
+const topics = (form?.topics ?? [])
+  .filter((x): x is { key: string; label: string } => Boolean(x?.key && x?.label))
+  .map((x) => ({ key: x.key, label: x.label }));
+
+const consentHtml = t('form.consent').replace(
+  /privacy policy/i,
+  `<a href="/privacy">${t('site.legal.privacy')}</a>`,
+);
+
+const strings = {
+  sending: t('form.sending'),
+  submit: submitLabel,
+  errorGeneric: t('form.error.generic'),
+  errorRequired: t('form.error.required'),
+  errorEmail: t('form.error.email'),
+  errorSummary: t('booking.errors.summary'),
+};
 ---
 
-<section class="section" id={id} aria-labelledby={headingId}>
-  <div class="wrap narrow stack card">
-    {title ? <h2 id={headingId} tabindex="-1">{title}</h2> : null}
-    {intro ? <p class="muted">{intro}</p> : null}
-  </div>
-</section>
+{
+  formKey ? (
+    <section class="section" id={id} aria-labelledby={headingId}>
+      <div class="wrap narrow stack">
+        {title ? <h2 id={headingId} tabindex="-1">{title}</h2> : null}
+        {intro ? <p class="muted">{intro}</p> : null}
+
+        <form
+          class="card stack"
+          method="post"
+          action={`/api/forms/${formKey}`}
+          novalidate
+          data-tem-form={formKey}
+          data-strings={JSON.stringify(strings)}
+        >
+          {
+            hasErrors ? (
+              <div class="notice notice-danger" role="alert" tabindex="-1" id="form-error-summary">
+                <p>
+                  <strong>{t('booking.errors.summary')}</strong>
+                </p>
+                <ul>
+                  {errorEntries.map(([field, message]) => (
+                    <li>
+                      <a href={`#${field}`}>{message}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null
+          }
+
+          {formKey === 'transfer-request' ? (
+            <TransferRequestFields zones={zones} classes={classes} values={values} errors={errors} />
+          ) : null}
+          {formKey === 'vip-security' ? (
+            <VipSecurityFields values={values} errors={errors} />
+          ) : null}
+          {formKey === 'contact' ? (
+            <ContactFields topics={topics} values={values} errors={errors} />
+          ) : null}
+
+          <div class="hp" aria-hidden="true">
+            <label for={`hp-${formKey}`}>{t('form.email')}</label>
+            <input
+              id={`hp-${formKey}`}
+              name="website"
+              tabindex="-1"
+              autocomplete="off"
+            />
+          </div>
+
+          <label class="check" id="consent">
+            <input
+              type="checkbox"
+              name="consent"
+              required
+              checked={values.consent === 'on' || values.consent === 'true'}
+              aria-invalid={errors.consent ? 'true' : undefined}
+            />
+            <span set:html={consentHtml} />
+          </label>
+          {errors.consent ? <span class="error" id="consent-err">{errors.consent}</span> : null}
+
+          <div class="turnstile-slot" data-turnstile-sitekey={turnstileSiteKey}>
+            {
+              dummyTurnstile ? (
+                <input type="hidden" name="cf-turnstile-response" value="ok" />
+              ) : (
+                <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="light" />
+              )
+            }
+          </div>
+          {errors.turnstile ? (
+            <span class="error" id="turnstile-err">{errors.turnstile}</span>
+          ) : null}
+
+          <button class="btn btn-gold btn-block" type="submit" data-submit>
+            {submitLabel}
+          </button>
+        </form>
+      </div>
+    </section>
+  ) : (
+    <section class="section" id={id} aria-labelledby={headingId}>
+      <div class="wrap narrow stack card">
+        {title ? <h2 id={headingId} tabindex="-1">{title}</h2> : null}
+        {intro ? <p class="muted">{intro}</p> : null}
+      </div>
+    </section>
+  )
+}
+
+<script is:inline>
+  (function () {
+    function focusEnquiry() {
+      if (location.hash !== '#enquiry') return;
+      const h = document.getElementById('form-block-h');
+      if (h) h.focus({ preventScroll: true });
+    }
+    focusEnquiry();
+    window.addEventListener('hashchange', focusEnquiry);
+    const summary = document.getElementById('form-error-summary');
+    if (summary) summary.focus();
+  })();
+</script>
 
 {
-  id === 'enquiry' ? (
-    <script is:inline>
-      (function () {
-        function focusEnquiryHeading() {
-          if (location.hash !== '#enquiry') return;
-          const h = document.getElementById('form-block-h');
-          if (h) h.focus({ preventScroll: true });
-        }
-        focusEnquiryHeading();
-        window.addEventListener('hashchange', focusEnquiryHeading);
-      })();
+  formKey ? (
+    <script>
+      import '../../scripts/forms';
     </script>
   ) : null
 }

@@ -223,14 +223,18 @@ export async function submitForm(
     };
   }
 
-  try {
-    const limit = rateLimitFn ?? assertRateLimit;
-    await limit(`form:${formKey}:${opts.ip || 'unknown'}`, 3600, 5);
-  } catch (e) {
-    if (e instanceof BookingError && e.message === 'rate_limit') {
-      return { ok: false, status: 429, error: 'invalid_request', message: t('error.invalid_request') };
+  const e2eMock =
+    import.meta.env.FORM_E2E_MOCK === '1' || process.env.FORM_E2E_MOCK === '1';
+  if (!e2eMock) {
+    try {
+      const limit = rateLimitFn ?? assertRateLimit;
+      await limit(`form:${formKey}:${opts.ip || 'unknown'}`, 3600, 5);
+    } catch (e) {
+      if (e instanceof BookingError && e.message === 'rate_limit') {
+        return { ok: false, status: 429, error: 'invalid_request', message: t('error.invalid_request') };
+      }
+      throw e;
     }
-    throw e;
   }
 
   const topic =
@@ -270,6 +274,15 @@ export async function submitForm(
   };
 
   const company = await loadCompany();
+
+  // Playwright / local: skip Sanity write + Resend after validation (AC-27).
+  if (e2eMock) {
+    return {
+      ok: true,
+      redirect: `/thank-you/${formKey}`,
+      submissionId: submissionId,
+    };
+  }
 
   let writeOk = false;
   try {
