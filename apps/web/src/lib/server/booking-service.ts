@@ -23,7 +23,22 @@ export type SanityVehicleClass = {
   key: string;
   name: string;
   tagline?: string | null;
-  photos?: { url?: string | null; alt?: string | null }[] | null;
+  photos?: {
+    url?: string | null;
+    alt?: string | null;
+    asset?: {
+      _id?: string;
+      url?: string | null;
+      metadata?: { dimensions?: { width?: number; height?: number } } | null;
+    } | null;
+  }[] | null;
+  copy?: Record<string, unknown>[] | null;
+  specs?: { label: string; value: string }[] | null;
+  seo?: {
+    title?: string | null;
+    description?: string | null;
+    noindex?: boolean | null;
+  } | null;
 };
 
 let sanityClasses: SanityVehicleClass[] | null = null;
@@ -64,14 +79,37 @@ async function loadSanityClasses(): Promise<SanityVehicleClass[]> {
         key: string;
         name: string;
         tagline?: string | null;
-        photos?: { alt?: string | null; asset?: { url?: string | null } | null }[] | null;
+        photos?: {
+          alt?: string | null;
+          asset?: {
+            _id?: string;
+            url?: string | null;
+            metadata?: { dimensions?: { width?: number; height?: number } } | null;
+          } | null;
+        }[] | null;
+        copy?: Record<string, unknown>[] | null;
+        specs?: { label?: string | null; value?: string | null }[] | null;
+        seo?: {
+          title?: string | null;
+          description?: string | null;
+          noindex?: boolean | null;
+        } | null;
       }[]
     >(VEHICLE_CLASSES_QUERY);
     return (rows ?? []).map((r) => ({
       key: r.key,
       name: r.name,
       tagline: r.tagline,
-      photos: (r.photos ?? []).map((p) => ({ url: p.asset?.url ?? null, alt: p.alt ?? null })),
+      photos: (r.photos ?? []).map((p) => ({
+        url: p.asset?.url ?? null,
+        alt: p.alt ?? null,
+        asset: p.asset,
+      })),
+      copy: r.copy ?? null,
+      specs: (r.specs ?? [])
+        .filter((s): s is { label: string; value: string } => Boolean(s.label && s.value))
+        .map((s) => ({ label: s.label, value: s.value })),
+      seo: r.seo ?? null,
     }));
   } catch {
     return [];

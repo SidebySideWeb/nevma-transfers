@@ -1,0 +1,31 @@
+---
+export const prerender = true;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Sections from '../../components/sections/Sections.astro';
+import { getSiteSettings } from '../../lib/sanity/content';
+import { getPageBySlug } from '../../lib/sanity/pages';
+import { resolveSeo } from '../../lib/seo';
+import { t } from '../../lib/strings';
+
+const settings = await getSiteSettings();
+const page = await getPageBySlug('fleet');
+const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
+  /\/$/,
+  '',
+);
+
+const seo = resolveSeo({
+  pageTitle: page.title,
+  pageSeo: page.seo ?? null,
+  settings,
+  pathname: '/fleet',
+  siteUrl,
+});
+---
+
+<BaseLayout seo={seo}>
+  <Breadcrumbs items={[{ label: t('nav.fleet') }]} siteUrl={siteUrl} />
+  <Sections sections={page.sections} />
+</BaseLayout>

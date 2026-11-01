@@ -176,6 +176,12 @@ Site settings · UI strings · Pages · Routes · Vehicle classes · **Forms and
 | site | `site.requestQuote` | Request a quote |
 | site | `site.hours` | Opening hours |
 | site | `site.office` | Office |
+| site | `site.vehicle.about` | About this vehicle |
+| site | `site.vehicle.specs` | Specifications |
+| site | `site.vehicle.popularRoutes` | Popular routes in this vehicle |
+| site | `site.vehicle.routeCol` | Route |
+| site | `site.vehicle.fromCol` | From |
+| site | `site.vehicle.routePrices` | Route prices |
 | site | `site.legal.terms` | Terms |
 | site | `site.legal.privacy` | Privacy |
 | site | `site.legal.cookies` | Cookies |

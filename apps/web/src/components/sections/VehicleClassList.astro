@@ -12,11 +12,13 @@ import { t } from '../../lib/strings';
 interface Props {
   heading?: string;
   intro?: string;
+  /** Override siteSettings.showFromPrices (tests / kitchen sink). */
+  showFromPrices?: boolean;
 }
 
-const { heading, intro } = Astro.props;
+const { heading, intro, showFromPrices } = Astro.props;
 const settings = await getSiteSettings();
-const show = settings.showFromPrices !== false;
+const show = showFromPrices ?? settings.showFromPrices !== false;
 let classes: Awaited<ReturnType<typeof getPublishableClasses>> = [];
 let cat: Awaited<ReturnType<typeof getCatalog>> | null = null;
 try {

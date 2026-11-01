@@ -139,6 +139,37 @@ export function breadcrumbJsonLd(
   };
 }
 
+export function serviceJsonLd(opts: {
+  name: string;
+  description?: string;
+  url: string;
+  providerName: string;
+  lowPriceCents?: number | null;
+  showPrice: boolean;
+}) {
+  const offers =
+    opts.showPrice && opts.lowPriceCents != null
+      ? {
+          '@type': 'Offer',
+          priceCurrency: 'EUR',
+          lowPrice: (opts.lowPriceCents / 100).toFixed(2),
+        }
+      : undefined;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: opts.name,
+    ...(opts.description ? { description: opts.description } : {}),
+    url: opts.url,
+    provider: {
+      '@type': 'Organization',
+      name: opts.providerName,
+    },
+    areaServed: 'Athens',
+    ...(offers ? { offers } : {}),
+  };
+}
+
 export function sectionTypesInOrder(
   sections: Array<{ _type?: string } | null | undefined>,
 ): SectionType[] {

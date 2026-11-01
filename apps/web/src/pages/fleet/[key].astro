@@ -1,0 +1,264 @@
+---
+export const prerender = true;
+
+import { PortableText } from 'astro-portabletext';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import PortableLink from '../../components/sections/PortableLink.astro';
+import { priceLabel } from '../../lib/content/price-label';
+import { getPublishableRoutes } from '../../lib/content/routes';
+import { getPublishableClasses } from '../../lib/content/vehicles';
+import { isBookingOpen } from '../../lib/booking-open';
+import { formatEuro } from '../../lib/booking/pricing';
+import { getSiteSettings } from '../../lib/sanity/content';
+import { responsiveImage, type SanityImage } from '../../lib/sanity/image';
+import {
+  fromPriceForClass,
+  getCatalog,
+  hourlyFromForClass,
+} from '../../lib/server/catalog';
+import { resolveSeo, serviceJsonLd } from '../../lib/seo';
+import { t } from '../../lib/strings';
+
+export async function getStaticPaths() {
+  let classes: Awaited<ReturnType<typeof getPublishableClasses>> = [];
+  try {
+    classes = await getPublishableClasses();
+  } catch (e) {
+    console.warn(
+      '[fleet] getPublishableClasses failed during getStaticPaths:',
+      e instanceof Error ? e.message : e,
+    );
+  }
+  if (!classes.length) {
+    console.warn('[fleet] no publishable classes — /fleet/[key] paths empty');
+  }
+  return classes.map((cls) => ({
+    params: { key: cls.key },
+    props: { cls },
+  }));
+}
+
+interface Props {
+  cls: Awaited<ReturnType<typeof getPublishableClasses>>[number];
+}
+
+const { cls } = Astro.props;
+const key = cls.key;
+const settings = await getSiteSettings();
+const [cat, routes] = await Promise.all([
+  getCatalog(),
+  getPublishableRoutes().catch(() => []),
+]);
+const show = settings.showFromPrices !== false;
+const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
+  /\/$/,
+  '',
+);
+const bookingOpen = isBookingOpen();
+
+const transferCents = fromPriceForClass(cat, key);
+const hourlyCents = hourlyFromForClass(cat, key);
+const transferLabel = priceLabel(transferCents, { show });
+const hourlyLabel = priceLabel(hourlyCents, { show, perHour: true });
+const capacity = t('booking.vehicle.capacity', {
+  passengers: cls.maxPassengers,
+  luggage: cls.maxLuggage,
+});
+
+const gallery = (cls.photos ?? [])
+  .slice(0, 3)
+  .map((p) =>
+    responsiveImage(
+      {
+        alt: p.alt ?? undefined,
+        asset: p.asset ?? (p.url ? { url: p.url } : null),
+      } satisfies SanityImage,
+      { fallbackWidth: 1600, fallbackHeight: 1000 },
+    ),
+  )
+  .filter((img): img is NonNullable<typeof img> => Boolean(img));
+
+const featuredWithPrice = routes
+  .filter((r) => r.featured)
+  .map((r) => {
+    const row = cat.prices.find(
+      (p) => p.fromCode === r.fromZone && p.toCode === r.toZone && p.classKey === key,
+    );
+    return row ? { route: r, cents: row.cents } : null;
+  })
+  .filter((x): x is { route: (typeof routes)[number]; cents: number } => Boolean(x));
+
+const pageSeo = {
+  title: cls.seo?.title || `${cls.name} · ${settings.companyName}`,
+  description: cls.seo?.description || cls.tagline || undefined,
+  noindex: cls.seo?.noindex ?? undefined,
+};
+
+const seo = resolveSeo({
+  pageTitle: cls.name,
+  pageSeo,
+  settings,
+  pathname: `/fleet/${key}`,
+  siteUrl,
+});
+// Prompt: title "<name> · Elite Protection"
+seo.title = `${cls.name} · ${settings.companyName}`;
+
+const jsonLd = [
+  serviceJsonLd({
+    name: cls.name,
+    description: pageSeo.description ?? undefined,
+    url: `${siteUrl}/fleet/${key}`,
+    providerName: settings.companyName,
+    lowPriceCents: transferCents,
+    showPrice: show && transferCents != null,
+  }),
+];
+
+const copy = (cls.copy ?? []) as Parameters<typeof PortableText>[0]['value'];
+const primaryHref = bookingOpen ? `/book?class=${encodeURIComponent(key)}` : `/request-a-transfer?class=${encodeURIComponent(key)}`;
+const primaryLabel = bookingOpen ? t('nav.book') : t('site.requestQuote');
+---
+
+<BaseLayout seo={seo} jsonLd={jsonLd}>
+  <Breadcrumbs
+    items={[{ label: t('nav.fleet'), href: '/fleet' }, { label: cls.name }]}
+    siteUrl={siteUrl}
+  />
+
+  <section class="section">
+    <div class="wrap image-text">
+      <div class="stack">
+        <h1 class="display">{cls.name}</h1>
+        {cls.tagline ? <p class="muted">{cls.tagline}</p> : null}
+        <ul class="facts">
+          <li>{capacity}</li>
+          {(cls.specs ?? [])
+            .filter((spec) => !/passenger|luggage/i.test(spec.label))
+            .map((spec) => (
+              <li>{spec.value}</li>
+            ))}
+        </ul>
+        <p class="from-price">
+          {transferLabel.text}
+          <small>{hourlyLabel.text}</small>
+        </p>
+        <div class="row">
+          <a class="btn btn-gold" href={primaryHref}>{primaryLabel}</a>
+          {
+            bookingOpen ? (
+              <a
+                class="btn btn-ghost"
+                href={`/request-a-transfer?class=${encodeURIComponent(key)}`}
+              >
+                {t('site.requestQuote')}
+              </a>
+            ) : null
+          }
+        </div>
+      </div>
+      {
+        gallery.length > 0 ? (
+          <div class="gallery">
+            {gallery.map((img, i) => (
+              <div class="media">
+                <img
+                  src={img.src}
+                  srcset={img.srcset}
+                  sizes={i === 0 ? '(min-width: 900px) 50vw, 100vw' : '(min-width: 900px) 25vw, 50vw'}
+                  width={img.width}
+                  height={img.height}
+                  alt={img.alt}
+                  fetchpriority={i === 0 ? 'high' : undefined}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="gallery">
+            <div class="media" aria-hidden="true" />
+          </div>
+        )
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap grid grid-2">
+      <div class="stack prose">
+        <h2>{t('site.vehicle.about')}</h2>
+        {
+          copy && copy.length > 0 ? (
+            <PortableText
+              value={copy}
+              components={{
+                mark: { link: PortableLink },
+              }}
+            />
+          ) : null
+        }
+      </div>
+      <div class="stack">
+        <h2>{t('site.vehicle.specs')}</h2>
+        <dl class="summary">
+          <div>
+            <dt>{t('booking.passengers')}</dt>
+            <dd>{cls.maxPassengers}</dd>
+          </div>
+          <div>
+            <dt>{t('booking.luggage')}</dt>
+            <dd>{cls.maxLuggage}</dd>
+          </div>
+          {(cls.specs ?? []).map((spec) => (
+            <div>
+              <dt>{spec.label}</dt>
+              <dd>{spec.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  {
+    featuredWithPrice.length > 0 ? (
+      <section class="section" aria-labelledby="rp-h">
+        <div class="wrap stack">
+          <h2 id="rp-h">{t('site.vehicle.popularRoutes')}</h2>
+          <div
+            class="table-wrap"
+            role="region"
+            tabindex="0"
+            aria-label={t('site.vehicle.routePrices')}
+          >
+            <table class="price-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t('site.vehicle.routeCol')}</th>
+                  <th scope="col" class="num">
+                    {t('site.vehicle.fromCol')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {featuredWithPrice.map(({ route, cents }) => (
+                  <tr>
+                    <td>
+                      <a href={`/routes/${route.slug}`}>{route.title}</a>
+                    </td>
+                    <td class="num">
+                      {show ? formatEuro(cents) : t('site.noOnlinePrice')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    ) : null
+  }
+</BaseLayout>

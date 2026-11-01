@@ -175,4 +175,30 @@ export const DEMO_PAGES: Record<string, CmsPage> = {
       },
     ],
   },
+  fleet: {
+    kind: 'standard',
+    title: 'Fleet',
+    slug: 'fleet',
+    seo: { title: 'Fleet (DEMO)', description: 'DEMO fleet description.' },
+    sections: [
+      {
+        _type: 'hero',
+        heading: 'DEMO Our fleet',
+        subheading: 'DEMO Late-model vehicles with professional drivers.',
+        ctaLabel: 'Book now',
+        ctaTarget: 'book',
+      },
+      {
+        _type: 'vehicleClassList',
+        heading: 'DEMO Choose your vehicle',
+      },
+      {
+        _type: 'ctaBand',
+        heading: 'DEMO Need something else?',
+        text: 'DEMO Groups and special requests.',
+        ctaLabel: 'Request a quote',
+        ctaTarget: 'quote',
+      },
+    ],
+  },
 };

@@ -148,11 +148,42 @@ export const VEHICLE_CLASSES_QUERY = defineQuery(`
     photos[]{
       ${imageProjection}
     },
+    copy,
     specs[]{
       label,
       value
     },
     sortOrder,
+    seo{
+      title,
+      description,
+      noindex,
+      image{ ${imageProjection} }
+    },
+    internalNote
+  }
+`);
+
+export const VEHICLE_CLASS_BY_KEY_QUERY = defineQuery(`
+  *[_type == "vehicleClass" && key == $key][0]{
+    key,
+    name,
+    tagline,
+    photos[]{
+      ${imageProjection}
+    },
+    copy,
+    specs[]{
+      label,
+      value
+    },
+    sortOrder,
+    seo{
+      title,
+      description,
+      noindex,
+      image{ ${imageProjection} }
+    },
     internalNote
   }
 `);

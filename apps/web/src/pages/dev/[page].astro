@@ -3,16 +3,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import KitchenSinkDemos from '../../components/dev/KitchenSinkDemos';
 import Sections from '../../components/sections/Sections.astro';
+import VehicleClassList from '../../components/sections/VehicleClassList.astro';
 import type { PageSection } from '../../lib/sanity/pages';
 import { t } from '../../lib/strings';
 
 export function getStaticPaths() {
   if (!import.meta.env.DEV) return [];
-  return [{ params: { page: 'kitchen-sink' } }];
+  return [{ params: { page: 'kitchen-sink' } }, { params: { page: 'fleet-no-prices' } }];
 }
 
 const { page } = Astro.params;
-if (page !== 'kitchen-sink') {
+if (page !== 'kitchen-sink' && page !== 'fleet-no-prices') {
   return new Response(null, { status: 404 });
 }
 
@@ -87,79 +88,87 @@ const kit2Sections: PageSection[] = [
 ];
 ---
 
-<BaseLayout title="Kitchen sink (DEV)" robots="noindex">
-  <Breadcrumbs items={[{ label: 'Kitchen sink' }]} />
-  <section class="section">
-    <div class="wrap stack">
-      <p class="eyebrow">DEV only</p>
-      <h1 class="display">Kitchen <em>sink</em></h1>
-      <p class="muted">Every public V2 component state for visual review.</p>
+{
+  page === 'fleet-no-prices' ? (
+    <BaseLayout title="Fleet prices off (DEV)" robots="noindex">
+      <VehicleClassList heading={t('nav.fleet')} showFromPrices={false} />
+    </BaseLayout>
+  ) : (
+    <BaseLayout title="Kitchen sink (DEV)" robots="noindex">
+      <Breadcrumbs items={[{ label: 'Kitchen sink' }]} />
+      <section class="section">
+        <div class="wrap stack">
+          <p class="eyebrow">DEV only</p>
+          <h1 class="display">Kitchen <em>sink</em></h1>
+          <p class="muted">Every public V2 component state for visual review.</p>
 
-      <h2>Buttons</h2>
-      <div class="row">
-        <button type="button" class="btn btn-gold">Gold</button>
-        <button type="button" class="btn btn-line">Line</button>
-        <button type="button" class="btn btn-ghost">Ghost</button>
-        <button type="button" class="btn btn-danger">Danger</button>
-      </div>
+          <h2>Buttons</h2>
+          <div class="row">
+            <button type="button" class="btn btn-gold">Gold</button>
+            <button type="button" class="btn btn-line">Line</button>
+            <button type="button" class="btn btn-ghost">Ghost</button>
+            <button type="button" class="btn btn-danger">Danger</button>
+          </div>
 
-      <h2>Eyebrow and display</h2>
-      <p class="eyebrow">VIP Transfer · Athens</p>
-      <h2 class="display">Discreet luxury, <em>door to door.</em></h2>
+          <h2>Eyebrow and display</h2>
+          <p class="eyebrow">VIP Transfer · Athens</p>
+          <h2 class="display">Discreet luxury, <em>door to door.</em></h2>
 
-      <KitchenSinkDemos client:load />
+          <KitchenSinkDemos client:load />
 
-      <h2>Fields</h2>
-      <div class="grid grid-2">
-        <div class="field">
-          <label for="ks-name">{t('booking.details.name')}</label>
-          <input id="ks-name" class="input" type="text" />
-          <p class="hint">Hint text</p>
-        </div>
-        <div class="field">
-          <label for="ks-email">{t('booking.details.email')}</label>
-          <input
-            id="ks-email"
-            class="input"
-            type="email"
-            aria-invalid="true"
-            aria-describedby="ks-email-err"
-          />
-          <p id="ks-email-err" class="field-error">Example error</p>
-        </div>
-      </div>
+          <h2>Fields</h2>
+          <div class="grid grid-2">
+            <div class="field">
+              <label for="ks-name">{t('booking.details.name')}</label>
+              <input id="ks-name" class="input" type="text" />
+              <p class="hint">Hint text</p>
+            </div>
+            <div class="field">
+              <label for="ks-email">{t('booking.details.email')}</label>
+              <input
+                id="ks-email"
+                class="input"
+                type="email"
+                aria-invalid="true"
+                aria-describedby="ks-email-err"
+              />
+              <p id="ks-email-err" class="field-error">Example error</p>
+            </div>
+          </div>
 
-      <h2>Notices</h2>
-      <div class="notice">Neutral notice</div>
-      <div class="notice notice-success">Success notice</div>
-      <div class="notice notice-danger">Danger notice</div>
+          <h2>Notices</h2>
+          <div class="notice">Neutral notice</div>
+          <div class="notice notice-success">Success notice</div>
+          <div class="notice notice-danger">Danger notice</div>
 
-      <h2>Timer</h2>
-      <p class="timer" role="status"
-        >{t('booking.hold.timer', { minutes: 18 })} <strong>18:00</strong></p
-      >
+          <h2>Timer</h2>
+          <p class="timer" role="status"
+            >{t('booking.hold.timer', { minutes: 18 })} <strong>18:00</strong></p
+          >
 
-      <h2>Vehicle card</h2>
-      <article class="vehicle-card">
-        <div class="vehicle-card-photo" role="img" aria-label="Demo"></div>
-        <div class="vehicle-card-body">
-          <h3>V-Class</h3>
-          <p class="muted">Tagline</p>
-          <div class="meta">
-            <span class="from-price">€ 180.00</span>
-            <button type="button" class="btn btn-gold">{t('booking.vehicle.select')}</button>
+          <h2>Vehicle card</h2>
+          <article class="vehicle-card">
+            <div class="vehicle-card-photo" role="img" aria-label="Demo"></div>
+            <div class="vehicle-card-body">
+              <h3>V-Class</h3>
+              <p class="muted">Tagline</p>
+              <div class="meta">
+                <span class="from-price">€ 180.00</span>
+                <button type="button" class="btn btn-gold">{t('booking.vehicle.select')}</button>
+              </div>
+            </div>
+          </article>
+
+          <h2>State card</h2>
+          <div class="state-card notice-danger">
+            <p class="eyebrow">Hold</p>
+            <h3 class="display">Hold expired</h3>
+            <a class="btn btn-gold" href="/book">Start again</a>
           </div>
         </div>
-      </article>
+      </section>
 
-      <h2>State card</h2>
-      <div class="state-card notice-danger">
-        <p class="eyebrow">Hold</p>
-        <h3 class="display">Hold expired</h3>
-        <a class="btn btn-gold" href="/book">Start again</a>
-      </div>
-    </div>
-  </section>
-
-  <Sections sections={kit2Sections} />
-</BaseLayout>
+      <Sections sections={kit2Sections} />
+    </BaseLayout>
+  )
+}
