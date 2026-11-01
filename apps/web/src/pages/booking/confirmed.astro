@@ -11,7 +11,6 @@ Astro.response.headers.set('Referrer-Policy', 'no-referrer');
 await loadUiStrings();
 const settings = await getSiteSettings();
 const orderCode = Astro.url.searchParams.get('s')?.trim() || '';
-const transactionId = Astro.url.searchParams.get('t')?.trim() || '';
 
 const waiting = t('booking.confirmed.waiting');
 const title = t('booking.confirmed.title');
@@ -30,7 +29,6 @@ const homeLabel = t('booking.confirmed.home');
       class="narrow stack"
       id="confirmed-root"
       data-order-code={orderCode}
-      data-transaction-id={transactionId}
       data-body-template={bodyTemplate}
     >
       <div id="confirmed-waiting" class="notice" role="status" aria-live="polite">

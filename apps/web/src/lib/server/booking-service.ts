@@ -654,44 +654,25 @@ export async function payAgain(raw: unknown, visitorKey: string) {
 // GET /api/booking-status
 // ---------------------------------------------------------------------------
 
-export async function bookingStatus(orderCode: string, transactionId?: string | null) {
-  const read = async () => {
-    const { rows } = await db().query<{
-      reference: string;
-      status: string;
-      payment_status: string;
-    }>(
-      `select reference, status, payment_status from public.bookings where viva_order_code = $1::bigint`,
-      [orderCode],
-    );
-    return rows[0];
-  };
-
-  let row = await read();
-  if (!row) {
+export async function bookingStatus(orderCode: string) {
+  const { rows } = await db().query<{
+    reference: string;
+    status: string;
+    payment_status: string;
+  }>(
+    `select reference, status, payment_status from public.bookings where viva_order_code = $1::bigint`,
+    [orderCode],
+  );
+  if (!rows[0]) {
     throw new BookingError('invalid_request', {
       stringKey: 'error.invalid_request',
       message: 'unknown order',
     });
   }
-
-  // Webhook may be missing/delayed. If Viva sent transaction id on the success
-  // redirect, verify it against Viva's API (never trust the redirect alone).
-  if (
-    transactionId &&
-    /^[0-9a-f-]{36}$/i.test(transactionId) &&
-    row.status === 'pending' &&
-    row.payment_status === 'unpaid'
-  ) {
-    const { confirmVerifiedVivaTransaction } = await import('./webhook-viva');
-    await confirmVerifiedVivaTransaction(transactionId, orderCode);
-    row = (await read()) ?? row;
-  }
-
   return {
-    reference: row.reference,
-    status: row.status,
-    paymentStatus: row.payment_status,
+    reference: rows[0].reference,
+    status: rows[0].status,
+    paymentStatus: rows[0].payment_status,
   };
 }
 
