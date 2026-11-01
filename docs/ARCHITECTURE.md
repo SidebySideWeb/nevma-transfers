@@ -107,6 +107,7 @@ Every variable is listed in `.env.example`. Where each is used:
 | `PUBLIC_BOOKING_OPEN` | yes | | | `false` until the Viva live account is approved (prompt 13) |
 | `SANITY_WRITE_TOKEN` | server only | | | kit 2: Editor robot token, form submissions only (`docs/FORMS.md`) |
 | `PUBLIC_STUDIO_URL` | server | | | kit 2: links to submissions in office emails |
+| `PUBLIC_SANITY_STUDIO_URL` | | yes | | fleet class page: Open in Sanity Studio (falls back to `PUBLIC_STUDIO_URL`) |
 | `TEM_WEB_DEPLOY_HOOK_URL` | | server only | | kit 2: admin triggers a site rebuild after price changes (debounced 2 min) |
 
 ## 10. Kit 2 additions (content site)
