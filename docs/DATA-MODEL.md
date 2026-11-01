@@ -98,7 +98,20 @@ Functions:
 
 ## Acceptance coverage in `packages/db/tests`
 
-AC-02 overlap, AC-03 type rules, AC-04 hold expiry, AC-05 last-vehicle race and hold limit, AC-07 duplicate transaction and idempotency key, AC-08 refund limit, AC-09 VIP flag, AC-10 RLS and staff rights, AC-14 DST range, plus the DEMO seed checks.
+AC-02 overlap, AC-03 type rules, AC-04 hold expiry, AC-05 last-vehicle race and hold limit, AC-07 duplicate transaction and idempotency key, AC-08 refund limit, AC-09 VIP flag, AC-10 RLS and staff rights, AC-14 DST range, AC-37 VAT share, plus the DEMO seed checks.
+
+## 0010 — VAT (1 Nov 2026)
+
+Rules: `docs/BOOKING-RULES.md` §2. Every customer-facing price is final (VAT included). The VAT share is shown only as a price analysis on the review step and in the confirmation email.
+
+| Object | What |
+| --- | --- |
+| `settings.vat_rate_bp` | basis points (2400 = 24%), DEMO until the accountant confirms (O18) |
+| `bookings.vat_rate_bp` | copied from settings at insert by trigger `bookings_set_vat_rate` (never set by the API) |
+| `bookings.vat_cents` | generated always: `price_cents − round(price_cents × 10000 / (10000 + vat_rate_bp))` |
+| `vat_from_gross(gross, rate_bp)` | same formula as a SQL helper |
+
+Staff column grants stay unchanged: staff cannot update VAT fields.
 
 ## 0011 — Office bookings, fleet calendar, customers (1 Nov 2026)
 

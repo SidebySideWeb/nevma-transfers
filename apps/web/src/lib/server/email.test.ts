@@ -30,7 +30,13 @@ const baseConfirm = {
   className: 'DEMO Executive sedan',
   passengers: 2,
   extras: [{ label: 'DEMO VIP security', cents: 15000 }],
+  lines: [
+    { label: 'DEMO Executive sedan', cents: 7000 },
+    { label: 'DEMO VIP security', cents: 15000 },
+  ],
   totalCents: 22000,
+  vatRateBp: 2400,
+  vatCents: 4258,
   vipSecurity: true,
   invoiceRequested: true,
   cancelUrl: 'https://example.com/booking/manage/tok_demo_only',
@@ -68,6 +74,13 @@ describe('emails (prompt 08)', () => {
       DEMO VIP security: € 150.00
       Total: € 220.00
 
+      Price analysis
+      DEMO Executive sedan: € 70.00
+      DEMO VIP security: € 150.00
+      Price before VAT: € 177.42
+      VAT 24%: € 42.58
+      Total paid (VAT included): € 220.00
+
       VIP security is included in this booking. The office will contact you with the details.
 
       Invoice requested.
@@ -79,6 +92,9 @@ describe('emails (prompt 08)', () => {
     `);
     expect(conf.text).toContain('/booking/manage/tok_demo_only');
     expect(conf.text).not.toMatch(/\d{13,19}/); // no full card numbers
+    expect(conf.html).toContain('Price analysis');
+    expect(conf.html).toContain('€ 177.42');
+    expect(conf.html).toContain('VAT 24%');
 
     const office = officeNewEmail({
       ...baseConfirm,
@@ -123,6 +139,18 @@ describe('emails (prompt 08)', () => {
 
       TEM Protection · +30 210 000 0000 (DEMO) · hello@example.com"
     `);
+  });
+
+  it('AC-37: confirmation email uses stored VAT values; 13% renders VAT 13%', () => {
+    const at13 = confirmationEmail({
+      ...baseConfirm,
+      vatRateBp: 1300,
+      vatCents: 2522,
+    });
+    expect(at13.text).toContain('VAT 13%');
+    expect(at13.text).toContain('€ 25.22');
+    expect(at13.text).toContain('Price before VAT: € 194.78');
+    expect(at13.html).toContain('VAT 13%');
   });
 
   it('AC-09: VIP lines only when flagged', () => {

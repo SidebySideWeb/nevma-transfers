@@ -67,3 +67,8 @@ export function formatEuro(cents: number): string {
   const euros = (cents / 100).toFixed(2);
   return `€ ${euros}`;
 }
+
+/** Format `vat_rate_bp` for display (2400 → "24", 1250 → "12.5"). */
+export function formatVatRate(bp: number): string {
+  return String(Number((bp / 100).toFixed(2)));
+}

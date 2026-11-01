@@ -1889,6 +1889,21 @@
   .manage-cancel:hover {
     color: var(--color-text);
   }
+  .price-analysis-disclosure {
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-3);
+  }
+  .price-analysis-disclosure summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+  .price-analysis .summary .grand dt,
+  .price-analysis .summary .grand dd {
+    font-weight: 600;
+  }
 }
 
 @layer utilities {

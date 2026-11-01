@@ -12,6 +12,10 @@ import StatusBadge from '../../components/StatusBadge.astro';
 import Toast from '../../components/Toast.astro';
 import { confirmActionLabel } from '../../components/confirm-label';
 import { formatEuro } from '../../lib/money';
+
+function formatVatRate(bp: number): string {
+  return String(Number((bp / 100).toFixed(2)));
+}
 import { parseTstzRange, rangesOverlap } from '../../lib/range';
 import { createSupabaseServerClient } from '../../lib/supabase';
 import { formatAthens, formatAthensShort } from '../../lib/time';
@@ -424,8 +428,16 @@ if (found && booking) {
                     );
                   })}
                   <div class="grand">
-                    <dt>Total</dt>
+                    <dt>Total paid (VAT included)</dt>
                     <dd>{formatEuro(booking.price_cents)}</dd>
+                  </div>
+                  <div>
+                    <dt>Price before VAT</dt>
+                    <dd>{formatEuro(booking.price_cents - (booking.vat_cents ?? 0))}</dd>
+                  </div>
+                  <div>
+                    <dt>{`VAT ${formatVatRate(booking.vat_rate_bp ?? 0)}%`}</dt>
+                    <dd>{formatEuro(booking.vat_cents ?? 0)}</dd>
                   </div>
                   <div>
                     <dt>Refundable</dt>

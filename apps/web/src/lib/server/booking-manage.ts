@@ -29,6 +29,11 @@ export type ManagePageView =
       extras: { name: string; cents: number; label: string }[];
       priceCents: number;
       priceLabel: string;
+      basePriceCents: number;
+      vatRateBp: number;
+      vatCents: number;
+      netCents: number;
+      analysisLines: { label: string; cents: number }[];
       canCancel: boolean;
       timeline: { key: string; title: string; current: boolean; done: boolean }[];
       officeEmail: string;
@@ -72,12 +77,15 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     passengers: number;
     luggage: number;
     price_cents: number;
+    base_price_cents: number;
+    vat_rate_bp: number;
+    vat_cents: number;
     from_name: string | null;
     to_name: string | null;
   }>(
     `select b.reference, b.status, b.pickup_at, b.duration_minutes, b.booking_type, b.hours,
             b.pickup_address, b.dropoff_address, b.flight_number, c.name as class_name,
-            b.passengers, b.luggage, b.price_cents,
+            b.passengers, b.luggage, b.price_cents, b.base_price_cents, b.vat_rate_bp, b.vat_cents,
             zf.name as from_name, zt.name as to_name
        from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
@@ -142,6 +150,14 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     })),
     priceCents: b.price_cents,
     priceLabel: formatEuro(b.price_cents),
+    basePriceCents: b.base_price_cents,
+    vatRateBp: b.vat_rate_bp,
+    vatCents: b.vat_cents,
+    netCents: b.price_cents - b.vat_cents,
+    analysisLines: [
+      { label: b.class_name, cents: b.base_price_cents },
+      ...(extras ?? []).map((e) => ({ label: e.name, cents: e.cents })),
+    ],
     canCancel,
     timeline: timelineFor(b.status),
     officeEmail: site.email,

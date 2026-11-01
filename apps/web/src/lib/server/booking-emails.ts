@@ -23,7 +23,10 @@ type BookingRow = {
   pickup_at: Date;
   hours: number | null;
   passengers: number;
+  base_price_cents: number;
   price_cents: number;
+  vat_rate_bp: number;
+  vat_cents: number;
   vip_security: boolean;
   invoice_status: string;
   customer_name: string;
@@ -55,7 +58,8 @@ function pickupLocalAthens(pickup: Date): string {
 
 async function loadBooking(reference: string): Promise<BookingRow | null> {
   const { rows } = await bookingDb().query<BookingRow>(
-    `select b.id, b.reference, b.booking_type, b.pickup_at, b.hours, b.passengers, b.price_cents,
+    `select b.id, b.reference, b.booking_type, b.pickup_at, b.hours, b.passengers,
+            b.base_price_cents, b.price_cents, b.vat_rate_bp, b.vat_cents,
             b.vip_security, b.invoice_status, b.customer_name, b.customer_email, b.customer_phone,
             b.notes, b.flight_number, b.invoice_company, b.invoice_vat, b.invoice_tax_office,
             b.invoice_address, c.name as class_name, zf.name as from_zone, zt.name as to_zone
@@ -135,7 +139,13 @@ export async function sendConfirmationEmails(
     className: booking.class_name,
     passengers: booking.passengers,
     extras,
+    lines: [
+      { label: booking.class_name, cents: booking.base_price_cents },
+      ...extras,
+    ],
     totalCents: booking.price_cents,
+    vatRateBp: booking.vat_rate_bp,
+    vatCents: booking.vat_cents,
     vipSecurity: booking.vip_security,
     invoiceRequested: booking.invoice_status === 'requested',
     cancelUrl,

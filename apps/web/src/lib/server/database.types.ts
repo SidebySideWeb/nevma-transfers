@@ -2,25 +2,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type Database = {
   
-  "graphql_public": {
-          Tables: {
-            [_ in never]: never
-          }
-          Views: {
-            [_ in never]: never
-          }
-          Functions: {
-            "graphql":
-{ Args: { "extensions"?: Json,"operationName"?: string,"query"?: string,"variables"?: Json }; Returns: Json
-                           }
-          }
-          Enums: {
-            [_ in never]: never
-          }
-          CompositeTypes: {
-            [_ in never]: never
-          }
-        },"public": {
+  "public": {
           Tables: {
             "blocked_slots": {
                   Row: {
@@ -70,14 +52,14 @@ isOneToOne: false
                   ]
                 },"bookings": {
                   Row: {
-                    "base_price_cents": number,"blocked_range": unknown,"booking_type": Database["public"]['Enums']["booking_type"],"cancel_token_hash": string | null,"cancelled_at": string | null,"class_id": string,"created_at": string,"created_by": string | null,"currency": string,"customer_email": string,"customer_id": string | null,"customer_name": string,"customer_phone": string,"dropoff_address": string | null,"duration_minutes": number,"flight_number": string | null,"from_zone_id": string,"hold_expires_at": string | null,"hours": number | null,"id": string,"invoice_address": string | null,"invoice_company": string | null,"invoice_number": string | null,"invoice_status": Database["public"]['Enums']["invoice_status"],"invoice_tax_office": string | null,"invoice_vat": string | null,"list_price_cents": number | null,"luggage": number,"notes": string | null,"passengers": number,"payment_method": string | null,"payment_status": Database["public"]['Enums']["payment_status"],"pickup_address": string,"pickup_at": string,"price_cents": number,"price_override_reason": string | null,"reference": string,"reminder_sent_at": string | null,"security_notes": string | null,"source": string,"status": Database["public"]['Enums']["booking_status"],"to_zone_id": string | null,"updated_at": string,"vehicle_id": string | null,"vip_security": boolean,"visitor_key": string | null,"viva_order_code": number | null
+                    "base_price_cents": number,"blocked_range": unknown,"booking_type": Database["public"]['Enums']["booking_type"],"cancel_token_hash": string | null,"cancelled_at": string | null,"class_id": string,"created_at": string,"created_by": string | null,"currency": string,"customer_email": string,"customer_id": string | null,"customer_name": string,"customer_phone": string,"dropoff_address": string | null,"duration_minutes": number,"flight_number": string | null,"from_zone_id": string,"hold_expires_at": string | null,"hours": number | null,"id": string,"invoice_address": string | null,"invoice_company": string | null,"invoice_number": string | null,"invoice_status": Database["public"]['Enums']["invoice_status"],"invoice_tax_office": string | null,"invoice_vat": string | null,"list_price_cents": number | null,"luggage": number,"notes": string | null,"passengers": number,"payment_method": string | null,"payment_status": Database["public"]['Enums']["payment_status"],"pickup_address": string,"pickup_at": string,"price_cents": number,"price_override_reason": string | null,"reference": string,"reminder_sent_at": string | null,"security_notes": string | null,"source": string,"status": Database["public"]['Enums']["booking_status"],"to_zone_id": string | null,"updated_at": string,"vat_cents": number | null,"vat_rate_bp": number,"vehicle_id": string | null,"vip_security": boolean,"visitor_key": string | null,"viva_order_code": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "base_price_cents": number,"blocked_range": unknown,"booking_type": Database["public"]['Enums']["booking_type"],"cancel_token_hash"?: string | null,"cancelled_at"?: string | null,"class_id": string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"customer_email": string,"customer_id"?: string | null,"customer_name": string,"customer_phone": string,"dropoff_address"?: string | null,"duration_minutes": number,"flight_number"?: string | null,"from_zone_id": string,"hold_expires_at"?: string | null,"hours"?: number | null,"id"?: string,"invoice_address"?: string | null,"invoice_company"?: string | null,"invoice_number"?: string | null,"invoice_status"?: Database["public"]['Enums']["invoice_status"],"invoice_tax_office"?: string | null,"invoice_vat"?: string | null,"list_price_cents"?: number | null,"luggage"?: number,"notes"?: string | null,"passengers": number,"payment_method"?: string | null,"payment_status"?: Database["public"]['Enums']["payment_status"],"pickup_address": string,"pickup_at": string,"price_cents": number,"price_override_reason"?: string | null,"reference"?: string,"reminder_sent_at"?: string | null,"security_notes"?: string | null,"source"?: string,"status"?: Database["public"]['Enums']["booking_status"],"to_zone_id"?: string | null,"updated_at"?: string,"vehicle_id"?: string | null,"vip_security"?: boolean,"visitor_key"?: string | null,"viva_order_code"?: number | null
+                    "base_price_cents": number,"blocked_range": unknown,"booking_type": Database["public"]['Enums']["booking_type"],"cancel_token_hash"?: string | null,"cancelled_at"?: string | null,"class_id": string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"customer_email": string,"customer_id"?: string | null,"customer_name": string,"customer_phone": string,"dropoff_address"?: string | null,"duration_minutes": number,"flight_number"?: string | null,"from_zone_id": string,"hold_expires_at"?: string | null,"hours"?: number | null,"id"?: string,"invoice_address"?: string | null,"invoice_company"?: string | null,"invoice_number"?: string | null,"invoice_status"?: Database["public"]['Enums']["invoice_status"],"invoice_tax_office"?: string | null,"invoice_vat"?: string | null,"list_price_cents"?: number | null,"luggage"?: number,"notes"?: string | null,"passengers": number,"payment_method"?: string | null,"payment_status"?: Database["public"]['Enums']["payment_status"],"pickup_address": string,"pickup_at": string,"price_cents": number,"price_override_reason"?: string | null,"reference"?: string,"reminder_sent_at"?: string | null,"security_notes"?: string | null,"source"?: string,"status"?: Database["public"]['Enums']["booking_status"],"to_zone_id"?: string | null,"updated_at"?: string,"vat_cents"?: never,"vat_rate_bp": number,"vehicle_id"?: string | null,"vip_security"?: boolean,"visitor_key"?: string | null,"viva_order_code"?: number | null
                   }
                   Update: {
-                    "base_price_cents"?: number,"blocked_range"?: unknown,"booking_type"?: Database["public"]['Enums']["booking_type"],"cancel_token_hash"?: string | null,"cancelled_at"?: string | null,"class_id"?: string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"customer_email"?: string,"customer_id"?: string | null,"customer_name"?: string,"customer_phone"?: string,"dropoff_address"?: string | null,"duration_minutes"?: number,"flight_number"?: string | null,"from_zone_id"?: string,"hold_expires_at"?: string | null,"hours"?: number | null,"id"?: string,"invoice_address"?: string | null,"invoice_company"?: string | null,"invoice_number"?: string | null,"invoice_status"?: Database["public"]['Enums']["invoice_status"],"invoice_tax_office"?: string | null,"invoice_vat"?: string | null,"list_price_cents"?: number | null,"luggage"?: number,"notes"?: string | null,"passengers"?: number,"payment_method"?: string | null,"payment_status"?: Database["public"]['Enums']["payment_status"],"pickup_address"?: string,"pickup_at"?: string,"price_cents"?: number,"price_override_reason"?: string | null,"reference"?: string,"reminder_sent_at"?: string | null,"security_notes"?: string | null,"source"?: string,"status"?: Database["public"]['Enums']["booking_status"],"to_zone_id"?: string | null,"updated_at"?: string,"vehicle_id"?: string | null,"vip_security"?: boolean,"visitor_key"?: string | null,"viva_order_code"?: number | null
+                    "base_price_cents"?: number,"blocked_range"?: unknown,"booking_type"?: Database["public"]['Enums']["booking_type"],"cancel_token_hash"?: string | null,"cancelled_at"?: string | null,"class_id"?: string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"customer_email"?: string,"customer_id"?: string | null,"customer_name"?: string,"customer_phone"?: string,"dropoff_address"?: string | null,"duration_minutes"?: number,"flight_number"?: string | null,"from_zone_id"?: string,"hold_expires_at"?: string | null,"hours"?: number | null,"id"?: string,"invoice_address"?: string | null,"invoice_company"?: string | null,"invoice_number"?: string | null,"invoice_status"?: Database["public"]['Enums']["invoice_status"],"invoice_tax_office"?: string | null,"invoice_vat"?: string | null,"list_price_cents"?: number | null,"luggage"?: number,"notes"?: string | null,"passengers"?: number,"payment_method"?: string | null,"payment_status"?: Database["public"]['Enums']["payment_status"],"pickup_address"?: string,"pickup_at"?: string,"price_cents"?: number,"price_override_reason"?: string | null,"reference"?: string,"reminder_sent_at"?: string | null,"security_notes"?: string | null,"source"?: string,"status"?: Database["public"]['Enums']["booking_status"],"to_zone_id"?: string | null,"updated_at"?: string,"vat_cents"?: never,"vat_rate_bp"?: number,"vehicle_id"?: string | null,"vip_security"?: boolean,"visitor_key"?: string | null,"viva_order_code"?: number | null
                   }
                   Relationships: [
                     {
@@ -457,6 +439,9 @@ isOneToOne: false
                            },
 "setting_int":
 { Args: { "p_key": string }; Returns: number
+                           },
+"vat_from_gross":
+{ Args: { "p_gross_cents": number,"p_rate_bp": number }; Returns: number
                            }
           }
           Enums: {
@@ -574,11 +559,7 @@ export type CompositeTypes<
   : never
 
 export const Constants = {
-  "graphql_public": {
-          Enums: {
-            
-          }
-        },"public": {
+  "public": {
           Enums: {
             "booking_status": ["pending", "confirmed", "assigned", "completed", "cancelled", "expired"],"booking_type": ["transfer", "hourly"],"invoice_status": ["not_required", "requested", "issued"],"payment_status": ["unpaid", "paid", "partially_refunded", "refunded", "failed"]
           }

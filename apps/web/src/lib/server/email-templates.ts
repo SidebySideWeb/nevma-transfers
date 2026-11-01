@@ -1,4 +1,4 @@
-import { formatEuro } from '../booking/pricing';
+import { formatEuro, formatVatRate } from '../booking/pricing';
 import { t } from '../strings';
 import { emailTheme as th } from './email-theme';
 
@@ -14,7 +14,11 @@ export type ConfirmationInput = {
   className: string;
   passengers: number;
   extras: ExtraLine[];
+  /** Vehicle/hours + extras at final prices (for the price analysis). */
+  lines?: ExtraLine[];
   totalCents: number;
+  vatRateBp: number;
+  vatCents: number;
   vipSecurity: boolean;
   invoiceRequested: boolean;
   cancelUrl: string;
@@ -120,6 +124,56 @@ function tripLines(input: {
   ].join('\n');
 }
 
+function priceAnalysisLines(input: {
+  lines?: ExtraLine[];
+  className: string;
+  extras: ExtraLine[];
+  totalCents: number;
+  vatRateBp: number;
+  vatCents: number;
+}): string {
+  const items =
+    input.lines && input.lines.length > 0
+      ? input.lines
+      : [{ label: input.className, cents: input.totalCents - input.extras.reduce((s, e) => s + e.cents, 0) }, ...input.extras];
+  const rate = formatVatRate(input.vatRateBp);
+  const net = input.totalCents - input.vatCents;
+  return [
+    t('email.confirmation.priceAnalysis'),
+    ...items.map((l) => `${l.label}: ${formatEuro(l.cents)}`),
+    `${t('email.confirmation.net')}: ${formatEuro(net)}`,
+    `${t('email.confirmation.vat', { rate })}: ${formatEuro(input.vatCents)}`,
+    `${t('email.confirmation.total')}: ${formatEuro(input.totalCents)}`,
+  ].join('\n');
+}
+
+function priceAnalysisHtml(input: {
+  lines?: ExtraLine[];
+  className: string;
+  extras: ExtraLine[];
+  totalCents: number;
+  vatRateBp: number;
+  vatCents: number;
+}): string {
+  const items =
+    input.lines && input.lines.length > 0
+      ? input.lines
+      : [{ label: input.className, cents: input.totalCents - input.extras.reduce((s, e) => s + e.cents, 0) }, ...input.extras];
+  const rate = formatVatRate(input.vatRateBp);
+  const net = input.totalCents - input.vatCents;
+  const rows = [
+    ...items.map(
+      (l) =>
+        `<tr><td style="padding:4px 0;color:${th.muted};">${escapeHtml(l.label)}</td><td style="padding:4px 0;text-align:right;">${escapeHtml(formatEuro(l.cents))}</td></tr>`,
+    ),
+    `<tr><td style="padding:4px 0;color:${th.muted};">${escapeHtml(t('email.confirmation.net'))}</td><td style="padding:4px 0;text-align:right;">${escapeHtml(formatEuro(net))}</td></tr>`,
+    `<tr><td style="padding:4px 0;color:${th.muted};">${escapeHtml(t('email.confirmation.vat', { rate }))}</td><td style="padding:4px 0;text-align:right;">${escapeHtml(formatEuro(input.vatCents))}</td></tr>`,
+    `<tr><td style="padding:8px 0 4px;font-weight:600;">${escapeHtml(t('email.confirmation.total'))}</td><td style="padding:8px 0 4px;text-align:right;font-weight:600;">${escapeHtml(formatEuro(input.totalCents))}</td></tr>`,
+  ].join('');
+  return `<p style="margin:16px 0 8px;font-weight:600;">${escapeHtml(t('email.confirmation.priceAnalysis'))}</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="font-size:15px;">${rows}</table>`;
+}
+
 export function manageLinkEmail(input: {
   reference: string;
   manageUrl: string;
@@ -156,10 +210,13 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
   const vip = input.vipSecurity ? t('email.confirmation.vip') : '';
   const invoiceNote = input.invoiceRequested ? 'Invoice requested.' : '';
 
+  const analysis = priceAnalysisLines(input);
   const text = [
     body,
     '',
     tripLines(input),
+    '',
+    analysis,
     vip ? `\n${vip}` : '',
     invoiceNote ? `\n${invoiceNote}` : '',
     '',
@@ -174,6 +231,7 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
   const htmlBody = `
     <p style="margin:0 0 12px;">${escapeHtml(body)}</p>
     <p style="margin:0 0 8px;white-space:pre-line;">${escapeHtml(tripLines(input))}</p>
+    ${priceAnalysisHtml(input)}
     ${vip ? `<p style="margin:12px 0;font-weight:600;color:${th.accent};">${escapeHtml(vip)}</p>` : ''}
     ${invoiceNote ? `<p style="margin:8px 0;">${escapeHtml(invoiceNote)}</p>` : ''}
     <p style="margin:16px 0 8px;">${escapeHtml(cancel)}</p>

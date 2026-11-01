@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { formatEuro, formatVatRate } from '../../../lib/booking/pricing';
 import { getSiteSettings, loadUiStrings } from '../../../lib/sanity/content';
 import { managePageView } from '../../../lib/server/booking-manage';
 import { t } from '../../../lib/strings';
@@ -135,6 +136,31 @@ const pickupTime = comma >= 0 ? pickupDisplay.slice(comma + 1).trim() : '';
                     {view.priceLabel}
                   </span>
                 </div>
+                <details class="price-analysis-disclosure">
+                  <summary>{t('booking.review.priceAnalysis')}</summary>
+                  <dl class="summary">
+                    {
+                      view.analysisLines.map((line) => (
+                        <div>
+                          <dt>{line.label}</dt>
+                          <dd>{formatEuro(line.cents)}</dd>
+                        </div>
+                      ))
+                    }
+                    <div>
+                      <dt>{t('booking.review.net')}</dt>
+                      <dd>{formatEuro(view.netCents)}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('booking.review.vat', { rate: formatVatRate(view.vatRateBp) })}</dt>
+                      <dd>{formatEuro(view.vatCents)}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('booking.review.totalInclVat')}</dt>
+                      <dd>{view.priceLabel}</dd>
+                    </div>
+                  </dl>
+                </details>
               </div>
 
               <div class="card stack">

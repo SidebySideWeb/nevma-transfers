@@ -102,6 +102,8 @@ export const bookingApi = {
       currency: string;
       lines: { label: string; cents: number }[];
       totalCents: number;
+      vatRateBp: number;
+      vatCents: number;
       holdExpiresAt: string;
       checkoutUrl: string;
     }>('/api/bookings', { method: 'POST', body: JSON.stringify(body) }),

@@ -187,3 +187,27 @@ test('booking references look like EP-XXXXXX without ambiguous characters', asyn
   const b = await insertBooking(db.pool, booking(ids, { pickup_at: '2026-12-13T10:00:00+02:00' }));
   assert.match(b.reference, /^EP-[A-HJ-NP-Z2-9]{6}$/);
 });
+
+test('AC-37: 0010 VAT — € 220.00 → € 177.42 + € 42.58; rate change leaves past bookings', async () => {
+  const b = await insertBooking(db.pool, booking(ids, {
+    pickup_at: '2026-12-14T10:00:00+02:00',
+    base_price_cents: 22000,
+    price_cents: 22000,
+  }));
+  const { rows: [r] } = await db.pool.query(
+    'select vat_rate_bp, vat_cents, price_cents - vat_cents as net from public.bookings where id = $1',
+    [b.id],
+  );
+  assert.equal(r.vat_rate_bp, 2400);
+  assert.equal(r.vat_cents, 4258);
+  assert.equal(r.net, 17742);
+  await db.pool.query("update public.settings set value = '1300' where key = 'vat_rate_bp'");
+  const { rows: [again] } = await db.pool.query(
+    'select vat_rate_bp from public.bookings where id = $1',
+    [b.id],
+  );
+  assert.equal(again.vat_rate_bp, 2400, 'a later rate change does not touch past bookings');
+  const { rows: [f] } = await db.pool.query('select public.vat_from_gross(7000, 2400) as v');
+  assert.equal(f.v, 1355);
+  await db.pool.query("update public.settings set value = '2400' where key = 'vat_rate_bp'");
+});

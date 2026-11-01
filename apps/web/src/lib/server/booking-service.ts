@@ -509,12 +509,20 @@ export async function createBooking(raw: unknown, visitorKey: string, ip?: strin
       created.booking_id,
     ]);
 
+    const { rows: vatRows } = await db().query<{ vat_rate_bp: number; vat_cents: number }>(
+      `select vat_rate_bp, vat_cents from public.bookings where id = $1::uuid`,
+      [created.booking_id],
+    );
+    const vat = vatRows[0]!;
+
     return {
       reference: created.reference,
       status: 'pending' as const,
       currency: created.currency,
       lines: created.lines.map((l) => ({ label: l.label, cents: l.cents })),
       totalCents: created.price_cents,
+      vatRateBp: vat.vat_rate_bp,
+      vatCents: vat.vat_cents,
       holdExpiresAt: toIsoWithOffset(holdExpires, settings.timezone),
       checkoutUrl: order.checkoutUrl,
     };
