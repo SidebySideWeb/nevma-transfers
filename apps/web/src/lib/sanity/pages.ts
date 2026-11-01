@@ -69,15 +69,23 @@ export async function getPageBySlug(slug: string): Promise<CmsPage> {
   try {
     const client = createSanityClient();
     const doc = await client.fetch(PAGE_BY_SLUG_QUERY, { slug });
-    if (!doc?.title || !doc?.slug) {
+    if (!doc?.title || !doc?.slug || (doc.kind !== 'home' && doc.kind !== 'legal')) {
       return demoOrThrow(slug, 'document not published or not found');
     }
+    const seo = doc.seo
+      ? {
+          title: doc.seo.title ?? undefined,
+          description: doc.seo.description ?? undefined,
+          noindex: doc.seo.noindex ?? undefined,
+          image: (doc.seo.image ?? undefined) as SanityImage | undefined,
+        }
+      : null;
     return {
       kind: doc.kind,
       title: doc.title,
       slug: doc.slug,
       sections: (doc.sections ?? []) as PageSection[],
-      seo: doc.seo ?? null,
+      seo,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'fetch failed';
