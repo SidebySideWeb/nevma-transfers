@@ -79,7 +79,7 @@ const { data: routes } = await supabase
                 <tr>
                   <th scope="row">{fromZ.name}</th>
                   {(zones ?? []).map((toZ) => {
-                    if (fromZ.id === toZ.id) return <td>—</td>;
+                    if (fromZ.id === toZ.id) return <td>-</td>;
                     const cents = priceMap.get(`${fromZ.id}:${toZ.id}`);
                     return (
                       <td>

@@ -1,6 +1,6 @@
 # Admin design (apps/admin)
 
-The office tool uses the Elite Protection brand at work density. Elite Protection tokens in `design/admin/tokens.css` (the V2 design; the public site keeps `design/tokens.css` until it moves to V2); its own component layer (`design/admin/admin.css`) and dropdown behaviour (`design/admin/admin.js`). Boards: open `design/admin/index.html`.
+The office tool uses the Elite Protection brand at work density. Same tokens as the public site (`design/tokens.css`); its own component layer (`design/admin/admin.css`). Boards: open `design/admin/index.html`.
 
 ## Boards
 
@@ -17,12 +17,14 @@ The office tool uses the Elite Protection brand at work density. Elite Protectio
 | `/hourly-rates` | `design/admin/hourly-rates.html` |
 | `/extras` | `design/admin/extras.html` |
 | `/fleet` | `design/admin/fleet.html` |
+| `/fleet/[key]` | `design/admin/fleet-class.html` |
+| add and edit dialogs: class, vehicle, zone, extra, delete | `design/admin/setup-dialogs.html` |
 | `/zones` | `design/admin/zones.html` |
 | `/settings` | `design/admin/settings.html` |
 | empty, loading, banners, not staff, not found | `design/admin/states.html` |
 | all components | `design/admin/components.html` |
 
-These boards replace the older wireframes `design/screens/admin-*.html`. Skipped until later updates: the VAT lines in the booking Payment panel and the `vat_rate_bp` setting (VAT update), and the "Prices changed: update the website" banner (kit 2).
+The older wireframes `design/screens/admin-*.html` now only point here.
 
 ## Rules
 

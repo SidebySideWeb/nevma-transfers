@@ -71,7 +71,7 @@ describe.skipIf(!hasDatabaseUrl)('office booking API (prompt 2)', () => {
         phone: '+306900000001',
       },
       bookingType: 'transfer' as const,
-      classKey: 'demo-sedan',
+      classKey: 'demo-e-class',
       fromZone: 'demo-airport',
       toZone: 'demo-centre',
       pickupLocal: futureLocal(),

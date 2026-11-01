@@ -43,9 +43,9 @@ async function fillBooking(
   await page.locator('#nb-pa').fill('Arrivals, meeting point 3');
   await page.locator('#nb-da').fill('Hotel, Syntagma');
   await page.locator('#nb-notes').fill(o.note);
-  const sedan = page.locator('#nb-cls option[value="demo-sedan"]');
+  const sedan = page.locator('#nb-cls option[value="demo-e-class"]');
   await expect(sedan).toHaveAttribute('data-meta', /\d+ free · € /, { timeout: 20_000 });
-  await setNativeSelect(page, 'nb-cls', 'demo-sedan');
+  await setNativeSelect(page, 'nb-cls', 'demo-e-class');
   const pay = {
     link: /Send a Viva payment link/,
     offline_paid: /Paid offline/,
@@ -71,7 +71,7 @@ test.beforeEach(({}, testInfo) => {
 
 test('office booking paid offline from the calendar empty-time popover', async ({ page }) => {
   await login(page);
-  await page.goto(`/calendar?date=${DAY}&class=demo-sedan`);
+  await page.goto(`/calendar?date=${DAY}&class=demo-e-class`);
   await expect(page.getByRole('region', { name: /Fleet calendar/ })).toBeVisible();
 
   // 10:00 on the first sedan: 10 hours x 56 px from the left edge of the track.
@@ -92,8 +92,8 @@ test('office booking paid offline from the calendar empty-time popover', async (
   await expect(page.locator('#nb-submit')).toHaveText('Create booking, paid offline');
   await page.locator('#nb-submit').click();
 
-  await expect(page).toHaveURL(/\/bookings\/(TEM-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
-  const reference = /\/bookings\/(TEM-[A-Z0-9]+)/.exec(page.url())![1]!;
+  await expect(page).toHaveURL(/\/bookings\/((?:EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
+  const reference = /\/bookings\/((?:EP|TEM)-[A-Z0-9]+)/.exec(page.url())![1]!;
   await expect(page.getByRole('status')).toContainText(`Booking ${reference} created`);
   await expect(page.locator('.badge').filter({ hasText: 'Office' }).first()).toBeVisible();
   await expect(page.locator('#added-by')).toContainText(`Added by ${STAFF_EMAIL} · Cash`);
@@ -106,7 +106,7 @@ test('office booking paid offline from the calendar empty-time popover', async (
   await page.goto('/bookings?source=online');
   await expect(page.getByRole('link', { name: reference })).toHaveCount(0);
 
-  await page.goto(`/calendar?date=${DAY}&class=demo-sedan`);
+  await page.goto(`/calendar?date=${DAY}&class=demo-e-class`);
   await expect(page.getByRole('link', { name: new RegExp(`^${reference} 10:00`) })).toBeVisible();
 });
 
@@ -121,7 +121,7 @@ test('office booking with a payment link is pending and held', async ({ page }) 
   });
   await expect(page.locator('#nb-submit')).toHaveText('Create and send payment link');
   await page.locator('#nb-submit').click();
-  await expect(page).toHaveURL(/\/bookings\/(TEM-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/bookings\/((?:EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
   await expect(page.locator('.badge').filter({ hasText: 'pending' })).toBeVisible();
   await expect(page.locator('.badge').filter({ hasText: 'Office' }).first()).toBeVisible();
   await expect(page.locator('#added-by')).toContainText('Viva');
@@ -138,7 +138,7 @@ test('record an offline payment on a to-collect booking', async ({ page }) => {
     note: 'e2e-office to collect',
   });
   await page.locator('#nb-submit').click();
-  await expect(page).toHaveURL(/\/bookings\/(TEM-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/bookings\/((?:EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
   await expect(page.locator('#payment-status')).toHaveText('unpaid');
 
   await page.getByRole('button', { name: 'Record offline payment…' }).click();
@@ -159,11 +159,11 @@ test('a class with no free vehicle shows 0 free, is disabled, and the calendar s
   await page.goto('/bookings/new?at=2026-12-22T10:30');
   await setNativeSelect(page, 'nb-from', 'demo-airport');
   await setNativeSelect(page, 'nb-to', 'demo-centre');
-  const sedan = page.locator('#nb-cls option[value="demo-sedan"]');
+  const sedan = page.locator('#nb-cls option[value="demo-e-class"]');
   await expect(sedan).toHaveAttribute('data-meta', '0 free', { timeout: 20_000 });
   await expect(sedan).toBeDisabled();
 
-  await page.goto('/calendar?date=2026-12-22&class=demo-sedan');
+  await page.goto('/calendar?date=2026-12-22&class=demo-e-class');
   await expect(page.locator('.cal-free span[title="10:00 · 0 free"]')).toHaveClass(/full/);
   await expect(page.locator('.bar.block').first()).toBeVisible();
 });

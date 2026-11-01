@@ -40,7 +40,7 @@ describe('zod request schemas', () => {
       pickupLocal: '2026-12-01T10:00',
       passengers: 2,
       luggage: 2,
-      classKey: 'demo-sedan',
+      classKey: 'demo-e-class',
       turnstileToken: 'tok',
     });
     expect(parsed.type).toBe('hourly');

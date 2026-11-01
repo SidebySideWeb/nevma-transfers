@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request a transfer — Elite Protection (wireframe, kit 2)</title>
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="screens.css">
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+  <a class="logo" href="home.html">Elite Protection</a>
+  <nav class="main-nav" aria-label="Main"><ul><li><a href="fleet.html">Fleet</a></li><li><a href="services.html">Services</a></li><li><a href="vip-security.html">VIP security</a></li><li><a href="#">About</a></li><li><a href="contact.html">Contact</a></li></ul></nav>
+  <div class="header-actions"><details class="mobile-menu"><summary>Menu</summary><ul><li><a href="fleet.html">Fleet</a></li><li><a href="services.html">Services</a></li><li><a href="vip-security.html">VIP security</a></li><li><a href="contact.html">Contact</a></li></ul></details><a class="btn" href="search.html">Book now</a></div>
+</div></header>
+
+<main class="section"><div class="narrow stack">
+  <h1>Request a quote</h1>
+  <p class="muted">richText.body: For trips we cannot price online. Tell us what you need and we reply with a price.</p>
+
+  <form class="stack" action="thank-you.html" method="post" novalidate>
+    <div class="notice" role="alert"><strong>Please check 2 fields:</strong> <a href="#dt">Date and time</a>, <a href="#c">Consent</a></div>
+    <section class="card stack" aria-labelledby="trip-h">
+      <h2 id="trip-h">Trip</h2>
+      <div class="grid grid-2">
+        <div class="field"><label for="fz">form.fromZone: From area</label><select id="fz" name="fromZone" class="input"><option>Northern suburbs</option><option>Athens International Airport</option><option value="other">Other place (not in the list)</option></select></div>
+        <div class="field"><label for="tz">form.toZone: To area</label><select id="tz" name="toZone" class="input"><option>Piraeus port</option><option value="other">Other place (not in the list)</option></select></div>
+        <div class="field"><label for="pa">form.pickupAddress <span class="muted">(optional)</span></label><input id="pa" class="input"></div>
+        <div class="field"><label for="da">form.dropoffAddress <span class="muted">(optional)</span></label><input id="da" class="input"></div>
+        <div class="field"><label for="dt">form.datetime: Date and time</label><input id="dt" class="input" type="datetime-local" aria-invalid="true" aria-describedby="dt-err"><span class="hint">Athens time</span><span class="error" id="dt-err">form.error.required: This field is required.</span></div>
+        <div class="field"><label for="vc">form.vehicleClass: Vehicle</label><select id="vc" class="input"><option>Executive van</option><option>form.vehicleClass.any: No preference</option></select></div>
+        <div class="field"><label for="px">form.passengers</label><input id="px" class="input" type="number" min="1" value="6"></div>
+        <div class="field"><label for="lg">form.luggage <span class="muted">(optional)</span></label><input id="lg" class="input" type="number" min="0"></div>
+      </div>
+      <label class="check"><input type="checkbox" name="vipSecurity"><span>form.vipSecurity: I would also like VIP security</span></label>
+      <p class="demo-note">Prefilled from /request-a-transfer?from=demo-north&amp;to=demo-port&amp;class=demo-v-class</p>
+    </section>
+    <section class="card stack" aria-labelledby="you-h">
+      <h2 id="you-h">Your details</h2>
+      <div class="grid grid-2">
+        <div class="field"><label for="n">form.name</label><input id="n" class="input" autocomplete="name"></div>
+        <div class="field"><label for="e">form.email</label><input id="e" class="input" type="email" autocomplete="email"></div>
+        <div class="field"><label for="p">form.phone</label><input id="p" class="input" type="tel" autocomplete="tel"></div>
+      </div>
+      <label class="check"><input type="checkbox" name="invoice"><span>form.invoice: I need an invoice (reveals the four invoice fields)</span></label>
+      <div class="field"><label for="m">form.message <span class="muted">(optional)</span></label><textarea id="m" class="input"></textarea></div>
+    </section>
+    <div class="hp" aria-hidden="true"><label for="w">Website</label><input id="w" name="website" tabindex="-1" autocomplete="off"></div>
+    <label class="check" id="c"><input type="checkbox" name="consent"><span>form.consent (links to the <a href="#">privacy policy</a>)</span></label>
+    <p class="muted">Turnstile widget here</p>
+    <button class="btn btn-block" type="submit">Send request</button>
+  </form>
+</div></main>
+</body>
+</html>

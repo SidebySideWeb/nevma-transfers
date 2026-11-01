@@ -8,7 +8,7 @@ function env(name: string): string {
 }
 
 /**
- * Server/build Sanity client. Dataset is private — token required.
+ * Server/build Sanity client. Dataset is private - token required.
  * Never import this into a browser island.
  */
 export function createSanityClient(): SanityClient {
@@ -30,7 +30,7 @@ export function createSanityClient(): SanityClient {
     useCdn: false,
     perspective: 'published',
     token,
-    // Build/prerender runs in Node — never assume a browser runtime.
+    // Build/prerender runs in Node - never assume a browser runtime.
     ignoreBrowserTokenWarning: true,
   });
 }

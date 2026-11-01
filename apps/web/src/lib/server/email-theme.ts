@@ -1,6 +1,6 @@
 import 'server-only';
 
-/** Copied from design/tokens.css — emails cannot use CSS variables. */
+/** Copied from design/tokens.css - emails cannot use CSS variables. */
 export const emailTheme = {
   bg: '#0e1116',
   surface: '#161b22',

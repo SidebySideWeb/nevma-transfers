@@ -15,7 +15,7 @@ export function resetTurnstileVerifier(): void {
 async function defaultVerify(token: string, ip: string | undefined): Promise<boolean> {
   const secret = import.meta.env.TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SECRET_KEY;
   if (!secret || !token) return false;
-  // Cloudflare dummy secret — always pass (local / Playwright).
+  // Cloudflare dummy secret - always pass (local / Playwright).
   if (secret === '1x0000000000000000000000000000000AA') return true;
   const body = new URLSearchParams({
     secret,

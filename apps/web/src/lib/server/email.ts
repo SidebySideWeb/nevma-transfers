@@ -7,7 +7,7 @@ export type SendEmailInput = {
   html: string;
   text: string;
   tag: string;
-  /** Logged on failure only — never put in the email body by this helper. */
+  /** Logged on failure only - never put in the email body by this helper. */
   reference?: string;
 };
 

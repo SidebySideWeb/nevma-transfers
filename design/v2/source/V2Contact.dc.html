@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Elite Protection – Contact (v2)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html{color-scheme: dark; accent-color: #CFA45F}
+*{-webkit-tap-highlight-color: transparent}
+::selection{background: #CFA45F; color: #0A0A0B}
+a{color:#E7C687}a:hover{color:#F4F0E6}
+:focus-visible{outline: 2px solid #E7C687; outline-offset: 3px}
+.eyebrow{font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#E7C687;font-weight:500}
+.display{font-family:'Playfair Display',serif;font-weight:500;line-height:1.04;letter-spacing:-0.01em;margin:0}
+.display em{font-style:italic;color:#E7C687}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:0 30px;box-sizing:border-box;font-family:'Jost',sans-serif;font-weight:600;font-size:13px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;cursor:pointer;border:1px solid #E7C687;transition:transform .25s ease,box-shadow .25s ease,background .25s ease,color .25s ease}
+.btn-gold{background:#E7C687;color:#0A0A0B}
+.btn-gold:hover{background:#F2DDAE;color:#0A0A0B;transform:translateY(-2px);box-shadow:0 12px 32px rgba(231,198,135,.3)}
+.btn-line{background:rgba(10,10,11,.2);color:#E7C687}
+.btn-line:hover{background:#E7C687;color:#0A0A0B}
+.link-arrow{color:#E7C687;text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;border-bottom:1px solid rgba(207,164,95,.5);padding-bottom:5px;transition:border-color .2s,color .2s}
+.link-arrow:hover{color:#F4F0E6;border-color:#F4F0E6}
+.nav{display:flex;gap:6px 34px;flex-wrap:wrap}
+.nav a{color:#F4F0E6;text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;padding:10px 0;border-bottom:1px solid transparent;transition:border-color .2s,color .2s}
+.nav a:hover,.nav a.on{color:#E7C687;border-color:#CFA45F}
+.card{transition:transform .35s ease,border-color .35s ease}
+.card:hover{transform:translateY(-4px);border-color:#CFA45F !important}
+.zoom{overflow:hidden}
+.zoom .ph{transition:transform .9s ease}
+.zoom:hover .ph{transform:scale(1.05)}
+.tab{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:64px;padding:0 4px 0 0;background:transparent;border:0;border-bottom:1px solid rgba(207,164,95,.25);font-family:'Playfair Display',serif;font-size:26px;color:#8E887B;cursor:pointer;text-align:left;transition:color .2s}
+.tab:hover{color:#F4F0E6}
+.burger{display:none}
+.field{display:flex;flex-direction:column;gap:4px;padding:14px 18px;box-sizing:border-box;border-right:1px solid rgba(207,164,95,.22)}
+.field label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#B9A281}
+.field input{background:transparent;border:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:17px;padding:0;height:30px;width:100%}
+.dd-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:30px;background:transparent;border:0;padding:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:17px;text-align:left;cursor:pointer}
+.dd-opt{display:flex;width:100%;box-sizing:border-box;align-items:center;min-height:46px;padding:0 16px;background:transparent;border:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:16px;text-align:left;cursor:pointer}
+.dd-opt:hover,.dd-opt:focus-visible{background:#E7C687;color:#0A0A0B;outline:none}
+.swap{width:44px;height:44px;border-radius:50%;border:1px solid rgba(207,164,95,.6);background:#0A0A0B;color:#E7C687;font-size:18px;cursor:pointer;transition:transform .3s ease,background .2s}
+.swap:hover{transform:rotate(180deg);background:#15181A}
+.mm a{color:#F4F0E6;text-decoration:none;font-family:'Playfair Display',serif;font-size:34px;padding:10px 0;border-bottom:1px solid rgba(207,164,95,.25)}
+@media (max-width: 960px){.nav{display:none !important}.burger{display:inline-flex !important}.hide-m{display:none !important}.field{border-right:0;border-bottom:1px solid rgba(207,164,95,.22)}.display.xl{font-size:56px !important}}
+.ddl{position:absolute;left:0;right:0;top:100%;margin:2px 0 0;padding:4px 0;list-style:none;background:#15181A;border:1px solid #CFA45F;box-shadow:0 16px 40px rgba(0,0,0,.6);z-index:31}
+.grid{display:flex;flex-wrap:wrap;gap:26px 28px}
+.f2{flex:1 1 260px;display:flex;flex-direction:column;gap:8px;position:relative}
+.f2 label,.lbl{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#B9A281}
+.f2 input,.f2 textarea,.f2 .dd-btn{box-sizing:border-box;width:100%;height:50px;background:transparent;border:0;border-bottom:1px solid rgba(207,164,95,.55);color:#F4F0E6;font-family:'Jost',sans-serif;font-size:18px;padding:0;transition:border-color .2s}
+.f2 textarea{height:auto;min-height:130px;border:1px solid rgba(207,164,95,.55);padding:14px}
+.f2 input:focus,.f2 textarea:focus{outline:none;border-color:#E7C687}
+.f2 input::placeholder{color:#5E5A52}
+
+.bgx1{background:linear-gradient(90deg, rgba(7,7,8,0.96) 0%, rgba(7,7,8,0.75) 50%, rgba(7,7,8,0.35) 100%), linear-gradient(0deg, #0A0A0B 0%, rgba(10,10,11,0) 40%), url(/_blob/268daee6dcb4b2c0af04b1030da78c59) center 65%/cover no-repeat}
+</style>
+</helmet>
+<div style="background: #0A0A0B; color: #F4F0E6; font-family: 'Jost', sans-serif; font-size: 17px; line-height: 1.65; overflow-x: hidden;">
+  <section class="bgx1" style="position: relative; min-height: 560px; display: flex; flex-direction: column;">
+    <header style="position: relative; z-index: 20; border-bottom: 1px solid rgba(207,164,95,0.22);">
+      <div style="max-width: 1320px; margin: 0 auto; padding: 22px 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+        <a href="V2Home.dc.html" aria-label="Elite Protection home" style="display: inline-flex; align-items: center; text-decoration: none;"><img src="/_blob/25fb606e31ba9827ff9f1b3b50994f89" alt="Elite Protection" style="height: 52px; width: auto; display: block;"></a>
+        <nav class="nav" aria-label="Main">
+          <a href="V2Fleet.dc.html">Fleet</a>
+          <a href="V2Services.dc.html">Services</a>
+          <a href="V2Security.dc.html">VIP Security</a>
+          <a href="V2About.dc.html">About</a>
+          <a class="on" aria-current="page" href="V2Contact.dc.html">Contact</a>
+        </nav>
+        <div style="display: flex; align-items: center; gap: 22px;">
+          <a class="hide-m" href="tel:+302109706967" style="color: #E7C687; text-decoration: none; font-size: 15px; letter-spacing: 0.06em;">+30 210 970 6967</a>
+          <a class="btn btn-gold hide-m" href="V2Book.dc.html" style="min-height: 46px; padding: 0 22px;">Book</a>
+          <button type="button" class="burger" onClick="{{toggleNav}}" aria-label="Menu" aria-expanded="{{navOpen}}" style="width: 46px; height: 46px; align-items: center; justify-content: center; background: transparent; border: 1px solid rgba(207,164,95,0.6); color: #E7C687; font-size: 20px; cursor: pointer;">☰</button>
+        </div>
+      </div>
+    </header>
+
+    <sc-if value="{{navOpen}}" hint-placeholder-val="{{false}}">
+      <div class="mm" style="position: fixed; z-index: 60; inset: 0; overflow-y: auto; background: #0A0A0B; padding: 28px 32px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <span class="eyebrow">Menu</span>
+          <button type="button" onClick="{{toggleNav}}" aria-label="Close menu" style="width: 46px; height: 46px; background: transparent; border: 1px solid rgba(207,164,95,0.6); color: #E7C687; font-size: 20px; cursor: pointer;">✕</button>
+        </div>
+        <a href="V2Fleet.dc.html">Fleet</a><a href="V2Services.dc.html">Services</a><a href="V2Security.dc.html">VIP Security</a><a href="V2About.dc.html">About</a><a href="V2Contact.dc.html">Contact</a>
+        <a class="btn btn-gold" href="V2Book.dc.html" style="margin-top: 28px; font-family: 'Jost', sans-serif; font-size: 13px; border: 1px solid #E7C687; color: #0A0A0B;">Book a transfer</a>
+      </div>
+    </sc-if>
+
+
+    <div style="position: relative; z-index: 2; flex: 1; max-width: 1320px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 90px 32px 64px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 32px;">
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="eyebrow">Contact</div>
+        <h1 class="display xl" style="font-size: 84px; max-width: 760px;">Your service <em>starts here.</em></h1>
+      </div>
+      <div style="font-family: 'Playfair Display', serif; font-size: 120px; line-height: 0.9; color: #CFA45F;">24/7</div>
+    </div>
+  </section>
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 72px 32px 0; display: flex; flex-wrap: wrap; gap: 20px;">
+    <a href="tel:+302109706967" class="card" style="flex: 1 1 280px; border: 1px solid rgba(207,164,95,0.35); background: #111315; padding: 30px; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #F4F0E6;">
+      <span class="eyebrow">Call · 24/7</span><span style="font-size: 26px;">+30 210 970 6967</span><span style="font-size: 18px; color: #D9D3C4;">+30 698 181 0410</span>
+    </a>
+    <a href="mailto:info@eliteprotection.gr" class="card" style="flex: 1 1 280px; border: 1px solid rgba(207,164,95,0.35); background: #111315; padding: 30px; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: #F4F0E6;">
+      <span class="eyebrow">Email</span><span style="font-size: 24px; color: #E7C687;">info@eliteprotection.gr</span><span style="font-size: 15px; color: #A9A395;">We reply as soon as possible</span>
+    </a>
+    <div style="flex: 1 1 280px; border: 1px solid rgba(207,164,95,0.35); background: #111315; padding: 30px; display: flex; flex-direction: column; gap: 8px;">
+      <span class="eyebrow">Office</span><span style="font-size: 20px;">[Office address, Athens]</span><span style="font-size: 15px; color: #A9A395;">To be supplied by Elite Protection</span>
+    </div>
+  </section>
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 80px 32px 120px; display: flex; flex-wrap: wrap; gap: 64px; align-items: flex-start;">
+    <form style="flex: 2 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 30px;">
+      <sc-if value="{{anyOpen}}" hint-placeholder-val="{{false}}"><div onClick="{{closeAll}}" style="position: fixed; inset: 0; z-index: 25;"></div></sc-if>
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="eyebrow">Send a message</div>
+        <h2 class="display" style="font-size: 48px;">How can we <em>help?</em></h2>
+        <p style="margin: 0; color: #A9A395;">Everything you tell us is treated in confidence. For an immediate answer, call us any time.</p>
+      </div>
+      <div class="grid">
+        <div class="f2"><label for="c-name">Full name</label><input id="c-name" type="text" autocomplete="name"></div>
+        <div class="f2"><label for="c-email">Email</label><input id="c-email" type="email" autocomplete="email"></div>
+        <div class="f2"><label for="c-phone">Phone (optional)</label><input id="c-phone" type="tel" autocomplete="tel"></div>
+        <div class="f2" style="z-index: 30;"><label for="c-topic">Topic</label>
+          <button type="button" id="c-topic" class="dd-btn" aria-haspopup="listbox" aria-expanded="{{topic_open}}" onClick="{{topic_toggle}}"><span>{{topic_value}}</span><span aria-hidden="true" style="color: #CFA45F; font-size: 13px;">▾</span></button>
+            <sc-if value="{{topic_open}}" hint-placeholder-val="{{false}}"><ul role="listbox" class="ddl"><sc-for list="{{topic_options}}" as="o" hint-placeholder-count="3"><li role="presentation"><button type="button" role="option" class="dd-opt" onClick="{{o.pick}}"><span style="color: #CFA45F; width: 20px;">{{o.mark}}</span>{{o.label}}</button></li></sc-for></ul></sc-if>
+
+        </div>
+        <div class="f2" style="flex-basis: 100%;"><label for="c-msg">Message</label><textarea id="c-msg" rows="5"></textarea></div>
+      </div>
+      <label style="display: flex; gap: 14px; align-items: flex-start; font-size: 15px; color: #B8B2A4; cursor: pointer;"><input type="checkbox" style="width: 22px; height: 22px; margin: 2px 0 0; flex: 0 0 auto;"> I agree that Elite Protection may use these details to answer my message, as described in the <a href="V2Legal.dc.html">privacy policy</a>.</label>
+      <div><a class="btn btn-gold" href="V2Thanks.dc.html" style="min-height: 58px; padding: 0 40px;">Send message</a></div>
+    </form>
+    <aside style="flex: 1 1 340px; display: flex; flex-direction: column; gap: 20px;">
+      <div style="height: 300px; border: 1px solid rgba(207,164,95,0.35); background: linear-gradient(160deg, #14171A, #050505); position: relative; overflow: hidden;">
+        <div aria-hidden="true" style="position: absolute; inset: 0; background-image: linear-gradient(rgba(207,164,95,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(207,164,95,0.08) 1px, transparent 1px); background-size: 40px 40px;"></div>
+        <div aria-hidden="true" style="position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #CFA45F; box-shadow: 0 0 0 10px rgba(207,164,95,0.2), 0 0 30px #CFA45F;"></div>
+        <span style="position: absolute; left: 18px; bottom: 14px; font-size: 11px; letter-spacing: 0.22em; color: #B9A281;">MAP · ATHENS (PLACEHOLDER)</span>
+      </div>
+      <div style="border: 1px solid rgba(207,164,95,0.35); background: #111315; padding: 30px; display: flex; flex-direction: column; gap: 12px;">
+        <div class="eyebrow">Already booked?</div>
+        <div style="color: #B8B2A4;">Find your booking with its reference and the email you used. We send you a secure link.</div>
+        <a class="link-arrow" href="V2Lookup.dc.html" style="align-self: flex-start;">Find my booking →</a>
+      </div>
+    </aside>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="background: #050505; border-top: 1px solid rgba(207,164,95,0.3);">
+    <div style="max-width: 1320px; margin: 0 auto; padding: 80px 32px 40px; display: flex; flex-wrap: wrap; gap: 48px;">
+      <div style="flex: 2 1 300px; display: flex; flex-direction: column; gap: 18px;">
+        <img src="/_blob/25fb606e31ba9827ff9f1b3b50994f89" alt="Elite Protection" style="height: 64px; width: auto; display: block; align-self: flex-start;">
+        <p style="margin: 0; max-width: 340px; color: #A9A395; font-size: 15px;">VIP Transfer and VIP Security in Athens. Luxury vehicles, professional chauffeurs and security teams, 24/7.</p>
+      </div>
+      <div style="flex: 1 1 170px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">Transfers</div>
+        <a href="V2Fleet.dc.html" style="color: #D9D3C4; text-decoration: none;">Fleet &amp; rates</a>
+        <a href="V2Services.dc.html" style="color: #D9D3C4; text-decoration: none;">Services &amp; routes</a>
+        <a href="V2Book.dc.html" style="color: #D9D3C4; text-decoration: none;">Book a transfer</a>
+        <a href="V2Lookup.dc.html" style="color: #D9D3C4; text-decoration: none;">Find my booking</a>
+      </div>
+      <div style="flex: 1 1 170px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">Company</div>
+        <a href="V2Security.dc.html" style="color: #D9D3C4; text-decoration: none;">VIP Security</a>
+        <a href="V2About.dc.html" style="color: #D9D3C4; text-decoration: none;">About</a>
+        <a href="V2Contact.dc.html" style="color: #D9D3C4; text-decoration: none;">Contact</a>
+      </div>
+      <div style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">24/7</div>
+        <a href="tel:+302109706967" style="color: #F4F0E6; text-decoration: none; font-size: 19px;">+30 210 970 6967</a>
+        <a href="tel:+306981810410" style="color: #F4F0E6; text-decoration: none; font-size: 19px;">+30 698 181 0410</a>
+        <a href="mailto:info@eliteprotection.gr" style="color: #E7C687; text-decoration: none;">info@eliteprotection.gr</a>
+      </div>
+    </div>
+    <div style="max-width: 1320px; margin: 0 auto; padding: 22px 32px 34px; border-top: 1px solid rgba(207,164,95,0.18); display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; font-size: 13px; color: #8E887B;">
+      <div>© 2026 Elite Protection · Prices exclusive of 24% VAT</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px 22px;"><a href="V2Legal.dc.html" style="color: #8E887B; text-decoration: none;">Terms</a><a href="V2Legal.dc.html" style="color: #8E887B; text-decoration: none;">Privacy</a><a href="V2Legal.dc.html" style="color: #8E887B; text-decoration: none;">Cookies</a></div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2200}}'>
+class Component extends DCLogic {
+  dd(k, opts) {
+    const st = this.state || {}, cur = st[k + 'V'] || opts[0], o = {};
+    o[k + '_value'] = cur; o[k + '_open'] = !!st[k + 'O'];
+    o[k + '_toggle'] = () => this.setState({ [k + 'O']: !st[k + 'O'] });
+    o[k + '_options'] = opts.map(x => ({ label: x, mark: x === cur ? '✓' : '', pick: () => this.setState({ [k + 'V']: x, [k + 'O']: false }) }));
+    return o;
+  }
+  renderVals() {
+    const st = this.state || {};
+    return Object.assign({
+      navOpen: !!st.navOpen,
+      toggleNav: () => this.setState({ navOpen: !st.navOpen }),
+      anyOpen: !!st.topicO,
+      closeAll: () => this.setState({ topicO: false })
+    }, this.dd('topic', ['VIP Transfer', 'VIP Security', 'An existing booking', 'Something else']));
+  }
+}
+
+</script>
+</body>
+</html>

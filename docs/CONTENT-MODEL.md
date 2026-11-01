@@ -1,48 +1,55 @@
 # Content model — Sanity
 
-One Sanity project for TEM Protection (kit 1 and kit 2). Dataset `production`, private. The Studio in `apps/studio` is provided and validated with Sanity 6.21 (0 errors, 0 warnings; `sanity build` passes; 14 schema and seed tests). **Do not redesign it.** Kit 2 adds document and section types; it does not change these.
+One Sanity project for Elite Protection (kit 1 and kit 2). Dataset `production`, private. The Studio in `apps/studio` is provided and validated with Sanity 6.21 (0 errors, 0 warnings; `sanity build` passes; 22 schema and seed tests). **Do not redesign it.**
 
-Sanity holds content only. Zones, prices, hourly rates, extras, vehicles, availability and bookings are in Postgres (`docs/DATA-MODEL.md`) and are managed in the admin app.
+Sanity holds content and form submissions. Zones, prices, hourly rates, extras, vehicles, availability and bookings are in Postgres (`docs/DATA-MODEL.md`) and are managed in the admin app. Sanity routes and vehicle classes join Postgres by code (`fromZone`/`toZone` = `zones.code`; `vehicleClass.key` = `vehicle_classes.key`).
 
 ## Documents
 
 | Type | Id | Fields | Used by |
 | --- | --- | --- | --- |
-| `siteSettings` | `siteSettings` (singleton) | `companyName`*, `tagline`, `phone`*, `email`*, `bookingNotificationEmail`* (office mailbox for booking emails), `address`, `openingHours`, `timezone` (read-only, Europe/Athens), `defaultSeo`, `logo` (image + alt), `internalNote` | header, footer, contact-us fallback, emails, SEO defaults |
-| `uiStrings` | `uiStrings` (singleton) | `strings[]` of `{ area: booking \| errors \| emails, key, value }`; keys must be in the table below and unique | every user-facing string in the booking flow, errors and emails |
-| `vehicleClass` | `vehicleClass-<key>` | `key`* (equals Postgres `vehicle_classes.key`; read-only after first publish), `name`*, `tagline`, `photos[]` (1–8, each with alt*), `copy` (Portable Text), `specs[] {label, value}`, `sortOrder`, `seo`, `internalNote` | vehicle cards in the booking flow; kit 2 fleet pages |
-| `page` | `page-<slug>` | `kind`* (`home` \| `legal`), `title`*, `slug`*, `sections[]` (`hero`, `richText`, `ctaBand`, `faq`), `seo`, `internalNote` | `/` (slug `home`) and `/privacy`, `/cookies`, `/terms`, `/cancellation` |
+| `siteSettings` | `siteSettings` (singleton) | `companyName`*, `tagline`, `phone`*, `email`*, `bookingNotificationEmail`*, `address`, `openingHours`, `timezone` (read-only, Europe/Athens), `showFromPrices` (kit 2, default on), `defaultSeo`, `logo` (+ alt), `internalNote` | header, footer, contact details, emails, SEO defaults, price display |
+| `uiStrings` | `uiStrings` (singleton) | `strings[]` of `{ area: booking \| errors \| emails \| site \| forms, key, value }`; keys must be in the table below and unique | every user-facing label and message outside page copy |
+| `vehicleClass` | `vehicleClass-<key>` | `key`* (= Postgres, read-only after publish), `name`*, `tagline`, `photos[]` (1–8, alt*), `copy`, `specs[] {label, value}`, `sortOrder`, `seo`, `internalNote` | booking cards; kit 2 `/fleet` and `/fleet/[key]` |
+| `page` | `page-<slug>` | `kind`* (`home` \| `legal` \| `standard`), `title`*, `slug`*, `sections[]`, `seo`, `internalNote` | `/`, legal pages, and kit 2 standard pages: `fleet`, `services`, `vip-security`, `about`, `contact`, `request-a-transfer` |
+| `route` (kit 2) | `route-<slug>` | `title`*, `slug`*, `fromZone`*, `toZone`* (zone codes, different), `intro`*, `body`, `photo` (+ alt), `faq[] {question, answer}`, `featured`, `sortOrder`, `seo`, `internalNote` | `/routes/[slug]`, route lists |
+| `form` (kit 2) | `form-<key>` | `key`* (`transfer-request` \| `vip-security` \| `contact`, read-only after publish), `title`*, `intro`, `recipientEmail`*, `topics[] {key, label, recipientEmail}` (contact only), `submitLabel`, `successTitle`*, `successMessage`*, `retentionMonths`* (1–120, default 24), `internalNote` | form blocks, thank-you pages, office emails, retention cron |
+| `formSubmission` (kit 2) | `submission-<uuid>` | `status` (`new` \| `in-progress` \| `done`), `internalNote` (office notes) — editable; read-only: `form` ref, `formKey`, `topic`, `submittedAt`, `name`, `email`, `phone`, `answers[] {key, label, value}`, `consent`, `emailStatus` | written by the site server only; never in "Create new"; actions: publish, discard, delete, restore |
 
-`*` required. Every image requires alt text. `internalNote` is never shown on the site; the DEMO seed sets it to a DEMO marker so the launch check (AC-21) can find leftovers.
+`*` required. Every image requires alt text. `internalNote` on content documents is never shown on the site; the DEMO seed marks it so the launch guard can find leftovers.
 
-## Objects
+## Page sections
 
 | Type | Fields |
 | --- | --- |
-| `seo` | `title` (≤ 60 advised), `description` (≤ 160 advised), `image` (+ alt), `noindex` |
 | `hero` | `heading`*, `subheading`, `image` (+ alt), `ctaLabel`, `ctaTarget` (`book` \| `url`), `ctaUrl` |
-| `richText` | `heading`, `body`* (Portable Text: normal, h2, h3, bullet and numbered lists, strong, em, link with http/https/mailto/tel) |
+| `richText` | `heading`, `body`* (Portable Text) |
 | `ctaBand` | `heading`*, `text`, `ctaLabel`*, `ctaTarget`, `ctaUrl` |
-| `faq` | `heading`, `items[] { question*, answer* }` (at least one) |
+| `faq` | `heading`, `items[] { question*, answer* }` |
+| `featureGrid` (kit 2) | `heading`, `intro`, `items[] { title*, text*, link }` (2–6) |
+| `imageText` (kit 2) | `heading`*, `body`*, `image`* (+ alt), `imageSide` (`left` \| `right`), `ctaLabel`, `ctaTarget` (`book` \| `quote` \| `url`), `ctaUrl` |
+| `steps` (kit 2) | `heading`, `items[] { title*, text }` (2–6) |
+| `vehicleClassList` (kit 2) | `heading`, `intro` — renders all active classes with Sanity content, in `sortOrder`, with "From" prices |
+| `routeList` (kit 2) | `heading`, `intro`, `routes[]` (references; empty = featured routes) |
+| `contactDetails` (kit 2) | `heading`, `showHours` — values from `siteSettings` |
+| `formBlock` (kit 2) | `form`* (reference to `form`), `heading` (defaults to the form title) |
 
 ## Desk structure
 
-Site settings (singleton) · UI strings (singleton) · Pages · Vehicle classes. Singletons cannot be created twice, deleted or duplicated.
+Site settings · UI strings · Pages · Routes · Vehicle classes · **Forms and submissions** → Form settings, then per form (Request a transfer, VIP security enquiries, Contact): New, In progress, Done, All (newest first).
 
-## Reading content in apps/web
+## Reading and writing content in apps/web
 
-- Queries live in `apps/web/src/lib/sanity/queries.ts` with `defineQuery`; run `pnpm --filter @tem/studio typegen` to regenerate `apps/web/src/sanity/sanity.types.ts`.
-- Perspective `published`; the private dataset is read with `SANITY_READ_TOKEN` (server and build only, never in the browser).
-- Strings: `t(key, vars)` in `apps/web/src/lib/strings.ts` returns the Sanity value if set, otherwise the code default from `apps/studio/schemaTypes/lib/uiStringDefaults.ts` (import it; do not copy it). Placeholders such as `{reference}` are filled by `t`. A missing key logs a build warning.
-- Emails read `uiStrings` at send time (cached 5 minutes).
+- Queries in `apps/web/src/lib/sanity/queries.ts` with `defineQuery`; `pnpm --filter @tem/studio typegen` regenerates `apps/web/src/sanity/sanity.types.ts`.
+- Perspective `published`; read with `SANITY_READ_TOKEN` (Viewer) on the server and at build only.
+- Submissions are created with `SANITY_WRITE_TOKEN` (Editor robot) in `apps/web` server code only (`docs/FORMS.md`).
+- Strings: `t(key, vars)` with code defaults from `apps/studio/schemaTypes/lib/uiStringDefaults.ts`.
 
 ## Seed (DEMO)
 
-`seed/tem-seed.tar.gz` (import format) and `seed/sanity/data.ndjson` (readable): `siteSettings`, `uiStrings` (all 69 keys), three vehicle classes (`demo-sedan`, `demo-suv`, `demo-van`, matching the SQL seed), the home page and four legal pages, 7 neutral DEMO images. Rebuild with `node --experimental-strip-types scripts/build-sanity-seed.mjs`. Import: prompt 02.
+`seed/tem-seed.tar.gz` and `seed/sanity/data.ndjson`: 25 documents — `siteSettings`, `uiStrings` (all keys), 5 vehicle classes from the V2 design (E-Class, S-Class, V-Class, Vito, Sprinter, with the design's photos), 11 pages (home, 4 legal, 6 standard), 4 routes (one, `demo-north` → `demo-port`, has no `demo-v-class` price on purpose), 3 forms (contact with 5 topics), 11 neutral DEMO images. No submissions. Rebuild with `node --experimental-strip-types scripts/build-sanity-seed.mjs`. Import: prompt 02 (kit 1) or prompt 15 (kit 2, `--replace` adds the new documents and updates the existing ones).
 
-## UI string keys (69)
-
-Placeholders in `{braces}` are filled by the app.
+## UI string keys (153)
 
 | Area | Key | Default |
 | --- | --- | --- |
@@ -79,6 +86,11 @@ Placeholders in `{braces}` are filled by the app.
 | booking | `booking.extras.vip.hint` | Add VIP security to this booking. The office confirms the details with you. |
 | booking | `booking.review.title` | Review and pay |
 | booking | `booking.total` | Total |
+| booking | `booking.priceNote` | Final price per vehicle, VAT included. |
+| booking | `booking.review.priceAnalysis` | Price analysis |
+| booking | `booking.review.net` | Price before VAT |
+| booking | `booking.review.vat` | VAT {rate}% |
+| booking | `booking.review.totalInclVat` | Total to pay (VAT included) |
 | booking | `booking.pay` | Pay securely |
 | booking | `booking.hold.timer` | Your vehicle is held for {minutes} minutes. |
 | booking | `booking.hold.warning` | Your hold ends in 2 minutes. |
@@ -105,7 +117,11 @@ Placeholders in `{braces}` are filled by the app.
 | emails | `email.confirmation.subject` | Your booking {reference} is confirmed |
 | emails | `email.confirmation.body` | Thank you for booking with us. Your booking {reference} is confirmed for {pickupAt}. |
 | emails | `email.confirmation.vip` | VIP security is included in this booking. The office will contact you with the details. |
-| emails | `email.confirmation.cancelLink` | To cancel, use this link: {cancelUrl} |
+| emails | `email.confirmation.priceAnalysis` | Price analysis |
+| emails | `email.confirmation.net` | Price before VAT |
+| emails | `email.confirmation.vat` | VAT {rate}% |
+| emails | `email.confirmation.total` | Total paid (VAT included) |
+| emails | `email.confirmation.cancelLink` | To see, manage or cancel your booking, use this secure link: {cancelUrl} |
 | emails | `email.reminder.subject` | Reminder: your transfer is tomorrow ({reference}) |
 | emails | `email.reminder.body` | This is a reminder of your booking {reference} on {pickupAt}. |
 | emails | `email.cancelled.subject` | Your booking {reference} was cancelled |
@@ -115,3 +131,78 @@ Placeholders in `{braces}` are filled by the app.
 | emails | `email.lateRefund.body` | Your payment arrived after the vehicle hold ended and the vehicle was no longer free, so we refunded it in full. |
 | emails | `email.office.new.subject` | New booking {reference} |
 | emails | `email.office.cancelled.subject` | Booking cancelled {reference} |
+| booking | `lookup.title` | Find my booking |
+| booking | `lookup.intro` | No accounts to remember. Enter your reference and email and we send you a secure link. |
+| booking | `lookup.reference` | Booking reference |
+| booking | `lookup.email` | Email used for the booking |
+| booking | `lookup.submit` | Email me the secure link |
+| booking | `lookup.sent` | If a booking matches these details, we have emailed you a secure link. Check your inbox and spam folder. |
+| booking | `manage.title` | Your booking |
+| booking | `manage.chauffeurNote` | Chauffeur details are emailed before the journey. |
+| booking | `manage.status.pending` | Awaiting payment |
+| booking | `manage.status.confirmed` | Confirmed |
+| booking | `manage.status.assigned` | Chauffeur assigned |
+| booking | `manage.status.completed` | Completed |
+| booking | `manage.status.cancelled` | Cancelled |
+| booking | `manage.timeline.booked` | Booked and paid |
+| booking | `manage.timeline.confirmed` | Confirmed by the office |
+| booking | `manage.timeline.assigned` | Chauffeur assigned |
+| booking | `manage.timeline.completed` | Journey completed |
+| booking | `manage.paid` | Paid |
+| booking | `manage.requestInvoice` | Request an invoice |
+| booking | `manage.callOffice` | Call the office |
+| booking | `manage.addToCalendar` | Add to calendar |
+| booking | `manage.cancel` | Cancel this booking |
+| booking | `manage.changesByPhone` | To change the time, vehicle or addresses, please call the office. Online changes are not available yet. |
+| booking | `manage.linkInvalid` | This link is no longer valid. Use Find my booking to get a new one. |
+| emails | `email.manageLink.subject` | Your secure link for booking {reference} |
+| emails | `email.manageLink.body` | Use this secure link to see or manage booking {reference}: {manageUrl}. It replaces any earlier link we sent you. |
+| site | `nav.fleet` | Fleet |
+| site | `nav.services` | Services |
+| site | `nav.vipSecurity` | VIP security |
+| site | `nav.about` | About |
+| site | `nav.contact` | Contact |
+| site | `nav.book` | Book now |
+| site | `nav.menu` | Menu |
+| site | `site.breadcrumb.home` | Home |
+| site | `site.fromPrice` | From {price} |
+| site | `site.perHour` | From {price} per hour |
+| site | `site.duration` | About {minutes} minutes |
+| site | `site.bookRoute` | Book this route |
+| site | `site.viewVehicle` | View vehicle |
+| site | `site.viewRoute` | See route |
+| site | `site.pricesForRoute` | Prices for this route |
+| site | `site.noOnlinePrice` | Price on request |
+| site | `site.requestQuote` | Request a quote |
+| site | `site.hours` | Opening hours |
+| forms | `form.name` | Full name |
+| forms | `form.email` | Email |
+| forms | `form.phone` | Phone |
+| forms | `form.message` | Message |
+| forms | `form.topic` | Topic |
+| forms | `form.serviceType` | Type of service or event |
+| forms | `form.date` | Date |
+| forms | `form.place` | Place |
+| forms | `form.people` | Number of people |
+| forms | `form.fromZone` | From area |
+| forms | `form.toZone` | To area |
+| forms | `form.otherPlace` | Other place (not in the list) |
+| forms | `form.pickupAddress` | Pick-up address |
+| forms | `form.dropoffAddress` | Drop-off address |
+| forms | `form.datetime` | Date and time |
+| forms | `form.passengers` | Passengers |
+| forms | `form.luggage` | Luggage items |
+| forms | `form.vehicleClass` | Vehicle |
+| forms | `form.vehicleClass.any` | No preference |
+| forms | `form.vipSecurity` | I would also like VIP security |
+| forms | `form.invoice` | I need an invoice |
+| forms | `form.consent` | I agree that you keep my details to answer this request, as described in the privacy policy. |
+| forms | `form.submit` | Send |
+| forms | `form.sending` | Sending… |
+| forms | `form.optional` | (optional) |
+| forms | `form.error.required` | This field is required. |
+| forms | `form.error.email` | Enter a valid email address. |
+| forms | `form.error.generic` | We could not send your message. Please try again or call us. |
+| forms | `email.form.office.subject` | New {form} from {name} |
+| forms | `email.form.confirm.subject` | We received your request |
+| forms | `email.form.confirm.body` | Thank you, {name}. We received your request and will reply as soon as we can. A copy of what you sent is below. |

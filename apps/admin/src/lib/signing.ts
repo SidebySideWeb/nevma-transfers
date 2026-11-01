@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 
 /**
- * HMAC-SHA256 hex of `timestamp.rawBody` — same scheme as apps/web `signing.ts`.
+ * HMAC-SHA256 hex of `timestamp.rawBody` - same scheme as apps/web `signing.ts`.
  * Secret is passed in so tests can use a fixed vector without env.
  */
 export function signPayload(secret: string, body: string, timestamp: number | string): string {

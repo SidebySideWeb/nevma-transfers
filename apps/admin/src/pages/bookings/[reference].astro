@@ -76,7 +76,7 @@ let refundable = 0;
 let classVehicles: { id: string; label: string; busy: boolean }[] = [];
 let fromName: string | undefined;
 let toName: string | undefined;
-let classKey = '—';
+let classKey = '-';
 let vehicleError: string | null = null;
 let pageError: string | null = null;
 let refundConfirm = '';
@@ -156,7 +156,7 @@ if (found && booking) {
 
   fromName = (booking.from_zone as { name?: string } | null)?.name;
   toName = (booking.to_zone as { name?: string } | null)?.name;
-  classKey = (booking.class as { key?: string } | null)?.key ?? '—';
+  classKey = (booking.class as { key?: string } | null)?.key ?? '-';
 
   vehicleError = actionErr(Astro.getActionResult?.(actions.assignVehicle));
   pageError =
@@ -237,14 +237,14 @@ if (found && booking) {
                   <dd>{formatAthens(booking.pickup_at)} (Athens)</dd>
                   <dt>From</dt>
                   <dd>
-                    {fromName ?? '—'}
+                    {fromName ?? '-'}
                     {booking.pickup_address ? ` · ${booking.pickup_address}` : ''}
                   </dd>
                   {booking.booking_type === 'transfer' && (
                     <>
                       <dt>To</dt>
                       <dd>
-                        {toName ?? '—'}
+                        {toName ?? '-'}
                         {booking.dropoff_address ? ` · ${booking.dropoff_address}` : ''}
                       </dd>
                     </>
@@ -256,7 +256,7 @@ if (found && booking) {
                     </>
                   )}
                   <dt>Flight</dt>
-                  <dd>{booking.flight_number || '—'}</dd>
+                  <dd>{booking.flight_number || '-'}</dd>
                   <dt>Passengers</dt>
                   <dd>
                     {booking.passengers} · {booking.luggage} bags
@@ -282,7 +282,7 @@ if (found && booking) {
                       options={[
                         {
                           value: '',
-                          label: '— Not assigned —',
+                          label: '- Not assigned -',
                           selected: !booking.vehicle_id,
                         },
                         ...classVehicles.map((v) => ({
@@ -329,7 +329,7 @@ if (found && booking) {
                   <dt>Phone</dt>
                   <dd>{booking.customer_phone}</dd>
                   <dt>Notes</dt>
-                  <dd>{booking.notes || '—'}</dd>
+                  <dd>{booking.notes || '-'}</dd>
                 </dl>
                 <form method="POST" action={actions.saveNotesInvoice} class="stack-sm">
                   <input type="hidden" name="reference" value={reference} />

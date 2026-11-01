@@ -53,7 +53,7 @@ const options: OptionsData = {
   ],
   classes: [
     {
-      key: 'demo-sedan',
+      key: 'demo-e-class',
       name: 'Sedan',
       maxPassengers: 3,
       maxLuggage: 3,
@@ -77,7 +77,7 @@ describe('booking reducer', () => {
         pickupAt: '2026-12-01T10:00:00+02:00',
         durationMinutes: 45,
         currency: 'EUR',
-        options: [{ classKey: 'demo-sedan', baseCents: 7000, available: true }],
+        options: [{ classKey: 'demo-e-class', baseCents: 7000, available: true }],
       },
     });
     expect(s.step).toBe('vehicle');
@@ -86,10 +86,10 @@ describe('booking reducer', () => {
       hold: {
         holdId: 'h1',
         expiresAt: new Date(Date.now() + 600_000).toISOString(),
-        classKey: 'demo-sedan',
+        classKey: 'demo-e-class',
         baseCents: 7000,
       },
-      classKey: 'demo-sedan',
+      classKey: 'demo-e-class',
       serverSkewMs: 0,
     });
     expect(s.step).toBe('details');
@@ -147,11 +147,11 @@ describe('StepDetails VIP', () => {
         hold={{
           holdId: 'h',
           expiresAt: new Date(Date.now() + 600_000).toISOString(),
-          classKey: 'demo-sedan',
+          classKey: 'demo-e-class',
           baseCents: 7000,
         }}
         details={initialDetails()}
-        selectedClassKey="demo-sedan"
+        selectedClassKey="demo-e-class"
         serverSkewMs={0}
         errors={{}}
         formError={null}

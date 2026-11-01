@@ -58,7 +58,7 @@ export async function getSettings(): Promise<AppSettings> {
   return value;
 }
 
-/** Test helper — clears the 60 s cache. */
+/** Test helper - clears the 60 s cache. */
 export function clearSettingsCache(): void {
   cache = null;
 }

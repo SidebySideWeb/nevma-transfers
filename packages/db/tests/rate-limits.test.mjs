@@ -26,7 +26,7 @@ describe('0007 rate limits and booking-from-hold', () => {
 
       const hold = await db.pool.query(
         `select * from public.create_hold(
-          'demo-sedan', $1::timestamptz, 45, 'visitor-a',
+          'demo-e-class', $1::timestamptz, 45, 'visitor-a',
           'transfer', $2::uuid, $3::uuid, null
         )`,
         [pickup, fromId, toId],

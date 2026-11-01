@@ -97,9 +97,9 @@ const rows = (slots ?? []).map((s) => {
               return (
                 <tr>
                   <td>{s.label}</td>
-                  <td>{s.startsAt ? formatAthens(s.startsAt) : '—'}</td>
-                  <td>{s.endsAt ? formatAthens(s.endsAt) : '—'}</td>
-                  <td>{s.reason ?? '—'}</td>
+                  <td>{s.startsAt ? formatAthens(s.startsAt) : '-'}</td>
+                  <td>{s.endsAt ? formatAthens(s.endsAt) : '-'}</td>
+                  <td>{s.reason ?? '-'}</td>
                   <td>
                     {future ? (
                       <form method="POST" action={actions.deleteBlockedSlot}>
@@ -109,7 +109,7 @@ const rows = (slots ?? []).map((s) => {
                         </button>
                       </form>
                     ) : (
-                      '—'
+                      '-'
                     )}
                   </td>
                 </tr>

@@ -10,7 +10,7 @@
 | Account | Needed from prompt |
 | --- | --- |
 | GitHub repository | 01 |
-| Sanity project "TEM Protection" (dataset `production`, private) + an Editor token for the seed import | 02 |
+| Sanity project "Elite Protection" (dataset `production`, private) + an Editor token for the seed import | 02 |
 | Supabase project (Pro, EU Frankfurt) + Supabase CLI logged in | 04 |
 | Cloudflare Turnstile site (test keys first) | 06 |
 | Viva demo account: Smart Checkout client id/secret, a payment source with success URL `/booking/confirmed` and failure URL `/booking/not-completed`, merchant id + API key (due Fri 27 Nov) | 07 |
@@ -38,6 +38,31 @@
 | 14 | `14-qa.md` | E2E, axe, Lighthouse, security checks, real payment and refund | 1.5 d |
 
 Prompts 02 and 04 can run in parallel after 01. 05 needs only 01. Payments (07) need Viva demo access (Fri 27 Nov); build 06, 08, 09 and 11 before that with Viva mocked.
+
+## Kit 2 — content site and forms
+
+Copy the kit 2 files over the repo first (see `README-KIT2.md`), then:
+
+| # | Prompt | Result | ~Time |
+| --- | --- | --- | --- |
+| 15 | `15-studio-kit2-seed.md` | Studio extended and deployed, kit 2 DEMO content, write token, queries | 0.5 d |
+| 16 | `16-catalog-data-layer.md` | Build-time catalog and "From" prices | 0.5 d |
+| 17 | `17-sections-navigation.md` | Navigation, breadcrumbs, 7 new sections | 1 d |
+| 18 | `18-fleet-pages.md` | Fleet overview and vehicle pages | 0.5 d |
+| 19 | `19-services-routes.md` | Services, route pages, booking prefill | 1 d |
+| 20 | `20-standard-pages.md` | VIP security, About, Contact | 0.5 d |
+| 21 | `21-forms-backend.md` | Form API, Sanity submissions, emails, spam protection, retention | 1 d |
+| 22 | `22-forms-ui.md` | Forms on the pages, prefill, thank-you pages | 1 d |
+| 23 | `23-admin-seo-launch.md` | Admin "update the website", route checks, sitemap, webhooks, launch guard | 0.5 d |
+| 24 | `24-qa-kit2.md` | Acceptance AC-25 to AC-34 | 1 d |
+| 25 | `25-manage-booking.md` | Find my booking, manage booking, add to calendar (can run any time after kit 1) | 1 d |
+| 26 | `26-admin-design.md` | Admin in the Elite Protection design (presentation only; after 11, and after 23 if kit 2 is applied) | 1.5 d |
+| 27 | `27-vat-price-analysis.md` | Final prices, VAT price analysis on review and email (after 06–08, 10) | 0.5 d |
+| 28 | `28-office-bookings-calendar.md` | Office bookings, fleet calendar, customers, brand dropdowns (after 11 and 26) | 4 d |
+| 29 | `29-fleet-setup.md` | Add and edit classes, vehicles, zones, extras (after 11 and 26) | 1.5 d |
+| 30 | `30-v2-design-foundation.md` | Website in the V2 design: fonts, components, kit 1 pages (after 15, before 16) | 3 d |
+
+Extra accounts: a Sanity **Editor** robot token for form submissions (prompt 15); the tem-web Vercel deploy hook URL for the admin (prompt 23).
 
 ## How to paste a prompt
 

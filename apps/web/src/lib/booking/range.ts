@@ -1,4 +1,4 @@
-/** Real elapsed minutes — same formula as SQL `blocked_range_for`. */
+/** Real elapsed minutes - same formula as SQL `blocked_range_for`. */
 export function blockedRange(
   pickup: Date,
   durationMinutes: number,

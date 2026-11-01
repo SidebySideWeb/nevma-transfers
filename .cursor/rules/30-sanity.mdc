@@ -8,7 +8,9 @@ alwaysApply: false
 
 Doc: `docs/CONTENT-MODEL.md`. The Studio in `apps/studio` is provided and validated (0 errors, 0 warnings). **Do not redesign the schema.**
 
-- Content only: `siteSettings`, `uiStrings`, `vehicleClass`, `page`. Zones, prices, hourly rates, extras, vehicles and bookings never go in Sanity.
+- Content and form submissions only: `siteSettings`, `uiStrings`, `vehicleClass`, `page`, and from kit 2 `route`, `form`, `formSubmission`. Zones, prices, hourly rates, extras, vehicles and bookings never go in Sanity.
+- `route.fromZone`/`toZone` equal Postgres `zones.code`; a route whose pair does not exist is skipped and reported, never shown with guessed data.
+- `formSubmission` documents are created only by `apps/web` server code with `SANITY_WRITE_TOKEN` (`docs/FORMS.md`); the site never reads them. Never log their contents.
 - `vehicleClass.key` equals `vehicle_classes.key` in Postgres. It is lowercase and unique. A class that exists on one side only is reported (admin warning and build log), not silently skipped.
 - Document IDs use hyphens, never dots. Singletons have fixed IDs (`siteSettings`, `uiStrings`).
 - Queries use `defineQuery` from `groq`, live in `src/lib/sanity/queries.ts`, project only the fields used, and run with perspective `published`.

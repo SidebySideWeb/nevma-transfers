@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Admin app rules
 
-Docs: `docs/ARCHITECTURE.md`, `docs/PAGES.md` (admin routes), `docs/API.md` (`/api/internal/refund`).
+Docs: `docs/ARCHITECTURE.md`, `docs/PAGES.md` (admin routes), `docs/API.md` (`/api/internal/refund`), `docs/DESIGN-ADMIN.md` (design; boards in `design/admin/`).
 
 - `apps/admin` is its own deployment and domain: Astro with `output: 'server'` on Vercel, `@supabase/ssr` cookie sessions, React islands only for interactive tables. It is `noindex` everywhere and has no public pages except the sign-in screen.
 - The admin writes directly only: vehicle assignment, status `assigned`/`completed`, security notes, invoice fields, blocked slots, prices, hourly rates, extras, vehicles. Cancellations and refunds always go through the web app's signed internal routes, so Viva and the customer emails stay in step. The database only lets staff update those booking columns.
@@ -17,4 +17,4 @@ Docs: `docs/ARCHITECTURE.md`, `docs/PAGES.md` (admin routes), `docs/API.md` (`/a
 - Prices and rates are edited in euros in the UI and stored as cents. Changing a price never touches existing bookings.
 - Tables are keyboard accessible, sortable, and usable at 1024 px and wider; phone view only needs the bookings list and booking detail.
 - Destructive actions (cancel, refund) need a confirmation step that restates amount and customer reference.
-- Look: Elite Protection admin design (`design/admin/`, `docs/DESIGN-ADMIN.md`): Jost for text, Playfair only for the wordmark, page titles and totals, square corners, gold means act here, status always as a word, brand dropdown for every select, errors stay on the page.
+- Look: Elite Protection admin design (`design/admin/admin.css`): Jost for text, Playfair only for the wordmark, page titles and totals, square corners, gold means "act here", status always as a word, success as a toast but errors stay on the page.

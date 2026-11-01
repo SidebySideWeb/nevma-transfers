@@ -23,7 +23,7 @@ async function seedPendingBooking(pool, { holdExpired = false, orderCode = 55500
        from public.vehicle_classes c
        join public.zones za on za.code = 'demo-airport'
        join public.zones zb on zb.code = 'demo-centre'
-      where c.key = 'demo-sedan'
+      where c.key = 'demo-e-class'
      returning id, reference, price_cents, class_id, blocked_range`,
     [pickup, holdExp, orderCode],
   );
@@ -103,7 +103,7 @@ describe('0008 record_viva_payment', () => {
       // Only one sedan left; take it with a confirmed booking on the same range.
       await db.pool.query(
         `delete from public.vehicles
-          where class_id = (select id from public.vehicle_classes where key = 'demo-sedan')
+          where class_id = (select id from public.vehicle_classes where key = 'demo-e-class')
             and label like '%-2'`,
       );
       const late = await seedPendingBooking(db.pool, { holdExpired: true, orderCode: 800004 });

@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elite Protection – Home</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<style>
+body{margin:0}
+html{color-scheme: dark; accent-color: #CFA45F}
+*{-webkit-tap-highlight-color: transparent}
+::selection{background: #CFA45F; color: #0A0A0B}
+a{color:#E7C687}a:hover{color:#F4F0E6}
+:focus-visible{outline: 2px solid #E7C687; outline-offset: 3px}
+.eyebrow{font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#E7C687;font-weight:500}
+.display{font-family:'Playfair Display',serif;font-weight:500;line-height:1.04;letter-spacing:-0.01em;margin:0}
+.display em{font-style:italic;color:#E7C687}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:0 30px;box-sizing:border-box;font-family:'Jost',sans-serif;font-weight:600;font-size:13px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;cursor:pointer;border:1px solid #E7C687;transition:transform .25s ease,box-shadow .25s ease,background .25s ease,color .25s ease}
+.btn-gold{background:#E7C687;color:#0A0A0B}
+.btn-gold:hover{background:#F2DDAE;color:#0A0A0B;transform:translateY(-2px);box-shadow:0 12px 32px rgba(231,198,135,.3)}
+.btn-line{background:rgba(10,10,11,.2);color:#E7C687}
+.btn-line:hover{background:#E7C687;color:#0A0A0B}
+.link-arrow{color:#E7C687;text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;border-bottom:1px solid rgba(207,164,95,.5);padding-bottom:5px;transition:border-color .2s,color .2s}
+.link-arrow:hover{color:#F4F0E6;border-color:#F4F0E6}
+.nav{display:flex;gap:6px 34px;flex-wrap:wrap}
+.nav a{color:#F4F0E6;text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;padding:10px 0;border-bottom:1px solid transparent;transition:border-color .2s,color .2s}
+.nav a:hover,.nav a.on{color:#E7C687;border-color:#CFA45F}
+.card{transition:transform .35s ease,border-color .35s ease}
+.card:hover{transform:translateY(-4px);border-color:#CFA45F !important}
+.zoom{overflow:hidden}
+.zoom .ph{transition:transform .9s ease}
+.zoom:hover .ph{transform:scale(1.05)}
+.tab{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:64px;padding:0 4px 0 0;background:transparent;border:0;border-bottom:1px solid rgba(207,164,95,.25);font-family:'Playfair Display',serif;font-size:26px;color:#8E887B;cursor:pointer;text-align:left;transition:color .2s}
+.tab:hover{color:#F4F0E6}
+.burger{display:none}
+.field{display:flex;flex-direction:column;gap:4px;padding:14px 18px;box-sizing:border-box;border-right:1px solid rgba(207,164,95,.22)}
+.field label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#B9A281}
+.field input{background:transparent;border:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:17px;padding:0;height:30px;width:100%}
+.dd-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:30px;background:transparent;border:0;padding:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:17px;text-align:left;cursor:pointer}
+.dd-opt{display:flex;width:100%;box-sizing:border-box;align-items:center;min-height:46px;padding:0 16px;background:transparent;border:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:16px;text-align:left;cursor:pointer}
+.dd-opt:hover,.dd-opt:focus-visible{background:#E7C687;color:#0A0A0B;outline:none}
+.swap{width:44px;height:44px;border-radius:50%;border:1px solid rgba(207,164,95,.6);background:#0A0A0B;color:#E7C687;font-size:18px;cursor:pointer;transition:transform .3s ease,background .2s}
+.swap:hover{transform:rotate(180deg);background:#15181A}
+.mm a{color:#F4F0E6;text-decoration:none;font-family:'Playfair Display',serif;font-size:34px;padding:10px 0;border-bottom:1px solid rgba(207,164,95,.25)}
+@media (max-width: 960px){.nav{display:none !important}.burger{display:inline-flex !important}.hide-m{display:none !important}.field{border-right:0;border-bottom:1px solid rgba(207,164,95,.22)}.display.xl{font-size:56px !important}}
+
+.bgx1{background:linear-gradient(90deg, rgba(7,7,8,0.94) 0%, rgba(7,7,8,0.72) 38%, rgba(7,7,8,0.2) 75%, rgba(7,7,8,0.35) 100%), linear-gradient(0deg, #0A0A0B 0%, rgba(10,10,11,0) 32%), url(images/brand-vclass-acropolis.jpg) 58% center/cover no-repeat}
+.bgx2{background:url(images/v-class-london.jpg) 55% center/cover no-repeat}
+.bgx3{background:url(images/brand-security-acropolis.jpg) 22% center/cover no-repeat}
+.bgx4{background:url(images/v-class-cabin.jpg) center/cover no-repeat}
+.bgx5{background:linear-gradient(rgba(7,7,8,0.35), rgba(7,7,8,0.6)), url(images/brand-facets.jpg) center/cover no-repeat}
+.bgx6{background:linear-gradient(90deg, rgba(7,7,8,0.96) 0%, rgba(7,7,8,0.8) 50%, rgba(7,7,8,0.55) 100%), url(images/chauffeur-hotel.jpg) center/cover no-repeat}
+</style>
+<script src="assets/runtime.js"></script>
+</head>
+<body>
+<div id="dc-root"></div>
+<template id="dc-template">
+<div style="background: #0A0A0B; color: #F4F0E6; font-family: 'Jost', sans-serif; font-size: 17px; line-height: 1.65; overflow-x: hidden;">
+
+  <!-- HERO -->
+  <section class="bgx1" style="position: relative; min-height: 940px; display: flex; flex-direction: column;">
+    <div aria-hidden="true" style="position: absolute; right: 18%; top: -120px; width: 2px; height: 900px; background: linear-gradient(180deg, transparent, #E7C687 50%, transparent); transform: rotate(-16deg); box-shadow: 0 0 60px rgba(231,198,135,0.55); opacity: 0.45;"></div>
+
+    <header style="position: relative; z-index: 20; border-bottom: 1px solid rgba(207,164,95,0.22);">
+      <div style="max-width: 1320px; margin: 0 auto; padding: 22px 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+        <a href="01-home.html" aria-label="Elite Protection home" style="display: inline-flex; align-items: center; text-decoration: none;"><img src="images/logo-white.png" alt="Elite Protection" style="height: 52px; width: auto; display: block;"></a>
+        <nav class="nav" aria-label="Main">
+          <a href="02-fleet.html">Fleet</a>
+          <a href="04-services.html">Services</a>
+          <a href="05-vip-security.html">VIP Security</a>
+          <a href="06-about.html">About</a>
+          <a href="07-contact.html">Contact</a>
+        </nav>
+        <div style="display: flex; align-items: center; gap: 22px;">
+          <a class="hide-m" href="tel:+302109706967" style="color: #E7C687; text-decoration: none; font-size: 15px; letter-spacing: 0.06em;">+30 210 970 6967</a>
+          <a class="btn btn-gold hide-m" href="08-book.html" style="min-height: 46px; padding: 0 22px;">Book</a>
+          <button type="button" class="burger" onClick="{{toggleNav}}" aria-label="Menu" aria-expanded="{{navOpen}}" style="width: 46px; height: 46px; align-items: center; justify-content: center; background: transparent; border: 1px solid rgba(207,164,95,0.6); color: #E7C687; font-size: 20px; cursor: pointer;">☰</button>
+        </div>
+      </div>
+    </header>
+
+    <template data-sc="if" value="{{navOpen}}" hint-placeholder-val="{{false}}">
+      <div class="mm" style="position: fixed; z-index: 60; inset: 0; overflow-y: auto; background: #0A0A0B; padding: 28px 32px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <span class="eyebrow">Menu</span>
+          <button type="button" onClick="{{toggleNav}}" aria-label="Close menu" style="width: 46px; height: 46px; background: transparent; border: 1px solid rgba(207,164,95,0.6); color: #E7C687; font-size: 20px; cursor: pointer;">✕</button>
+        </div>
+        <a href="02-fleet.html">Fleet</a><a href="04-services.html">Services</a><a href="05-vip-security.html">VIP Security</a><a href="06-about.html">About</a><a href="07-contact.html">Contact</a>
+        <a class="btn btn-gold" href="08-book.html" style="margin-top: 28px; font-family: 'Jost', sans-serif; font-size: 13px; border: 1px solid #E7C687; color: #0A0A0B;">Book a transfer</a>
+      </div>
+    </template>
+
+    <div style="position: relative; z-index: 2; flex: 1; max-width: 1320px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 120px 32px 48px; display: flex; flex-direction: column; justify-content: flex-end; gap: 26px;">
+      <div class="eyebrow">VIP Transfer · VIP Security · Athens</div>
+      <h1 class="display xl" style="font-size: 96px; max-width: 820px;">Discreet luxury,<br><em>door to door.</em></h1>
+      <p style="margin: 0; max-width: 540px; font-size: 20px; font-weight: 300; color: #D9D3C4;">Chauffeured Mercedes-Benz transfers across Athens, with optional close-protection escorts. Fixed prices, available around the clock.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 14px;">
+        <a class="btn btn-gold" href="08-book.html">Book a transfer <span aria-hidden="true">→</span></a>
+        <a class="btn btn-line" href="02-fleet.html">Explore the fleet</a>
+      </div>
+
+      <!-- quick booking bar -->
+      <form aria-label="Quick booking" style="position: relative; margin-top: 44px; display: flex; flex-wrap: wrap; align-items: stretch; background: rgba(12,13,14,0.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(207,164,95,0.45);">
+        <template data-sc="if" value="{{anyOpen}}" hint-placeholder-val="{{false}}">
+          <div onClick="{{closeAll}}" style="position: fixed; inset: 0; z-index: 25;"></div>
+        </template>
+        <div class="field" style="flex: 1 1 230px; position: relative; z-index: 30;">
+          <label for="q-from">From</label>
+          <button type="button" id="q-from" class="dd-btn" aria-haspopup="listbox" aria-expanded="{{from_open}}" onClick="{{from_toggle}}"><span>{{from_value}}</span><span aria-hidden="true" style="color: #CFA45F; font-size: 13px;">▾</span></button>
+          <template data-sc="if" value="{{from_open}}" hint-placeholder-val="{{false}}">
+            <ul role="listbox" style="position: absolute; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 4px 0; list-style: none; background: #15181A; border: 1px solid #CFA45F; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+              <template data-sc="for" list="{{from_options}}" as="o" hint-placeholder-count="3">
+                <li role="presentation"><button type="button" role="option" class="dd-opt" onClick="{{o.pick}}"><span style="color: #CFA45F; width: 20px;">{{o.mark}}</span>{{o.label}}</button></li>
+              </template>
+            </ul>
+          </template>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; padding: 0 6px; position: relative; z-index: 30;">
+          <button type="button" class="swap" onClick="{{swap}}" aria-label="Swap pick-up and drop-off">⇄</button>
+        </div>
+        <div class="field" style="flex: 1 1 230px; position: relative; z-index: 30;">
+          <label for="q-to">To</label>
+          <button type="button" id="q-to" class="dd-btn" aria-haspopup="listbox" aria-expanded="{{to_open}}" onClick="{{to_toggle}}"><span>{{to_value}}</span><span aria-hidden="true" style="color: #CFA45F; font-size: 13px;">▾</span></button>
+          <template data-sc="if" value="{{to_open}}" hint-placeholder-val="{{false}}">
+            <ul role="listbox" style="position: absolute; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 4px 0; list-style: none; background: #15181A; border: 1px solid #CFA45F; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+              <template data-sc="for" list="{{to_options}}" as="o" hint-placeholder-count="3">
+                <li role="presentation"><button type="button" role="option" class="dd-opt" onClick="{{o.pick}}"><span style="color: #CFA45F; width: 20px;">{{o.mark}}</span>{{o.label}}</button></li>
+              </template>
+            </ul>
+          </template>
+        </div>
+        <div class="field" style="flex: 1 1 150px;">
+          <label for="q-date">Date</label>
+          <input id="q-date" type="date">
+        </div>
+        <div class="field" style="flex: 0 1 120px;">
+          <label for="q-time">Time</label>
+          <input id="q-time" type="time" value="14:30">
+        </div>
+        <div class="field" style="flex: 0 1 110px;">
+          <label for="q-pax">Passengers</label>
+          <input id="q-pax" type="number" min="1" value="2">
+        </div>
+        <a class="btn btn-gold" href="08-book.html" style="flex: 1 1 180px; min-height: 76px; border: 0;">See prices</a>
+      </form>
+      <div style="font-size: 14px; color: #A9A395;">Fixed prices per vehicle · Your car is held for 20 minutes while you book · Prices exclusive of 24% VAT</div>
+    </div>
+  </section>
+
+  <!-- TRUST STRIP -->
+  <section style="border-top: 1px solid rgba(207,164,95,0.2); border-bottom: 1px solid rgba(207,164,95,0.2); background: #0C0D0E;">
+    <div style="max-width: 1320px; margin: 0 auto; padding: 34px 32px; display: flex; flex-wrap: wrap; gap: 28px 40px; justify-content: space-between;">
+      <template data-sc="for" list="{{trust}}" as="t" hint-placeholder-count="4">
+        <div style="flex: 1 1 230px; display: flex; gap: 16px; align-items: center;">
+          <span aria-hidden="true" style="flex: 0 0 auto; width: 46px; height: 46px; border: 1px solid rgba(207,164,95,0.5); display: flex; align-items: center; justify-content: center; color: #CFA45F; font-family: 'Playfair Display', serif; font-style: italic; font-size: 18px;">{{t.icon}}</span>
+          <div>
+            <div style="font-weight: 500; color: #F4F0E6;">{{t.title}}</div>
+            <div style="font-size: 14px; color: #A9A395;">{{t.text}}</div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </section>
+
+  <!-- DIVISIONS -->
+  <section style="max-width: 1320px; margin: 0 auto; padding: 120px 32px 60px;">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 48px;">
+      <div style="display: flex; flex-direction: column; gap: 16px; max-width: 640px;">
+        <div class="eyebrow">Two divisions, one standard</div>
+        <h2 class="display" style="font-size: 60px;">Travel in comfort. <em>Move with protection.</em></h2>
+      </div>
+      <p style="margin: 0; max-width: 380px; color: #B8B2A4;">Luxury vehicles, professional chauffeurs and specialist security teams, coordinated by one office in Athens.</p>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 24px;">
+      <a href="02-fleet.html" class="card zoom" style="flex: 1 1 520px; position: relative; min-height: 560px; display: flex; text-decoration: none; color: #F4F0E6; border: 1px solid rgba(207,164,95,0.3);">
+        <div class="bgx2 ph" style="position: absolute; inset: 0;"></div>
+        <div style="position: absolute; inset: 0; background: linear-gradient(0deg, rgba(7,7,8,0.95) 0%, rgba(7,7,8,0.2) 60%);"></div>
+        <div style="position: relative; margin-top: auto; padding: 40px; display: flex; flex-direction: column; gap: 12px;">
+          <div class="eyebrow">01 / VIP Transfer</div>
+          <div class="display" style="font-size: 42px;">Luxury travel with a private chauffeur</div>
+          <div style="color: #D9D3C4; max-width: 460px;">Mercedes-Benz vans and saloons for airports, hotels, business and private travel.</div>
+          <span class="link-arrow" style="align-self: flex-start; margin-top: 8px;">View the fleet →</span>
+        </div>
+      </a>
+      <a href="05-vip-security.html" class="card zoom" style="flex: 1 1 520px; position: relative; min-height: 560px; display: flex; text-decoration: none; color: #F4F0E6; border: 1px solid rgba(207,164,95,0.3);">
+        <div class="bgx3 ph" style="position: absolute; inset: 0;"></div>
+        <div style="position: absolute; inset: 0; background: linear-gradient(0deg, rgba(7,7,8,0.95) 0%, rgba(7,7,8,0.25) 60%);"></div>
+        <div style="position: relative; margin-top: auto; padding: 40px; display: flex; flex-direction: column; gap: 12px;">
+          <div class="eyebrow">02 / VIP Security</div>
+          <div class="display" style="font-size: 42px;">Close protection &amp; security escorts</div>
+          <div style="color: #D9D3C4; max-width: 460px;">Discreet protection for people, premises and property, on the move or on site.</div>
+          <span class="link-arrow" style="align-self: flex-start; margin-top: 8px;">Discover VIP Security →</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- FLEET SHOWCASE -->
+  <section style="max-width: 1320px; margin: 0 auto; padding: 80px 32px 120px;">
+    <div style="display: flex; flex-wrap: wrap; gap: 56px; align-items: stretch;">
+      <div style="flex: 1 1 320px; max-width: 400px; display: flex; flex-direction: column; gap: 18px;">
+        <div class="eyebrow">The fleet</div>
+        <h2 class="display" style="font-size: 52px;">Choose <em>your</em> Mercedes-Benz</h2>
+        <p style="margin: 0 0 18px; color: #B8B2A4;">Five vehicle classes, each with a fixed airport price and an hourly rate.</p>
+        <div role="tablist" aria-label="Vehicles" style="display: flex; flex-direction: column;">
+          <template data-sc="for" list="{{fleet}}" as="v" hint-placeholder-count="5">
+            <button type="button" role="tab" class="tab" aria-selected="{{v.on}}" onClick="{{v.pick}}" style="color: {{v.tabColor}};"><span>{{v.name}}</span><span style="font-family: 'Jost', sans-serif; font-size: 13px; letter-spacing: 0.16em; color: {{v.kindColor}};">{{v.kind}}</span></button>
+          </template>
+        </div>
+        <a class="link-arrow" href="02-fleet.html" style="align-self: flex-start; margin-top: 18px;">Compare all vehicles →</a>
+      </div>
+      <div style="flex: 2 1 560px; display: flex; flex-direction: column; border: 1px solid rgba(207,164,95,0.35); background: #111315;">
+        <div role="tabpanel" aria-label="{{cur.name}}" style="position: relative; min-height: 440px; background: #050505; overflow: hidden;">
+          <img src="{{cur.img}}" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;">
+          <div style="position: absolute; inset: 0; background: linear-gradient(0deg, rgba(17,19,21,1) 0%, rgba(17,19,21,0) 40%);"></div>
+          <div style="position: absolute; left: 32px; bottom: 22px;">
+            <div style="font-size: 14px; color: #B8B2A4;">Mercedes-Benz</div>
+            <div class="display" style="font-size: 54px; color: #E7C687;">{{cur.name}}</div>
+          </div>
+          <span style="position: absolute; right: 24px; top: 22px; font-size: 12px; letter-spacing: 0.22em; color: #E7C687; border: 1px solid rgba(207,164,95,0.6); background: rgba(10,10,11,0.6); padding: 6px 12px;">{{cur.kind}}</span>
+        </div>
+        <div style="padding: 10px 32px 32px; display: flex; flex-direction: column; gap: 22px;">
+          <p style="margin: 0; color: #B8B2A4;">{{cur.blurb}}</p>
+          <div style="display: flex; flex-wrap: wrap; border-top: 1px solid rgba(207,164,95,0.25); border-bottom: 1px solid rgba(207,164,95,0.25);">
+            <div style="flex: 1 1 120px; padding: 16px 0;"><div style="font-size: 11px; letter-spacing: 0.24em; color: #B9A281;">SEATS*</div><div style="font-size: 22px;">{{cur.seats}}</div></div>
+            <div style="flex: 1 1 120px; padding: 16px 0;"><div style="font-size: 11px; letter-spacing: 0.24em; color: #B9A281;">LUGGAGE*</div><div style="font-size: 22px;">{{cur.bags}}</div></div>
+            <div style="flex: 1 1 120px; padding: 16px 0;"><div style="font-size: 11px; letter-spacing: 0.24em; color: #B9A281;">AIRPORT</div><div style="font-family: 'Playfair Display', serif; font-size: 26px; color: #E7C687;">{{cur.airport}}</div></div>
+            <div style="flex: 1 1 120px; padding: 16px 0;"><div style="font-size: 11px; letter-spacing: 0.24em; color: #B9A281;">HOURLY</div><div style="font-family: 'Playfair Display', serif; font-size: 26px; color: #E7C687;">{{cur.hourly}}<span style="font-family: 'Jost', sans-serif; font-size: 13px; color: #A9A395;"> /h · min {{cur.min}}</span></div></div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+            <a class="btn btn-gold" href="08-book.html">Book the {{cur.name}}</a>
+            <a class="btn btn-line" href="03-vehicle.html">Vehicle details</a>
+            <span style="font-size: 13px; color: #8E887B;">*Indicative capacity, to be confirmed. Prices excl. 24% VAT.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section style="background: #0F1112; border-top: 1px solid rgba(207,164,95,0.2); border-bottom: 1px solid rgba(207,164,95,0.2);">
+    <div style="max-width: 1320px; margin: 0 auto; padding: 110px 32px;">
+      <div style="display: flex; flex-direction: column; gap: 16px; max-width: 680px; margin-bottom: 64px;">
+        <div class="eyebrow">How booking works</div>
+        <h2 class="display" style="font-size: 52px;">Four steps. <em>No surprises.</em></h2>
+      </div>
+      <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 40px 32px; position: relative;">
+        <template data-sc="for" list="{{steps}}" as="s" hint-placeholder-count="4">
+          <li style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid rgba(207,164,95,0.5); padding-top: 22px;">
+            <span style="font-family: 'Playfair Display', serif; font-style: italic; font-size: 46px; line-height: 1; color: #CFA45F;">{{s.n}}</span>
+            <span style="font-size: 20px; font-weight: 500;">{{s.title}}</span>
+            <span style="color: #A9A395; font-size: 16px;">{{s.text}}</span>
+          </li>
+        </template>
+      </ol>
+    </div>
+  </section>
+
+  <!-- EXPERIENCE -->
+  <section style="max-width: 1320px; margin: 0 auto; padding: 120px 32px; display: flex; flex-wrap: wrap; gap: 64px; align-items: center;">
+    <div class="zoom" style="flex: 1 1 520px; position: relative; min-height: 620px; border: 1px solid rgba(207,164,95,0.3);">
+      <div class="bgx4 ph" role="img" aria-label="Cream leather VIP cabin of a V-Class" style="position: absolute; inset: 0;"></div>
+      <div style="position: absolute; left: -1px; bottom: -1px; background: #0A0A0B; border: 1px solid rgba(207,164,95,0.4); padding: 22px 28px;">
+        <div style="font-family: 'Playfair Display', serif; font-size: 52px; line-height: 1; color: #CFA45F;">24/7</div>
+        <div style="font-size: 12px; letter-spacing: 0.24em; color: #B9A281; margin-top: 6px;">OFFICE &amp; CHAUFFEURS</div>
+      </div>
+    </div>
+    <div style="flex: 1 1 420px; display: flex; flex-direction: column; gap: 22px;">
+      <div class="eyebrow">On board</div>
+      <h2 class="display" style="font-size: 52px;">Every detail <em>of hospitality</em></h2>
+      <p style="margin: 0; color: #B8B2A4;">Carefully maintained interiors and a chauffeur who knows the city, so the journey is time you get back.</p>
+      <div style="display: flex; flex-direction: column; margin-top: 8px;">
+        <template data-sc="for" list="{{amenities}}" as="a" hint-placeholder-count="4">
+          <div style="display: flex; gap: 20px; padding: 18px 0; border-top: 1px solid rgba(207,164,95,0.25);">
+            <span style="flex: 0 0 34px; color: #CFA45F; font-family: 'Playfair Display', serif; font-style: italic; font-size: 20px;">{{a.n}}</span>
+            <div><div style="font-weight: 500;">{{a.title}}</div><div style="font-size: 15px; color: #A9A395;">{{a.text}}</div></div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATEMENT -->
+  <section class="bgx5" style="position: relative; overflow: hidden; border-top: 1px solid rgba(207,164,95,0.2); border-bottom: 1px solid rgba(207,164,95,0.2);">
+    <div aria-hidden="true" style="position: absolute; left: 10%; top: -80px; width: 2px; height: 560px; background: linear-gradient(180deg, transparent, #E7C687 50%, transparent); transform: rotate(18deg); box-shadow: 0 0 50px rgba(231,198,135,0.5); opacity: 0.45;"></div>
+    <div style="position: relative; max-width: 980px; margin: 0 auto; padding: 120px 32px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 26px;">
+      <div style="width: 60px; height: 1px; background: #CFA45F;"></div>
+      <p class="display" style="font-size: 44px; font-style: italic; color: #F4F0E6;">“Absolute confidentiality is a core commitment. Every engagement, and every piece of information, is treated with discretion.”</p>
+      <div class="eyebrow">Our promise</div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="bgx6" style="position: relative;">
+    <div style="max-width: 1320px; margin: 0 auto; padding: 130px 32px; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-end; justify-content: space-between;">
+      <div style="display: flex; flex-direction: column; gap: 18px; max-width: 640px;">
+        <div class="eyebrow">Ready when you are</div>
+        <h2 class="display" style="font-size: 64px;">Your chauffeur <em>is waiting.</em></h2>
+        <p style="margin: 0; color: #D9D3C4;">Book online in a few minutes, or call our office any time of day.</p>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 14px;">
+        <a class="btn btn-gold" href="08-book.html">Book a transfer</a>
+        <a class="btn btn-line" href="tel:+302109706967">+30 210 970 6967</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="background: #050505; border-top: 1px solid rgba(207,164,95,0.3);">
+    <div style="max-width: 1320px; margin: 0 auto; padding: 80px 32px 40px; display: flex; flex-wrap: wrap; gap: 48px;">
+      <div style="flex: 2 1 300px; display: flex; flex-direction: column; gap: 18px;">
+        <img src="images/logo-white.png" alt="Elite Protection" style="height: 64px; width: auto; display: block; align-self: flex-start;">
+        <p style="margin: 0; max-width: 340px; color: #A9A395; font-size: 15px;">VIP Transfer and VIP Security in Athens. Luxury vehicles, professional chauffeurs and security teams, 24/7.</p>
+      </div>
+      <div style="flex: 1 1 170px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">Transfers</div>
+        <a href="02-fleet.html" style="color: #D9D3C4; text-decoration: none;">Fleet &amp; rates</a>
+        <a href="04-services.html" style="color: #D9D3C4; text-decoration: none;">Services &amp; routes</a>
+        <a href="08-book.html" style="color: #D9D3C4; text-decoration: none;">Book a transfer</a>
+        <a href="14-find-my-booking.html" style="color: #D9D3C4; text-decoration: none;">Find my booking</a>
+      </div>
+      <div style="flex: 1 1 170px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">Company</div>
+        <a href="05-vip-security.html" style="color: #D9D3C4; text-decoration: none;">VIP Security</a>
+        <a href="06-about.html" style="color: #D9D3C4; text-decoration: none;">About</a>
+        <a href="07-contact.html" style="color: #D9D3C4; text-decoration: none;">Contact</a>
+      </div>
+      <div style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">24/7</div>
+        <a href="tel:+302109706967" style="color: #F4F0E6; text-decoration: none; font-size: 19px;">+30 210 970 6967</a>
+        <a href="tel:+306981810410" style="color: #F4F0E6; text-decoration: none; font-size: 19px;">+30 698 181 0410</a>
+        <a href="mailto:info@eliteprotection.gr" style="color: #E7C687; text-decoration: none;">info@eliteprotection.gr</a>
+      </div>
+    </div>
+    <div style="max-width: 1320px; margin: 0 auto; padding: 22px 32px 34px; border-top: 1px solid rgba(207,164,95,0.18); display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; font-size: 13px; color: #8E887B;">
+      <div>© 2026 Elite Protection · Prices exclusive of 24% VAT</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px 22px;"><a href="17-legal.html" style="color: #8E887B; text-decoration: none;">Terms</a><a href="17-legal.html" style="color: #8E887B; text-decoration: none;">Privacy</a><a href="17-legal.html" style="color: #8E887B; text-decoration: none;">Cookies</a></div>
+    </div>
+  </footer>
+</div>
+</template>
+<script type="text/plain" id="dc-logic">class Component extends DCLogic {
+  dd(k, opts, def) {
+    const st = this.state || {}, cur = st[k + 'V'] || def || opts[0], o = {};
+    o[k + '_value'] = cur; o[k + '_open'] = !!st[k + 'O'];
+    o[k + '_toggle'] = () => this.setState({ fromO: false, toO: false, [k + 'O']: !st[k + 'O'] });
+    o[k + '_options'] = opts.map(x => ({ label: x, mark: x === cur ? '✓' : '', pick: () => this.setState({ [k + 'V']: x, [k + 'O']: false }) }));
+    return o;
+  }
+  renderVals() {
+    const st = this.state || {};
+    const zones = ['Athens International Airport (AIA)', 'Athens', 'Piraeus port', 'Other (zone list to be supplied)'];
+    const fromV = st.fromV || zones[0], toV = st.toV || zones[1];
+    const fleet = [
+      { name: 'V-Class', kind: 'LUXURY VAN', img: 'images/v-class-street.jpg', seats: 'Up to 7', bags: 'Up to 6', airport: '€180', hourly: '€90', min: '4h', blurb: 'Space and comfort for families and small groups, with generous room for luggage.' },
+      { name: 'Vito', kind: 'VAN', img: 'images/vito-ext.jpg', seats: 'Up to 8', bags: 'Up to 6', airport: '€150', hourly: '€70', min: '4h', blurb: 'A practical, comfortable van for groups and airport runs with plenty of luggage.' },
+      { name: 'E-Class', kind: 'SALOON', img: 'images/e-class-ext.jpg', seats: 'Up to 3', bags: 'Up to 2', airport: '€150', hourly: '€60', min: '3h', blurb: 'Understated business travel, ideal for one to three passengers.' },
+      { name: 'S-Class', kind: 'EXECUTIVE SALOON', img: 'images/s-class-ext.jpg', seats: 'Up to 3', bags: 'Up to 2', airport: '€180', hourly: '€90', min: '4h', blurb: 'Privacy and prestige: a premium experience with an understated presence.' },
+      { name: 'Sprinter', kind: 'VIP VAN', img: 'images/sprinter-ext.jpg', seats: 'Up to 12', bags: 'Up to 10', airport: '€180', hourly: '€90', min: '4h', blurb: 'A lounge on wheels for larger groups, delegations and events.' }
+    ];
+    const idx = st.fleetIdx || 0;
+    const cur = Object.assign({}, fleet[idx], { bg: 'url(' + fleet[idx].img + ') center/cover no-repeat' });
+    return Object.assign({
+      navOpen: !!st.navOpen,
+      toggleNav: () => this.setState({ navOpen: !st.navOpen }),
+      anyOpen: !!(st.fromO || st.toO),
+      closeAll: () => this.setState({ fromO: false, toO: false }),
+      swap: () => this.setState({ fromV: toV, toV: fromV, fromO: false, toO: false }),
+      fleet: fleet.map((v, i) => ({ name: v.name, kind: v.kind, on: i === idx ? 'true' : 'false', tabColor: i === idx ? '#E7C687' : '#8E887B', kindColor: i === idx ? '#CFA45F' : '#5E5A52', pick: () => this.setState({ fleetIdx: i }) })),
+      cur: cur,
+      trust: [
+        { icon: '24', title: 'Available 24/7', text: 'Office and chauffeurs, day and night' },
+        { icon: '€', title: 'Fixed prices', text: 'Per vehicle, shown before you book' },
+        { icon: '✓', title: 'Pay securely online', text: 'Hosted card payment, instant confirmation' },
+        { icon: '§', title: 'Absolute discretion', text: 'Your identity and schedule stay private' }
+      ],
+      steps: [
+        { n: 'i.', title: 'Choose your route', text: 'Pick-up and drop-off zone, date, time and passengers.' },
+        { n: 'ii.', title: 'Pick a vehicle', text: 'Fixed prices for every class. Your car is held for 20 minutes.' },
+        { n: 'iii.', title: 'Pay securely', text: 'Card payment on Viva’s hosted page. Add VIP security if needed.' },
+        { n: 'iv.', title: 'Meet your chauffeur', text: 'Confirmation by email, a reminder 24 hours before, chauffeur details on the day.' }
+      ],
+      amenities: [
+        { n: '01', title: 'Wi-Fi on board', text: 'Stay connected for work and calls throughout the journey.' },
+        { n: '02', title: 'Bottled water', text: 'Thoughtful attention to the details of hospitality.' },
+        { n: '03', title: 'Device charging', text: 'Charging for phones and personal devices.' },
+        { n: '04', title: 'Luggage assistance', text: 'Your chauffeur meets you and handles the bags.' }
+      ]
+    }, this.dd('from', zones, fromV), this.dd('to', zones, toV));
+  }
+}
+</script>
+</body>
+</html>

@@ -64,9 +64,9 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
     payments = resetPaymentProvider();
     setTurnstileVerifier(async () => true);
     setSanityVehicleClasses([
-      { key: 'demo-sedan', name: 'DEMO Executive sedan', tagline: 'Sedan' },
-      { key: 'demo-suv', name: 'DEMO Premium SUV', tagline: 'SUV' },
-      { key: 'demo-van', name: 'DEMO Executive van', tagline: 'Van' },
+      { key: 'demo-e-class', name: 'DEMO Executive sedan', tagline: 'Sedan' },
+      { key: 'demo-s-class', name: 'DEMO Premium SUV', tagline: 'SUV' },
+      { key: 'demo-v-class', name: 'DEMO Executive van', tagline: 'Van' },
     ]);
   });
 
@@ -105,7 +105,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
         pickupLocal: futureLocal(),
         passengers: 2,
         luggage: 2,
-        classKey: 'demo-sedan',
+        classKey: 'demo-e-class',
         turnstileToken: 'ok',
       },
       'vid-ac01',
@@ -140,7 +140,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
         pickupLocal: pickup,
         passengers: 2,
         luggage: 2,
-        classKey: 'demo-sedan',
+        classKey: 'demo-e-class',
         turnstileToken: 'ok',
       },
       'vid-a',
@@ -162,7 +162,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
       },
       '203.0.113.20',
     );
-    const sedan = q.options.find((o) => o.classKey === 'demo-sedan');
+    const sedan = q.options.find((o) => o.classKey === 'demo-e-class');
     expect(sedan?.available).toBe(true);
 
     await expect(
@@ -185,10 +185,10 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
   });
 
   it('AC-05: 2 holds OK, 3rd → 429; last vehicle taken blocks quote for other visitor', async () => {
-    // Reduce fleet of demo-sedan to 1 vehicle for last-slot part
+    // Reduce fleet of demo-e-class to 1 vehicle for last-slot part
     await db.pool.query(
       `delete from public.vehicles
-        where class_id = (select id from public.vehicle_classes where key = 'demo-sedan')
+        where class_id = (select id from public.vehicle_classes where key = 'demo-e-class')
           and label like '%-2'`,
     );
 
@@ -201,7 +201,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
         pickupLocal: pickup,
         passengers: 2,
         luggage: 2,
-        classKey: 'demo-sedan',
+        classKey: 'demo-e-class',
         turnstileToken: 'ok',
       },
       'vid-limit',
@@ -219,7 +219,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
         pickupLocal: pickup2Parts,
         passengers: 2,
         luggage: 2,
-        classKey: 'demo-suv',
+        classKey: 'demo-s-class',
         turnstileToken: 'ok',
       },
       'vid-limit',
@@ -235,7 +235,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
           pickupLocal: pickup2Parts,
           passengers: 2,
           luggage: 2,
-          classKey: 'demo-van',
+          classKey: 'demo-v-class',
           turnstileToken: 'ok',
         },
         'vid-limit',
@@ -254,7 +254,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
       },
       '203.0.113.31',
     );
-    expect(q.options.find((o) => o.classKey === 'demo-sedan')?.available).toBe(false);
+    expect(q.options.find((o) => o.classKey === 'demo-e-class')?.available).toBe(false);
   });
 
   it('AC-09: vip-security sets flag and line; inactive → 400', async () => {
@@ -266,7 +266,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
         pickupLocal: futureLocal(),
         passengers: 2,
         luggage: 2,
-        classKey: 'demo-sedan',
+        classKey: 'demo-e-class',
         turnstileToken: 'ok',
       },
       'vid-vip',
@@ -303,7 +303,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
         pickupLocal: futureLocal(),
         passengers: 2,
         luggage: 2,
-        classKey: 'demo-suv',
+        classKey: 'demo-s-class',
         turnstileToken: 'ok',
       },
       'vid-vip2',
@@ -347,7 +347,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
          from public.vehicle_classes c
          join public.zones za on za.code = 'demo-airport'
          join public.zones zb on zb.code = 'demo-centre'
-        where c.key = 'demo-sedan'
+        where c.key = 'demo-e-class'
        returning reference`,
       [pickupFar.toISOString(), hash],
     );
@@ -389,7 +389,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
          from public.vehicle_classes c
          join public.zones za on za.code = 'demo-airport'
          join public.zones zb on zb.code = 'demo-centre'
-        where c.key = 'demo-sedan'`,
+        where c.key = 'demo-e-class'`,
       [pickupSoon.toISOString(), hash2],
     );
     await expect(cancelBooking({ token: token2, turnstileToken: 'ok' }, ip)).rejects.toMatchObject({
@@ -413,7 +413,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
     ).rejects.toMatchObject({ stringKey: 'error.lead_time' });
   });
 
-  it('AC-16: demo-north → demo-port with demo-van → no_price', async () => {
+  it('AC-16: demo-north → demo-port with demo-sprinter → no_price', async () => {
     const q = await quote(
       {
         type: 'transfer',
@@ -425,7 +425,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
       },
       '203.0.113.51',
     );
-    expect(q.options.find((o) => o.classKey === 'demo-van')).toMatchObject({
+    expect(q.options.find((o) => o.classKey === 'demo-sprinter')).toMatchObject({
       baseCents: null,
       reason: 'no_price',
     });
@@ -439,7 +439,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
           pickupLocal: futureLocal(),
           passengers: 2,
           luggage: 2,
-          classKey: 'demo-van',
+          classKey: 'demo-sprinter',
           turnstileToken: 'ok',
         },
         'vid-noprice',
@@ -457,7 +457,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
         pickupLocal: futureLocal(),
         passengers: 2,
         luggage: 2,
-        classKey: 'demo-sedan',
+        classKey: 'demo-e-class',
         turnstileToken: 'ok',
       },
       'vid-price',
@@ -481,7 +481,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
     const locked = booking.totalCents;
     await db.pool.query(
       `update public.zone_prices set price_cents = price_cents + 5000
-        where class_id = (select id from public.vehicle_classes where key = 'demo-sedan')`,
+        where class_id = (select id from public.vehicle_classes where key = 'demo-e-class')`,
     );
     const row = await db.pool.query(`select price_cents from public.bookings where reference = $1`, [
       booking.reference,
@@ -501,7 +501,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
           pickupLocal: futureLocal(),
           passengers: 2,
           luggage: 2,
-          classKey: 'demo-sedan',
+          classKey: 'demo-e-class',
           turnstileToken: 'bad',
         },
         'vid-ts',
@@ -556,7 +556,7 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
         pickupLocal: futureLocal(),
         passengers: 2,
         luggage: 2,
-        classKey: 'demo-sedan',
+        classKey: 'demo-e-class',
         turnstileToken: 'ok',
       },
       'vid-status',

@@ -172,7 +172,7 @@ describe('emails (prompt 08)', () => {
            from public.vehicle_classes c
            join public.zones za on za.code = 'demo-airport'
            join public.zones zb on zb.code = 'demo-centre'
-          where c.key = 'demo-sedan'
+          where c.key = 'demo-e-class'
          returning reference`,
         [pickup],
       );
@@ -234,7 +234,7 @@ describe.skipIf(!hasDatabaseUrl)('AC-13 reminder cron', () => {
          from public.vehicle_classes c
          join public.zones za on za.code = 'demo-airport'
          join public.zones zb on zb.code = 'demo-centre'
-        where c.key = 'demo-sedan'`,
+        where c.key = 'demo-e-class'`,
       [pickup],
     );
 
@@ -279,7 +279,7 @@ describe.skipIf(!hasDatabaseUrl)('AC-13 reminder cron', () => {
          from public.vehicle_classes c
          join public.zones za on za.code = 'demo-airport'
          join public.zones zb on zb.code = 'demo-centre'
-        where c.key = 'demo-sedan'
+        where c.key = 'demo-e-class'
        returning id, reference`,
       [pickup],
     );

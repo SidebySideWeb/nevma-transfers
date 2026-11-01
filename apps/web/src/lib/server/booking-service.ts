@@ -707,7 +707,7 @@ export async function cancelPageView(token: string): Promise<CancelPageView> {
   const tripLabel =
     b.booking_type === 'hourly'
       ? `${Math.round(b.duration_minutes / 60)} h`
-      : `${b.from_name ?? '—'} → ${b.to_name ?? '—'}`;
+      : `${b.from_name ?? '-'} → ${b.to_name ?? '-'}`;
 
   return {
     kind: 'ok',

@@ -22,6 +22,14 @@ Round trips, distance pricing, maps and address search are out of scope.
 - An inactive or unknown extra code is rejected (`invalid_request`).
 - Prices are copied onto the booking (`base_price_cents`, `price_cents`, `booking_extras.price_cents`) when the booking is created. Later price edits never change it.
 - The review step shows the stored total of the created booking; the Viva order amount equals `price_cents`.
+
+### VAT (AC-37, decided 1 Nov 2026)
+
+- Every price the customer sees is the **final price, VAT included**: "from" prices, vehicle rows, extras, the summary, Viva, the manage page. No "excl. VAT" anywhere (the V2 design's "excl. 24% VAT" labels and VAT line in the summary are not used; the summary shows `booking.priceNote`).
+- The VAT share is shown only in two places, as a **price analysis**: the review step before payment and the confirmation email. Lines: each item at its final price (vehicle or hours, each extra), then `Price before VAT` (net), `VAT {rate}%`, `Total` (VAT included).
+- The rate lives in `settings.vat_rate_bp` (2400 = 24%, DEMO until the client's accountant confirms the rate for chauffeured transfers and VIP security) and is copied onto the booking at creation (`bookings.vat_rate_bp`, migration 0010). `bookings.vat_cents` is generated: `price_cents − round(price_cents × 10000 / (10000 + vat_rate_bp))`; net = `price_cents − vat_cents`. Show the stored values; never recompute VAT in the browser.
+- VAT is computed on the booking total, not per line, so the lines always add up. Example: € 220.00 = € 177.42 + VAT 24% € 42.58.
+- Refunds return final amounts; the office handles the VAT side of refunds in its invoices.
 - Display: euros with two decimals, for example "€ 95.00". Storage and API: integer cents.
 
 ## 3. Time (AC-14, AC-15)
@@ -71,7 +79,9 @@ Round trips, distance pricing, maps and address search are out of scope.
 
 ## 7. Cancellation and refunds (AC-08, AC-12)
 
-- The confirmation email holds a cancel link `/booking/cancel/<token>`. The token (32 random bytes, base64url) is created at confirmation; only its SHA-256 is stored in `cancel_token_hash`; the plain token exists only in the email. A used link is cleared (`cancel_token_hash = null`).
+- **Secure manage link (design V2Manage, added 1 Nov):** the confirmation email holds `/booking/manage/<token>`. The token (32 random bytes, base64url) is created at confirmation; only its SHA-256 is stored in `bookings.cancel_token_hash` (the column keeps its name: it now guards the manage page and cancellation); the plain token exists only in emails. The manage page shows the booking, its status timeline and the paid amount, and offers request an invoice (mailto with the reference), call the office, add to calendar (`.ics`), and **Cancel this booking** → `/booking/cancel/<token>` (same token). Changes to time, vehicle or addresses are by phone.
+- **Find my booking (design V2Lookup):** `/booking/find` takes reference + email. If they match a booking that is not completed or cancelled, a **new** token is issued (the old link stops working) and emailed (`email.manageLink.*`). The page always shows the same message (`lookup.sent`) whether or not anything matched, so nobody can probe references or emails. Rate limited (5 per hour per IP, 3 per hour per reference) and protected by Turnstile.
+- After a cancellation the token is cleared (`cancel_token_hash = null`); the manage page then says `manage.linkInvalid`.
 - Customer cancellation is allowed until `settings.cancel_window_hours` (DEMO 24) before pick-up. PLACEHOLDER policy until the client answers (due Fri 4 Dec): full refund inside the window, no online cancellation after it (`booking.cancel.tooLate`).
 - Office cancellation (admin → `/api/internal/cancel`): refund `full`, `none` or a given amount.
 - Refunds (admin → `/api/internal/refund`): any amount up to what is still refundable; the database rejects more (`refund_exceeds_paid`). The idempotency key makes a double click safe.
@@ -93,7 +103,7 @@ Optional "I need an invoice" block: company, VAT number, tax office, address →
 
 | Email | To | When | Strings |
 | --- | --- | --- | --- |
-| Confirmation | customer | booking confirmed | `email.confirmation.*` (+ `.vip` when flagged, cancel link) |
+| Confirmation | customer | booking confirmed | `email.confirmation.*` (+ `.vip` when flagged, manage link, price analysis: items, `.net`, `.vat`, `.total` from the stored booking) |
 | Office notice: new booking | `siteSettings.bookingNotificationEmail` | booking confirmed | `email.office.new.subject` (+ VIP flag) |
 | Reminder | customer | about 24 h before pick-up, once (`reminder_sent_at`) | `email.reminder.*` |
 | Cancelled | customer and office | any cancellation | `email.cancelled.*`, `email.refunded.body`, `email.office.cancelled.subject` |

@@ -1,5 +1,5 @@
 /**
- * AC-20: Lighthouse mobile on home — performance ≥ 90, LCP < 2.5s, CLS < 0.1.
+ * AC-20: Lighthouse mobile on home - performance ≥ 90, LCP < 2.5s, CLS < 0.1.
  * Usage: node scripts/lighthouse-home.mjs [url]
  */
 import { launch } from 'chrome-launcher';

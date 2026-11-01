@@ -359,7 +359,7 @@ function renderSummary() {
       if (e) rows.push(row(e.name, formatEuro(e.priceCents)));
     }
   }
-  rows.push(row('Price list total', total == null ? '—' : formatEuro(total), 'grand'));
+  rows.push(row('Price list total', total == null ? '-' : formatEuro(total), 'grand'));
   $('nb-totals').replaceChildren(...rows);
 
   $('nb-ovr-fields').hidden = !$('nb-ovr').checked;
@@ -374,7 +374,7 @@ function renderSummary() {
     strong.textContent = formatEuro(ovr);
     pays.append(was, ' ', strong);
   } else {
-    strong.textContent = ovr != null ? formatEuro(ovr) : total == null ? '—' : formatEuro(total);
+    strong.textContent = ovr != null ? formatEuro(ovr) : total == null ? '-' : formatEuro(total);
     pays.append(strong);
   }
 }

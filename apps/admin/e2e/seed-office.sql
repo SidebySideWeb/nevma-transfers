@@ -14,4 +14,4 @@ insert into public.blocked_slots (vehicle_id, range, reason, created_by)
 select v.id, tstzrange('2026-12-22T10:00:00+02:00', '2026-12-22T12:00:00+02:00', '[)'), 'e2e-office-block',
        (select user_id from public.staff limit 1)
   from public.vehicles v join public.vehicle_classes c on c.id = v.class_id
- where c.key = 'demo-sedan' and v.status = 'active';
+ where c.key = 'demo-e-class' and v.status = 'active';

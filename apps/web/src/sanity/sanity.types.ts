@@ -15,6 +15,115 @@
 export declare const internalGroqTypeReferenceTo: unique symbol;
 
 // Source: schema.json
+export type FormReference = {
+  _ref: string;
+  _type: 'reference';
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: 'form';
+};
+
+export type FormBlock = {
+  _type: 'formBlock';
+  form?: FormReference;
+  heading?: string;
+};
+
+export type ContactDetails = {
+  _type: 'contactDetails';
+  heading?: string;
+  showHours?: boolean;
+};
+
+export type RouteReference = {
+  _ref: string;
+  _type: 'reference';
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: 'route';
+};
+
+export type RouteList = {
+  _type: 'routeList';
+  heading?: string;
+  intro?: string;
+  routes?: Array<
+    {
+      _key: string;
+    } & RouteReference
+  >;
+};
+
+export type VehicleClassList = {
+  _type: 'vehicleClassList';
+  heading?: string;
+  intro?: string;
+};
+
+export type Steps = {
+  _type: 'steps';
+  heading?: string;
+  items?: Array<{
+    title?: string;
+    text?: string;
+    _type: 'stepItem';
+    _key: string;
+  }>;
+};
+
+export type SanityImageAssetReference = {
+  _ref: string;
+  _type: 'reference';
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: 'sanity.imageAsset';
+};
+
+export type ImageText = {
+  _type: 'imageText';
+  heading?: string;
+  body?: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: 'span';
+      _key: string;
+    }>;
+    style?: 'normal' | 'h3';
+    listItem?: 'bullet' | 'number';
+    markDefs?: Array<{
+      href?: string;
+      _type: 'link';
+      _key: string;
+    }>;
+    level?: number;
+    _type: 'block';
+    _key: string;
+  }>;
+  image?: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    alt?: string;
+    _type: 'image';
+  };
+  imageSide?: 'left' | 'right';
+  ctaLabel?: string;
+  ctaTarget?: 'book' | 'quote' | 'url';
+  ctaUrl?: string;
+};
+
+export type FeatureGrid = {
+  _type: 'featureGrid';
+  heading?: string;
+  intro?: string;
+  items?: Array<{
+    title?: string;
+    text?: string;
+    link?: string;
+    _type: 'featureItem';
+    _key: string;
+  }>;
+};
+
 export type Faq = {
   _type: 'faq';
   heading?: string;
@@ -58,13 +167,6 @@ export type RichText = {
   }>;
 };
 
-export type SanityImageAssetReference = {
-  _ref: string;
-  _type: 'reference';
-  _weak?: boolean;
-  [internalGroqTypeReferenceTo]?: 'sanity.imageAsset';
-};
-
 export type Hero = {
   _type: 'hero';
   heading?: string;
@@ -97,29 +199,97 @@ export type Seo = {
   noindex?: boolean;
 };
 
-export type Page = {
+export type FormSubmission = {
   _id: string;
-  _type: 'page';
+  _type: 'formSubmission';
   _createdAt: string;
   _updatedAt: string;
   _rev: string;
-  kind?: 'home' | 'legal';
+  status?: 'new' | 'in-progress' | 'done';
+  internalNote?: string;
+  form?: FormReference;
+  formKey?: string;
+  topic?: string;
+  submittedAt?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  answers?: Array<{
+    key?: string;
+    label?: string;
+    value?: string;
+    _type: 'answer';
+    _key: string;
+  }>;
+  consent?: boolean;
+  emailStatus?: 'sent' | 'failed';
+};
+
+export type Form = {
+  _id: string;
+  _type: 'form';
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  key?: 'transfer-request' | 'vip-security' | 'contact';
+  title?: string;
+  intro?: string;
+  recipientEmail?: string;
+  topics?: Array<{
+    key?: string;
+    label?: string;
+    recipientEmail?: string;
+    _type: 'formTopic';
+    _key: string;
+  }>;
+  submitLabel?: string;
+  successTitle?: string;
+  successMessage?: string;
+  retentionMonths?: number;
+  internalNote?: string;
+};
+
+export type Route = {
+  _id: string;
+  _type: 'route';
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
   title?: string;
   slug?: Slug;
-  sections?: Array<
-    | ({
-        _key: string;
-      } & Hero)
-    | ({
-        _key: string;
-      } & RichText)
-    | ({
-        _key: string;
-      } & CtaBand)
-    | ({
-        _key: string;
-      } & Faq)
-  >;
+  fromZone?: string;
+  toZone?: string;
+  intro?: string;
+  body?: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: 'span';
+      _key: string;
+    }>;
+    style?: 'normal' | 'h3';
+    listItem?: 'bullet';
+    markDefs?: null;
+    level?: number;
+    _type: 'block';
+    _key: string;
+  }>;
+  photo?: {
+    asset?: SanityImageAssetReference;
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    alt?: string;
+    _type: 'image';
+  };
+  faq?: Array<{
+    question?: string;
+    answer?: string;
+    _type: 'faqItem';
+    _key: string;
+  }>;
+  featured?: boolean;
+  sortOrder?: number;
   seo?: Seo;
   internalNote?: string;
 };
@@ -144,6 +314,54 @@ export type Slug = {
   _type: 'slug';
   current?: string;
   source?: string;
+};
+
+export type Page = {
+  _id: string;
+  _type: 'page';
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  kind?: 'home' | 'legal' | 'standard';
+  title?: string;
+  slug?: Slug;
+  sections?: Array<
+    | ({
+        _key: string;
+      } & Hero)
+    | ({
+        _key: string;
+      } & RichText)
+    | ({
+        _key: string;
+      } & CtaBand)
+    | ({
+        _key: string;
+      } & Faq)
+    | ({
+        _key: string;
+      } & FeatureGrid)
+    | ({
+        _key: string;
+      } & ImageText)
+    | ({
+        _key: string;
+      } & Steps)
+    | ({
+        _key: string;
+      } & VehicleClassList)
+    | ({
+        _key: string;
+      } & RouteList)
+    | ({
+        _key: string;
+      } & ContactDetails)
+    | ({
+        _key: string;
+      } & FormBlock)
+  >;
+  seo?: Seo;
+  internalNote?: string;
 };
 
 export type VehicleClass = {
@@ -196,7 +414,7 @@ export type UiStrings = {
   _updatedAt: string;
   _rev: string;
   strings?: Array<{
-    area?: 'booking' | 'errors' | 'emails';
+    area?: 'booking' | 'errors' | 'emails' | 'site' | 'forms';
     key?: string;
     value?: string;
     _type: 'uiString';
@@ -214,11 +432,13 @@ export type SiteSettings = {
   companyName?: string;
   tagline?: string;
   phone?: string;
+  mobilePhone?: string;
   email?: string;
   bookingNotificationEmail?: string;
   address?: string;
   openingHours?: string;
   timezone?: string;
+  showFromPrices?: boolean;
   defaultSeo?: Seo;
   logo?: {
     asset?: SanityImageAssetReference;
@@ -329,16 +549,28 @@ export type Geopoint = {
 };
 
 export type AllSanitySchemaTypes =
+  | FormReference
+  | FormBlock
+  | ContactDetails
+  | RouteReference
+  | RouteList
+  | VehicleClassList
+  | Steps
+  | SanityImageAssetReference
+  | ImageText
+  | FeatureGrid
   | Faq
   | CtaBand
   | RichText
-  | SanityImageAssetReference
   | Hero
   | Seo
-  | Page
+  | FormSubmission
+  | Form
+  | Route
   | SanityImageCrop
   | SanityImageHotspot
   | Slug
+  | Page
   | VehicleClass
   | UiStrings
   | SiteSettings
@@ -353,16 +585,18 @@ export type AllSanitySchemaTypes =
 
 // Source: ../web/src/lib/sanity/queries.ts
 // Variable: SITE_SETTINGS_QUERY
-// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{    companyName,    tagline,    phone,    email,    bookingNotificationEmail,    address,    openingHours,    timezone,    defaultSeo{      title,      description,      noindex,      image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }    },    logo{        alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  }    },    internalNote  }
+// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{    companyName,    tagline,    phone,    mobilePhone,    email,    bookingNotificationEmail,    address,    openingHours,    timezone,    showFromPrices,    defaultSeo{      title,      description,      noindex,      image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }    },    logo{        alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  }    },    internalNote  }
 export type SITE_SETTINGS_QUERY_RESULT = {
   companyName: string | null;
   tagline: string | null;
   phone: string | null;
+  mobilePhone: string | null;
   email: string | null;
   bookingNotificationEmail: string | null;
   address: string | null;
   openingHours: string | null;
   timezone: string | null;
+  showFromPrices: boolean | null;
   defaultSeo: {
     title: string | null;
     description: string | null;
@@ -402,7 +636,7 @@ export type SITE_SETTINGS_QUERY_RESULT = {
 // Query: *[_type == "uiStrings" && _id == "uiStrings"][0]{    strings[]{      area,      key,      value    },    internalNote  }
 export type UI_STRINGS_QUERY_RESULT = {
   strings: Array<{
-    area: 'booking' | 'emails' | 'errors' | null;
+    area: 'booking' | 'emails' | 'errors' | 'forms' | 'site' | null;
     key: string | null;
     value: string | null;
   }> | null;
@@ -439,12 +673,18 @@ export type VEHICLE_CLASSES_QUERY_RESULT = Array<{
 
 // Source: ../web/src/lib/sanity/queries.ts
 // Variable: PAGE_BY_SLUG_QUERY
-// Query: *[_type == "page" && slug.current == $slug][0]{    kind,    title,    "slug": slug.current,    sections[]{      _type,      _key,      _type == "hero" => {        heading,        subheading,        ctaLabel,        ctaTarget,        ctaUrl,        image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }      },      _type == "richText" => {        heading,        body      },      _type == "ctaBand" => {        heading,        text,        ctaLabel,        ctaTarget,        ctaUrl      },      _type == "faq" => {        heading,        items[]{ question, answer, _key }      }    },    seo{      title,      description,      noindex,      image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }    },    internalNote  }
+// Query: *[_type == "page" && slug.current == $slug][0]{    kind,    title,    "slug": slug.current,    sections[]{        _type,  _key,  _type == "hero" => {    heading,    subheading,    ctaLabel,    ctaTarget,    ctaUrl,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }  },  _type == "richText" => {    heading,    body  },  _type == "ctaBand" => {    heading,    text,    ctaLabel,    ctaTarget,    ctaUrl  },  _type == "faq" => {    heading,    items[]{ question, answer, _key }  },  _type == "featureGrid" => {    heading,    intro,    items[]{ title, text, link, _key }  },  _type == "imageText" => {    heading,    body,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } },    imageSide,    ctaLabel,    ctaTarget,    ctaUrl  },  _type == "steps" => {    heading,    items[]{ title, text, _key }  },  _type == "vehicleClassList" => {    heading,    intro  },  _type == "routeList" => {    heading,    intro,    routes[]->{   title,  "slug": slug.current,  fromZone,  toZone,  intro,  body,  photo{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } },  faq[]{ question, answer, _key },  featured,  sortOrder,  seo{    title,    description,    noindex,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }  },  internalNote }  },  _type == "contactDetails" => {    heading,    showHours  },  _type == "formBlock" => {    heading,    form->{   key,  title,  intro,  recipientEmail,  topics[]{ key, label, recipientEmail, _key },  submitLabel,  successTitle,  successMessage,  retentionMonths }  }    },    seo{      title,      description,      noindex,      image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }    },    internalNote  }
 export type PAGE_BY_SLUG_QUERY_RESULT = {
-  kind: 'home' | 'legal' | null;
+  kind: 'home' | 'legal' | 'standard' | null;
   title: string | null;
   slug: string | null;
   sections: Array<
+    | {
+        _type: 'contactDetails';
+        _key: string;
+        heading: string | null;
+        showHours: boolean | null;
+      }
     | {
         _type: 'ctaBand';
         _key: string;
@@ -463,6 +703,39 @@ export type PAGE_BY_SLUG_QUERY_RESULT = {
           answer: string | null;
           _key: string;
         }> | null;
+      }
+    | {
+        _type: 'featureGrid';
+        _key: string;
+        heading: string | null;
+        intro: string | null;
+        items: Array<{
+          title: string | null;
+          text: string | null;
+          link: string | null;
+          _key: string;
+        }> | null;
+      }
+    | {
+        _type: 'formBlock';
+        _key: string;
+        heading: string | null;
+        form: {
+          key: 'contact' | 'transfer-request' | 'vip-security' | null;
+          title: string | null;
+          intro: string | null;
+          recipientEmail: string | null;
+          topics: Array<{
+            key: string | null;
+            label: string | null;
+            recipientEmail: string | null;
+            _key: string;
+          }> | null;
+          submitLabel: string | null;
+          successTitle: string | null;
+          successMessage: string | null;
+          retentionMonths: number | null;
+        } | null;
       }
     | {
         _type: 'hero';
@@ -487,6 +760,46 @@ export type PAGE_BY_SLUG_QUERY_RESULT = {
         } | null;
       }
     | {
+        _type: 'imageText';
+        _key: string;
+        heading: string | null;
+        body: Array<{
+          children?: Array<{
+            marks?: Array<string>;
+            text?: string;
+            _type: 'span';
+            _key: string;
+          }>;
+          style?: 'h3' | 'normal';
+          listItem?: 'bullet' | 'number';
+          markDefs?: Array<{
+            href?: string;
+            _type: 'link';
+            _key: string;
+          }>;
+          level?: number;
+          _type: 'block';
+          _key: string;
+        }> | null;
+        image: {
+          alt: string | null;
+          asset: {
+            _id: string;
+            url: string | null;
+            metadata: {
+              dimensions: {
+                width: number | null;
+                height: number | null;
+              } | null;
+            } | null;
+          } | null;
+        } | null;
+        imageSide: 'left' | 'right' | null;
+        ctaLabel: string | null;
+        ctaTarget: 'book' | 'quote' | 'url' | null;
+        ctaUrl: string | null;
+      }
+    | {
         _type: 'richText';
         _key: string;
         heading: string | null;
@@ -508,6 +821,88 @@ export type PAGE_BY_SLUG_QUERY_RESULT = {
           _type: 'block';
           _key: string;
         }> | null;
+      }
+    | {
+        _type: 'routeList';
+        _key: string;
+        heading: string | null;
+        intro: string | null;
+        routes: Array<{
+          title: string | null;
+          slug: string | null;
+          fromZone: string | null;
+          toZone: string | null;
+          intro: string | null;
+          body: Array<{
+            children?: Array<{
+              marks?: Array<string>;
+              text?: string;
+              _type: 'span';
+              _key: string;
+            }>;
+            style?: 'h3' | 'normal';
+            listItem?: 'bullet';
+            markDefs?: null;
+            level?: number;
+            _type: 'block';
+            _key: string;
+          }> | null;
+          photo: {
+            alt: string | null;
+            asset: {
+              _id: string;
+              url: string | null;
+              metadata: {
+                dimensions: {
+                  width: number | null;
+                  height: number | null;
+                } | null;
+              } | null;
+            } | null;
+          } | null;
+          faq: Array<{
+            question: string | null;
+            answer: string | null;
+            _key: string;
+          }> | null;
+          featured: boolean | null;
+          sortOrder: number | null;
+          seo: {
+            title: string | null;
+            description: string | null;
+            noindex: boolean | null;
+            image: {
+              alt: string | null;
+              asset: {
+                _id: string;
+                url: string | null;
+                metadata: {
+                  dimensions: {
+                    width: number | null;
+                    height: number | null;
+                  } | null;
+                } | null;
+              } | null;
+            } | null;
+          } | null;
+          internalNote: string | null;
+        }> | null;
+      }
+    | {
+        _type: 'steps';
+        _key: string;
+        heading: string | null;
+        items: Array<{
+          title: string | null;
+          text: string | null;
+          _key: string;
+        }> | null;
+      }
+    | {
+        _type: 'vehicleClassList';
+        _key: string;
+        heading: string | null;
+        intro: string | null;
       }
   > | null;
   seo: {
@@ -531,13 +926,506 @@ export type PAGE_BY_SLUG_QUERY_RESULT = {
   internalNote: string | null;
 } | null;
 
+// Source: ../web/src/lib/sanity/queries.ts
+// Variable: PAGES_STANDARD_QUERY
+// Query: *[_type == "page" && kind == "standard"] | order(title asc){    kind,    title,    "slug": slug.current,    sections[]{        _type,  _key,  _type == "hero" => {    heading,    subheading,    ctaLabel,    ctaTarget,    ctaUrl,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }  },  _type == "richText" => {    heading,    body  },  _type == "ctaBand" => {    heading,    text,    ctaLabel,    ctaTarget,    ctaUrl  },  _type == "faq" => {    heading,    items[]{ question, answer, _key }  },  _type == "featureGrid" => {    heading,    intro,    items[]{ title, text, link, _key }  },  _type == "imageText" => {    heading,    body,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } },    imageSide,    ctaLabel,    ctaTarget,    ctaUrl  },  _type == "steps" => {    heading,    items[]{ title, text, _key }  },  _type == "vehicleClassList" => {    heading,    intro  },  _type == "routeList" => {    heading,    intro,    routes[]->{   title,  "slug": slug.current,  fromZone,  toZone,  intro,  body,  photo{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } },  faq[]{ question, answer, _key },  featured,  sortOrder,  seo{    title,    description,    noindex,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }  },  internalNote }  },  _type == "contactDetails" => {    heading,    showHours  },  _type == "formBlock" => {    heading,    form->{   key,  title,  intro,  recipientEmail,  topics[]{ key, label, recipientEmail, _key },  submitLabel,  successTitle,  successMessage,  retentionMonths }  }    },    seo{      title,      description,      noindex,      image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }    },    internalNote  }
+export type PAGES_STANDARD_QUERY_RESULT = Array<{
+  kind: 'standard';
+  title: string | null;
+  slug: string | null;
+  sections: Array<
+    | {
+        _type: 'contactDetails';
+        _key: string;
+        heading: string | null;
+        showHours: boolean | null;
+      }
+    | {
+        _type: 'ctaBand';
+        _key: string;
+        heading: string | null;
+        text: string | null;
+        ctaLabel: string | null;
+        ctaTarget: 'book' | 'url' | null;
+        ctaUrl: string | null;
+      }
+    | {
+        _type: 'faq';
+        _key: string;
+        heading: string | null;
+        items: Array<{
+          question: string | null;
+          answer: string | null;
+          _key: string;
+        }> | null;
+      }
+    | {
+        _type: 'featureGrid';
+        _key: string;
+        heading: string | null;
+        intro: string | null;
+        items: Array<{
+          title: string | null;
+          text: string | null;
+          link: string | null;
+          _key: string;
+        }> | null;
+      }
+    | {
+        _type: 'formBlock';
+        _key: string;
+        heading: string | null;
+        form: {
+          key: 'contact' | 'transfer-request' | 'vip-security' | null;
+          title: string | null;
+          intro: string | null;
+          recipientEmail: string | null;
+          topics: Array<{
+            key: string | null;
+            label: string | null;
+            recipientEmail: string | null;
+            _key: string;
+          }> | null;
+          submitLabel: string | null;
+          successTitle: string | null;
+          successMessage: string | null;
+          retentionMonths: number | null;
+        } | null;
+      }
+    | {
+        _type: 'hero';
+        _key: string;
+        heading: string | null;
+        subheading: string | null;
+        ctaLabel: string | null;
+        ctaTarget: 'book' | 'url' | null;
+        ctaUrl: string | null;
+        image: {
+          alt: string | null;
+          asset: {
+            _id: string;
+            url: string | null;
+            metadata: {
+              dimensions: {
+                width: number | null;
+                height: number | null;
+              } | null;
+            } | null;
+          } | null;
+        } | null;
+      }
+    | {
+        _type: 'imageText';
+        _key: string;
+        heading: string | null;
+        body: Array<{
+          children?: Array<{
+            marks?: Array<string>;
+            text?: string;
+            _type: 'span';
+            _key: string;
+          }>;
+          style?: 'h3' | 'normal';
+          listItem?: 'bullet' | 'number';
+          markDefs?: Array<{
+            href?: string;
+            _type: 'link';
+            _key: string;
+          }>;
+          level?: number;
+          _type: 'block';
+          _key: string;
+        }> | null;
+        image: {
+          alt: string | null;
+          asset: {
+            _id: string;
+            url: string | null;
+            metadata: {
+              dimensions: {
+                width: number | null;
+                height: number | null;
+              } | null;
+            } | null;
+          } | null;
+        } | null;
+        imageSide: 'left' | 'right' | null;
+        ctaLabel: string | null;
+        ctaTarget: 'book' | 'quote' | 'url' | null;
+        ctaUrl: string | null;
+      }
+    | {
+        _type: 'richText';
+        _key: string;
+        heading: string | null;
+        body: Array<{
+          children?: Array<{
+            marks?: Array<string>;
+            text?: string;
+            _type: 'span';
+            _key: string;
+          }>;
+          style?: 'h2' | 'h3' | 'normal';
+          listItem?: 'bullet' | 'number';
+          markDefs?: Array<{
+            href?: string;
+            _type: 'link';
+            _key: string;
+          }>;
+          level?: number;
+          _type: 'block';
+          _key: string;
+        }> | null;
+      }
+    | {
+        _type: 'routeList';
+        _key: string;
+        heading: string | null;
+        intro: string | null;
+        routes: Array<{
+          title: string | null;
+          slug: string | null;
+          fromZone: string | null;
+          toZone: string | null;
+          intro: string | null;
+          body: Array<{
+            children?: Array<{
+              marks?: Array<string>;
+              text?: string;
+              _type: 'span';
+              _key: string;
+            }>;
+            style?: 'h3' | 'normal';
+            listItem?: 'bullet';
+            markDefs?: null;
+            level?: number;
+            _type: 'block';
+            _key: string;
+          }> | null;
+          photo: {
+            alt: string | null;
+            asset: {
+              _id: string;
+              url: string | null;
+              metadata: {
+                dimensions: {
+                  width: number | null;
+                  height: number | null;
+                } | null;
+              } | null;
+            } | null;
+          } | null;
+          faq: Array<{
+            question: string | null;
+            answer: string | null;
+            _key: string;
+          }> | null;
+          featured: boolean | null;
+          sortOrder: number | null;
+          seo: {
+            title: string | null;
+            description: string | null;
+            noindex: boolean | null;
+            image: {
+              alt: string | null;
+              asset: {
+                _id: string;
+                url: string | null;
+                metadata: {
+                  dimensions: {
+                    width: number | null;
+                    height: number | null;
+                  } | null;
+                } | null;
+              } | null;
+            } | null;
+          } | null;
+          internalNote: string | null;
+        }> | null;
+      }
+    | {
+        _type: 'steps';
+        _key: string;
+        heading: string | null;
+        items: Array<{
+          title: string | null;
+          text: string | null;
+          _key: string;
+        }> | null;
+      }
+    | {
+        _type: 'vehicleClassList';
+        _key: string;
+        heading: string | null;
+        intro: string | null;
+      }
+  > | null;
+  seo: {
+    title: string | null;
+    description: string | null;
+    noindex: boolean | null;
+    image: {
+      alt: string | null;
+      asset: {
+        _id: string;
+        url: string | null;
+        metadata: {
+          dimensions: {
+            width: number | null;
+            height: number | null;
+          } | null;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+  internalNote: string | null;
+}>;
+
+// Source: ../web/src/lib/sanity/queries.ts
+// Variable: ROUTES_QUERY
+// Query: *[_type == "route"] | order(sortOrder asc){      title,  "slug": slug.current,  fromZone,  toZone,  intro,  body,  photo{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } },  faq[]{ question, answer, _key },  featured,  sortOrder,  seo{    title,    description,    noindex,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }  },  internalNote  }
+export type ROUTES_QUERY_RESULT = Array<{
+  title: string | null;
+  slug: string | null;
+  fromZone: string | null;
+  toZone: string | null;
+  intro: string | null;
+  body: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: 'span';
+      _key: string;
+    }>;
+    style?: 'h3' | 'normal';
+    listItem?: 'bullet';
+    markDefs?: null;
+    level?: number;
+    _type: 'block';
+    _key: string;
+  }> | null;
+  photo: {
+    alt: string | null;
+    asset: {
+      _id: string;
+      url: string | null;
+      metadata: {
+        dimensions: {
+          width: number | null;
+          height: number | null;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+  faq: Array<{
+    question: string | null;
+    answer: string | null;
+    _key: string;
+  }> | null;
+  featured: boolean | null;
+  sortOrder: number | null;
+  seo: {
+    title: string | null;
+    description: string | null;
+    noindex: boolean | null;
+    image: {
+      alt: string | null;
+      asset: {
+        _id: string;
+        url: string | null;
+        metadata: {
+          dimensions: {
+            width: number | null;
+            height: number | null;
+          } | null;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+  internalNote: string | null;
+}>;
+
+// Source: ../web/src/lib/sanity/queries.ts
+// Variable: ROUTE_BY_SLUG_QUERY
+// Query: *[_type == "route" && slug.current == $slug][0]{      title,  "slug": slug.current,  fromZone,  toZone,  intro,  body,  photo{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } },  faq[]{ question, answer, _key },  featured,  sortOrder,  seo{    title,    description,    noindex,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }  },  internalNote  }
+export type ROUTE_BY_SLUG_QUERY_RESULT = {
+  title: string | null;
+  slug: string | null;
+  fromZone: string | null;
+  toZone: string | null;
+  intro: string | null;
+  body: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: 'span';
+      _key: string;
+    }>;
+    style?: 'h3' | 'normal';
+    listItem?: 'bullet';
+    markDefs?: null;
+    level?: number;
+    _type: 'block';
+    _key: string;
+  }> | null;
+  photo: {
+    alt: string | null;
+    asset: {
+      _id: string;
+      url: string | null;
+      metadata: {
+        dimensions: {
+          width: number | null;
+          height: number | null;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+  faq: Array<{
+    question: string | null;
+    answer: string | null;
+    _key: string;
+  }> | null;
+  featured: boolean | null;
+  sortOrder: number | null;
+  seo: {
+    title: string | null;
+    description: string | null;
+    noindex: boolean | null;
+    image: {
+      alt: string | null;
+      asset: {
+        _id: string;
+        url: string | null;
+        metadata: {
+          dimensions: {
+            width: number | null;
+            height: number | null;
+          } | null;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+  internalNote: string | null;
+} | null;
+
+// Source: ../web/src/lib/sanity/queries.ts
+// Variable: FEATURED_ROUTES_QUERY
+// Query: *[_type == "route" && featured == true] | order(sortOrder asc){      title,  "slug": slug.current,  fromZone,  toZone,  intro,  body,  photo{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } },  faq[]{ question, answer, _key },  featured,  sortOrder,  seo{    title,    description,    noindex,    image{   alt,  asset->{    _id,    url,    metadata { dimensions { width, height } }  } }  },  internalNote  }
+export type FEATURED_ROUTES_QUERY_RESULT = Array<{
+  title: string | null;
+  slug: string | null;
+  fromZone: string | null;
+  toZone: string | null;
+  intro: string | null;
+  body: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: 'span';
+      _key: string;
+    }>;
+    style?: 'h3' | 'normal';
+    listItem?: 'bullet';
+    markDefs?: null;
+    level?: number;
+    _type: 'block';
+    _key: string;
+  }> | null;
+  photo: {
+    alt: string | null;
+    asset: {
+      _id: string;
+      url: string | null;
+      metadata: {
+        dimensions: {
+          width: number | null;
+          height: number | null;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+  faq: Array<{
+    question: string | null;
+    answer: string | null;
+    _key: string;
+  }> | null;
+  featured: true;
+  sortOrder: number | null;
+  seo: {
+    title: string | null;
+    description: string | null;
+    noindex: boolean | null;
+    image: {
+      alt: string | null;
+      asset: {
+        _id: string;
+        url: string | null;
+        metadata: {
+          dimensions: {
+            width: number | null;
+            height: number | null;
+          } | null;
+        } | null;
+      } | null;
+    } | null;
+  } | null;
+  internalNote: string | null;
+}>;
+
+// Source: ../web/src/lib/sanity/queries.ts
+// Variable: FORMS_QUERY
+// Query: *[_type == "form"] | order(key asc){      key,  title,  intro,  recipientEmail,  topics[]{ key, label, recipientEmail, _key },  submitLabel,  successTitle,  successMessage,  retentionMonths  }
+export type FORMS_QUERY_RESULT = Array<{
+  key: 'contact' | 'transfer-request' | 'vip-security' | null;
+  title: string | null;
+  intro: string | null;
+  recipientEmail: string | null;
+  topics: Array<{
+    key: string | null;
+    label: string | null;
+    recipientEmail: string | null;
+    _key: string;
+  }> | null;
+  submitLabel: string | null;
+  successTitle: string | null;
+  successMessage: string | null;
+  retentionMonths: number | null;
+}>;
+
+// Source: ../web/src/lib/sanity/queries.ts
+// Variable: FORM_BY_KEY_QUERY
+// Query: *[_type == "form" && key == $key][0]{      key,  title,  intro,  recipientEmail,  topics[]{ key, label, recipientEmail, _key },  submitLabel,  successTitle,  successMessage,  retentionMonths  }
+export type FORM_BY_KEY_QUERY_RESULT = {
+  key: 'contact' | 'transfer-request' | 'vip-security' | null;
+  title: string | null;
+  intro: string | null;
+  recipientEmail: string | null;
+  topics: Array<{
+    key: string | null;
+    label: string | null;
+    recipientEmail: string | null;
+    _key: string;
+  }> | null;
+  submitLabel: string | null;
+  successTitle: string | null;
+  successMessage: string | null;
+  retentionMonths: number | null;
+} | null;
+
 // Query TypeMap
 declare global {
   interface SanityQueries {
-    '\n  *[_type == "siteSettings" && _id == "siteSettings"][0]{\n    companyName,\n    tagline,\n    phone,\n    email,\n    bookingNotificationEmail,\n    address,\n    openingHours,\n    timezone,\n    defaultSeo{\n      title,\n      description,\n      noindex,\n      image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n    },\n    logo{\n      \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n\n    },\n    internalNote\n  }\n': SITE_SETTINGS_QUERY_RESULT;
+    '\n  *[_type == "siteSettings" && _id == "siteSettings"][0]{\n    companyName,\n    tagline,\n    phone,\n    mobilePhone,\n    email,\n    bookingNotificationEmail,\n    address,\n    openingHours,\n    timezone,\n    showFromPrices,\n    defaultSeo{\n      title,\n      description,\n      noindex,\n      image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n    },\n    logo{\n      \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n\n    },\n    internalNote\n  }\n': SITE_SETTINGS_QUERY_RESULT;
     '\n  *[_type == "uiStrings" && _id == "uiStrings"][0]{\n    strings[]{\n      area,\n      key,\n      value\n    },\n    internalNote\n  }\n': UI_STRINGS_QUERY_RESULT;
     '\n  *[_type == "vehicleClass"] | order(sortOrder asc){\n    key,\n    name,\n    tagline,\n    photos[]{\n      \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n\n    },\n    specs[]{\n      label,\n      value\n    },\n    sortOrder,\n    internalNote\n  }\n': VEHICLE_CLASSES_QUERY_RESULT;
-    '\n  *[_type == "page" && slug.current == $slug][0]{\n    kind,\n    title,\n    "slug": slug.current,\n    sections[]{\n      _type,\n      _key,\n      _type == "hero" => {\n        heading,\n        subheading,\n        ctaLabel,\n        ctaTarget,\n        ctaUrl,\n        image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n      },\n      _type == "richText" => {\n        heading,\n        body\n      },\n      _type == "ctaBand" => {\n        heading,\n        text,\n        ctaLabel,\n        ctaTarget,\n        ctaUrl\n      },\n      _type == "faq" => {\n        heading,\n        items[]{ question, answer, _key }\n      }\n    },\n    seo{\n      title,\n      description,\n      noindex,\n      image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n    },\n    internalNote\n  }\n': PAGE_BY_SLUG_QUERY_RESULT;
+    '\n  *[_type == "page" && slug.current == $slug][0]{\n    kind,\n    title,\n    "slug": slug.current,\n    sections[]{\n      \n  _type,\n  _key,\n  _type == "hero" => {\n    heading,\n    subheading,\n    ctaLabel,\n    ctaTarget,\n    ctaUrl,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n  },\n  _type == "richText" => {\n    heading,\n    body\n  },\n  _type == "ctaBand" => {\n    heading,\n    text,\n    ctaLabel,\n    ctaTarget,\n    ctaUrl\n  },\n  _type == "faq" => {\n    heading,\n    items[]{ question, answer, _key }\n  },\n  _type == "featureGrid" => {\n    heading,\n    intro,\n    items[]{ title, text, link, _key }\n  },\n  _type == "imageText" => {\n    heading,\n    body,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n },\n    imageSide,\n    ctaLabel,\n    ctaTarget,\n    ctaUrl\n  },\n  _type == "steps" => {\n    heading,\n    items[]{ title, text, _key }\n  },\n  _type == "vehicleClassList" => {\n    heading,\n    intro\n  },\n  _type == "routeList" => {\n    heading,\n    intro,\n    routes[]->{ \n  title,\n  "slug": slug.current,\n  fromZone,\n  toZone,\n  intro,\n  body,\n  photo{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n },\n  faq[]{ question, answer, _key },\n  featured,\n  sortOrder,\n  seo{\n    title,\n    description,\n    noindex,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n  },\n  internalNote\n }\n  },\n  _type == "contactDetails" => {\n    heading,\n    showHours\n  },\n  _type == "formBlock" => {\n    heading,\n    form->{ \n  key,\n  title,\n  intro,\n  recipientEmail,\n  topics[]{ key, label, recipientEmail, _key },\n  submitLabel,\n  successTitle,\n  successMessage,\n  retentionMonths\n }\n  }\n\n    },\n    seo{\n      title,\n      description,\n      noindex,\n      image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n    },\n    internalNote\n  }\n': PAGE_BY_SLUG_QUERY_RESULT;
+    '\n  *[_type == "page" && kind == "standard"] | order(title asc){\n    kind,\n    title,\n    "slug": slug.current,\n    sections[]{\n      \n  _type,\n  _key,\n  _type == "hero" => {\n    heading,\n    subheading,\n    ctaLabel,\n    ctaTarget,\n    ctaUrl,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n  },\n  _type == "richText" => {\n    heading,\n    body\n  },\n  _type == "ctaBand" => {\n    heading,\n    text,\n    ctaLabel,\n    ctaTarget,\n    ctaUrl\n  },\n  _type == "faq" => {\n    heading,\n    items[]{ question, answer, _key }\n  },\n  _type == "featureGrid" => {\n    heading,\n    intro,\n    items[]{ title, text, link, _key }\n  },\n  _type == "imageText" => {\n    heading,\n    body,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n },\n    imageSide,\n    ctaLabel,\n    ctaTarget,\n    ctaUrl\n  },\n  _type == "steps" => {\n    heading,\n    items[]{ title, text, _key }\n  },\n  _type == "vehicleClassList" => {\n    heading,\n    intro\n  },\n  _type == "routeList" => {\n    heading,\n    intro,\n    routes[]->{ \n  title,\n  "slug": slug.current,\n  fromZone,\n  toZone,\n  intro,\n  body,\n  photo{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n },\n  faq[]{ question, answer, _key },\n  featured,\n  sortOrder,\n  seo{\n    title,\n    description,\n    noindex,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n  },\n  internalNote\n }\n  },\n  _type == "contactDetails" => {\n    heading,\n    showHours\n  },\n  _type == "formBlock" => {\n    heading,\n    form->{ \n  key,\n  title,\n  intro,\n  recipientEmail,\n  topics[]{ key, label, recipientEmail, _key },\n  submitLabel,\n  successTitle,\n  successMessage,\n  retentionMonths\n }\n  }\n\n    },\n    seo{\n      title,\n      description,\n      noindex,\n      image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n    },\n    internalNote\n  }\n': PAGES_STANDARD_QUERY_RESULT;
+    '\n  *[_type == "route"] | order(sortOrder asc){\n    \n  title,\n  "slug": slug.current,\n  fromZone,\n  toZone,\n  intro,\n  body,\n  photo{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n },\n  faq[]{ question, answer, _key },\n  featured,\n  sortOrder,\n  seo{\n    title,\n    description,\n    noindex,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n  },\n  internalNote\n\n  }\n': ROUTES_QUERY_RESULT;
+    '\n  *[_type == "route" && slug.current == $slug][0]{\n    \n  title,\n  "slug": slug.current,\n  fromZone,\n  toZone,\n  intro,\n  body,\n  photo{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n },\n  faq[]{ question, answer, _key },\n  featured,\n  sortOrder,\n  seo{\n    title,\n    description,\n    noindex,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n  },\n  internalNote\n\n  }\n': ROUTE_BY_SLUG_QUERY_RESULT;
+    '\n  *[_type == "route" && featured == true] | order(sortOrder asc){\n    \n  title,\n  "slug": slug.current,\n  fromZone,\n  toZone,\n  intro,\n  body,\n  photo{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n },\n  faq[]{ question, answer, _key },\n  featured,\n  sortOrder,\n  seo{\n    title,\n    description,\n    noindex,\n    image{ \n  alt,\n  asset->{\n    _id,\n    url,\n    metadata { dimensions { width, height } }\n  }\n }\n  },\n  internalNote\n\n  }\n': FEATURED_ROUTES_QUERY_RESULT;
+    '\n  *[_type == "form"] | order(key asc){\n    \n  key,\n  title,\n  intro,\n  recipientEmail,\n  topics[]{ key, label, recipientEmail, _key },\n  submitLabel,\n  successTitle,\n  successMessage,\n  retentionMonths\n\n  }\n': FORMS_QUERY_RESULT;
+    '\n  *[_type == "form" && key == $key][0]{\n    \n  key,\n  title,\n  intro,\n  recipientEmail,\n  topics[]{ key, label, recipientEmail, _key },\n  submitLabel,\n  successTitle,\n  successMessage,\n  retentionMonths\n\n  }\n': FORM_BY_KEY_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

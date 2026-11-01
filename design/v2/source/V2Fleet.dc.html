@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Elite Protection – Fleet (v2)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html{color-scheme: dark; accent-color: #CFA45F}
+*{-webkit-tap-highlight-color: transparent}
+::selection{background: #CFA45F; color: #0A0A0B}
+a{color:#E7C687}a:hover{color:#F4F0E6}
+:focus-visible{outline: 2px solid #E7C687; outline-offset: 3px}
+.eyebrow{font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#E7C687;font-weight:500}
+.display{font-family:'Playfair Display',serif;font-weight:500;line-height:1.04;letter-spacing:-0.01em;margin:0}
+.display em{font-style:italic;color:#E7C687}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:0 30px;box-sizing:border-box;font-family:'Jost',sans-serif;font-weight:600;font-size:13px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;cursor:pointer;border:1px solid #E7C687;transition:transform .25s ease,box-shadow .25s ease,background .25s ease,color .25s ease}
+.btn-gold{background:#E7C687;color:#0A0A0B}
+.btn-gold:hover{background:#F2DDAE;color:#0A0A0B;transform:translateY(-2px);box-shadow:0 12px 32px rgba(231,198,135,.3)}
+.btn-line{background:rgba(10,10,11,.2);color:#E7C687}
+.btn-line:hover{background:#E7C687;color:#0A0A0B}
+.link-arrow{color:#E7C687;text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;border-bottom:1px solid rgba(207,164,95,.5);padding-bottom:5px;transition:border-color .2s,color .2s}
+.link-arrow:hover{color:#F4F0E6;border-color:#F4F0E6}
+.nav{display:flex;gap:6px 34px;flex-wrap:wrap}
+.nav a{color:#F4F0E6;text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;padding:10px 0;border-bottom:1px solid transparent;transition:border-color .2s,color .2s}
+.nav a:hover,.nav a.on{color:#E7C687;border-color:#CFA45F}
+.card{transition:transform .35s ease,border-color .35s ease}
+.card:hover{transform:translateY(-4px);border-color:#CFA45F !important}
+.zoom{overflow:hidden}
+.zoom .ph{transition:transform .9s ease}
+.zoom:hover .ph{transform:scale(1.05)}
+.tab{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:64px;padding:0 4px 0 0;background:transparent;border:0;border-bottom:1px solid rgba(207,164,95,.25);font-family:'Playfair Display',serif;font-size:26px;color:#8E887B;cursor:pointer;text-align:left;transition:color .2s}
+.tab:hover{color:#F4F0E6}
+.burger{display:none}
+.field{display:flex;flex-direction:column;gap:4px;padding:14px 18px;box-sizing:border-box;border-right:1px solid rgba(207,164,95,.22)}
+.field label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#B9A281}
+.field input{background:transparent;border:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:17px;padding:0;height:30px;width:100%}
+.dd-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:30px;background:transparent;border:0;padding:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:17px;text-align:left;cursor:pointer}
+.dd-opt{display:flex;width:100%;box-sizing:border-box;align-items:center;min-height:46px;padding:0 16px;background:transparent;border:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:16px;text-align:left;cursor:pointer}
+.dd-opt:hover,.dd-opt:focus-visible{background:#E7C687;color:#0A0A0B;outline:none}
+.swap{width:44px;height:44px;border-radius:50%;border:1px solid rgba(207,164,95,.6);background:#0A0A0B;color:#E7C687;font-size:18px;cursor:pointer;transition:transform .3s ease,background .2s}
+.swap:hover{transform:rotate(180deg);background:#15181A}
+.mm a{color:#F4F0E6;text-decoration:none;font-family:'Playfair Display',serif;font-size:34px;padding:10px 0;border-bottom:1px solid rgba(207,164,95,.25)}
+@media (max-width: 960px){.nav{display:none !important}.burger{display:inline-flex !important}.hide-m{display:none !important}.field{border-right:0;border-bottom:1px solid rgba(207,164,95,.22)}.display.xl{font-size:56px !important}}
+.chip{min-height:44px;padding:0 20px;border:1px solid rgba(207,164,95,.55);font-family:'Jost',sans-serif;font-size:13px;letter-spacing:.16em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:background .2s,color .2s}
+.chip:hover{border-color:#CFA45F}
+.th{padding:18px 24px;font-size:11px;letter-spacing:.22em;color:#B9A281;font-weight:500;text-transform:uppercase;text-align:center}
+.tr{border-top:1px solid rgba(207,164,95,.2);transition:background .2s}
+.tr:hover{background:#111315}
+.mosaic{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:220px;gap:14px}
+.mtile{position:relative;display:block;border:1px solid rgba(207,164,95,.25);text-decoration:none}
+.mtile:hover{border-color:#CFA45F}
+@media (max-width: 960px){.mosaic{grid-template-columns:repeat(2,1fr);grid-auto-rows:180px}.mtile{grid-column:span 1 !important;grid-row:span 1 !important}}
+
+.bgx1{background:linear-gradient(90deg, rgba(7,7,8,0.95) 0%, rgba(7,7,8,0.7) 40%, rgba(7,7,8,0.15) 100%), linear-gradient(0deg, #0A0A0B 0%, rgba(10,10,11,0) 40%), url(/_blob/4f15613ea78d43172cc74a02bf717885) 60% center/cover no-repeat}
+.bgx2{background:url(/_blob/6fa539d729f5cf97879af036634a99fd) 20% center/cover no-repeat}
+</style>
+</helmet>
+<div style="background: #0A0A0B; color: #F4F0E6; font-family: 'Jost', sans-serif; font-size: 17px; line-height: 1.65; overflow-x: hidden;">
+  <section class="bgx1" style="position: relative; min-height: 640px; display: flex; flex-direction: column;">
+    <header style="position: relative; z-index: 20; border-bottom: 1px solid rgba(207,164,95,0.22);">
+      <div style="max-width: 1320px; margin: 0 auto; padding: 22px 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+        <a href="V2Home.dc.html" aria-label="Elite Protection home" style="display: inline-flex; align-items: center; text-decoration: none;"><img src="/_blob/25fb606e31ba9827ff9f1b3b50994f89" alt="Elite Protection" style="height: 52px; width: auto; display: block;"></a>
+        <nav class="nav" aria-label="Main">
+          <a class="on" aria-current="page" href="V2Fleet.dc.html">Fleet</a>
+          <a href="V2Services.dc.html">Services</a>
+          <a href="V2Security.dc.html">VIP Security</a>
+          <a href="V2About.dc.html">About</a>
+          <a href="V2Contact.dc.html">Contact</a>
+        </nav>
+        <div style="display: flex; align-items: center; gap: 22px;">
+          <a class="hide-m" href="tel:+302109706967" style="color: #E7C687; text-decoration: none; font-size: 15px; letter-spacing: 0.06em;">+30 210 970 6967</a>
+          <a class="btn btn-gold hide-m" href="V2Book.dc.html" style="min-height: 46px; padding: 0 22px;">Book</a>
+          <button type="button" class="burger" onClick="{{toggleNav}}" aria-label="Menu" aria-expanded="{{navOpen}}" style="width: 46px; height: 46px; align-items: center; justify-content: center; background: transparent; border: 1px solid rgba(207,164,95,0.6); color: #E7C687; font-size: 20px; cursor: pointer;">☰</button>
+        </div>
+      </div>
+    </header>
+
+    <sc-if value="{{navOpen}}" hint-placeholder-val="{{false}}">
+      <div class="mm" style="position: fixed; z-index: 60; inset: 0; overflow-y: auto; background: #0A0A0B; padding: 28px 32px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <span class="eyebrow">Menu</span>
+          <button type="button" onClick="{{toggleNav}}" aria-label="Close menu" style="width: 46px; height: 46px; background: transparent; border: 1px solid rgba(207,164,95,0.6); color: #E7C687; font-size: 20px; cursor: pointer;">✕</button>
+        </div>
+        <a href="V2Fleet.dc.html">Fleet</a><a href="V2Services.dc.html">Services</a><a href="V2Security.dc.html">VIP Security</a><a href="V2About.dc.html">About</a><a href="V2Contact.dc.html">Contact</a>
+        <a class="btn btn-gold" href="V2Book.dc.html" style="margin-top: 28px; font-family: 'Jost', sans-serif; font-size: 13px; border: 1px solid #E7C687; color: #0A0A0B;">Book a transfer</a>
+      </div>
+    </sc-if>
+
+
+    <div style="position: relative; z-index: 2; flex: 1; max-width: 1320px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 100px 32px 72px; display: flex; flex-direction: column; justify-content: flex-end; gap: 22px;">
+      <div class="eyebrow">VIP Transfer / Fleet &amp; rates</div>
+      <h1 class="display xl" style="font-size: 88px; max-width: 760px;">Five classes. <em>One standard.</em></h1>
+      <p style="margin: 0; max-width: 540px; font-size: 19px; font-weight: 300; color: #D9D3C4;">Exclusively Mercedes-Benz, with professional chauffeurs and fixed prices for every journey.</p>
+    </div>
+  </section>
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 72px 32px 40px;">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 36px;">
+      <div role="tablist" aria-label="Filter vehicles" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="3">
+          <button type="button" role="tab" aria-selected="{{f.on}}" onClick="{{f.pick}}" class="chip" style="background: {{f.bg}}; color: {{f.color}};">{{f.label}} <span style="opacity: 0.7;">{{f.count}}</span></button>
+        </sc-for>
+      </div>
+      <div style="font-size: 14px; color: #A9A395;">Prices in euros, exclusive of 24% VAT · Capacity indicative, to be confirmed</div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 24px;">
+      <sc-for list="{{cards}}" as="v" hint-placeholder-count="5">
+        <article class="card" style="flex: 1 1 380px; max-width: 100%; display: flex; flex-direction: column; border: 1px solid rgba(207,164,95,0.3); background: #111315;">
+          <a href="V2Vehicle.dc.html" class="zoom" aria-label="{{v.name}} details" style="position: relative; display: block; height: 260px; text-decoration: none;">
+            <img class="ph" src="{{v.img}}" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;">
+            <span style="position: absolute; left: 18px; top: 18px; font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: #E7C687; border: 1px solid rgba(207,164,95,0.6); background: rgba(10,10,11,0.7); padding: 6px 12px;">{{v.kind}}</span>
+          </a>
+          <div style="padding: 26px 26px 28px; display: flex; flex-direction: column; gap: 16px; flex: 1;">
+            <div>
+              <div style="font-size: 13px; color: #A9A395;">Mercedes-Benz</div>
+              <h2 class="display" style="font-size: 38px; color: #E7C687;">{{v.name}}</h2>
+            </div>
+            <div style="display: flex; gap: 22px; font-size: 15px; color: #D9D3C4;">
+              <span><span aria-hidden="true" style="color: #CFA45F;">◦ </span>{{v.seats}} seats</span>
+              <span><span aria-hidden="true" style="color: #CFA45F;">◦ </span>{{v.bags}} bags</span>
+            </div>
+            <div style="display: flex; border-top: 1px solid rgba(207,164,95,0.25); border-bottom: 1px solid rgba(207,164,95,0.25);">
+              <div style="flex: 1; padding: 14px 0;"><div style="font-size: 11px; letter-spacing: 0.22em; color: #B9A281;">AIRPORT · ONE WAY</div><div style="font-family: 'Playfair Display', serif; font-size: 30px; color: #E7C687;">{{v.airport}}</div></div>
+              <div style="flex: 1; padding: 14px 0 14px 18px; border-left: 1px solid rgba(207,164,95,0.25);"><div style="font-size: 11px; letter-spacing: 0.22em; color: #B9A281;">HOURLY · MIN {{v.min}}</div><div style="font-family: 'Playfair Display', serif; font-size: 30px; color: #E7C687;">{{v.hourly}}</div></div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: auto;">
+              <a class="btn btn-line" href="V2Vehicle.dc.html" style="flex: 1; min-height: 48px; padding: 0 12px;">Details</a>
+              <a class="btn btn-gold" href="V2Book.dc.html" style="flex: 1; min-height: 48px; padding: 0 12px;">Book</a>
+            </div>
+          </div>
+        </article>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 60px 32px 20px;">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 32px;">
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="eyebrow">In detail</div>
+        <h2 class="display" style="font-size: 52px;">Inside <em>the fleet</em></h2>
+      </div>
+      <a class="link-arrow" href="V2Vehicle.dc.html">Browse every vehicle →</a>
+    </div>
+    <div class="mosaic">
+      <sc-for list="{{mosaic}}" as="m" hint-placeholder-count="8">
+        <a href="V2Vehicle.dc.html" class="zoom mtile" style="grid-column: span {{m.w}}; grid-row: span {{m.h}};" aria-label="{{m.label}}">
+          <img class="ph" src="{{m.img}}" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;">
+          <div style="position: absolute; inset: 0; background: linear-gradient(0deg, rgba(7,7,8,0.85) 0%, rgba(7,7,8,0) 45%);"></div>
+          <span style="position: absolute; left: 18px; bottom: 14px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: #E7C687;">{{m.label}}</span>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 80px 32px 40px;">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 32px;">
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="eyebrow">Price list 2026</div>
+        <h2 class="display" style="font-size: 52px;">Compare <em>at a glance</em></h2>
+      </div>
+      <a class="link-arrow" href="V2Book.dc.html">Check availability →</a>
+    </div>
+    <div style="overflow-x: auto; border: 1px solid rgba(207,164,95,0.35);">
+      <table style="width: 100%; min-width: 820px; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #111315;">
+            <th scope="col" class="th" style="text-align: left;">Vehicle</th>
+            <th scope="col" class="th" style="text-align: left;">Type</th>
+            <th scope="col" class="th">Seats*</th>
+            <th scope="col" class="th">Luggage*</th>
+            <th scope="col" class="th">Airport (AIA – Athens)</th>
+            <th scope="col" class="th">Hourly</th>
+            <th scope="col" class="th">Minimum</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{rows}}" as="v" hint-placeholder-count="5">
+            <tr class="tr">
+              <th scope="row" style="text-align: left; padding: 20px 24px; font-weight: 400;"><span style="font-family: 'Playfair Display', serif; font-size: 22px; color: #E7C687;">{{v.name}}</span></th>
+              <td style="padding: 20px 24px; color: #B8B2A4;">{{v.kind}}</td>
+              <td style="padding: 20px 24px; text-align: center;">{{v.seats}}</td>
+              <td style="padding: 20px 24px; text-align: center;">{{v.bags}}</td>
+              <td style="padding: 20px 24px; text-align: center; font-family: 'Playfair Display', serif; font-size: 22px; color: #E7C687;">{{v.airport}}</td>
+              <td style="padding: 20px 24px; text-align: center; font-family: 'Playfair Display', serif; font-size: 22px; color: #E7C687;">{{v.hourly}}</td>
+              <td style="padding: 20px 24px; text-align: center; color: #B8B2A4;">{{v.min}}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top: 22px; display: flex; flex-wrap: wrap; gap: 14px 36px; font-size: 14px; color: #A9A395;">
+      <span>All prices in euros, <strong style="color: #F4F0E6; font-weight: 500;">exclusive of 24% VAT</strong></span>
+      <span>Airport rates are <strong style="color: #F4F0E6; font-weight: 500;">one-way</strong> between AIA and Athens</span>
+      <span>Minimum hours apply to <strong style="color: #F4F0E6; font-weight: 500;">hourly chauffeur services</strong></span>
+      <span>*Capacity indicative, to be confirmed</span>
+    </div>
+  </section>
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 80px 32px 120px;">
+    <div style="display: flex; flex-wrap: wrap; gap: 24px;">
+      <div style="flex: 1 1 560px; border: 1px solid rgba(207,164,95,0.3); background: #111315; padding: 44px; display: flex; flex-direction: column; gap: 18px;">
+        <div class="eyebrow">Included in every journey</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 18px 40px; margin-top: 6px;">
+          <sc-for list="{{included}}" as="i" hint-placeholder-count="6">
+            <div style="flex: 1 1 200px; display: flex; gap: 12px; align-items: baseline;"><span style="color: #CFA45F;">—</span><span>{{i.t}}</span></div>
+          </sc-for>
+        </div>
+      </div>
+      <a href="V2Security.dc.html" class="card zoom" style="flex: 1 1 380px; position: relative; min-height: 320px; display: flex; text-decoration: none; color: #F4F0E6; border: 1px solid rgba(207,164,95,0.5);">
+        <div class="bgx2 ph" style="position: absolute; inset: 0;"></div>
+        <div style="position: absolute; inset: 0; background: linear-gradient(0deg, rgba(7,7,8,0.95) 10%, rgba(7,7,8,0.35) 100%);"></div>
+        <div style="position: relative; margin-top: auto; padding: 36px; display: flex; flex-direction: column; gap: 10px;">
+          <div class="eyebrow">Add-on</div>
+          <div class="display" style="font-size: 34px;">Add a security escort</div>
+          <div style="color: #D9D3C4;">Vehicle, chauffeur and escort team on one coordinated plan.</div>
+          <span class="link-arrow" style="align-self: flex-start; margin-top: 6px;">VIP Security →</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="background: #050505; border-top: 1px solid rgba(207,164,95,0.3);">
+    <div style="max-width: 1320px; margin: 0 auto; padding: 80px 32px 40px; display: flex; flex-wrap: wrap; gap: 48px;">
+      <div style="flex: 2 1 300px; display: flex; flex-direction: column; gap: 18px;">
+        <img src="/_blob/25fb606e31ba9827ff9f1b3b50994f89" alt="Elite Protection" style="height: 64px; width: auto; display: block; align-self: flex-start;">
+        <p style="margin: 0; max-width: 340px; color: #A9A395; font-size: 15px;">VIP Transfer and VIP Security in Athens. Luxury vehicles, professional chauffeurs and security teams, 24/7.</p>
+      </div>
+      <div style="flex: 1 1 170px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">Transfers</div>
+        <a href="V2Fleet.dc.html" style="color: #D9D3C4; text-decoration: none;">Fleet &amp; rates</a>
+        <a href="V2Services.dc.html" style="color: #D9D3C4; text-decoration: none;">Services &amp; routes</a>
+        <a href="V2Book.dc.html" style="color: #D9D3C4; text-decoration: none;">Book a transfer</a>
+        <a href="V2Lookup.dc.html" style="color: #D9D3C4; text-decoration: none;">Find my booking</a>
+      </div>
+      <div style="flex: 1 1 170px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">Company</div>
+        <a href="V2Security.dc.html" style="color: #D9D3C4; text-decoration: none;">VIP Security</a>
+        <a href="V2About.dc.html" style="color: #D9D3C4; text-decoration: none;">About</a>
+        <a href="V2Contact.dc.html" style="color: #D9D3C4; text-decoration: none;">Contact</a>
+      </div>
+      <div style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">24/7</div>
+        <a href="tel:+302109706967" style="color: #F4F0E6; text-decoration: none; font-size: 19px;">+30 210 970 6967</a>
+        <a href="tel:+306981810410" style="color: #F4F0E6; text-decoration: none; font-size: 19px;">+30 698 181 0410</a>
+        <a href="mailto:info@eliteprotection.gr" style="color: #E7C687; text-decoration: none;">info@eliteprotection.gr</a>
+      </div>
+    </div>
+    <div style="max-width: 1320px; margin: 0 auto; padding: 22px 32px 34px; border-top: 1px solid rgba(207,164,95,0.18); display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; font-size: 13px; color: #8E887B;">
+      <div>© 2026 Elite Protection · Prices exclusive of 24% VAT</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px 22px;"><a href="V2Legal.dc.html" style="color: #8E887B; text-decoration: none;">Terms</a><a href="V2Legal.dc.html" style="color: #8E887B; text-decoration: none;">Privacy</a><a href="V2Legal.dc.html" style="color: #8E887B; text-decoration: none;">Cookies</a></div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4300}}'>
+class Component extends DCLogic {
+  renderVals() {
+  const FLEET = [
+    { key: 'v-class', name: 'V-Class', kind: 'Luxury van', group: 'van', img: '/_blob/d39f8690c4b3e1ff1318728a9086fe05', seats: 'Up to 7', bags: 'Up to 6', airport: '€180', hourly: '€90', min: '4 hours', blurb: 'Space and comfort for families and small groups, with generous room for luggage.', gallery: ['/_blob/d39f8690c4b3e1ff1318728a9086fe05', '/_blob/4f15613ea78d43172cc74a02bf717885', '/_blob/b63d8265e716f1d1df92128df62ae954', '/_blob/7e4155a7712127b352e93e808a36b1c7', '/_blob/8b8e7c895c1b80f9c896cf907cb7af57', '/_blob/b5b1d09e6f91d56250830560e0cf4bb9', '/_blob/f04d66702fd5a74db0047c1c34d6713e', '/_blob/cbd83683e797acb4b9b5025fa9566a0a', '/_blob/0d71282c4d32025d3ad310c1a701382d', '/_blob/e62650d9039ac857009ae193d66ff795'] },
+    { key: 'vito', name: 'Vito', kind: 'Van', group: 'van', img: '/_blob/cd66ff47949ba03f4edcefa04182de2b', seats: 'Up to 8', bags: 'Up to 6', airport: '€150', hourly: '€70', min: '4 hours', blurb: 'A practical, comfortable van for groups and airport runs with plenty of luggage.', gallery: ['/_blob/cd66ff47949ba03f4edcefa04182de2b'] },
+    { key: 'e-class', name: 'E-Class', kind: 'Saloon', group: 'saloon', img: '/_blob/22c8fc017adffe719b1f492ceae4689f', seats: 'Up to 3', bags: 'Up to 2', airport: '€150', hourly: '€60', min: '3 hours', blurb: 'Understated business travel, ideal for one to three passengers.', gallery: ['/_blob/22c8fc017adffe719b1f492ceae4689f', '/_blob/8dc7cf169d6da631ca6e3610fc1d9b24', '/_blob/b6dc8a29a6bae342f983982b60cff668'] },
+    { key: 's-class', name: 'S-Class', kind: 'Executive saloon', group: 'saloon', img: '/_blob/9135b7b29118a8d5eaf561efdb0aa8ac', seats: 'Up to 3', bags: 'Up to 2', airport: '€180', hourly: '€90', min: '4 hours', blurb: 'Privacy and prestige: a premium experience with an understated presence.', gallery: ['/_blob/eadbabc2cc664aa59c57f92b99e42aed', '/_blob/9135b7b29118a8d5eaf561efdb0aa8ac', '/_blob/4e905ce7ddbd944f680422495a4dc90e', '/_blob/af408cc461e0288b1e967dc67583002c', '/_blob/c5902379a2dd04ce43db3a2059392506', '/_blob/9b9a53b2597031cdbc861532c356c143'] },
+    { key: 'sprinter', name: 'Sprinter', kind: 'VIP van', group: 'van', img: '/_blob/5469a04330a8389c1767fe58588e6e5d', seats: 'Up to 12', bags: 'Up to 10', airport: '€180', hourly: '€90', min: '4 hours', blurb: 'A lounge on wheels for larger groups, delegations and events.', gallery: ['/_blob/5469a04330a8389c1767fe58588e6e5d', '/_blob/77811eb5b3c7c4af1db3b5a4d662154e', '/_blob/db21e675c5f7af66dc05542dc739f549', '/_blob/e9327b11f33186a6aa20f6f5d610dc04'] }
+  ];
+    const st = this.state || {};
+    const f = st.filter || 'all';
+    const defs = [['all', 'All'], ['van', 'Vans'], ['saloon', 'Saloons']];
+    const list = FLEET.filter(v => f === 'all' || v.group === f);
+    return {
+      navOpen: !!st.navOpen,
+      toggleNav: () => this.setState({ navOpen: !st.navOpen }),
+      filters: defs.map(([k, label]) => ({ label: label, count: '(' + FLEET.filter(v => k === 'all' || v.group === k).length + ')', on: k === f ? 'true' : 'false', bg: k === f ? '#E7C687' : 'transparent', color: k === f ? '#0A0A0B' : '#E7C687', pick: () => this.setState({ filter: k }) })),
+      cards: list,
+      rows: FLEET,
+      mosaic: [
+        { img: '/_blob/b63d8265e716f1d1df92128df62ae954', label: 'V-Class · VIP cabin', w: 2, h: 2, pos: 'center' },
+        { img: '/_blob/4e905ce7ddbd944f680422495a4dc90e', label: 'S-Class · cabin', w: 1, h: 1, pos: 'center' },
+        { img: '/_blob/f04d66702fd5a74db0047c1c34d6713e', label: 'V-Class · on the road', w: 1, h: 1, pos: 'center' },
+        { img: '/_blob/7e4155a7712127b352e93e808a36b1c7', label: 'V-Class · captain seats', w: 1, h: 1, pos: 'center' },
+        { img: '/_blob/8dc7cf169d6da631ca6e3610fc1d9b24', label: 'E-Class · rear seats', w: 1, h: 1, pos: 'center' },
+        { img: '/_blob/8b8e7c895c1b80f9c896cf907cb7af57', label: 'V-Class · lounge', w: 2, h: 1, pos: 'center 60%' },
+        { img: '/_blob/c5902379a2dd04ce43db3a2059392506', label: 'S-Class · cockpit', w: 1, h: 1, pos: 'center' },
+        { img: '/_blob/db21e675c5f7af66dc05542dc739f549', label: 'Sprinter · seating', w: 1, h: 1, pos: 'center' }
+      ],
+      included: [{ t: 'Professional chauffeur' }, { t: 'Air conditioning' }, { t: 'Wi-Fi on board' }, { t: 'Bottled water' }, { t: 'Device charging' }, { t: 'Luggage assistance' }]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

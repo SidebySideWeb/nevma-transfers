@@ -1,49 +1,48 @@
-# Design system — neutral baseline
+# Design system — Elite Protection V2
 
-Decided 31 Oct 2026: the kit ships a neutral, premium baseline. When the client sends the TEM Protection brand (logo, colours, fonts; due Fri 6 Nov), only `tokens.css` changes. Reference: `design/index.html` (12 wireframe screens, checked at 390 px and 1440 px with no overflow and zero serious axe issues).
+Decided 1 Nov 2026: the site uses the Elite Protection V2 design (near-black, gold, ivory; Playfair Display + Jost; square corners; photo-led). The visual target per route is in `docs/DESIGN-V2.md` and `design/v2/`. Tokens live only in `design/tokens.css`. The admin uses the same tokens at work density (`docs/DESIGN-ADMIN.md`).
 
 ## Files
 
 | File | Use |
 | --- | --- |
-| `design/tokens.css` | the only place values live; copy to `apps/web/src/styles/tokens.css` and `apps/admin/src/styles/tokens.css` (prompt 03) |
-| `design/screens/screens.css` | wireframe components; port them as Astro components / CSS modules, keeping class names where helpful |
-| `design/screens/*.html` | the visual target per route (`docs/PAGES.md` maps routes to screens) |
+| `design/tokens.css` | the only place values live; copy to `apps/web/src/styles/tokens.css` and `apps/admin/src/styles/tokens.css` |
+| `design/v2/` | the V2 design: working preview pages, screenshots at 1440 and 390 px, photos, fonts, extra boards; route mapping and the deliberate differences in `docs/DESIGN-V2.md` |
+| `design/screens/*.html`, `screens.css` | earlier structural wireframes (states, field lists, strings keys); use them for behaviour and copy keys, the V2 pages for the look |
+| `design/admin/` | the admin design kit: `admin.css`, boards for every admin route, components, states |
 
-## Tokens
+## Tokens (`design/tokens.css`)
 
 | Group | Tokens |
 | --- | --- |
-| Colour | `--color-bg` ink, `--color-surface`, `--color-surface-2`, `--color-border`, `--color-text`, `--color-muted`, `--color-accent` brass (buttons, focus), `--color-accent-strong` (hover), `--color-accent-text` (text on accent), `--color-success`, `--color-warning`, `--color-danger`, `--color-overlay` |
-| Type | `--font-display` (Inter Tight), `--font-text` (Inter), `--font-mono`; sizes `--text-xs` 13 to `--text-2xl` 32, `--text-3xl` fluid 36–56; `--leading-tight` 1.15, `--leading-normal` 1.55; `--tracking-caps` |
-| Space | `--space-1` 4 px … `--space-8` 72 px |
-| Shape | `--radius-sm` 6, `--radius-md` 10, `--radius-lg` 16, `--radius-pill`; `--shadow-1`, `--shadow-2` |
-| Layout | `--container` 1200 px, `--container-narrow` 720 px (booking flow), `--tap` 44 px |
-| Motion | `--ease`, `--dur-fast` 150 ms, `--dur` 240 ms |
+| Colour | `--color-bg` #0A0A0B obsidian, `--color-bg-deep`, `--color-surface` / `--color-surface-2` graphite, `--color-border` gold hairline, `--color-text` ivory, `--color-text-soft`, `--color-muted`, `--color-label` champagne, `--color-faint`, `--color-accent` light gold (buttons, links, focus, prices), `--color-accent-strong` (hover), `--color-accent-deep` gold (dots, rules), `--color-accent-text` (text on gold), `--color-success`, `--color-warning`, `--color-danger`, `--color-info`, `--color-overlay`, `--hero-scrim`, `--panel-gradient` |
+| Type | `--font-display` Playfair Display (500, 600, italic 500: headings, prices), `--font-text` Jost (300–600: body, tracked caps labels); sizes `--text-xs` 11 … `--text-2xl` 34, `--text-3xl` fluid 40–68; `--tracking-caps`, `--tracking-ui`, `--tracking-eyebrow` |
+| Space | `--space-1` 4 px … `--space-8` 112 px |
+| Shape | all radii 0 (square corners); `--radius-round` only for dots, radios and the swap button; `--shadow-1` gold glow on button hover, `--shadow-2` dropdowns |
+| Layout | `--container` 1320 px, `--container-narrow` 820 px, `--tap` 46 px, `--button-height` 54 px |
+| Motion | `--ease`, `--dur-fast` 200 ms, `--dur` 250 ms, `--dur-slow` 900 ms (photo zoom) |
 
-Contrast: every text/background pair in use passes WCAG AA 4.5:1 (`scripts/contrast.test.mjs`); keep that test passing when the brand arrives. Fonts: self-host Inter and Inter Tight (woff2, `font-display: swap`) or fall back to the system stack; the brand may replace them.
+Contrast: every text/background pair in use passes WCAG AA 4.5:1 (`scripts/contrast.test.mjs`). Fonts: self-host the woff2 files from `design/v2/pages/assets/fonts/` (`font-display: swap`; preload Jost 400 and Playfair 500).
 
-## Components (from the wireframes)
+## Components
+
+The list of building blocks is in `docs/DESIGN-V2.md` ("Building blocks to make once"). Behaviour notes that still apply from the wireframes:
 
 | Component | Notes |
 | --- | --- |
-| Header, footer | company name or logo, phone, Book now; footer contact and four legal links, Cookie settings |
-| Button | primary (accent, pill, min 44 px), ghost, danger, block; one primary per view |
 | Steps | 4 steps, `aria-current="step"` on the active one |
-| Segmented toggle | Transfer / By the hour; radio inputs inside labels, wraps on narrow screens |
+| Trip type switch | Transfer / By the hour; radio inputs, keyboard operable |
 | Field | visible label, hint, error tied with `aria-describedby`, `aria-invalid` |
-| Check row | checkbox + label + right-aligned price; used for extras, VIP security, invoice, consent |
-| Vehicle card | photo (16:10), name, tagline, capacity, price, Select; disabled state for unavailable |
-| Hold timer | `role="status"`, polite; warning colour for the time |
-| Notice | neutral, success, danger variants |
-| Summary list | `dl` rows label / value; total row in display type |
+| Zone and other dropdowns | brand dropdown (select-only combobox) with the native select kept for no-JS |
+| Vehicle card | photo, name, type, capacity, price (final, VAT included), Select; disabled state for unavailable |
+| Hold timer | `role="status"`, polite; warning colour near the end |
+| Summary | `dl` rows label / value; total in display type; "Final price, VAT included" |
 | Badge | status colours: success confirmed, warning pending, danger cancelled, accent VIP security |
-| Admin shell | side nav (top nav under 1024 px), toolbar of filters, scrollable table in a focusable labelled region, warning banner |
 
 ## Rules
 
 - No hex values or raw pixel sizes in components: tokens only.
 - Text wraps rather than overflowing: `overflow-wrap: break-word` on text, `anywhere` on headings; flex children get `min-width: 0`.
-- Focus is always visible (3 px accent outline). Motion respects `prefers-reduced-motion`.
-- Prices display as "€ 70.00"; dates as "Tue 1 Dec 2026, 10:00 (Athens)".
-- Wireframe text shows `uiStrings` keys next to defaults; the built site shows only the value.
+- Focus is always visible (2 px gold outline). Motion respects `prefers-reduced-motion`.
+- Prices display as "€180.00" (final, VAT included); dates as "Tue 17 Nov 2026, 14:30".
+- All text comes from Sanity (`uiStrings`, pages, vehicle classes); the preview's copy is already in the seed where it exists.

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Add and edit: fleet, zones, extras — Elite Protection Admin (design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="admin.css">
+</head>
+<body class="ep-admin">
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <header class="sidebar">
+    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav">Menu</button></div>
+    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="calendar.html"><span>Fleet calendar</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
+    <div class="sidebar-foot"><span class="who">office@eliteprotection.gr</span><a href="login.html">Sign out</a></div>
+  </header>
+  <main class="main" id="main">
+    
+    <div class="page-head"><div><p class="crumbs"><a href="fleet.html">Fleet</a></p><h1 class="title">Add and edit: fleet, zones, extras</h1></div><div class="page-actions"></div></div>
+    <p class="muted" style="max-width:72ch">Add and edit forms for classes, vehicles, zones and extras open as dialogs from Fleet, Zones and Extras. The database refuses changes that would break bookings, prices or the website; the dialog shows its message under the field or at the top.</p>
+    <div class="cols cols-2" style="align-items:start">
+      <dialog class="dialog static" id="add-class" open aria-labelledby="d-ac">
+        <div class="dialog-head"><p class="eyebrow">Fleet</p><h2 id="d-ac">Add a vehicle class</h2></div>
+        <div class="dialog-body">
+          <div class="grid-fields"><div class="field"><label for="ac-name">Internal name</label><input id="ac-name" class="input" value="Limousine"></div>
+          <div class="field"><label for="ac-key">Key</label><input id="ac-key" class="input mono" value="limo" aria-describedby="ac-key-help"><p class="help" id="ac-key-help">Lower-case letters, numbers and hyphens. Use the same key in Sanity.</p></div></div>
+          <div class="grid-fields"><div class="field"><label for="ac-pax">Max passengers</label><input id="ac-pax" class="input" type="number" value="3"></div><div class="field"><label for="ac-lug">Max suitcases</label><input id="ac-lug" class="input" type="number" value="2"></div><div class="field"><label for="ac-buf">Buffer (minutes)</label><input id="ac-buf" class="input" type="number" value="60"></div></div>
+          <p class="help">The class starts offline. Next: add vehicles, prices and the Sanity page, then switch it online.</p>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Back</button><button class="btn" type="button">Add class</button></div>
+      </dialog>
+      <dialog class="dialog static" id="add-vehicle" open aria-labelledby="d-av">
+        <div class="dialog-head"><p class="eyebrow">Fleet</p><h2 id="d-av">Add a vehicle</h2></div>
+        <div class="dialog-body">
+          <div class="grid-fields"><div class="field"><label for="av-cls">Class</label><select id="av-cls" class="input"><option>Executive sedan</option><option>Luxury SUV</option><option>Business van</option><option data-meta="offline">Limousine</option></select></div>
+          <div class="field"><label for="av-lab">Label</label><input id="av-lab" class="input" value="SEDAN-3" aria-describedby="av-lab-help"><p class="help" id="av-lab-help">Unique. Shown to staff and on the calendar.</p></div></div>
+          <div class="field"><label for="av-mod">Model, colour, plate (staff only)</label><input id="av-mod" class="input" value="Mercedes E-Class · black · IKY-9012"></div>
+          <div class="banner banner-info" role="status"><p><strong>2 bookings</strong> in this class are waiting for a vehicle. Assign them from the calendar after saving.</p></div>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Back</button><button class="btn" type="button">Add vehicle</button></div>
+      </dialog>
+      <dialog class="dialog static" id="edit-vehicle" open aria-labelledby="d-ev">
+        <div class="dialog-head"><p class="eyebrow">SEDAN-1</p><h2 id="d-ev">Edit vehicle</h2></div>
+        <div class="dialog-body">
+          <div class="banner banner-danger" role="alert"><p>SEDAN-1 has 3 future bookings. Move them to another vehicle before setting it to maintenance or retired.</p><a class="btn btn-secondary btn-sm" href="calendar.html">Open calendar</a></div>
+          <div class="grid-fields"><div class="field"><label for="ev-lab">Label</label><input id="ev-lab" class="input" value="SEDAN-1"></div>
+          <div class="field"><label for="ev-st">Status</label><select id="ev-st" class="input" aria-invalid="true"><option>Active</option><option selected data-meta="out for a while">Maintenance</option><option data-meta="left the fleet">Retired</option></select></div></div>
+          <p class="help">For a few hours off (service, private job) use Block a vehicle instead; it keeps the vehicle active.</p>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Back</button><button class="btn" type="button">Save vehicle</button></div>
+      </dialog>
+      <dialog class="dialog static" id="add-zone" open aria-labelledby="d-az">
+        <div class="dialog-head"><p class="eyebrow">Zones</p><h2 id="d-az">Add a zone</h2></div>
+        <div class="dialog-body">
+          <div class="grid-fields"><div class="field"><label for="az-name">Name</label><input id="az-name" class="input" value="South coast"></div><div class="field"><label for="az-code">Code</label><input id="az-code" class="input mono" value="south"></div></div>
+          <div class="field"><label for="az-see">Customers see</label><input id="az-see" class="input" value="Glyfada, Vouliagmeni, Varkiza"></div>
+          <p class="help">Then add its routes and durations on Zone prices; a zone without routes is not offered to customers.</p>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Back</button><button class="btn" type="button">Add zone</button></div>
+      </dialog>
+      <dialog class="dialog static" id="add-extra" open aria-labelledby="d-ax">
+        <div class="dialog-head"><p class="eyebrow">Extras</p><h2 id="d-ax">Add an extra</h2></div>
+        <div class="dialog-body">
+          <div class="grid-fields"><div class="field"><label for="ax-name">Name</label><input id="ax-name" class="input" value="Meet and greet sign"></div><div class="field"><label for="ax-code">Code</label><input id="ax-code" class="input mono" value="name-sign"></div></div>
+          <div class="grid-fields"><div class="field"><label for="ax-pr">Price</label><div class="input-money"><input id="ax-pr" class="input" value="15.00" inputmode="decimal"></div></div></div>
+          <p class="help">The customer-facing text comes from Sanity (UI strings). VIP security and Night surcharge are built in: they can be priced and switched off, not deleted.</p>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Back</button><button class="btn" type="button">Add extra</button></div>
+      </dialog>
+      <dialog class="dialog static" id="delete" open aria-labelledby="d-dl">
+        <div class="dialog-head"><p class="eyebrow">Fleet</p><h2 id="d-dl">Delete SEDAN-2?</h2></div>
+        <div class="dialog-body">
+          <p style="margin:0">SEDAN-2 has never been booked, so it can be deleted. Vehicles with bookings can only be retired; they stay in the history.</p>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Keep</button><button class="btn btn-danger-solid" type="button">Delete SEDAN-2</button></div>
+      </dialog>
+    </div>
+  </main>
+</div>
+<script src="admin.js" defer></script>
+</body>
+</html>

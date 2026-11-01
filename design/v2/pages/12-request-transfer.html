@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elite Protection – Request a transfer</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<style>
+body{margin:0}
+html{color-scheme: dark; accent-color: #CFA45F}
+*{-webkit-tap-highlight-color: transparent}
+::selection{background: #CFA45F; color: #0A0A0B}
+a{color:#E7C687}a:hover{color:#F4F0E6}
+:focus-visible{outline: 2px solid #E7C687; outline-offset: 3px}
+.eyebrow{font-size:12px;letter-spacing:.36em;text-transform:uppercase;color:#E7C687;font-weight:500}
+.display{font-family:'Playfair Display',serif;font-weight:500;line-height:1.04;letter-spacing:-0.01em;margin:0}
+.display em{font-style:italic;color:#E7C687}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:0 30px;box-sizing:border-box;font-family:'Jost',sans-serif;font-weight:600;font-size:13px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;cursor:pointer;border:1px solid #E7C687;transition:transform .25s ease,box-shadow .25s ease,background .25s ease,color .25s ease}
+.btn-gold{background:#E7C687;color:#0A0A0B}
+.btn-gold:hover{background:#F2DDAE;color:#0A0A0B;transform:translateY(-2px);box-shadow:0 12px 32px rgba(231,198,135,.3)}
+.btn-line{background:rgba(10,10,11,.2);color:#E7C687}
+.btn-line:hover{background:#E7C687;color:#0A0A0B}
+.link-arrow{color:#E7C687;text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;border-bottom:1px solid rgba(207,164,95,.5);padding-bottom:5px;transition:border-color .2s,color .2s}
+.link-arrow:hover{color:#F4F0E6;border-color:#F4F0E6}
+.nav{display:flex;gap:6px 34px;flex-wrap:wrap}
+.nav a{color:#F4F0E6;text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;padding:10px 0;border-bottom:1px solid transparent;transition:border-color .2s,color .2s}
+.nav a:hover,.nav a.on{color:#E7C687;border-color:#CFA45F}
+.card{transition:transform .35s ease,border-color .35s ease}
+.card:hover{transform:translateY(-4px);border-color:#CFA45F !important}
+.zoom{overflow:hidden}
+.zoom .ph{transition:transform .9s ease}
+.zoom:hover .ph{transform:scale(1.05)}
+.tab{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:64px;padding:0 4px 0 0;background:transparent;border:0;border-bottom:1px solid rgba(207,164,95,.25);font-family:'Playfair Display',serif;font-size:26px;color:#8E887B;cursor:pointer;text-align:left;transition:color .2s}
+.tab:hover{color:#F4F0E6}
+.burger{display:none}
+.field{display:flex;flex-direction:column;gap:4px;padding:14px 18px;box-sizing:border-box;border-right:1px solid rgba(207,164,95,.22)}
+.field label{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#B9A281}
+.field input{background:transparent;border:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:17px;padding:0;height:30px;width:100%}
+.dd-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:30px;background:transparent;border:0;padding:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:17px;text-align:left;cursor:pointer}
+.dd-opt{display:flex;width:100%;box-sizing:border-box;align-items:center;min-height:46px;padding:0 16px;background:transparent;border:0;color:#F4F0E6;font-family:'Jost',sans-serif;font-size:16px;text-align:left;cursor:pointer}
+.dd-opt:hover,.dd-opt:focus-visible{background:#E7C687;color:#0A0A0B;outline:none}
+.swap{width:44px;height:44px;border-radius:50%;border:1px solid rgba(207,164,95,.6);background:#0A0A0B;color:#E7C687;font-size:18px;cursor:pointer;transition:transform .3s ease,background .2s}
+.swap:hover{transform:rotate(180deg);background:#15181A}
+.mm a{color:#F4F0E6;text-decoration:none;font-family:'Playfair Display',serif;font-size:34px;padding:10px 0;border-bottom:1px solid rgba(207,164,95,.25)}
+@media (max-width: 960px){.nav{display:none !important}.burger{display:inline-flex !important}.hide-m{display:none !important}.field{border-right:0;border-bottom:1px solid rgba(207,164,95,.22)}.display.xl{font-size:56px !important}}
+.ddl{position:absolute;left:0;right:0;top:100%;margin:2px 0 0;padding:4px 0;list-style:none;background:#15181A;border:1px solid #CFA45F;box-shadow:0 16px 40px rgba(0,0,0,.6);z-index:31}
+.grid{display:flex;flex-wrap:wrap;gap:26px 28px}
+.f2{flex:1 1 260px;display:flex;flex-direction:column;gap:8px;position:relative}
+.f2 label,.lbl{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#B9A281}
+.f2 input,.f2 textarea,.f2 .dd-btn{box-sizing:border-box;width:100%;height:50px;background:transparent;border:0;border-bottom:1px solid rgba(207,164,95,.55);color:#F4F0E6;font-family:'Jost',sans-serif;font-size:18px;padding:0;transition:border-color .2s}
+.f2 textarea{height:auto;min-height:130px;border:1px solid rgba(207,164,95,.55);padding:14px}
+.f2 input:focus,.f2 textarea:focus{outline:none;border-color:#E7C687}
+.f2 input::placeholder{color:#5E5A52}
+.fs{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:26px;min-width:0}
+.fs legend{padding:0 0 18px;margin-bottom:6px;width:100%;border-bottom:1px solid rgba(207,164,95,.35);font-family:'Playfair Display',serif;font-size:34px;color:#F4F0E6}
+.fs legend span{font-style:italic;color:#CFA45F;margin-right:16px}
+.stepper{display:inline-flex;align-items:center;border:1px solid rgba(207,164,95,.55);height:50px}
+.stepper button{width:46px;height:100%;background:transparent;border:0;color:#E7C687;font-size:20px;cursor:pointer;transition:background .2s,color .2s}
+.stepper button:hover{background:#CFA45F;color:#0A0A0B}
+.stepper span{min-width:44px;text-align:center;font-size:18px}
+.vchip{flex:1 1 150px;display:flex;flex-direction:column;padding:0;border:1px solid;background:#111315;cursor:pointer;font-family:'Jost',sans-serif;transition:border-color .2s,transform .25s}
+.vchip:hover{border-color:#CFA45F !important;transform:translateY(-2px)}
+.addon{display:flex;flex-wrap:wrap;width:100%;padding:0;border:1px solid;background:#111315;cursor:pointer;color:#F4F0E6;font-family:'Jost',sans-serif;transition:border-color .2s}
+.switch{width:52px;height:28px;border-radius:14px;border:1px solid #CFA45F;position:relative;transition:background .25s}
+.switch span{position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#F4F0E6;transition:transform .25s}
+.disclose{align-self:flex-start;background:transparent;border:0;padding:6px 0;color:#E7C687;font-family:'Jost',sans-serif;font-size:15px;cursor:pointer}
+.disclose span{display:inline-block;width:22px;color:#CFA45F}
+
+.bgx1{background:linear-gradient(90deg, rgba(7,7,8,0.94) 0%, rgba(7,7,8,0.7) 50%, rgba(7,7,8,0.35) 100%), linear-gradient(0deg, #0A0A0B 0%, rgba(10,10,11,0) 40%), url(images/s-class-terminal.jpg) center 45%/cover no-repeat}
+.bgx2{background:url(images/brand-security-acropolis.jpg) 20% center/cover no-repeat}
+</style>
+<script src="assets/runtime.js"></script>
+</head>
+<body>
+<div id="dc-root"></div>
+<template id="dc-template">
+<div style="background: #0A0A0B; color: #F4F0E6; font-family: 'Jost', sans-serif; font-size: 17px; line-height: 1.65; overflow-x: hidden;">
+  <section class="bgx1" style="position: relative; min-height: 560px; display: flex; flex-direction: column;  border-bottom: 1px solid rgba(207,164,95,0.2);">
+    <header style="position: relative; z-index: 20; border-bottom: 1px solid rgba(207,164,95,0.22);">
+      <div style="max-width: 1320px; margin: 0 auto; padding: 22px 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+        <a href="01-home.html" aria-label="Elite Protection home" style="display: inline-flex; align-items: center; text-decoration: none;"><img src="images/logo-white.png" alt="Elite Protection" style="height: 52px; width: auto; display: block;"></a>
+        <nav class="nav" aria-label="Main">
+          <a href="02-fleet.html">Fleet</a>
+          <a href="04-services.html">Services</a>
+          <a href="05-vip-security.html">VIP Security</a>
+          <a href="06-about.html">About</a>
+          <a href="07-contact.html">Contact</a>
+        </nav>
+        <div style="display: flex; align-items: center; gap: 22px;">
+          <a class="hide-m" href="tel:+302109706967" style="color: #E7C687; text-decoration: none; font-size: 15px; letter-spacing: 0.06em;">+30 210 970 6967</a>
+          <a class="btn btn-gold hide-m" href="08-book.html" style="min-height: 46px; padding: 0 22px;">Book</a>
+          <button type="button" class="burger" onClick="{{toggleNav}}" aria-label="Menu" aria-expanded="{{navOpen}}" style="width: 46px; height: 46px; align-items: center; justify-content: center; background: transparent; border: 1px solid rgba(207,164,95,0.6); color: #E7C687; font-size: 20px; cursor: pointer;">☰</button>
+        </div>
+      </div>
+    </header>
+
+    <template data-sc="if" value="{{navOpen}}" hint-placeholder-val="{{false}}">
+      <div class="mm" style="position: fixed; z-index: 60; inset: 0; overflow-y: auto; background: #0A0A0B; padding: 28px 32px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <span class="eyebrow">Menu</span>
+          <button type="button" onClick="{{toggleNav}}" aria-label="Close menu" style="width: 46px; height: 46px; background: transparent; border: 1px solid rgba(207,164,95,0.6); color: #E7C687; font-size: 20px; cursor: pointer;">✕</button>
+        </div>
+        <a href="02-fleet.html">Fleet</a><a href="04-services.html">Services</a><a href="05-vip-security.html">VIP Security</a><a href="06-about.html">About</a><a href="07-contact.html">Contact</a>
+        <a class="btn btn-gold" href="08-book.html" style="margin-top: 28px; font-family: 'Jost', sans-serif; font-size: 13px; border: 1px solid #E7C687; color: #0A0A0B;">Book a transfer</a>
+      </div>
+    </template>
+
+
+    <div style="position: relative; z-index: 2; flex: 1; max-width: 1320px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 72px 32px 56px; display: flex; flex-direction: column; justify-content: flex-end; gap: 18px;">
+      <div class="eyebrow">VIP Transfer / Request a transfer</div>
+      <h1 class="display" style="font-size: 68px; max-width: 860px;">Tell us about <em>your journey.</em></h1>
+      <p style="margin: 0; max-width: 600px; font-size: 19px; font-weight: 300; color: #D9D3C4;">Send us the details and our office replies with a confirmed price and availability. No payment is taken at this stage.</p>
+    </div>
+  </section>
+
+  <section style="max-width: 1320px; margin: 0 auto; padding: 72px 32px 120px; display: flex; flex-wrap: wrap; gap: 56px; align-items: flex-start;">
+    <form style="flex: 2 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 52px;">
+      <template data-sc="if" value="{{anyOpen}}" hint-placeholder-val="{{false}}"><div onClick="{{closeAll}}" style="position: fixed; inset: 0; z-index: 25;"></div></template>
+      <fieldset class="fs">
+        <legend><span>01</span>Journey</legend>
+        <div class="grid">
+          <div class="f2" style="z-index: 32;"><label for="r-from">Pick-up zone</label>
+            <button type="button" id="r-from" class="dd-btn" aria-haspopup="listbox" aria-expanded="{{rfrom_open}}" onClick="{{rfrom_toggle}}"><span>{{rfrom_value}}</span><span aria-hidden="true" style="color: #CFA45F; font-size: 13px;">▾</span></button>
+            <template data-sc="if" value="{{rfrom_open}}" hint-placeholder-val="{{false}}"><ul role="listbox" class="ddl"><template data-sc="for" list="{{rfrom_options}}" as="o" hint-placeholder-count="3"><li role="presentation"><button type="button" role="option" class="dd-opt" onClick="{{o.pick}}"><span style="color: #CFA45F; width: 20px;">{{o.mark}}</span>{{o.label}}</button></li></template></ul></template>
+
+          </div>
+          <div class="f2" style="z-index: 31;"><label for="r-to">Drop-off zone</label>
+            <button type="button" id="r-to" class="dd-btn" aria-haspopup="listbox" aria-expanded="{{rto_open}}" onClick="{{rto_toggle}}"><span>{{rto_value}}</span><span aria-hidden="true" style="color: #CFA45F; font-size: 13px;">▾</span></button>
+            <template data-sc="if" value="{{rto_open}}" hint-placeholder-val="{{false}}"><ul role="listbox" class="ddl"><template data-sc="for" list="{{rto_options}}" as="o" hint-placeholder-count="3"><li role="presentation"><button type="button" role="option" class="dd-opt" onClick="{{o.pick}}"><span style="color: #CFA45F; width: 20px;">{{o.mark}}</span>{{o.label}}</button></li></template></ul></template>
+
+          </div>
+          <div class="f2"><label for="r-pick">Pick-up address or hotel</label><input id="r-pick" type="text" placeholder="Street and number, or hotel name"></div>
+          <div class="f2"><label for="r-drop">Drop-off address or hotel</label><input id="r-drop" type="text" placeholder="Street and number, or hotel name"></div>
+          <div class="f2"><label for="r-date">Date</label><input id="r-date" type="date"></div>
+          <div class="f2"><label for="r-time">Pick-up time</label><input id="r-time" type="time"></div>
+          <div class="f2"><label for="r-flight">Flight number (optional)</label><input id="r-flight" type="text" placeholder="e.g. A3 650"></div>
+          <div class="f2" style="flex-direction: row; gap: 28px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 8px;"><span class="lbl" id="r-lpax">Passengers</span><div class="stepper" role="group" aria-labelledby="r-lpax"><button type="button" onClick="{{paxDown}}" aria-label="Fewer">−</button><span>{{pax}}</span><button type="button" onClick="{{paxUp}}" aria-label="More">+</button></div></div>
+            <div style="display: flex; flex-direction: column; gap: 8px;"><span class="lbl" id="r-lbags">Luggage</span><div class="stepper" role="group" aria-labelledby="r-lbags"><button type="button" onClick="{{bagsDown}}" aria-label="Fewer">−</button><span>{{bags}}</span><button type="button" onClick="{{bagsUp}}" aria-label="More">+</button></div></div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="fs">
+        <legend><span>02</span>Service &amp; vehicle</legend>
+        <div class="grid">
+          <div class="f2" style="z-index: 30; flex-basis: 100%;"><label for="r-kind">Service</label>
+            <button type="button" id="r-kind" class="dd-btn" aria-haspopup="listbox" aria-expanded="{{rkind_open}}" onClick="{{rkind_toggle}}"><span>{{rkind_value}}</span><span aria-hidden="true" style="color: #CFA45F; font-size: 13px;">▾</span></button>
+            <template data-sc="if" value="{{rkind_open}}" hint-placeholder-val="{{false}}"><ul role="listbox" class="ddl"><template data-sc="for" list="{{rkind_options}}" as="o" hint-placeholder-count="3"><li role="presentation"><button type="button" role="option" class="dd-opt" onClick="{{o.pick}}"><span style="color: #CFA45F; width: 20px;">{{o.mark}}</span>{{o.label}}</button></li></template></ul></template>
+
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <span class="lbl">Preferred vehicle</span>
+          <div role="radiogroup" aria-label="Preferred vehicle" style="display: flex; flex-wrap: wrap; gap: 12px;">
+            <template data-sc="for" list="{{vehicles}}" as="v" hint-placeholder-count="6">
+              <button type="button" role="radio" aria-checked="{{v.on}}" onClick="{{v.pick}}" class="vchip" style="border-color: {{v.border}};">
+                <span style="height: 86px; background: #050505 {{v.bg}};"></span>
+                <span style="padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px;"><span style="font-family: 'Playfair Display', serif; font-size: 19px; color: {{v.color}};">{{v.name}}</span><span style="width: 16px; height: 16px; border-radius: 50%; border: 1px solid #CFA45F; background: {{v.dot}};"></span></span>
+              </button>
+            </template>
+          </div>
+        </div>
+        <button type="button" class="addon" role="switch" aria-checked="{{secOn}}" onClick="{{toggleSec}}" style="border-color: {{secBorder}};">
+          <span class="bgx2" style="flex: 0 0 120px; align-self: stretch; min-height: 110px;"></span>
+          <span style="flex: 1 1 260px; padding: 18px 24px; text-align: left; display: flex; flex-direction: column; gap: 6px;">
+            <span class="eyebrow">Optional</span>
+            <span style="font-size: 19px; color: #F4F0E6; font-weight: 500;">Add a VIP security escort</span>
+            <span style="font-size: 15px; color: #A9A395;">We plan the escort with you when we reply.</span>
+          </span>
+          <span style="flex: 0 0 110px; display: flex; align-items: center; justify-content: center;"><span class="switch" style="background: {{secTrack}};"><span style="transform: translateX({{secX}});"></span></span></span>
+        </button>
+      </fieldset>
+
+      <fieldset class="fs">
+        <legend><span>03</span>Your details</legend>
+        <div class="grid">
+          <div class="f2"><label for="r-name">Full name</label><input id="r-name" type="text" autocomplete="name"></div>
+          <div class="f2"><label for="r-email">Email</label><input id="r-email" type="email" autocomplete="email"></div>
+          <div class="f2"><label for="r-phone">Mobile phone</label><input id="r-phone" type="tel" autocomplete="tel" placeholder="+30"></div>
+          <div class="f2" style="flex-basis: 100%;"><label for="r-notes">Anything else we should know?</label><textarea id="r-notes" rows="4"></textarea></div>
+        </div>
+        <button type="button" onClick="{{toggleInv}}" aria-expanded="{{invOn}}" class="disclose"><span>{{invSign}}</span> I need an invoice for a company</button>
+        <template data-sc="if" value="{{invOn}}" hint-placeholder-val="{{false}}">
+          <div class="grid" style="border-left: 1px solid #CFA45F; padding-left: 24px;">
+            <div class="f2"><label for="r-co">Company name</label><input id="r-co" type="text"></div>
+            <div class="f2"><label for="r-vat">VAT number (ΑΦΜ)</label><input id="r-vat" type="text"></div>
+            <div class="f2"><label for="r-tax">Tax office (ΔΟΥ)</label><input id="r-tax" type="text"></div>
+            <div class="f2"><label for="r-addr">Company address</label><input id="r-addr" type="text"></div>
+          </div>
+        </template>
+      </fieldset>
+
+      <div style="display: flex; flex-direction: column; gap: 22px;">
+        <label style="display: flex; gap: 14px; align-items: flex-start; font-size: 15px; color: #B8B2A4; cursor: pointer;"><input type="checkbox" style="width: 22px; height: 22px; margin: 2px 0 0; flex: 0 0 auto;"> I agree that Elite Protection may use these details to answer my request, as described in the <a href="17-legal.html">privacy policy</a>.</label>
+        <div><a class="btn btn-gold" href="13-request-received.html" style="min-height: 60px; padding: 0 44px;">Send request</a></div>
+      </div>
+    </form>
+
+    <aside style="flex: 1 1 340px; max-width: 100%; position: sticky; top: 24px; display: flex; flex-direction: column; gap: 20px;">
+      <div style="border: 1px solid rgba(207,164,95,0.55); background: linear-gradient(180deg, #121416, #0A0A0B); padding: 34px; display: flex; flex-direction: column; gap: 16px;">
+        <div class="eyebrow">How requests work</div>
+        <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;">
+          <li style="display: flex; gap: 16px; padding: 14px 0; border-top: 1px solid rgba(207,164,95,0.25);"><span style="font-family: 'Playfair Display', serif; font-style: italic; color: #CFA45F;">i.</span>Send the details of your journey</li>
+          <li style="display: flex; gap: 16px; padding: 14px 0; border-top: 1px solid rgba(207,164,95,0.25);"><span style="font-family: 'Playfair Display', serif; font-style: italic; color: #CFA45F;">ii.</span>Our office confirms price and availability</li>
+          <li style="display: flex; gap: 16px; padding: 14px 0; border-top: 1px solid rgba(207,164,95,0.25); border-bottom: 1px solid rgba(207,164,95,0.25);"><span style="font-family: 'Playfair Display', serif; font-style: italic; color: #CFA45F;">iii.</span>Your chauffeur meets you on the day</li>
+        </ol>
+        <div style="font-size: 14px; color: #8E887B;">Airport transfers from €150 (excl. 24% VAT). Prefer to book and pay now? <a href="08-book.html">Book online</a>.</div>
+      </div>
+      <div style="border: 1px solid rgba(207,164,95,0.35); background: #111315; padding: 30px; display: flex; flex-direction: column; gap: 8px;">
+        <div class="eyebrow">Urgent? Call 24/7</div>
+        <a href="tel:+302109706967" style="color: #F4F0E6; text-decoration: none; font-size: 24px;">+30 210 970 6967</a>
+        <a href="mailto:info@eliteprotection.gr" style="color: #E7C687; text-decoration: none;">info@eliteprotection.gr</a>
+      </div>
+    </aside>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="background: #050505; border-top: 1px solid rgba(207,164,95,0.3);">
+    <div style="max-width: 1320px; margin: 0 auto; padding: 80px 32px 40px; display: flex; flex-wrap: wrap; gap: 48px;">
+      <div style="flex: 2 1 300px; display: flex; flex-direction: column; gap: 18px;">
+        <img src="images/logo-white.png" alt="Elite Protection" style="height: 64px; width: auto; display: block; align-self: flex-start;">
+        <p style="margin: 0; max-width: 340px; color: #A9A395; font-size: 15px;">VIP Transfer and VIP Security in Athens. Luxury vehicles, professional chauffeurs and security teams, 24/7.</p>
+      </div>
+      <div style="flex: 1 1 170px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">Transfers</div>
+        <a href="02-fleet.html" style="color: #D9D3C4; text-decoration: none;">Fleet &amp; rates</a>
+        <a href="04-services.html" style="color: #D9D3C4; text-decoration: none;">Services &amp; routes</a>
+        <a href="08-book.html" style="color: #D9D3C4; text-decoration: none;">Book a transfer</a>
+        <a href="14-find-my-booking.html" style="color: #D9D3C4; text-decoration: none;">Find my booking</a>
+      </div>
+      <div style="flex: 1 1 170px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">Company</div>
+        <a href="05-vip-security.html" style="color: #D9D3C4; text-decoration: none;">VIP Security</a>
+        <a href="06-about.html" style="color: #D9D3C4; text-decoration: none;">About</a>
+        <a href="07-contact.html" style="color: #D9D3C4; text-decoration: none;">Contact</a>
+      </div>
+      <div style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 10px; font-size: 15px;">
+        <div class="eyebrow" style="margin-bottom: 6px;">24/7</div>
+        <a href="tel:+302109706967" style="color: #F4F0E6; text-decoration: none; font-size: 19px;">+30 210 970 6967</a>
+        <a href="tel:+306981810410" style="color: #F4F0E6; text-decoration: none; font-size: 19px;">+30 698 181 0410</a>
+        <a href="mailto:info@eliteprotection.gr" style="color: #E7C687; text-decoration: none;">info@eliteprotection.gr</a>
+      </div>
+    </div>
+    <div style="max-width: 1320px; margin: 0 auto; padding: 22px 32px 34px; border-top: 1px solid rgba(207,164,95,0.18); display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; font-size: 13px; color: #8E887B;">
+      <div>© 2026 Elite Protection · Prices exclusive of 24% VAT</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px 22px;"><a href="17-legal.html" style="color: #8E887B; text-decoration: none;">Terms</a><a href="17-legal.html" style="color: #8E887B; text-decoration: none;">Privacy</a><a href="17-legal.html" style="color: #8E887B; text-decoration: none;">Cookies</a></div>
+    </div>
+  </footer>
+</div>
+</template>
+<script type="text/plain" id="dc-logic">class Component extends DCLogic {
+  dd(k, opts) {
+    const st = this.state || {}, cur = st[k + 'V'] || opts[0], o = {};
+    o[k + '_value'] = cur; o[k + '_open'] = !!st[k + 'O'];
+    o[k + '_toggle'] = () => this.setState({ rfromO: false, rtoO: false, rkindO: false, [k + 'O']: !st[k + 'O'] });
+    o[k + '_options'] = opts.map(x => ({ label: x, mark: x === cur ? '✓' : '', pick: () => this.setState({ [k + 'V']: x, [k + 'O']: false }) }));
+    return o;
+  }
+  renderVals() {
+    const st = this.state || {};
+    const zones = ['Athens International Airport (AIA)', 'Athens', 'Piraeus port', 'Other (zone list to be supplied)'];
+    const vs = [['No preference', ''], ['V-Class', 'images/v-class-street.jpg'], ['Vito', 'images/vito-ext.jpg'], ['E-Class', 'images/e-class-ext.jpg'], ['S-Class', 'images/s-class-ext.jpg'], ['Sprinter', 'images/sprinter-ext.jpg']];
+    const vi = st.vi || 0, pax = st.pax || 2, bags = st.bags === undefined ? 2 : st.bags, secOn = !!st.sec, invOn = !!st.inv;
+    const z2 = st.rtoV ? null : zones[1];
+    return Object.assign({
+      navOpen: !!st.navOpen,
+      toggleNav: () => this.setState({ navOpen: !st.navOpen }),
+      anyOpen: !!(st.rfromO || st.rtoO || st.rkindO),
+      closeAll: () => this.setState({ rfromO: false, rtoO: false, rkindO: false }),
+      pax: pax, bags: bags,
+      paxUp: () => this.setState({ pax: Math.min(pax + 1, 19) }), paxDown: () => this.setState({ pax: Math.max(pax - 1, 1) }),
+      bagsUp: () => this.setState({ bags: Math.min(bags + 1, 19) }), bagsDown: () => this.setState({ bags: Math.max(bags - 1, 0) }),
+      vehicles: vs.map(([n, img], i) => ({ name: n, bg: img ? 'url(' + img + ') center/cover no-repeat' : 'linear-gradient(160deg, #14171A, #050505)', border: i === vi ? '#CFA45F' : 'rgba(207,164,95,0.25)', color: i === vi ? '#E7C687' : '#D9D3C4', dot: i === vi ? '#CFA45F' : 'transparent', on: i === vi ? 'true' : 'false', pick: () => this.setState({ vi: i }) })),
+      secOn: secOn, toggleSec: () => this.setState({ sec: !secOn }),
+      secBorder: secOn ? '#CFA45F' : 'rgba(207,164,95,0.3)', secTrack: secOn ? '#CFA45F' : 'transparent', secX: secOn ? '24px' : '0px',
+      invOn: invOn, invSign: invOn ? '−' : '+', toggleInv: () => this.setState({ inv: !invOn })
+    }, this.dd('rfrom', zones), this.dd('rto', [zones[1], zones[0], zones[2], zones[3]]), this.dd('rkind', ['One-off transfer', 'Transfer with waiting time', 'Hourly chauffeur service', 'Full-day chauffeur service']));
+  }
+}
+
+</script>
+</body>
+</html>

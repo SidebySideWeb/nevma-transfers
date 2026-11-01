@@ -1,5 +1,7 @@
 # TEM Protection — Booking core: design spec
 
+> Brand note (1 Nov 2026): the site brand is **Elite Protection**, decided by the user. "TEM Protection" below was the working name; booking references are `EP-` (migration 0009). The kit docs outside this folder use the final names.
+
 Date: 2026-10-31. Status: DRAFT for user review. Source docs: vip-transfers-requirements.md, vip-transfers-viva-payment.md, music-build-kit.md (Nevma Music kit v1.2), nevma-decisions-log.md.
 
 TEM Protection is the renamed VIP Transfers project (decided by the user 31 Oct 2026). It is still presented as a company separate from NEVMA: no NEVMA branding, its own design style, English only.

@@ -22,7 +22,7 @@ export const uiStrings = defineType({
               name: 'area',
               title: 'Area',
               type: 'string',
-              options: { list: ['booking', 'errors', 'emails'], layout: 'radio' },
+              options: { list: ['booking', 'errors', 'emails', 'site', 'forms'], layout: 'radio' },
               validation: (Rule) => Rule.required(),
             }),
             defineField({

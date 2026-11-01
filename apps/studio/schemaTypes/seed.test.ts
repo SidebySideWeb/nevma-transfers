@@ -50,7 +50,7 @@ describe('Sanity DEMO seed', () => {
   it('page sections use known section types with their required fields', () => {
     for (const d of docs.filter((x) => x._type === 'page')) {
       for (const s of d.sections ?? []) {
-        expect(['hero', 'richText', 'ctaBand', 'faq']).toContain(s._type);
+        expect(['hero', 'richText', 'ctaBand', 'faq', 'featureGrid', 'imageText', 'steps', 'vehicleClassList', 'routeList', 'contactDetails', 'formBlock']).toContain(s._type);
         expect(s._key).toBeTruthy();
         for (const f of fieldsOf(s._type)) if (requires(f)) expect(s[f.name], `${d._id} ${s._type}.${f.name}`).toBeTruthy();
       }
@@ -68,7 +68,7 @@ describe('Sanity DEMO seed', () => {
       }
     };
     docs.forEach(walk);
-    expect(images.length).toBe(7);
+    expect(images.length).toBeGreaterThanOrEqual(14);
     for (const img of images) {
       expect(img.alt).toBeTruthy();
       const file = img._sanityAsset.replace('image@file://./', '');
@@ -87,8 +87,40 @@ describe('Sanity DEMO seed', () => {
     for (const d of docs) expect(d.internalNote, d._id).toMatch(/DEMO/);
   });
 
-  it('has the four legal pages and a home page', () => {
+  it('has the home page, four legal pages and six standard pages', () => {
     const slugs = docs.filter((d) => d._type === 'page').map((d) => d.slug.current).sort();
-    expect(slugs).toEqual(['cancellation', 'cookies', 'home', 'privacy', 'terms']);
+    expect(slugs).toEqual(['about', 'cancellation', 'contact', 'cookies', 'fleet', 'home', 'privacy', 'request-a-transfer', 'services', 'terms', 'vip-security']);
+  });
+
+  it('every reference points to a seeded document of the right type', () => {
+    const byId = Object.fromEntries(docs.map((d) => [d._id, d]));
+    const refs: AnyDef[] = [];
+    const walk = (v: unknown) => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') { const o = v as AnyDef; if (o._type === 'reference') refs.push(o); Object.values(o).forEach(walk); }
+    };
+    docs.forEach(walk);
+    expect(refs.length).toBe(3);
+    for (const r of refs) expect(byId[r._ref]?._type, r._ref).toBe('form');
+  });
+
+  it('has the three forms with recipients, and contact topics with unique keys', () => {
+    const forms = docs.filter((d) => d._type === 'form');
+    expect(forms.map((f) => f.key).sort()).toEqual(['contact', 'transfer-request', 'vip-security']);
+    for (const f of forms) expect(f.recipientEmail).toMatch(/@/);
+    const topics = forms.find((f) => f.key === 'contact')!.topics.map((t: AnyDef) => t.key);
+    expect(new Set(topics).size).toBe(topics.length);
+  });
+
+  it('routes have unique slugs and two different zone codes', () => {
+    const routes = docs.filter((d) => d._type === 'route');
+    expect(routes.length).toBeGreaterThanOrEqual(4);
+    const slugs = routes.map((r) => r.slug.current);
+    expect(new Set(slugs).size).toBe(slugs.length);
+    for (const r of routes) { expect(r.fromZone).not.toBe(r.toZone); expect(r.fromZone).toMatch(/^demo-/); }
+  });
+
+  it('contains no submissions (they are created by the site only)', () => {
+    expect(docs.filter((d) => d._type === 'formSubmission')).toHaveLength(0);
   });
 });

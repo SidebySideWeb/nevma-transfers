@@ -26,6 +26,13 @@ const pairs = [
   ['color-accent-text', 'color-accent'], ['color-accent-text', 'color-accent-strong'],
   ['color-danger', 'color-surface'], ['color-danger', 'color-surface-2'], ['color-success', 'color-surface-2'],
   ['color-warning', 'color-surface-2'], ['color-warning', 'color-bg'],
+  ['color-text-soft', 'color-bg'], ['color-label', 'color-bg'], ['color-label', 'color-surface'],
+  ['color-faint', 'color-bg-deep'], ['color-accent-deep', 'color-bg'],
+  // admin (design/admin)
+  ['color-info', 'color-bg'], ['color-info', 'color-surface'], ['color-success', 'color-bg'], ['color-success', 'color-surface'],
+  ['color-warning', 'color-surface'], ['color-danger', 'color-bg'], ['color-accent', 'color-bg-deep'], ['color-muted', 'color-bg-deep'],
+  ['color-text', 'color-bg-deep'], ['color-label', 'color-bg-deep'], ['color-label', 'color-surface-2'],
+  ['color-danger-text', 'color-danger'], ['color-danger-text', 'color-danger-strong'],
 ];
 
 test('every text/background token pair meets WCAG AA 4.5:1', () => {
@@ -43,6 +50,19 @@ test('wireframes use tokens only: no hex colours in design/screens', () => {
   for (const f of files) {
     const body = readFileSync(join(dir, f), 'utf8');
     assert.doesNotMatch(body, /#[0-9a-fA-F]{3,8}\b(?![\w-]*=)/, `${f} contains a hex colour`);
+  }
+});
+
+test('admin design kit uses tokens only and has every admin board', () => {
+  const dir = join(root, 'design', 'admin');
+  const files = readdirSync(dir).filter((f) => /\.(html|css)$/.test(f) && f !== 'tokens.css'); // tokens.css: the admin update's own copy of the tokens
+  for (const name of ['admin.css', 'index.html', 'components.html', 'login.html', 'bookings.html', 'booking.html', 'booking-dialogs.html', 'blocked-slots.html', 'prices.html', 'hourly-rates.html', 'extras.html', 'fleet.html', 'zones.html', 'settings.html', 'states.html']) {
+    assert.ok(files.includes(name), `design/admin/${name} missing`);
+  }
+  for (const f of files) {
+    const body = readFileSync(join(dir, f), 'utf8').replace(/href="[^"]*"/g, '');
+    assert.doesNotMatch(body, /#[0-9a-fA-F]{3,8}\b(?![\w-]*=)/, `${f} contains a hex colour`);
+    assert.doesNotMatch(body, /nevma/i, f);
   }
 });
 

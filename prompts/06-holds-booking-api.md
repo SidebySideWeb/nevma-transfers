@@ -27,7 +27,7 @@ Tests (Vitest against the local Supabase from prompt 04, Fake provider, Turnstil
 - AC-05: 2 holds OK, 3rd → 429; last vehicle taken by hold A → quote shows unavailable for B.
 - AC-09: `extras: ['vip-security']` → `vip_security = true` and the line present; set the extra inactive → 400.
 - AC-12: cancel inside the window → cancelled and refunded (Fake records it); second use of the link → 400; outside the window → 400 `booking.cancel.tooLate`.
-- AC-15: lead time; AC-16: `demo-north` → `demo-port` with `demo-van` → `no_price`.
+- AC-15: lead time; AC-16: `demo-north` → `demo-port` with `demo-sprinter` → `no_price`.
 - AC-17: change the zone price after the booking is created → booking total unchanged.
 - AC-23: missing or failing Turnstile → 400; rate limit → 429.
 

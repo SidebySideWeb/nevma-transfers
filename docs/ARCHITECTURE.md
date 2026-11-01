@@ -1,4 +1,4 @@
-# Architecture — TEM Protection booking core (kit 1)
+# Architecture — Elite Protection booking core (kit 1)
 
 Version 1.0, 31 Oct 2026. Source: `docs/superpowers/specs/2026-10-31-tem-protection-booking-core-design.md`. Status of each choice: `docs/DECISIONS.md`.
 
@@ -14,7 +14,7 @@ Version 1.0, 31 Oct 2026. Source: `docs/superpowers/specs/2026-10-31-tem-protect
 | Email | — | Resend | Resend | Prompt 08 |
 | Spam protection | — | Cloudflare Turnstile | Cloudflare | Prompt 06 |
 
-One Sanity project for the whole TEM Protection site (kit 1 and kit 2). Dataset `production`, **private**; the site reads it with a read token.
+One Sanity project for the whole Elite Protection site (kit 1 and kit 2). Dataset `production`, **private**; the site reads it with a read token.
 
 ## 2. Repository
 
@@ -70,7 +70,7 @@ Vercel Cron ── GET /api/cron/reminders every 15 min (24-hour reminder, once)
 pg_cron ── expire_holds() every minute (tidy-up only; queries never trust stale holds)
 ```
 
-Rendering: home and legal pages are prerendered from Sanity at build time. A Sanity webhook (filter: published documents of types `page`, `siteSettings`, `uiStrings`, `vehicleClass`) POSTs to the Vercel deploy hook of the `tem-web` project so the site rebuilds on content publish (hook URL is set in prompt 13; create the webhook in the Sanity project → API → Webhooks). `/book` is a static shell with the island. `/booking/*` and `/api/*` render on demand.
+Rendering: home and legal pages are prerendered from Sanity at build time; a Sanity webhook on publish triggers a Vercel deploy hook (prompt 13). `/book` is a static shell with the island. `/booking/*` and `/api/*` render on demand.
 
 ## 5. Security model
 
@@ -80,7 +80,7 @@ Rendering: home and legal pages are prerendered from Sanity at build time. A San
 - Public write endpoints (`/api/holds`, `/api/bookings`, `/api/bookings/cancel`) need Turnstile and are rate limited (per IP and per visitor cookie `tem_vid`).
 - Cancel links carry a random 32-byte token; the database stores only its SHA-256 hash.
 - Logs carry ids and error codes only: no names, emails, phone numbers, tokens or Viva payloads.
-- `Content-Security-Policy` (self, Sanity CDN images, Cloudflare Turnstile script/frame, form/navigation to Viva checkout hosts), `Strict-Transport-Security`, `X-Frame-Options: DENY` on `/book` and `/booking/*`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` locking camera/mic/geolocation — set in `apps/web/vercel.json` (prompt 12).
+- `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options: DENY` (admin and booking pages), `Referrer-Policy: strict-origin-when-cross-origin` (prompt 13).
 
 ## 6. Environment variables
 
@@ -105,10 +105,21 @@ Every variable is listed in `.env.example`. Where each is used:
 | `CRON_SECRET` | server | | | Vercel sends it as a Bearer token |
 | `PUBLIC_SITE_URL`, `PUBLIC_ADMIN_URL` | yes | yes | | |
 | `PUBLIC_BOOKING_OPEN` | yes | | | `false` until the Viva live account is approved (prompt 13) |
+| `SANITY_WRITE_TOKEN` | server only | | | kit 2: Editor robot token, form submissions only (`docs/FORMS.md`) |
+| `PUBLIC_STUDIO_URL` | server | | | kit 2: links to submissions in office emails |
+| `TEM_WEB_DEPLOY_HOOK_URL` | | server only | | kit 2: admin triggers a site rebuild after price changes (debounced 2 min) |
+
+## 10. Kit 2 additions (content site)
+
+- **Pages:** `/fleet`, `/fleet/[key]`, `/services`, `/routes/[slug]`, `/vip-security`, `/about`, `/contact`, `/request-a-transfer`, `/thank-you/[form]` (`docs/PAGES.md`). All prerendered except `/api/forms/*` and the thank-you pages' no-JS error re-render.
+- **"From" prices at build time:** `src/lib/server/catalog.ts` reads zones, routes, zone prices, hourly rates and active classes from Postgres with the service role during `astro build`, and exposes `fromPriceForRoute(from, to)`, `fromPriceForClass(key)`, `hourlyFromForClass(key)`. Shown only when `siteSettings.showFromPrices` is true.
+- **Website prices after a price change:** after staff save prices, hourly rates, extras, zones or classes, the admin shows a banner "Prices changed: update the website" with a button that calls `TEM_WEB_DEPLOY_HOOK_URL` from the server (a site build takes 1–3 minutes). The button is disabled for 2 minutes after use (signed cookie). The booking flow itself always reads live prices, so only the "From" prices on content pages wait for the rebuild. The Sanity publish webhook covers content changes (`page`, `route`, `vehicleClass`, `form`, `siteSettings`, `uiStrings`; never `formSubmission`).
+- **Forms:** `POST /api/forms/[form]` → Sanity `formSubmission` (write token) + Resend; spec in `docs/FORMS.md`.
+- **Cron:** `/api/cron/form-retention` weekly.
 
 ## 7. Accounts (owned by the client; vendor fees are billed to them)
 
-Sanity (TEM Protection project) · Supabase Pro project (EU region, Frankfurt) · Vercel Pro team (two projects) · Viva merchant account (demo access by Fri 27 Nov, live by Fri 15 Jan 2027) · Resend (verified sending domain) · Cloudflare Turnstile · GitHub repository.
+Sanity (Elite Protection project) · Supabase Pro project (EU region, Frankfurt) · Vercel Pro team (two projects) · Viva merchant account (demo access by Fri 27 Nov, live by Fri 15 Jan 2027) · Resend (verified sending domain) · Cloudflare Turnstile · GitHub repository.
 
 ## 8. Budgets and targets
 
@@ -118,10 +129,4 @@ Sanity (TEM Protection project) · Supabase Pro project (EU region, Frankfurt) �
 
 ## 9. Backups
 
-Supabase Pro daily backups, plus a weekly GitHub Actions job (Sunday 02:00 UTC, `.github/workflows/backup.yml`): Sanity `dataset export`, `pg_dump` (custom format), `age` encryption to the client's public key, upload to the agreed object storage; retain 8 weekly and 12 monthly copies; failure opens a GitHub issue labelled `backup-failure`. Restore drill: `packages/db/README.md`. Deploy / env checklist: `docs/DEPLOY.md`.
-
-## 10. Launch guard and monitoring
-
-- **AC-21** `pnpm check:live` (`scripts/check-live-demo.mjs`) blocks `tem-web` production builds (`VERCEL_ENV=production`) while DEMO placeholders, Sanity `internalNote` DEMO notes, DEMO-labelled ops rows, or `settings.is_demo` remain.
-- **Cron:** `/api/cron/reminders` every 15 minutes; `/api/cron/stuck-payments` daily (office email if any `pending` + `payment_status=paid`). Both require `Authorization: Bearer $CRON_SECRET`.
-- **Alerts:** configure Vercel log drains / 5xx alerts on `/api/*` in the `tem-web` project (client team).
+Supabase Pro daily backups, plus a weekly encrypted export of the Sanity dataset and a dump of the bookings database to the agreed storage (prompt 13). A restore test runs before launch.

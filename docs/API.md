@@ -13,8 +13,6 @@ All endpoints live in `apps/web/src/pages/api/`. JSON in and out, `Cache-Control
 
 Viva endpoints and event ids below follow Viva's developer docs at the time of writing (developer.viva.com). **Check them against the current docs in prompt 07.**
 
-**Implemented (prompt 06):** public endpoints below use Postgres (`create_hold`, `class_availability`, `blocked_range_for`, `create_booking_from_hold`, `hit_rate_limit`), Turnstile, visitor cookie `tem_vid`, and a `PaymentProvider` interface (`FakePaymentProvider` until prompt 07 adds Viva). Cancel token is created on confirmation (07), not at booking create. Rate-limit table and hold trip snapshot: migration `0007`.
-
 ---
 
 ## Public
@@ -27,7 +25,7 @@ Everything the booking form needs. `Cache-Control: public, max-age=60`.
   "minLeadMinutes": 120,
   "holdMinutes": 20,
   "zones": [{ "code": "demo-airport", "name": "DEMO Athens International Airport" }],
-  "classes": [{ "key": "demo-van", "name": "DEMO Executive van", "maxPassengers": 7, "maxLuggage": 7,
+  "classes": [{ "key": "demo-v-class", "name": "DEMO V-Class", "maxPassengers": 7, "maxLuggage": 7,
                 "hourly": { "minHours": 3, "maxHours": 12 }, "photo": { "url": "...", "alt": "..." }, "tagline": "..." }],
   "extras": [{ "code": "vip-security", "name": "VIP security", "priceCents": 15000 }]
 }
@@ -48,9 +46,9 @@ Prices and availability per class. Reserves nothing.
   "durationMinutes": 45,
   "currency": "EUR",
   "options": [
-    { "classKey": "demo-sedan", "baseCents": 7000, "available": true },
-    { "classKey": "demo-van", "baseCents": 9500, "available": false },
-    { "classKey": "demo-suv", "baseCents": null, "available": false, "reason": "no_price" }
+    { "classKey": "demo-e-class", "baseCents": 7000, "available": true },
+    { "classKey": "demo-v-class", "baseCents": 9500, "available": false },
+    { "classKey": "demo-s-class", "baseCents": null, "available": false, "reason": "no_price" }
   ]
 }
 ```
@@ -60,10 +58,10 @@ Classes too small for the passengers or luggage are left out. If no class has a 
 Creates the 20-minute hold when the customer selects a vehicle. Needs Turnstile. Sets or reads the `tem_vid` cookie (httpOnly, Secure, SameSite=Lax, random).
 ```json
 { "type": "transfer", "fromZone": "demo-airport", "toZone": "demo-centre", "pickupLocal": "2026-12-01T10:00",
-  "passengers": 2, "luggage": 2, "classKey": "demo-sedan", "turnstileToken": "..." }
+  "passengers": 2, "luggage": 2, "classKey": "demo-e-class", "turnstileToken": "..." }
 ```
 ```json
-{ "holdId": "uuid", "expiresAt": "2026-11-30T18:20:00+02:00", "classKey": "demo-sedan", "baseCents": 7000 }
+{ "holdId": "uuid", "expiresAt": "2026-11-30T18:20:00+02:00", "classKey": "demo-e-class", "baseCents": 7000 }
 ```
 Errors: `unavailable`, `no_price`, `invalid_request` (too many holds, lead time, hours).
 
@@ -89,10 +87,10 @@ Creates the pending booking from the hold and the Viva order. Needs Turnstile.
 One transaction: lock the class row; check the hold is active, unexpired and belongs to this visitor; recompute the price (zone price or rate x hours, plus extras; all extras active); insert `bookings` (`pending`, `hold_expires_at` = hold expiry, cancel token hash) and `booking_extras`; mark the hold `converted`. After commit, create the Viva order.
 ```json
 {
-  "reference": "TEM-7K3QX2",
+  "reference": "EP-7K3QX2",
   "status": "pending",
   "currency": "EUR",
-  "lines": [{ "label": "DEMO Executive sedan", "cents": 7000 }, { "label": "VIP security", "cents": 15000 }],
+  "lines": [{ "label": "DEMO E-Class", "cents": 7000 }, { "label": "VIP security", "cents": 15000 }],
   "totalCents": 22000,
   "holdExpiresAt": "2026-11-30T18:20:00+02:00",
   "checkoutUrl": "https://demo.vivapayments.com/web/checkout?ref=1234567890123456"
@@ -101,13 +99,19 @@ One transaction: lock the class row; check the hold is active, unexpired and bel
 If the Viva order fails, the booking stays `pending` and the response is `payment_failed` with `reference`; the review step offers "try again" (`POST /api/bookings/pay`).
 
 ### `POST /api/bookings/pay`
-`{ "reference": "TEM-7K3QX2" }` + visitor cookie → a new Viva order while the hold runs. `{ "checkoutUrl": "..." }`. Errors: `invalid_request` (hold ended, not yours, already paid), `payment_failed`.
+`{ "reference": "EP-7K3QX2" }` + visitor cookie → a new Viva order while the hold runs. `{ "checkoutUrl": "..." }`. Errors: `invalid_request` (hold ended, not yours, already paid), `payment_failed`.
 
 ### `GET /api/booking-status?s=<orderCode>`
 Polled by `/booking/confirmed`. Returns no personal data.
 ```json
-{ "reference": "TEM-7K3QX2", "status": "confirmed", "paymentStatus": "paid" }
+{ "reference": "EP-7K3QX2", "status": "confirmed", "paymentStatus": "paid" }
 ```
+
+### `POST /api/bookings/lookup` (find my booking)
+`{ "reference": "EP-7K3QX2", "email": "name@example.com", "turnstileToken": "..." }` → always `200 { "ok": true }` (the same response whether or not a booking matched). When reference and email (case-insensitive) match a booking with status `confirmed` or `assigned`: issue a new manage token (hash stored in `cancel_token_hash`, replacing the old one) and email `/booking/manage/<token>` with `email.manageLink.*`. Turnstile; rate limits 5/hour per IP and 3/hour per reference (`hit_rate_limit`). Timing: do the same amount of work (hash and a dummy query) when nothing matches.
+
+### `GET /booking/manage/[token]` (page) and `GET /booking/manage/[token]/calendar.ics`
+The page loads the booking by token hash on the server (no API call from the browser) and shows: reference, local pick-up time, status (`manage.status.*`), route or hours, addresses, flight, class, passengers, luggage, extras, amounts and paid total, status timeline, and the actions in `docs/BOOKING-RULES.md` §7. Unknown or cleared token → `manage.linkInvalid` with a link to `/booking/find`. `calendar.ics` returns an iCalendar event (UID = reference, DTSTART = pick-up in UTC, duration, location = pick-up address, description with the office phone); `Content-Disposition: attachment`.
 
 ### `POST /api/bookings/cancel`
 `{ "token": "<from the link>", "turnstileToken": "..." }`. Inside the cancellation window: cancels, refunds per policy, sends emails → `{ "reference": "...", "status": "cancelled", "refundCents": 22000 }`. Outside: `invalid_request` with `booking.cancel.tooLate`. A used or unknown token: `invalid_request`.
@@ -116,14 +120,12 @@ Polled by `/booking/confirmed`. Returns no personal data.
 
 ## Viva webhook
 
-Hosts (prompt 07, checked against developer.viva.com): OAuth2 API `demo-api` / `api.vivapayments.com`; accounts `demo-accounts` / `accounts.vivapayments.com`; Basic (webhook key, refunds) `demo.vivapayments.com` / `www.vivapayments.com`; checkout `demo.vivapayments.com` / `www.vivapayments.com`. Create-order `amount` and refund query `amount` are **minor units (cents)**; retrieve-transaction `amount` is **major units** (e.g. `30.00`) — convert to cents with integer maths before comparing to `price_cents`. Create order must send `sourceCode`. Store `orderCode` as a string (JS safe-integer limit). Refund: `DELETE /api/transactions/{transactionId}?amount=<cents>&currencyCode=978&sourceCode=…` (Basic auth). Event ids still **1796** / **1798**.
-
 ### `GET /api/webhooks/viva`
 Viva's URL verification. Returns `{ "Key": "<key>" }`, where the key comes from Viva's `GET /api/messages/config/token` (basic auth `VIVA_MERCHANT_ID:VIVA_API_KEY`), cached for 1 hour.
 
 ### `POST /api/webhooks/viva`
-Event body from Viva. Handled events:
-- Transaction Payment Created (1796): fetch the transaction (`GET /checkout/v2/transactions/{transactionId}`, OAuth2); require `statusId = F`, a known `viva_order_code`, and amount in cents `=== price_cents`; record via `record_viva_payment` (0008) per `docs/BOOKING-RULES.md` §6.
+Event body from Viva. Handled events (ids per Viva docs; confirm in prompt 07):
+- Transaction Payment Created (1796): fetch the transaction (`GET /checkout/v2/transactions/{transactionId}`, OAuth2); require success, a known `orderCode` and `amount * 100 == price_cents`; record and confirm per `docs/BOOKING-RULES.md` §6.
 - Transaction Failed (1798): record a failed payment row.
 - Anything else: `200` and ignore.
 Always answer `200` quickly after recording; a verification failure is logged by order code and answered `200` (so Viva does not retry forever), and the booking is left untouched.
@@ -135,12 +137,12 @@ Always answer `200` quickly after recording; a verification failure is logged by
 Headers: `X-TEM-Timestamp` (unix seconds), `X-TEM-Signature` = hex HMAC-SHA256(`ADMIN_TO_WEB_SIGNING_SECRET`, `timestamp + "." + rawBody`), `X-TEM-Staff` (staff user id, for the audit column). Rejected (`invalid_request`, 401) if the signature is wrong, the timestamp is more than 5 minutes off, or the user is not in `staff`.
 
 ### `POST /api/internal/refund`
-`{ "reference": "TEM-7K3QX2", "amountCents": 15000, "reason": "VIP security not available", "idempotencyKey": "uuid" }`
-Inserts a `pending` refund row first (the database rejects over-refunds), calls Viva's refund (`DELETE /api/transactions/{transactionId}?amount=<cents>&currencyCode=978&sourceCode=…` with basic auth), then marks it `succeeded` or `failed` and updates `payment_status`; emails the customer.
+`{ "reference": "EP-7K3QX2", "amountCents": 15000, "reason": "VIP security not available", "idempotencyKey": "uuid" }`
+Inserts a `pending` refund row first (the database rejects over-refunds), calls Viva's refund (`DELETE /api/transactions/{transactionId}?amount=<cents>` with basic auth; confirm in prompt 07), then marks it `succeeded` or `failed` and updates `payment_status`; emails the customer.
 → `{ "refundedCents": 15000, "refundableCents": 7000, "paymentStatus": "partially_refunded" }`. Same `idempotencyKey` again → the first result.
 
 ### `POST /api/internal/cancel`
-`{ "reference": "TEM-7K3QX2", "refund": "full" | "none" | { "amountCents": 5000 }, "reason": "...", "idempotencyKey": "uuid" }` → cancels, refunds as asked, emails customer and office. → `{ "status": "cancelled", "refundedCents": 22000 }`
+`{ "reference": "EP-7K3QX2", "refund": "full" | "none" | { "amountCents": 5000 }, "reason": "...", "idempotencyKey": "uuid" }` → cancels, refunds as asked, emails customer and office. → `{ "status": "cancelled", "refundedCents": 22000 }`
 
 ---
 

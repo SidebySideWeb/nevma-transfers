@@ -30,7 +30,7 @@ const loading = t('booking.loading');
 ---
 
 <BaseLayout
-  title={`${pageTitle} — ${settings.companyName}`}
+  title={`${pageTitle} - ${settings.companyName}`}
   description={body}
   robots="noindex,nofollow"
 >
@@ -51,7 +51,7 @@ const loading = t('booking.loading');
               <p>{body}</p>
               <p class="timer" role="status" aria-live="polite">
                 <span id="hold-remain">
-                  {timerTemplate.replace('{time}', '—')}
+                  {timerTemplate.replace('{time}', '-')}
                 </span>
               </p>
               <p id="not-completed-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>

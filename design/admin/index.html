@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>Admin design kit — Elite Protection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
-<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="admin.css">
 <style>
   .kit { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
   .kit h1 { font: 500 clamp(2rem, 1.4rem + 2.4vw, 3rem)/1.1 var(--font-display); margin: 0 0 .75rem; }
@@ -46,6 +46,8 @@
     <li><a href="hourly-rates.html"><strong>Hourly rates</strong><span>/hourly-rates · inline validation</span></a></li>
     <li><a href="extras.html"><strong>Extras</strong><span>/extras · VIP security, night surcharge</span></a></li>
     <li><a href="fleet.html"><strong>Fleet</strong><span>/fleet · classes and vehicles</span></a></li>
+    <li><a href="fleet-class.html"><strong>Fleet · class page</strong><span>/fleet/[key] · details, vehicles, Sanity status, readiness checklist</span></a></li>
+    <li><a href="setup-dialogs.html"><strong>Add and edit</strong><span>class, vehicle, zone, extra, delete</span></a></li>
     <li><a href="zones.html"><strong>Zones</strong><span>/zones</span></a></li>
     <li><a href="settings.html"><strong>Settings</strong><span>/settings · DEMO rows</span></a></li>
     <li><a href="states.html"><strong>States</strong><span>empty, loading, banners, not staff, not found</span></a></li>
@@ -79,7 +81,7 @@
     <div class="sw"><i style="background:var(--status-cancelled)"></i><span>Cancelled, errors <code>--status-cancelled</code></span></div>
     <div class="sw"><i style="background:var(--status-info)"></i><span>Information <code>--status-info</code></span></div>
   </div>
-  <p class="board-note"><strong>Files.</strong> <code>design/admin/admin.css</code> is the component layer; copy it with <code>design/admin/tokens.css</code> into <code>apps/admin/src/styles/</code> and self-host Jost and Playfair Display (the boards load Google Fonts only for preview). Written rules: <code>docs/DESIGN-ADMIN.md</code>.</p>
+  <p class="board-note"><strong>Files.</strong> <code>design/admin/admin.css</code> is the component layer; copy it with <code>design/tokens.css</code> into <code>apps/admin/src/styles/</code> and self-host Jost and Playfair Display (the boards load Google Fonts only for preview). Written rules: <code>docs/DESIGN-ADMIN.md</code>.</p>
 </main>
 </body>
 </html>

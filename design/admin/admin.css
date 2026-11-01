@@ -92,7 +92,7 @@ h1.title em { font-style: italic; color: var(--color-accent); }
 .between { justify-content: space-between; }
 .cols { display: grid; gap: var(--admin-gap); grid-template-columns: 1fr; }
 @media (min-width: 1100px) { .cols-main { grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); } .cols-2 { grid-template-columns: 1fr 1fr; } }
-.grid-fields { display: grid; gap: .875rem 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.grid-fields { display: grid; align-items: start; gap: .875rem 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .muted { color: var(--color-muted); }
 .small { font-size: var(--admin-text-sm); }
 .num { text-align: right; white-space: nowrap; }
@@ -216,6 +216,7 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .table tbody tr:hover td { background: rgb(255 255 255 / .02); }
 .table tr.is-flag td:first-child { box-shadow: inset 2px 0 0 var(--color-accent); }
 .table tr.is-muted td { color: var(--color-muted); }
+.table td.card-title { white-space: nowrap; }
 .table .ref { font-family: var(--font-mono); font-size: .875rem; letter-spacing: .03em; }
 .table .sub { display: block; font-size: var(--admin-text-sm); color: var(--color-muted); }
 .table td.num { font-weight: 500; }

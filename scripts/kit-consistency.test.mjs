@@ -9,8 +9,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(root, p), 'utf8');
 const prompts = readdirSync(join(root, 'prompts')).filter((f) => f.endsWith('.md')).sort();
 
-test('15 prompts: 00 how-to plus 01..14 in the Nevma kit format', () => {
-  assert.equal(prompts.length, 15);
+test('31 prompts: 00 how-to plus 01..30 in the Nevma kit format', () => {
+  assert.equal(prompts.length, 31);
   assert.equal(prompts[0], '00-HOW-TO-RUN.md');
   for (const [i, f] of prompts.slice(1).entries()) {
     assert.ok(f.startsWith(String(i + 1).padStart(2, '0') + '-'), f);
@@ -32,10 +32,10 @@ test('every file path referenced in prompts, rules and AGENTS.md exists (or is b
   for (const r of refs) if (!builtLater.includes(r)) assert.ok(existsSync(join(root, r)), `missing ${r}`);
 });
 
-test('every AC id used anywhere is defined in docs/ACCEPTANCE.md, and all 24 are used by a prompt', () => {
+test('every AC id used anywhere is defined in docs/ACCEPTANCE.md, and all 37 are used by a prompt', () => {
   const defined = new Set([...read('docs/ACCEPTANCE.md').matchAll(/^\| (AC-\d{2}) \|/gm)].map((m) => m[1]));
-  assert.equal(defined.size, 24);
-  const files = [...prompts.map((f) => `prompts/${f}`), 'docs/BOOKING-RULES.md', 'docs/DATA-MODEL.md'];
+  assert.equal(defined.size, 37);
+  const files = [...prompts.map((f) => `prompts/${f}`), 'docs/BOOKING-RULES.md', 'docs/DATA-MODEL.md', 'docs/FORMS.md', 'docs/superpowers/specs/2026-11-01-tem-protection-kit2-content-site.md'];
   const used = new Set();
   for (const f of files) for (const m of read(f).matchAll(/AC-\d{2}/g)) used.add(m[0]);
   for (const t of readdirSync(join(root, 'packages/db/tests'))) for (const m of read(`packages/db/tests/${t}`).matchAll(/AC-\d{2}/g)) used.add(m[0]);
@@ -57,13 +57,14 @@ test('every env var in .env.example is documented in docs/ARCHITECTURE.md', () =
   for (const m of read('.env.example').matchAll(/^([A-Z_]+)=/gm)) assert.ok(arch.includes(m[1]), `${m[1]} not in ARCHITECTURE.md`);
 });
 
-test('every screen named in docs/PAGES.md exists in design/screens', () => {
-  for (const m of read('docs/PAGES.md').matchAll(/`(?:design\/screens\/)?([\w-]+\.html)`/g)) {
-    assert.ok(existsSync(join(root, 'design/screens', m[1])), `screen ${m[1]} missing`);
+test('every screen named in docs/PAGES.md exists in design/screens or design/admin', () => {
+  for (const m of read('docs/PAGES.md').matchAll(/`(design\/admin\/|design\/screens\/)?([\w-]+\.html)`/g)) {
+    const dir = m[1] === 'design/admin/' ? 'design/admin' : 'design/screens';
+    assert.ok(existsSync(join(root, dir, m[2])), `screen ${dir}/${m[2]} missing`);
   }
 });
 
 test('no NEVMA branding outside the decision history', () => {
-  const scan = ['AGENTS.md', ...prompts.map((f) => `prompts/${f}`), 'docs/DESIGN-SYSTEM.md', 'docs/PAGES.md', 'docs/API.md', 'design/index.html'];
+  const scan = ['AGENTS.md', ...prompts.map((f) => `prompts/${f}`), 'docs/DESIGN-SYSTEM.md', 'docs/PAGES.md', 'docs/API.md', 'docs/FORMS.md', 'design/index.html'];
   for (const f of scan) assert.doesNotMatch(read(f).replace(/no NEVMA (branding|names|links)[^\n]*/gi, ''), /\bNEVMA\b(?! (branding|names|links|logos))/i, f);
 });

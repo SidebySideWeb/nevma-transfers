@@ -77,7 +77,7 @@ const { data: vehicles } = await supabase
         <tbody>
           {
             (vehicles ?? []).map((v) => {
-              const ck = (v.vehicle_classes as { key?: string } | null)?.key ?? '—';
+              const ck = (v.vehicle_classes as { key?: string } | null)?.key ?? '-';
               return (
                 <tr>
                   <td colspan="4">

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact — Elite Protection (wireframe, kit 2)</title>
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="screens.css">
+</head>
+<body>
+<header class="site-header"><div class="wrap">
+  <a class="logo" href="home.html">Elite Protection</a>
+  <nav class="main-nav" aria-label="Main"><ul><li><a href="fleet.html">Fleet</a></li><li><a href="services.html">Services</a></li><li><a href="vip-security.html">VIP security</a></li><li><a href="#">About</a></li><li><a href="contact.html" aria-current="page">Contact</a></li></ul></nav>
+  <div class="header-actions"><details class="mobile-menu"><summary>Menu</summary><ul><li><a href="fleet.html">Fleet</a></li><li><a href="services.html">Services</a></li><li><a href="vip-security.html">VIP security</a></li><li><a href="contact.html">Contact</a></li></ul></details><a class="btn" href="search.html">Book now</a></div>
+</div></header>
+
+<main class="section"><div class="wrap grid grid-2">
+  <section class="stack" aria-labelledby="c-h">
+    <h1 id="c-h">contactDetails.heading: Get in touch</h1>
+    <dl class="contact-list">
+      <div><dt>Phone</dt><dd><a href="tel:+302100000000">siteSettings.phone</a></dd></div>
+      <div><dt>Email</dt><dd><a href="mailto:hello@example.com">siteSettings.email</a></dd></div>
+      <div><dt>Office</dt><dd>siteSettings.address</dd></div>
+      <div><dt>site.hours: Opening hours</dt><dd>siteSettings.openingHours</dd></div>
+    </dl>
+  </section>
+
+  <form class="card stack" action="thank-you.html" method="post" novalidate aria-labelledby="f-h">
+    <h2 id="f-h">form.title: Contact us</h2>
+    <div class="field"><label for="t">form.topic: Topic</label>
+      <select id="t" name="topic" class="input" required><option value="">Choose a topic</option><option>An existing booking</option><option>Our services</option><option>VIP security</option><option>Partnership</option><option>Something else</option></select></div>
+    <div class="field"><label for="n">form.name: Full name</label><input id="n" name="name" class="input" autocomplete="name" required></div>
+    <div class="field"><label for="e">form.email: Email</label><input id="e" name="email" class="input" type="email" autocomplete="email" required aria-invalid="true" aria-describedby="e-err"><span class="error" id="e-err">form.error.email: Enter a valid email address.</span></div>
+    <div class="field"><label for="p">form.phone: Phone <span class="muted">(optional)</span></label><input id="p" name="phone" class="input" type="tel" autocomplete="tel"></div>
+    <div class="field"><label for="m">form.message: Message</label><textarea id="m" name="message" class="input" required></textarea></div>
+    <div class="hp" aria-hidden="true"><label for="w">Website</label><input id="w" name="website" tabindex="-1" autocomplete="off"></div>
+    <label class="check"><input type="checkbox" name="consent" required><span>form.consent (links to the <a href="#">privacy policy</a>)</span></label>
+    <p class="muted">Turnstile widget here</p>
+    <button class="btn btn-block" type="submit">form.submit: Send</button>
+  </form>
+</div></main>
+</body>
+</html>

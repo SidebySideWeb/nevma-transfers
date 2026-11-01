@@ -5,7 +5,7 @@ declare
   pickup timestamptz := '2026-12-15T10:00:00+02:00';
   rng tstzrange;
 begin
-  select id into c from vehicle_classes where key = 'demo-sedan';
+  select id into c from vehicle_classes where key = 'demo-e-class';
   select id into z1 from zones where code = 'demo-airport';
   select id into z2 from zones where code = 'demo-centre';
   rng := blocked_range_for(pickup, 45, 30);

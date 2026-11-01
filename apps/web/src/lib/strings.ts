@@ -59,7 +59,7 @@ export function t(key: UiStringKey, vars?: Record<string, string | number>): str
   return fillPlaceholders(template, vars, strictMissing);
 }
 
-/** Defaults only — used by tests and 500 page (no Sanity). */
+/** Defaults only - used by tests and 500 page (no Sanity). */
 export function tDefault(key: UiStringKey, vars?: Record<string, string | number>): string {
   const strictMissing = import.meta.env.MODE === 'test' || process.env.VITEST === 'true';
   return fillPlaceholders(defaultByKey[key], vars, strictMissing);

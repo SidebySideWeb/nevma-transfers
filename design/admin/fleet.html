@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>Fleet — Elite Protection Admin (design)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
-<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="../tokens.css"><link rel="stylesheet" href="admin.css">
 </head>
 <body class="ep-admin">
 <a class="skip" href="#main">Skip to content</a>
@@ -18,11 +18,11 @@
     <div class="banner banner-warning" role="note"><p><span class="tag">Demo data</span>3 settings still hold DEMO values: <strong>min_lead_minutes</strong>, <strong>cancel_window_hours</strong>, <strong>office_link_hold_minutes</strong>. Vehicle class <strong>demo-limo</strong> has no Sanity page.</p><a class="btn btn-secondary btn-sm" href="settings.html">Review settings</a></div>
     <div class="page-head"><div><h1 class="title">Fleet</h1></div><div class="page-actions"></div></div>
     <section class="panel" aria-labelledby="h-cls">
-      <div class="panel-head"><h2 id="h-cls">Vehicle classes</h2><button class="btn btn-secondary btn-sm" type="button">Add class</button></div>
+      <div class="panel-head"><h2 id="h-cls">Vehicle classes</h2><a class="btn btn-secondary btn-sm" href="setup-dialogs.html#add-class">Add class</a></div>
       <div class="table-wrap" role="region" tabindex="0" aria-label="Vehicle classes table" style="border:0">
         <table class="table table-cards"><thead><tr><th scope="col">Class</th><th scope="col">Key</th><th scope="col" class="num">Passengers</th><th scope="col" class="num">Suitcases</th><th scope="col" class="num">Buffer</th><th scope="col" class="num">Vehicles</th><th scope="col">Online</th><th scope="col" class="actions"><span class="sr-only">Actions</span></th></tr></thead>
         <tbody>
-          <tr><td class="card-title" data-label="Class">Executive sedan</td><td data-label="Key" class="mono">sedan</td><td class="num" data-label="Passengers">3</td><td class="num" data-label="Suitcases">2</td><td class="num" data-label="Buffer">30 min</td><td class="num" data-label="Vehicles">2</td><td data-label="Online"><span class="badge s-confirmed">On</span></td><td class="actions" data-label=""><a class="btn btn-quiet btn-sm" href="#">Edit<span class="sr-only"> Executive sedan</span></a></td></tr>
+          <tr><td class="card-title" data-label="Class">Executive sedan</td><td data-label="Key" class="mono">sedan</td><td class="num" data-label="Passengers">3</td><td class="num" data-label="Suitcases">2</td><td class="num" data-label="Buffer">30 min</td><td class="num" data-label="Vehicles">2</td><td data-label="Online"><span class="badge s-confirmed">On</span></td><td class="actions" data-label=""><a class="btn btn-quiet btn-sm" href="fleet-class.html">Edit<span class="sr-only"> Executive sedan</span></a></td></tr>
           <tr><td class="card-title" data-label="Class">Luxury SUV</td><td data-label="Key" class="mono">suv</td><td class="num" data-label="Passengers">4</td><td class="num" data-label="Suitcases">4</td><td class="num" data-label="Buffer">30 min</td><td class="num" data-label="Vehicles">2</td><td data-label="Online"><span class="badge s-confirmed">On</span></td><td class="actions" data-label=""><a class="btn btn-quiet btn-sm" href="#">Edit<span class="sr-only"> Luxury SUV</span></a></td></tr>
           <tr><td class="card-title" data-label="Class">Business van</td><td data-label="Key" class="mono">van</td><td class="num" data-label="Passengers">7</td><td class="num" data-label="Suitcases">7</td><td class="num" data-label="Buffer">45 min</td><td class="num" data-label="Vehicles">1</td><td data-label="Online"><span class="badge s-confirmed">On</span></td><td class="actions" data-label=""><a class="btn btn-quiet btn-sm" href="#">Edit<span class="sr-only"> Business van</span></a></td></tr>
           <tr class="is-muted"><td class="card-title" data-label="Class">Limousine <span class="badge s-pending">No Sanity page</span></td><td data-label="Key" class="mono">demo-limo</td><td class="num" data-label="Passengers">3</td><td class="num" data-label="Suitcases">2</td><td class="num" data-label="Buffer">60 min</td><td class="num" data-label="Vehicles">0</td><td data-label="Online"><span class="badge s-completed">Off</span></td><td class="actions" data-label=""><a class="btn btn-quiet btn-sm" href="#">Edit<span class="sr-only"> Limousine</span></a></td></tr>
@@ -30,11 +30,11 @@
       </div>
     </section>
     <section class="panel" aria-labelledby="h-veh" style="margin-top:1.25rem">
-      <div class="panel-head"><h2 id="h-veh">Vehicles</h2><button class="btn btn-secondary btn-sm" type="button">Add vehicle</button></div>
+      <div class="panel-head"><h2 id="h-veh">Vehicles</h2><a class="btn btn-secondary btn-sm" href="setup-dialogs.html#add-vehicle">Add vehicle</a></div>
       <div class="table-wrap" role="region" tabindex="0" aria-label="Vehicles table" style="border:0">
         <table class="table table-cards"><thead><tr><th scope="col">Label</th><th scope="col">Class</th><th scope="col">Model (staff only)</th><th scope="col">Status</th><th scope="col">Next booking</th></tr></thead>
         <tbody>
-          <tr><td class="card-title" data-label="Label">SEDAN-1</td><td data-label="Class">Executive sedan</td><td data-label="Model">Mercedes E-Class · black</td><td data-label="Status"><span class="badge s-confirmed">Active</span></td><td data-label="Next">1 Dec 23:15 · EP-W2LK9F</td></tr>
+          <tr><td class="card-title" data-label="Label"><a href="setup-dialogs.html#edit-vehicle">SEDAN-1</a></td><td data-label="Class">Executive sedan</td><td data-label="Model">Mercedes E-Class · black</td><td data-label="Status"><span class="badge s-confirmed">Active</span></td><td data-label="Next">1 Dec 23:15 · EP-W2LK9F</td></tr>
           <tr><td class="card-title" data-label="Label">SEDAN-2</td><td data-label="Class">Executive sedan</td><td data-label="Model">BMW 5 Series · black</td><td data-label="Status"><span class="badge s-confirmed">Active</span></td><td data-label="Next">—</td></tr>
           <tr><td class="card-title" data-label="Label">SUV-2</td><td data-label="Class">Luxury SUV</td><td data-label="Model">Mercedes GLS · black</td><td data-label="Status"><span class="badge s-pending">In service</span></td><td data-label="Next">1 Dec 18:30 · EP-R8TC3D</td></tr>
           <tr><td class="card-title" data-label="Label">VAN-1</td><td data-label="Class">Business van</td><td data-label="Model">Mercedes V-Class · black</td><td data-label="Status"><span class="badge s-confirmed">Active</span></td><td data-label="Next">1 Dec 14:00 · EP-Q4MZ8P</td></tr>

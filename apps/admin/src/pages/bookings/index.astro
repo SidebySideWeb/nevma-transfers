@@ -310,12 +310,12 @@ function qs(overrides: Record<string, string | null>): string {
               {g.rows.map((b) => {
                 const fromName = (b.from_zone as { name?: string } | null)?.name;
                 const toName = (b.to_zone as { name?: string } | null)?.name;
-                const classKey = (b.class as { key?: string } | null)?.key ?? '—';
+                const classKey = (b.class as { key?: string } | null)?.key ?? '-';
                 const vehicleLabel = (b.vehicle as { label?: string } | null)?.label;
                 const trip =
                   b.booking_type === 'hourly'
-                    ? `${fromName ?? '—'} · ${Math.round((b.duration_minutes || 0) / 60)} h`
-                    : `${fromName ?? '—'} → ${toName ?? '—'}`;
+                    ? `${fromName ?? '-'} · ${Math.round((b.duration_minutes || 0) / 60)} h`
+                    : `${fromName ?? '-'} → ${toName ?? '-'}`;
                 const sub = `${b.booking_type === 'hourly' ? 'Hourly' : 'Transfer'}`;
                 const showAssign = b.status === 'confirmed' && !b.vehicle_id;
                 return (
@@ -340,7 +340,7 @@ function qs(overrides: Record<string, string | null>): string {
                       {showAssign ? (
                         <a href={`/bookings/${b.reference}#assign`}>Assign</a>
                       ) : (
-                        vehicleLabel ?? '—'
+                        vehicleLabel ?? '-'
                       )}
                     </td>
                     <td data-label="Customer">{b.customer_name}</td>

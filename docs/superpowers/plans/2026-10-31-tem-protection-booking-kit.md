@@ -1,5 +1,7 @@
 # TEM Protection Booking Kit Implementation Plan
 
+> Brand note (1 Nov 2026): the site brand is **Elite Protection**, decided by the user. "TEM Protection" below was the working name; booking references are `EP-` (migration 0009). The kit docs outside this folder use the final names.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Produce kit 1 for TEM Protection: a validated Cursor build kit (rules, docs, ordered prompts, ready Sanity Studio and seed, Postgres migrations and DEMO seed, design tokens and wireframes) that the user then uses to build the booking core in Cursor.
