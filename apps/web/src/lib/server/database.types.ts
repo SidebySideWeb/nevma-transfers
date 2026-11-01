@@ -78,6 +78,12 @@ isOneToOne: false
       foreignKeyName: "bookings_customer_id_fkey"
       columns: ["customer_id"]
 isOneToOne: false
+      referencedRelation: "customer_summaries"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bookings_customer_id_fkey"
+      columns: ["customer_id"]
+isOneToOne: false
       referencedRelation: "customers"
       referencedColumns: ["id"]
     },{
@@ -354,6 +360,14 @@ isOneToOne: false
             "calendar_items": {
                   Row: {
                     "booking_id": string | null,"booking_type": string | null,"class_id": string | null,"ends_at": string | null,"kind": string | null,"label": string | null,"pickup_at": string | null,"range": unknown,"reason": string | null,"reference": string | null,"source": string | null,"status": string | null,"vehicle_id": string | null,"vip_security": boolean | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"customer_summaries": {
+                  Row: {
+                    "bookings_count": number | null,"company": string | null,"created_at": string,"email": string,"has_vip_security": boolean | null,"id": string,"last_pickup_at": string | null,"name": string,"notes": string | null,"paid_cents": number | null,"phone": string | null,"vat_number": string | null
                   }
                   ComputedFields: never
                   Relationships: [

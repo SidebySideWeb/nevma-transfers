@@ -110,3 +110,23 @@ test('customers: staff can read and edit notes but not create or delete; strange
   const n = await asRole(db.pool, 'authenticated', '00000000-0000-4000-8000-0000000000cc', async (cl) => (await cl.query(`select count(*)::int n from customers`)).rows[0].n);
   assert.equal(n, 0);
 });
+
+test('0013 customer list: counts, paid total net of refunds, VIP flag; staff only', async () => {
+  const bk = await officeBooking({ pickup_at: '2026-12-20T10:00:00+02:00', customer_email: 'sum@example.com', customer_name: 'Sum Customer' });
+  await q(
+    `insert into payments (booking_id, kind, status, amount_cents, method) values ($1, 'payment', 'succeeded', 9000, 'cash'), ($1, 'refund', 'succeeded', 1000, 'cash')`,
+    [bk.id],
+  );
+  const row = await asRole(db.pool, 'authenticated', staffId, async (c) =>
+    (
+      await c.query(
+        `select bookings_count, paid_cents, has_vip_security from customer_summaries where email = 'sum@example.com'`,
+      )
+    ).rows[0],
+  );
+  assert.deepEqual(row, { bookings_count: 1, paid_cents: 8000, has_vip_security: false });
+  const n = await asRole(db.pool, 'authenticated', '00000000-0000-4000-8000-0000000000cc', async (c) =>
+    (await c.query(`select count(*)::int n from customer_summaries`)).rows[0].n,
+  );
+  assert.equal(n, 0);
+});

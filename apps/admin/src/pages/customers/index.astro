@@ -1,0 +1,202 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Flag from '../../components/Flag.astro';
+import Select from '../../components/Select.astro';
+import {
+  buildCustomerSearchOr,
+  CUSTOMER_PAGE_SIZE,
+  customerSortColumn,
+  parseCustomerSort,
+} from '../../lib/customer-list';
+import { formatEuro } from '../../lib/money';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const params = Astro.url.searchParams;
+
+const q = params.get('q')?.trim() ?? '';
+const sort = parseCustomerSort(params.get('sort'));
+const vipOnly = params.get('vip') === '1';
+const page = Math.max(1, Number(params.get('page') || 1));
+const { column, ascending } = customerSortColumn(sort);
+
+let query = supabase
+  .from('customer_summaries')
+  .select(
+    'id, name, email, phone, company, bookings_count, last_pickup_at, has_vip_security, paid_cents',
+    { count: 'exact' },
+  );
+
+const orFilter = buildCustomerSearchOr(q);
+if (orFilter) query = query.or(orFilter);
+if (vipOnly) query = query.eq('has_vip_security', true);
+
+query = query
+  .order(column, { ascending, nullsFirst: false })
+  .range((page - 1) * CUSTOMER_PAGE_SIZE, page * CUSTOMER_PAGE_SIZE - 1);
+
+const { data: rows, count, error } = await query;
+if (error) {
+  console.error(JSON.stringify({ level: 'error', code: 'customers_list', message: error.message }));
+}
+const customers = rows ?? [];
+const total = count ?? 0;
+const from = total === 0 ? 0 : (page - 1) * CUSTOMER_PAGE_SIZE + 1;
+const to = Math.min(page * CUSTOMER_PAGE_SIZE, total);
+const pages = Math.max(1, Math.ceil(total / CUSTOMER_PAGE_SIZE));
+
+function qs(overrides: Record<string, string | undefined>) {
+  const sp = new URLSearchParams(params);
+  for (const [k, v] of Object.entries(overrides)) {
+    if (v == null || v === '') sp.delete(k);
+    else sp.set(k, v);
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : '';
+}
+
+function fmtDay(iso: string | null) {
+  if (!iso) return '—';
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Athens',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+const exportHref = `/customers/export.csv${qs({ page: undefined })}`;
+---
+
+<AdminLayout title="Customers" current="customers" staffEmail={staff.email}>
+  <div class="page-head" style="padding:0 0 1rem;display:flex;justify-content:flex-end">
+    <a class="btn btn-secondary" href={exportHref}>Export CSV</a>
+  </div>
+
+  <form class="filters" aria-label="Find customers" method="get" id="cu-filters">
+    <div class="field" style="grid-column: span 2">
+      <label for="cu-q">Search</label>
+      <input
+        id="cu-q"
+        class="input"
+        type="search"
+        name="q"
+        value={q}
+        placeholder="Name, e-mail, phone or company"
+        autocomplete="off"
+      />
+    </div>
+    <div class="field">
+      <label for="cu-sort">Sort by</label>
+      <Select
+        id="cu-sort"
+        name="sort"
+        options={[
+          { value: 'last', label: 'Last booking', selected: sort === 'last' },
+          { value: 'name', label: 'Name', selected: sort === 'name' },
+          { value: 'bookings', label: 'Most bookings', selected: sort === 'bookings' },
+          { value: 'paid', label: 'Paid in total', selected: sort === 'paid' },
+        ]}
+      />
+    </div>
+    <label class="check">
+      <input type="checkbox" name="vip" value="1" checked={vipOnly} /> With VIP security bookings
+    </label>
+    <div class="actions">
+      <button class="btn btn-sm" type="submit">Apply</button>
+      <a class="btn btn-quiet btn-sm" href="/customers">Clear</a>
+    </div>
+  </form>
+
+  <div class="table-wrap" role="region" tabindex="0" aria-labelledby="cu-cap">
+    <table class="table table-cards">
+      <caption id="cu-cap" class="sr-only">Customers</caption>
+      <thead>
+        <tr>
+          <th scope="col">Customer</th>
+          <th scope="col">Phone</th>
+          <th scope="col">Company</th>
+          <th scope="col" class="num">Bookings</th>
+          <th scope="col">Last booking</th>
+          <th scope="col" class="num">Paid in total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          customers.length === 0 ? (
+            <tr>
+              <td colspan="6">No customers match.</td>
+            </tr>
+          ) : (
+            customers.map((c) => (
+              <tr>
+                <td class="card-title" data-label="Customer">
+                  <a href={`/customers/${c.id}`}>{c.name}</a>
+                  {c.has_vip_security && <Flag kind="vip" />}
+                  <span class="sub">{c.email}</span>
+                </td>
+                <td data-label="Phone">{c.phone || '—'}</td>
+                <td data-label="Company">{c.company || '—'}</td>
+                <td class="num" data-label="Bookings">
+                  {c.bookings_count ?? 0}
+                </td>
+                <td data-label="Last booking">{fmtDay(c.last_pickup_at)}</td>
+                <td class="num" data-label="Paid in total">
+                  {formatEuro(c.paid_cents ?? 0)}
+                </td>
+              </tr>
+            ))
+          )
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    <span>
+      Showing {from}–{to} of {total} · {CUSTOMER_PAGE_SIZE} per page
+    </span>
+    <div class="row">
+      {
+        page > 1 ? (
+          <a class="btn btn-secondary btn-sm" href={`/customers${qs({ page: String(page - 1) })}`}>
+            Previous
+          </a>
+        ) : (
+          <span class="btn btn-secondary btn-sm" aria-disabled="true">Previous</span>
+        )
+      }
+      {
+        page < pages ? (
+          <a class="btn btn-secondary btn-sm" href={`/customers${qs({ page: String(page + 1) })}`}>
+            Next
+          </a>
+        ) : (
+          <span class="btn btn-secondary btn-sm" aria-disabled="true">Next</span>
+        )
+      }
+    </div>
+  </div>
+</AdminLayout>
+
+<script is:inline>
+  (function () {
+    const input = document.getElementById('cu-q');
+    const form = document.getElementById('cu-filters');
+    if (!input || !form) return;
+    let timer;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        form.requestSubmit();
+      }, 250);
+    });
+  })();
+</script>

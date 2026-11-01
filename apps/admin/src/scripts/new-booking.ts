@@ -26,6 +26,16 @@ type Hit = {
 type PageData = {
   vehicleId: string;
   extras: { code: string; name: string; priceCents: number }[];
+  customer?: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    company: string | null;
+    vat: string | null;
+    tax_office: string | null;
+    address: string | null;
+  } | null;
 };
 
 const data = JSON.parse(document.getElementById('nb-data')!.textContent || '{}') as PageData;
@@ -134,19 +144,31 @@ async function runLookup() {
   hits = found as Hit[];
   renderList(q);
 }
+function applyCustomer(hit: {
+  name: string;
+  email: string;
+  phone: string | null;
+  company: string | null;
+  vat: string | null;
+  tax_office: string | null;
+  address: string | null;
+}) {
+  $('nb-name').value = hit.name;
+  $('nb-mail').value = hit.email;
+  $('nb-tel').value = hit.phone ?? '';
+  $('nb-inv-company').value = hit.company ?? '';
+  $('nb-inv-vat').value = hit.vat ?? '';
+  $('nb-inv-tax').value = hit.tax_office ?? '';
+  $('nb-inv-addr').value = hit.address ?? '';
+  if (hit.company) $<HTMLDetailsElement>('nb-inv').open = true;
+  find.value = hit.name;
+  closeList();
+}
+
 function pick(i: number) {
   const hit = hits[i];
   if (hit) {
-    $('nb-name').value = hit.name;
-    $('nb-mail').value = hit.email;
-    $('nb-tel').value = hit.phone ?? '';
-    $('nb-inv-company').value = hit.company ?? '';
-    $('nb-inv-vat').value = hit.vat ?? '';
-    $('nb-inv-tax').value = hit.tax_office ?? '';
-    $('nb-inv-addr').value = hit.address ?? '';
-    if (hit.company) $<HTMLDetailsElement>('nb-inv').open = true;
-    find.value = hit.name;
-    closeList();
+    applyCustomer(hit);
     return;
   }
   // "+ New customer": use what was typed
@@ -551,4 +573,5 @@ form.addEventListener('submit', async (e) => {
 renderType();
 renderPayment();
 renderSummary();
+if (data.customer) applyCustomer(data.customer);
 void loadAvailability();

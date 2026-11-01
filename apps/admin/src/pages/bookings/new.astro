@@ -49,10 +49,43 @@ if (/^[0-9a-f-]{36}$/i.test(vehicleParam)) {
   if (v && key) prefillVehicle = { id: v.id, classKey: key };
 }
 
+// Prefill from Customers: ?customer=<uuid>
+const customerParam = q.get('customer') ?? '';
+let prefillCustomer: {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  company: string | null;
+  vat: string | null;
+  tax_office: string | null;
+  address: string | null;
+} | null = null;
+if (/^[0-9a-f-]{36}$/i.test(customerParam)) {
+  const { data: c } = await supabase
+    .from('customers')
+    .select('id, name, email, phone, company, vat_number, tax_office, address')
+    .eq('id', customerParam)
+    .maybeSingle();
+  if (c) {
+    prefillCustomer = {
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      company: c.company,
+      vat: c.vat_number,
+      tax_office: c.tax_office,
+      address: c.address,
+    };
+  }
+}
+
 const pageData = {
   vehicleId: prefillVehicle?.id ?? '',
   holdText,
   extras: extras.map((e) => ({ code: e.code, name: e.name, priceCents: e.price_cents })),
+  customer: prefillCustomer,
 };
 ---
 

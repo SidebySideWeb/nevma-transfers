@@ -1,0 +1,243 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Flag from '../../components/Flag.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import { formatEuro } from '../../lib/money';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const id = Astro.params.id!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const pageError = actionErr(Astro.getActionResult?.(actions.saveCustomer));
+const saved = Astro.getActionResult?.(actions.saveCustomer)?.data?.ok === true;
+
+const { data: summary } = await supabase
+  .from('customer_summaries')
+  .select('*')
+  .eq('id', id)
+  .maybeSingle();
+
+const { data: customer } = await supabase.from('customers').select('*').eq('id', id).maybeSingle();
+
+if (!customer || !summary) {
+  return Astro.redirect('/customers');
+}
+
+const { data: bookings } = await supabase
+  .from('bookings')
+  .select(
+    `
+    reference, pickup_at, booking_type, hours, price_cents, status, payment_status, vip_security,
+    customer_phone, customer_name,
+    from_zone:zones!bookings_from_zone_id_fkey(name),
+    to_zone:zones!bookings_to_zone_id_fkey(name),
+    class:vehicle_classes!bookings_class_id_fkey(key, name)
+  `,
+  )
+  .eq('customer_id', id)
+  .order('pickup_at', { ascending: false });
+
+const firstName = customer.name.trim().split(/\s+/)[0] || customer.name;
+
+function fmtWhen(iso: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Athens',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+function fmtSince(iso: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Athens',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(iso));
+}
+
+function tripLabel(b: {
+  booking_type: string;
+  hours: number | null;
+  from_zone: { name?: string } | null;
+  to_zone: { name?: string } | null;
+}) {
+  const from = b.from_zone?.name ?? '—';
+  const to = b.to_zone?.name;
+  if (b.booking_type === 'hourly') return `${from} · ${b.hours ?? '?'} h`;
+  return `${from} → ${to ?? '—'}`;
+}
+---
+
+<AdminLayout
+  title={customer.name}
+  htmlTitle={`${customer.name} - Elite Protection Admin`}
+  current="customers"
+  staffEmail={staff.email}
+  crumbs={[{ href: '/customers', label: 'Customers' }, { label: customer.name }]}
+>
+  {
+    pageError && (
+      <div class="banner banner-danger" role="alert">
+        <p>{pageError}</p>
+      </div>
+    )
+  }
+  {
+    saved && !pageError && (
+      <div class="banner banner-info" role="status">
+        <p>Customer saved. Past bookings keep the details from the time of booking.</p>
+      </div>
+    )
+  }
+
+  <div class="row" style="margin:-.5rem 0 1.25rem;gap:.5rem;flex-wrap:wrap;align-items:center">
+    {summary.has_vip_security && <Flag kind="vip" />}
+    <span class="muted small">
+      Customer since {fmtSince(customer.first_booking_at ?? customer.created_at)} ·{' '}
+      {summary.bookings_count ?? 0} booking{(summary.bookings_count ?? 0) === 1 ? '' : 's'} ·{' '}
+      {formatEuro(summary.paid_cents ?? 0)} paid
+    </span>
+  </div>
+
+  <div class="cols cols-main" style="align-items:start">
+    <div class="stack">
+      <section class="panel" aria-labelledby="cd-b">
+        <div class="panel-head">
+          <h2 id="cd-b">Bookings</h2>
+          <a class="btn btn-sm" href={`/bookings/new?customer=${customer.id}`}>
+            New booking for {firstName}
+          </a>
+        </div>
+        <div
+          class="table-wrap"
+          role="region"
+          tabindex="0"
+          aria-label={`Bookings of ${customer.name}`}
+          style="border:0"
+        >
+          <table class="table table-cards">
+            <thead>
+              <tr>
+                <th scope="col">Reference</th>
+                <th scope="col">Pick-up</th>
+                <th scope="col">Trip</th>
+                <th scope="col">Class</th>
+                <th scope="col" class="num">Total</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                (bookings ?? []).length === 0 ? (
+                  <tr>
+                    <td colspan="6">No bookings yet.</td>
+                  </tr>
+                ) : (
+                  (bookings ?? []).map((b) => {
+                    const cls = b.class as { key?: string; name?: string } | null;
+                    return (
+                      <tr class={b.vip_security ? 'is-flag' : b.status === 'cancelled' ? 'is-muted' : undefined}>
+                        <td class="card-title" data-label="Reference">
+                          <a class="ref" href={`/bookings/${b.reference}`}>
+                            {b.reference}
+                          </a>
+                        </td>
+                        <td data-label="Pick-up">{fmtWhen(b.pickup_at)}</td>
+                        <td data-label="Trip">
+                          {tripLabel({
+                            booking_type: b.booking_type,
+                            hours: b.hours,
+                            from_zone: b.from_zone as { name?: string } | null,
+                            to_zone: b.to_zone as { name?: string } | null,
+                          })}
+                        </td>
+                        <td data-label="Class">{cls?.name || cls?.key || '—'}</td>
+                        <td class="num" data-label="Total">
+                          {formatEuro(b.price_cents)}
+                        </td>
+                        <td data-label="Status">
+                          <StatusBadge status={b.status} />
+                          {b.payment_status === 'refunded' && (
+                            <span class="small muted"> refunded</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="cd-c">
+        <div class="panel-head"><h2 id="cd-c">Contact and invoice details</h2></div>
+        <form method="POST" action={actions.saveCustomer} class="panel-body stack-sm">
+          <input type="hidden" name="id" value={customer.id} />
+          <div class="field">
+            <label for="cd-name">Name</label>
+            <input id="cd-name" class="input" name="name" value={customer.name} required />
+          </div>
+          <div class="field">
+            <label for="cd-mail">E-mail</label>
+            <input
+              id="cd-mail"
+              class="input"
+              value={customer.email}
+              readonly
+              aria-describedby="cd-mail-help"
+            />
+            <p class="help" id="cd-mail-help">Bookings are matched by e-mail, so it cannot be edited here.</p>
+          </div>
+          <div class="field">
+            <label for="cd-tel">Phone</label>
+            <input id="cd-tel" class="input" name="phone" value={customer.phone ?? ''} />
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="cd-co">Company</label>
+              <input id="cd-co" class="input" name="company" value={customer.company ?? ''} />
+            </div>
+            <div class="field">
+              <label for="cd-vat">VAT number</label>
+              <input id="cd-vat" class="input" name="vatNumber" value={customer.vat_number ?? ''} />
+            </div>
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="cd-tax">Tax office</label>
+              <input id="cd-tax" class="input" name="taxOffice" value={customer.tax_office ?? ''} />
+            </div>
+            <div class="field">
+              <label for="cd-ad">Address</label>
+              <input id="cd-ad" class="input" name="address" value={customer.address ?? ''} />
+            </div>
+          </div>
+          <div class="field">
+            <label for="cd-notes">Notes for the office (never shown to the customer)</label>
+            <textarea id="cd-notes" class="input" name="notes" style="min-height:96px">{customer.notes ?? ''}</textarea>
+          </div>
+          <button class="btn" type="submit">Save customer</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</AdminLayout>

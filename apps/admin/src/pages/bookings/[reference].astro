@@ -327,7 +327,15 @@ if (found && booking) {
               <div class="panel-body stack-sm">
                 <dl class="facts">
                   <dt>Name</dt>
-                  <dd>{booking.customer_name}</dd>
+                  <dd>
+                    {
+                      booking.customer_id ? (
+                        <a href={`/customers/${booking.customer_id}`}>{booking.customer_name}</a>
+                      ) : (
+                        booking.customer_name
+                      )
+                    }
+                  </dd>
                   <dt>Email</dt>
                   <dd>{booking.customer_email}</dd>
                   <dt>Phone</dt>

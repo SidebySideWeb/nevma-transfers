@@ -129,3 +129,7 @@ Rules: `docs/OFFICE-BOOKINGS.md`.
 ## 0012 — Setup guards (1 Nov 2026)
 
 Rules: `docs/FLEET-SETUP.md`. Adds `vehicles.note` (staff-only). Triggers on `vehicle_classes`, `vehicles`, `zones`, `extras`: keys and codes fixed once used (`in_use`), no delete of anything with history (switch off or retire), no status or class change for a vehicle with future bookings (`has_future_bookings`), built-in extras `vip-security` and `night-surcharge` kept; unique vehicle labels (`vehicles_label_key`).
+
+## 0013 — Customer list (1 Nov 2026)
+
+`customer_summaries` view (security invoker, staff only through RLS): one row per customer with `bookings_count`, `last_pickup_at`, `has_vip_security`, `paid_cents` (succeeded payments minus succeeded refunds).

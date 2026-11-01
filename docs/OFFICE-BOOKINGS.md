@@ -35,5 +35,5 @@ Decided by the user on 1 Nov 2026: staff can add bookings by hand (phone, e-mail
 
 - `customers`: one row per e-mail (case-insensitive), kept up to date by a trigger on every new booking (online and office): name, phone, last invoice details, `bookings_count`, first and last booking. `bookings.customer_id` links them; old bookings are backfilled by the migration.
 - Staff can read customers and edit name, phone, invoice details and staff-only `notes`; they cannot create, delete or change the e-mail (database rights).
-- Used now by the New booking customer lookup (name, e-mail or phone; top 8 matches with booking count). Customer pages (list, detail with booking history, notes) are a later feature on the same data.
+- Used by the New booking customer lookup (name, e-mail or phone; top 8 matches with booking count) and by the Customers pages (migration 0013 `customer_summaries`: bookings count, last pick-up, paid in total net of refunds, VIP flag): list with search, sort and CSV export; detail with the customer's bookings, contact and invoice details, staff notes, and New booking for this customer.
 - Personal data: covered by the privacy text and the retention rule still to be decided with the client (O10); deleting a customer on request means anonymising their bookings, which is part of that later work.

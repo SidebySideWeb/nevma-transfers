@@ -731,6 +731,38 @@ export const server = {
     },
   }),
 
+  saveCustomer: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid(),
+      name: z.string().trim().min(1).max(200),
+      phone: z.string().trim().max(40).optional(),
+      company: z.string().trim().max(200).optional(),
+      vatNumber: z.string().trim().max(40).optional(),
+      taxOffice: z.string().trim().max(100).optional(),
+      address: z.string().trim().max(400).optional(),
+      notes: z.string().trim().max(2000).optional(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase
+        .from('customers')
+        .update({
+          name: input.name,
+          phone: input.phone || null,
+          company: input.company || null,
+          vat_number: input.vatNumber || null,
+          tax_office: input.taxOffice || null,
+          address: input.address || null,
+          notes: input.notes || null,
+        })
+        .eq('id', input.id);
+      if (error) throwDb(error);
+      return { ok: true };
+    },
+  }),
+
   classAvailabilityForTrip: defineAction({
     accept: 'json',
     input: tripInput,
