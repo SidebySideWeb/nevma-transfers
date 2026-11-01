@@ -33,7 +33,7 @@ const baseConfirm = {
   totalCents: 22000,
   vipSecurity: true,
   invoiceRequested: true,
-  cancelUrl: 'https://example.com/booking/cancel/tok_demo_only',
+  cancelUrl: 'https://example.com/booking/manage/tok_demo_only',
   cancelWindowHours: 24,
   ...company,
 };
@@ -72,12 +72,12 @@ describe('emails (prompt 08)', () => {
 
       Invoice requested.
 
-      To see, manage or cancel your booking, use this secure link: https://example.com/booking/cancel/tok_demo_only
+      To see, manage or cancel your booking, use this secure link: https://example.com/booking/manage/tok_demo_only
       You can cancel online until 24 hours before pick-up.
 
       TEM Protection · +30 210 000 0000 (DEMO) · hello@example.com"
     `);
-    expect(conf.text).toContain('/booking/cancel/tok_demo_only');
+    expect(conf.text).toContain('/booking/manage/tok_demo_only');
     expect(conf.text).not.toMatch(/\d{13,19}/); // no full card numbers
 
     const office = officeNewEmail({
@@ -257,7 +257,7 @@ describe.skipIf(!hasDatabaseUrl)('AC-13 reminder cron', () => {
     expect(ok.status).toBe(200);
   });
 
-  it('AC-13: confirmation send includes cancel link in text', async () => {
+  it('AC-13: confirmation send includes manage link in text', async () => {
     const sent: SendEmailInput[] = [];
     setEmailTransport(async (input) => {
       sent.push(input);
@@ -291,7 +291,7 @@ describe.skipIf(!hasDatabaseUrl)('AC-13 reminder cron', () => {
 
     await sendConfirmationEmails(ins.rows[0].reference, 'plain-cancel-token');
     const customer = sent.find((s) => s.tag === 'confirmation');
-    expect(customer?.text).toContain('/booking/cancel/plain-cancel-token');
+    expect(customer?.text).toContain('/booking/manage/plain-cancel-token');
     expect(customer?.text).toContain('VIP security is included');
     const office = sent.find((s) => s.tag === 'office_new');
     expect(office?.text).toContain('VIP SECURITY');

@@ -120,6 +120,32 @@ function tripLines(input: {
   ].join('\n');
 }
 
+export function manageLinkEmail(input: {
+  reference: string;
+  manageUrl: string;
+  companyName: string;
+  companyPhone: string;
+  companyEmail: string;
+}): EmailParts {
+  const subject = t('email.manageLink.subject', { reference: input.reference });
+  const body = t('email.manageLink.body', {
+    reference: input.reference,
+    manageUrl: input.manageUrl,
+  });
+  const text = [body, '', companyFooter(input)].join('\n');
+  const htmlBody = `<p style="margin:0 0 12px;">${escapeHtml(body)}</p>
+    <p style="margin:16px 0;"><a href="${escapeHtml(input.manageUrl)}" style="color:${th.accent};">Open your booking</a></p>`;
+  return {
+    subject,
+    text,
+    html: wrapHtml(subject, htmlBody, {
+      name: input.companyName,
+      phone: input.companyPhone,
+      email: input.companyEmail,
+    }),
+  };
+}
+
 export function confirmationEmail(input: ConfirmationInput): EmailParts {
   const subject = t('email.confirmation.subject', { reference: input.reference });
   const body = t('email.confirmation.body', {

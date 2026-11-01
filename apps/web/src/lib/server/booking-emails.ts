@@ -8,6 +8,7 @@ import {
   cancelledOfficeEmail,
   confirmationEmail,
   lateRefundEmail,
+  manageLinkEmail,
   officeNewEmail,
   paymentLinkEmail,
   reminderEmail,
@@ -124,7 +125,8 @@ export async function sendConfirmationEmails(
     booking.booking_type === 'transfer'
       ? `${booking.from_zone} → ${booking.to_zone}`
       : String(booking.hours ?? '');
-  const cancelUrl = `${siteUrl()}/booking/cancel/${cancelToken}`;
+  // Confirmation links to the manage page (same token; cancel stays at /booking/cancel/<token>).
+  const cancelUrl = `${siteUrl()}/booking/manage/${cancelToken}`;
   const base = {
     reference: booking.reference,
     bookingType: booking.booking_type,
@@ -175,6 +177,30 @@ export async function sendConfirmationEmails(
     text: office.text,
     tag: 'office_new',
     reference,
+  });
+}
+
+export async function sendManageLinkEmail(input: {
+  to: string;
+  reference: string;
+  manageUrl: string;
+}): Promise<void> {
+  const co = await company();
+  const parts = manageLinkEmail({
+    reference: input.reference,
+    manageUrl: input.manageUrl,
+    companyName: co.companyName,
+    companyPhone: co.companyPhone,
+    companyEmail: co.companyEmail,
+  });
+  await sendEmail({
+    to: input.to,
+    subject: parts.subject,
+    html: parts.html,
+    text: parts.text,
+    tag: 'manage_link',
+    // No reference in logs beyond the tag path used by sendEmail failures —
+    // omit reference so AC-35 log greps stay clean on the happy path.
   });
 }
 

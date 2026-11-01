@@ -1,0 +1,171 @@
+---
+export const prerender = false;
+
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getSiteSettings, loadUiStrings } from '../../../lib/sanity/content';
+import { managePageView } from '../../../lib/server/booking-manage';
+import { t } from '../../../lib/strings';
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+Astro.response.headers.set('Referrer-Policy', 'no-referrer');
+
+await loadUiStrings();
+const settings = await getSiteSettings();
+const token = Astro.params.token ?? '';
+const view = await managePageView(token);
+
+const pageTitle = t('manage.title');
+const invalid = t('manage.linkInvalid');
+const findTitle = t('lookup.title');
+
+const pickupDisplay =
+  view.kind === 'ok' ? view.pickupLabel.replace(/\s*\(Athens\)\s*$/, '') : '';
+const comma = pickupDisplay.lastIndexOf(',');
+const pickupLead = comma >= 0 ? pickupDisplay.slice(0, comma) : pickupDisplay;
+const pickupTime = comma >= 0 ? pickupDisplay.slice(comma + 1).trim() : '';
+---
+
+<BaseLayout
+  title={`${pageTitle} - ${settings.companyName}`}
+  description={pageTitle}
+  robots="noindex,nofollow"
+>
+  {
+    view.kind === 'invalid' ? (
+      <section class="state-page">
+        <div class="state-card stack" role="status">
+          <h1 class="display" tabindex="-1">{invalid}</h1>
+          <a class="btn btn-gold" href="/booking/find">
+            {findTitle}
+          </a>
+        </div>
+      </section>
+    ) : (
+      <>
+        <section class="page-band">
+          <div class="wrap page-band-inner">
+            <p class="eyebrow">
+              {pageTitle} · {view.reference}
+            </p>
+            <h1 class="display page-band-title">
+              {pickupLead}
+              {pickupTime ? (
+                <>
+                  , <em>{pickupTime}</em>
+                </>
+              ) : null}
+            </h1>
+            <div class="row">
+              <span class="badge badge-accent">{view.statusLabel}</span>
+              <span class="muted">{t('manage.chauffeurNote')}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="wrap manage-layout">
+            <div class="manage-main stack">
+              <div class="card manage-route">
+                <div class="manage-route-head">
+                  <div class="lbl">{view.bookingType === 'hourly' ? view.typeLabel : 'Route'}</div>
+                  <div class="manage-route-title">{view.routeOrHours}</div>
+                  <p class="muted">
+                    {view.pickupAddress}
+                    {view.dropoffAddress ? ` → ${view.dropoffAddress}` : ''}
+                    {view.flightNumber ? ` · ${view.flightNumber}` : ''}
+                  </p>
+                </div>
+                <ul class="manage-facts">
+                  <li>
+                    <span class="lbl">Vehicle</span>
+                    <span>{view.className}</span>
+                  </li>
+                  <li>
+                    <span class="lbl">{t('booking.passengers')}</span>
+                    <span>{view.passengers}</span>
+                  </li>
+                  <li>
+                    <span class="lbl">{t('booking.luggage')}</span>
+                    <span>{view.luggage}</span>
+                  </li>
+                  <li>
+                    <span class="lbl">Type</span>
+                    <span>{view.typeLabel}</span>
+                  </li>
+                </ul>
+                {
+                  view.extras.length > 0 ? (
+                    <ul class="manage-extras">
+                      {view.extras.map((e) => (
+                        <li>{e.label}</li>
+                      ))}
+                    </ul>
+                  ) : null
+                }
+              </div>
+
+              <div class="stack">
+                <p class="eyebrow">Status</p>
+                <ol class="manage-timeline">
+                  {view.timeline.map((step) => (
+                    <li class:list={[{ current: step.current, done: step.done }]}>
+                      <span class="manage-timeline-dot" aria-hidden="true" />
+                      <div class="manage-timeline-title">{step.title}</div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+
+            <aside class="manage-aside stack">
+              <div class="card manage-paid">
+                <div class="display" style="font-size: var(--text-xl); color: var(--color-accent)">
+                  {view.className}
+                </div>
+                <div class="manage-srow">
+                  <span>{view.typeLabel}</span>
+                  <span>{view.priceLabel}</span>
+                </div>
+                <p class="muted" style="margin: 0; font-size: var(--text-sm)">
+                  {t('booking.priceNote')}
+                </p>
+                <div class="manage-paid-total">
+                  <span>{t('manage.paid')}</span>
+                  <span class="display" style="font-size: var(--text-2xl); color: var(--color-accent)">
+                    {view.priceLabel}
+                  </span>
+                </div>
+              </div>
+
+              <div class="card stack">
+                <p class="eyebrow">Manage</p>
+                <a
+                  class="btn btn-line btn-block"
+                  href={`mailto:${view.officeEmail}?subject=${encodeURIComponent(`Invoice ${view.reference}`)}`}
+                >
+                  {t('manage.requestInvoice')}
+                </a>
+                <a class="btn btn-line btn-block" href={view.officePhoneHref}>
+                  {t('manage.callOffice')}
+                </a>
+                <a class="btn btn-line btn-block" href="./calendar.ics">
+                  {t('manage.addToCalendar')}
+                </a>
+                {
+                  view.canCancel ? (
+                    <a class="manage-cancel" href={`/booking/cancel/${token}`}>
+                      {t('manage.cancel')}
+                    </a>
+                  ) : null
+                }
+                <p class="muted" style="margin: 0; font-size: var(--text-sm)">
+                  {t('manage.changesByPhone')}
+                </p>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </>
+    )
+  }
+</BaseLayout>
