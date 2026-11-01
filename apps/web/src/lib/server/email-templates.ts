@@ -340,3 +340,89 @@ export function lateRefundEmail(input: LateRefundInput): EmailParts {
     }),
   };
 }
+
+export type FormAnswerLine = { key: string; label: string; value: string };
+
+export type FormOfficeInput = {
+  formTitle: string;
+  name: string;
+  answers: FormAnswerLine[];
+  studioUrl: string;
+  companyName: string;
+  companyPhone: string;
+  companyEmail: string;
+};
+
+export type FormConfirmInput = {
+  formTitle: string;
+  name: string;
+  answers: FormAnswerLine[];
+  companyName: string;
+  companyPhone: string;
+  companyEmail: string;
+};
+
+function answersText(answers: FormAnswerLine[]): string {
+  return answers.map((a) => `${a.label}: ${a.value}`).join('\n');
+}
+
+function answersTable(answers: FormAnswerLine[]): string {
+  const rows = answers
+    .map(
+      (a) =>
+        `<tr>
+          <td style="padding:6px 12px 6px 0;vertical-align:top;color:${th.muted};white-space:nowrap;">${escapeHtml(a.label)}</td>
+          <td style="padding:6px 0;vertical-align:top;">${escapeHtml(a.value).replace(/\n/g, '<br>')}</td>
+        </tr>`,
+    )
+    .join('');
+  return `<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">${rows}</table>`;
+}
+
+export function formOffice(input: FormOfficeInput): EmailParts {
+  const subject = t('email.form.office.subject', { form: input.formTitle, name: input.name });
+  const text = [
+    subject,
+    '',
+    answersText(input.answers),
+    '',
+    `Studio: ${input.studioUrl}`,
+    '',
+    companyFooter(input),
+  ].join('\n');
+  const htmlBody = `
+    <p style="margin:0 0 16px;">${escapeHtml(subject)}</p>
+    ${answersTable(input.answers)}
+    <p style="margin:16px 0 0;">
+      <a href="${escapeHtml(input.studioUrl)}" style="color:${th.accent};">Open in Studio</a>
+    </p>
+  `;
+  return {
+    subject,
+    text,
+    html: wrapHtml(subject, htmlBody, {
+      name: input.companyName,
+      phone: input.companyPhone,
+      email: input.companyEmail,
+    }),
+  };
+}
+
+export function formConfirm(input: FormConfirmInput): EmailParts {
+  const subject = t('email.form.confirm.subject');
+  const body = t('email.form.confirm.body', { name: input.name });
+  const text = [body, '', answersText(input.answers), '', companyFooter(input)].join('\n');
+  const htmlBody = `
+    <p style="margin:0 0 16px;">${escapeHtml(body)}</p>
+    ${answersTable(input.answers)}
+  `;
+  return {
+    subject,
+    text,
+    html: wrapHtml(subject, htmlBody, {
+      name: input.companyName,
+      phone: input.companyPhone,
+      email: input.companyEmail,
+    }),
+  };
+}
