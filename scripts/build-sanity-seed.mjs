@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { uiStringDefaults } from '../apps/studio/schemaTypes/lib/uiStringDefaults.ts';
+import { v2Pages } from './v2-content.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'seed', 'sanity');
@@ -27,7 +28,7 @@ docs.push({
   mobilePhone: '+30 698 181 0410',
   email: 'info@eliteprotection.gr',
   bookingNotificationEmail: 'office@example.com',
-  address: 'DEMO address, Athens, Greece',
+  address: '[Office address, Athens]',
   openingHours: 'DEMO: every day, 24 hours',
   timezone: 'Europe/Athens',
   showFromPrices: true,
@@ -58,36 +59,14 @@ const classes = [
 ];
 for (const c of classes) {
   docs.push({
-    _id: `vehicleClass-${c.key}`, _type: 'vehicleClass', key: c.key, name: c.name, tagline: c.kind, sortOrder: c.order,
+    _id: `vehicleClass-${c.key}`, _type: 'vehicleClass', key: c.key, name: c.name, fullName: `Mercedes-Benz ${c.name}`, tagline: c.kind, sortOrder: c.order,
+    group: /van/i.test(c.kind) ? 'van' : 'saloon',
+    amenities: ['Wi-Fi on board', 'Bottled water', 'Device charging', 'Air conditioning', 'Luggage assistance'],
     photos: c.photos.map(([file, alt]) => image(file, alt)),
     copy: [block(c.blurb)],
     specs: [['Passengers', c.seats], ['Luggage', c.bags], ['Type', c.kind]].map(([label, value]) => ({ _type: 'spec', _key: key(), label, value })),
     seo: { _type: 'seo', title: `${c.name} with chauffeur in Athens`, description: c.blurb },
     internalNote: PHOTO_NOTE,
-  });
-}
-
-docs.push({
-  _id: 'page-home', _type: 'page', kind: 'home', title: 'Home', slug: { _type: 'slug', current: 'home' },
-  sections: [
-    { _type: 'hero', _key: key(), heading: 'Discreet luxury, door to door.', subheading: 'Chauffeured Mercedes-Benz transfers across Athens, with optional close-protection escorts. Fixed prices, available around the clock.', image: singleImage('v-class-street.jpg', 'Black V-Class on a city street at dusk'), ctaLabel: 'Book now', ctaTarget: 'book' },
-    { _type: 'richText', _key: key(), heading: 'DEMO Why Elite Protection', body: [block('DEMO paragraph about the service promise. Replace with the client\'s copy.')] },
-    { _type: 'faq', _key: key(), heading: 'DEMO Questions', items: [
-      { _type: 'faqItem', _key: key(), question: 'DEMO How is the price set?', answer: 'DEMO Fixed prices per area and vehicle, shown before you pay.' },
-      { _type: 'faqItem', _key: key(), question: 'DEMO Can I cancel?', answer: 'DEMO Yes, from the link in your confirmation email, within the cancellation window.' },
-    ] },
-    { _type: 'ctaBand', _key: key(), heading: 'DEMO Ready to book?', text: 'DEMO Choose your trip and pay securely online.', ctaLabel: 'Book now', ctaTarget: 'book' },
-  ],
-  seo: { _type: 'seo', title: 'Elite Protection (DEMO)', description: 'DEMO home description.' },
-  internalNote: DEMO_NOTE,
-});
-
-for (const [slug, title] of [['privacy', 'Privacy policy'], ['cookies', 'Cookie policy'], ['terms', 'Terms of service'], ['cancellation', 'Cancellation and refunds']]) {
-  docs.push({
-    _id: `page-${slug}`, _type: 'page', kind: 'legal', title, slug: { _type: 'slug', current: slug },
-    sections: [{ _type: 'richText', _key: key(), heading: title, body: [block(`DEMO ${title.toLowerCase()} text. The client supplies the final legal text (due Fri 4 Dec).`)] }],
-    seo: { _type: 'seo', title: `${title} (DEMO)`, noindex: false },
-    internalNote: DEMO_NOTE,
   });
 }
 
@@ -147,51 +126,13 @@ for (const r of routes) {
   });
 }
 
-const standardPages = [
-  { slug: 'fleet', title: 'Fleet', sections: [
-    { _type: 'hero', heading: 'DEMO Our fleet', subheading: 'DEMO Late-model vehicles with professional drivers.', ctaLabel: 'Book now', ctaTarget: 'book' },
-    { _type: 'vehicleClassList', heading: 'DEMO Choose your vehicle' },
-    { _type: 'ctaBand', heading: 'DEMO Need something else?', text: 'DEMO Groups and special requests.', ctaLabel: 'Request a quote', ctaTarget: 'url', ctaUrl: '/request-a-transfer' },
-  ] },
-  { slug: 'services', title: 'Services', sections: [
-    { _type: 'hero', heading: 'DEMO Our services', subheading: 'DEMO Transfers, hourly hire and VIP security.', ctaLabel: 'Book now', ctaTarget: 'book' },
-    { _type: 'featureGrid', heading: 'DEMO What we do', items: [
-      keyed({ _type: 'featureItem', title: 'DEMO Airport transfers', text: 'DEMO Fixed prices to and from the airport.', link: '/routes/athens-airport-to-city-centre' }),
-      keyed({ _type: 'featureItem', title: 'DEMO By the hour', text: 'DEMO A vehicle and driver for as long as you need, from 3 hours.', link: '/book' }),
-      keyed({ _type: 'featureItem', title: 'DEMO VIP security', text: 'DEMO Add protection to any booking, or plan an event with us.', link: '/vip-security' }),
-    ] },
-    { _type: 'steps', heading: 'DEMO How it works', items: [
-      keyed({ _type: 'stepItem', title: 'DEMO Choose your trip', text: 'DEMO Areas, date and time.' }),
-      keyed({ _type: 'stepItem', title: 'DEMO Pick a vehicle', text: 'DEMO Fixed price shown before you pay.' }),
-      keyed({ _type: 'stepItem', title: 'DEMO Pay securely', text: 'DEMO Confirmation by email.' }),
-    ] },
-    { _type: 'routeList', heading: 'DEMO Popular routes' },
-  ] },
-  { slug: 'vip-security', title: 'VIP security', sections: [
-    { _type: 'hero', heading: 'Close protection, quietly done.', subheading: 'Protection for people, premises and property through specialist personnel and modern technology.', image: singleImage('brand-security-acropolis.jpg', 'Security team in Athens with the Acropolis behind'), ctaLabel: 'Send an enquiry', ctaTarget: 'url', ctaUrl: '#enquiry' },
-    { _type: 'imageText', heading: 'DEMO What is included', body: [block('DEMO The client supplies what the service includes, who provides it and the legal wording (due Fri 6 Nov).')], image: singleImage('chauffeur-door.jpg', 'Chauffeur holding the car door'), imageSide: 'right' },
-    { _type: 'formBlock', form: ref('form-vip-security') },
-    { _type: 'contactDetails', heading: 'DEMO Security desk', showHours: true },
-  ] },
-  { slug: 'about', title: 'About', sections: [
-    { _type: 'imageText', heading: 'Two divisions, one company.', body: [block('Based in Athens, Elite Protection provides comprehensive security and VIP transfer services for businesses, organisations and private clients. DEMO: founding year and company story to be supplied by the client.')], image: singleImage('chauffeur-hotel.jpg', 'Chauffeur waiting at a hotel entrance'), imageSide: 'left' },
-    { _type: 'ctaBand', heading: 'DEMO Travel with us', ctaLabel: 'Book now', ctaTarget: 'book' },
-  ] },
-  { slug: 'contact', title: 'Contact', sections: [
-    { _type: 'contactDetails', heading: 'DEMO Get in touch', showHours: true },
-    { _type: 'formBlock', form: ref('form-contact') },
-  ] },
-  { slug: 'request-a-transfer', title: 'Request a transfer', sections: [
-    { _type: 'richText', heading: 'DEMO Request a quote', body: [block('DEMO For trips we cannot price online. Tell us what you need and we reply with a price.')] },
-    { _type: 'formBlock', form: ref('form-transfer-request') },
-  ] },
-];
-for (const p of standardPages) {
+// ---------------- pages: every block and line of the V2 design (scripts/v2-content.mjs) ----------------
+for (const p of v2Pages({ key, img: singleImage, ref, block })) {
   docs.push({
-    _id: `page-${p.slug}`, _type: 'page', kind: 'standard', title: p.title, slug: { _type: 'slug', current: p.slug },
+    _id: `page-${p.slug}`, _type: 'page', kind: p.kind, title: p.title, slug: { _type: 'slug', current: p.slug },
     sections: p.sections.map((s) => ({ _key: key(), ...s })),
-    seo: { _type: 'seo', title: `${p.title} (DEMO)`, description: `DEMO ${p.title.toLowerCase()} description.` },
-    internalNote: DEMO_NOTE,
+    seo: { _type: 'seo', title: p.seoTitle, description: p.seoDescription },
+    internalNote: `${DEMO_NOTE}. Text from the V2 design; prices shown as final prices (VAT included).`,
   });
 }
 

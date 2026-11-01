@@ -1,0 +1,17 @@
+---
+description: Public website = exact port of the Elite Protection V2 design
+globs: apps/web/src/**
+alwaysApply: false
+---
+
+# Website: port the V2 design, do not redraw it
+
+Docs: `docs/DESIGN-V2.md` ("The rule"), `docs/DESIGN-V2-BLOCKS.md`. Code source: `design/v2/build/` (`blocks/<page>/NN-<block>.html`, `web/v2.css`).
+
+- `src/styles/v2.css` is a copy of `design/v2/build/web/v2.css`. Never edit it by hand; never rename, merge or drop its classes (`s17762`, `bgx1`, `display xl`, `btn btn-gold` …); never replace them with tokens, Tailwind or new CSS.
+- A block component has the same elements, nesting, classes, `aria-*` and `data-block` as its block file. Only text, links, images and repeated items change, and they come from Sanity (`page.sections`, `vehicleClass`, `siteSettings`, `uiStrings`) or the booking API.
+- Pages set `<body class="pg-<design page>">` and the root wrappers of the build files.
+- Photos: `style="--bg-image:url(...)"` on the element that carries the design photo, or the `src` of the same `<img>`. No other `style=` attributes.
+- Behaviour toggles the same classes and ARIA attributes the static states show (`01-home-navopen`, `08-book-1-open`, `08-book-3-options`, `08-book-4-viva`). Scripts are small and use `js-` prefixed hooks if they need extra classes.
+- Decided additions not in the design (the hourly switch) are built from the design's own classes and carry `data-v2-extra`.
+- Done = `tests/v2/v2-fidelity.spec.ts` passes for the page at 1440 and 390 px. Never loosen its limits to make it pass; fix the markup.

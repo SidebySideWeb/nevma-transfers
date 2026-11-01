@@ -1,5 +1,7 @@
 # 22 — Forms on the pages, quote prefill, thank-you pages
 
+> **Superseded for the look (1 Nov 2026).** The website must be an exact port of `design/v2/build`. If you have not run this prompt yet, run `v2-exact/` V2-5 instead for every visual part, and take only the behaviour, data and test steps from here. If you already ran it, `v2-exact/` replaces its markup and styles.
+
 Needs: 20, 21. Produces: the three forms rendered in `FormBlock`, working with and without JavaScript, the request form prefill, and `/thank-you/[form]`. ~1 day.
 
 --- PROMPT ---

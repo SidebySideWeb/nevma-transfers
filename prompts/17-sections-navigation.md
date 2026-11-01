@@ -1,5 +1,7 @@
 # 17 — Navigation and the new page sections
 
+> **Superseded for the look (1 Nov 2026).** The website must be an exact port of `design/v2/build`. If you have not run this prompt yet, run `v2-exact/` V2-2 and V2-5 instead for every visual part, and take only the behaviour, data and test steps from here. If you already ran it, `v2-exact/` replaces its markup and styles.
+
 Needs: 15, 16. Produces: header navigation with phone menu, footer links, breadcrumbs, and one Astro component per kit 2 section type. ~1 day.
 
 --- PROMPT ---

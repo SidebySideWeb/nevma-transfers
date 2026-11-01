@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { schemaTypes } from './index';
 import { validateVehicleKey } from './lib/vehicleKey';
+import { v2SectionNames } from './sections/v2Sections';
 import { filterNewDocumentOptions, singletonTypes } from '../structure';
 
 type AnyDef = Record<string, any>;
@@ -40,7 +41,8 @@ describe('studio schema', () => {
   it('page sections accept every section type', () => {
     const page = schemaTypes.find((t: AnyDef) => t.name === 'page') as AnyDef;
     const types = page.fields.find((f: AnyDef) => f.name === 'sections').of.map((o: AnyDef) => o.type).sort();
-    expect(types).toEqual(['contactDetails', 'ctaBand', 'faq', 'featureGrid', 'formBlock', 'hero', 'imageText', 'richText', 'routeList', 'steps', 'vehicleClassList']);
+    expect(types).toEqual([...v2SectionNames].sort());
+    expect(types).toHaveLength(24);
   });
 
   it('a route needs two different valid zone codes', () => {
@@ -108,9 +110,9 @@ describe('studio schema', () => {
     expect(next.map((o: AnyDef) => o.templateId)).toEqual(['vehicleClass', 'page']);
   });
 
-  it('page kind is home, legal or standard', () => {
+  it('page kind is home, legal, standard or template', () => {
     const page = schemaTypes.find((t: AnyDef) => t.name === 'page') as AnyDef;
     const kind = page.fields.find((f: AnyDef) => f.name === 'kind');
-    expect(kind.options.list.map((o: AnyDef) => o.value).sort()).toEqual(['home', 'legal', 'standard']);
+    expect(kind.options.list.map((o: AnyDef) => o.value).sort()).toEqual(['home', 'legal', 'standard', 'template']);
   });
 });

@@ -1,6 +1,6 @@
 # Design system — Elite Protection V2
 
-Decided 1 Nov 2026: the site uses the Elite Protection V2 design (near-black, gold, ivory; Playfair Display + Jost; square corners; photo-led). The visual target per route is in `docs/DESIGN-V2.md` and `design/v2/`. Tokens live only in `design/tokens.css`. The admin uses the same tokens at work density (`docs/DESIGN-ADMIN.md`).
+Decided 1 Nov 2026: the site uses the Elite Protection V2 design (near-black, gold, ivory; Playfair Display + Jost; square corners; photo-led). The public website is an exact port of `design/v2/build` with its own stylesheet `v2.css` (`docs/DESIGN-V2.md`, `docs/DESIGN-V2-BLOCKS.md`); tokens do not restyle it. Tokens live only in `design/tokens.css` and are used by the admin and by parts the design does not have. The admin uses the same tokens at work density (`docs/DESIGN-ADMIN.md`).
 
 ## Files
 

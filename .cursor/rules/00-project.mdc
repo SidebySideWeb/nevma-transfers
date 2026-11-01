@@ -11,8 +11,8 @@ Read `AGENTS.md` first. Its golden rules apply to every change. Details: `docs/A
 - Read the docs a prompt names before writing code. If a doc and the prompt disagree, stop and ask.
 - Tests first for pricing, availability, holds, payments and refunds. Cite the acceptance id (`AC-xx`, see `docs/ACCEPTANCE.md`) in the test name.
 - Small steps: do one numbered step, run its check, then continue.
-- Do not invent design. Match `design/screens/*.html` and use only tokens from `design/tokens.css`.
-- Do not change `apps/studio` schemas or existing files in `packages/db/migrations`. A database change is a new numbered migration, and `docs/DATA-MODEL.md` is updated in the same change.
+- Do not invent design. Public website (`apps/web` public pages): port the markup and classes of `design/v2/build` exactly and use its `v2.css` (`docs/DESIGN-V2.md`, rule `25-website-v2`); a page is done when `v2-fidelity.spec.ts` passes. Admin: `design/admin` with tokens from `design/tokens.css`. `design/screens/*.html` are old wireframes: structure and string keys only, never the look.
+- Do not change `apps/studio` schemas unless a prompt supplies the change, or existing files in `packages/db/migrations`. A database change is a new numbered migration, and `docs/DATA-MODEL.md` is updated in the same change.
 - Ask before adding a dependency that is not in the prompt. Prefer the platform and small libraries.
 
 ## Never

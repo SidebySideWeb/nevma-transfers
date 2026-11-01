@@ -11,9 +11,10 @@
     "schema:validate": "sanity schema validate",
     "typegen": "sanity schema extract --path schema.json && sanity typegen generate",
     "seed": "sanity dataset import ../../seed/tem-seed.tar.gz production --replace",
-    "import:feed": "sanity exec scripts/import-fleet-feed.mjs --with-user-token -- --file ../../data/fleet-feed.json --images ../../data/fleet-images",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "import:feed": "sanity exec scripts/import-fleet-feed.mjs --with-user-token -- --file ../../data/fleet-feed.json --images ../../data/fleet-images",
+    "import:v2": "sanity exec scripts/import-v2-content.mjs --with-user-token"
   },
   "dependencies": {
     "@sanity/vision": "^6.21.0",

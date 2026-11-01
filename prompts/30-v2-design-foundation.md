@@ -1,5 +1,7 @@
 # 30 — Website in the Elite Protection V2 design: foundation and kit 1 pages
 
+> **Superseded for the look (1 Nov 2026).** The website must be an exact port of `design/v2/build`. If you have not run this prompt yet, run `v2-exact/` V2-2, V2-3 and V2-6 instead for every visual part, and take only the behaviour, data and test steps from here. If you already ran it, `v2-exact/` replaces its markup and styles.
+
 Needs: kit 1 prompts 03, 09, 10, 12 (the public pages exist in the neutral look) and prompt 15 (Studio and seed with the V2 fleet and photos). Run it before the kit 2 page prompts 16–20 and 22, which build on its components. Produces: V2 fonts, base styles, header, footer and shared components, and the kit 1 public pages (home, booking flow, return pages, legal, 404/500) restyled to the V2 design. ~3 days.
 
 --- PROMPT ---

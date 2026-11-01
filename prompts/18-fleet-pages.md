@@ -1,5 +1,7 @@
 # 18 — Fleet pages: `/fleet` and `/fleet/[key]`
 
+> **Superseded for the look (1 Nov 2026).** The website must be an exact port of `design/v2/build`. If you have not run this prompt yet, run `v2-exact/` V2-4 instead for every visual part, and take only the behaviour, data and test steps from here. If you already ran it, `v2-exact/` replaces its markup and styles.
+
 Needs: 16, 17. Produces: the fleet overview and one page per vehicle class. ~0.5 day.
 
 --- PROMPT ---

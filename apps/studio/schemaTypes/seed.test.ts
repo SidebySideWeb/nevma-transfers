@@ -1,3 +1,4 @@
+import { v2SectionNames } from './sections/v2Sections';
 import { describe, expect, it } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -50,7 +51,7 @@ describe('Sanity DEMO seed', () => {
   it('page sections use known section types with their required fields', () => {
     for (const d of docs.filter((x) => x._type === 'page')) {
       for (const s of d.sections ?? []) {
-        expect(['hero', 'richText', 'ctaBand', 'faq', 'featureGrid', 'imageText', 'steps', 'vehicleClassList', 'routeList', 'contactDetails', 'formBlock']).toContain(s._type);
+        expect(v2SectionNames).toContain(s._type);
         expect(s._key).toBeTruthy();
         for (const f of fieldsOf(s._type)) if (requires(f)) expect(s[f.name], `${d._id} ${s._type}.${f.name}`).toBeTruthy();
       }
@@ -87,9 +88,9 @@ describe('Sanity DEMO seed', () => {
     for (const d of docs) expect(d.internalNote, d._id).toMatch(/DEMO/);
   });
 
-  it('has the home page, four legal pages and six standard pages', () => {
+  it('has the home page, four legal pages, the legal hub, six standard pages and the vehicle template', () => {
     const slugs = docs.filter((d) => d._type === 'page').map((d) => d.slug.current).sort();
-    expect(slugs).toEqual(['about', 'cancellation', 'contact', 'cookies', 'fleet', 'home', 'privacy', 'request-a-transfer', 'services', 'terms', 'vip-security']);
+    expect(slugs).toEqual(['about', 'cancellation', 'contact', 'cookies', 'fleet', 'home', 'legal', 'privacy', 'request-a-transfer', 'services', 'terms', 'vehicle', 'vip-security']);
   });
 
   it('every reference points to a seeded document of the right type', () => {
@@ -100,8 +101,9 @@ describe('Sanity DEMO seed', () => {
       else if (v && typeof v === 'object') { const o = v as AnyDef; if (o._type === 'reference') refs.push(o); Object.values(o).forEach(walk); }
     };
     docs.forEach(walk);
-    expect(refs.length).toBe(3);
-    for (const r of refs) expect(byId[r._ref]?._type, r._ref).toBe('form');
+    expect(refs.length).toBe(4); // three forms and the featured route
+    for (const r of refs.filter((x) => x._ref.startsWith('route-'))) expect(byId[r._ref]?._type, r._ref).toBe('route');
+    for (const r of refs.filter((x) => !x._ref.startsWith('route-'))) expect(byId[r._ref]?._type, r._ref).toBe('form');
   });
 
   it('has the three forms with recipients, and contact topics with unique keys', () => {

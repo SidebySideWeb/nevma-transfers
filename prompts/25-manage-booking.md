@@ -1,5 +1,7 @@
 # 25 — Find my booking and manage booking (secure links)
 
+> **Superseded for the look (1 Nov 2026).** The website must be an exact port of `design/v2/build`. If you have not run this prompt yet, run `v2-exact/` V2-6 instead for every visual part, and take only the behaviour, data and test steps from here. If you already ran it, `v2-exact/` replaces its markup and styles.
+
 Needs: kit 1 prompts 06, 07, 08 and 10 (it changes the confirmation email link and the cancel page entry). Can run before or after kit 2. Produces: `/booking/find`, `/booking/manage/[token]`, the `.ics` download, and the lookup API. ~1 day.
 
 --- PROMPT ---

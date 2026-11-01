@@ -18,7 +18,7 @@ apps/admin/      Standalone admin app, Supabase Auth, staff allow-list          
 apps/studio/     Sanity Studio                                                  (PROVIDED, validated: do not redesign)
 packages/db/     SQL migrations, DEMO seed, database tests                      (PROVIDED, validated)
 docs/            ARCHITECTURE, DATA-MODEL, BOOKING-RULES, API, CONTENT-MODEL, PAGES, DESIGN-SYSTEM, DECISIONS, ACCEPTANCE
-design/          tokens.css + wireframes (open design/index.html)
+design/          v2/build = the website's code source (exact V2 pages + v2.css); admin/ = admin kit; tokens.css; screens/ = old wireframes
 seed/            Sanity DEMO seed (data.ndjson + images)
 prompts/         00-HOW-TO-RUN + 14 build prompts. Run in order.
 scripts/         check-placeholders and doc/prompt checks
@@ -90,3 +90,5 @@ Spec: `docs/superpowers/specs/2026-11-01-tem-protection-kit2-content-site.md`. A
 | 28 | office-bookings-calendar | Office (manual) bookings, fleet calendar, customers, brand dropdowns (`docs/OFFICE-BOOKINGS.md`) |
 | 29 | fleet-setup | Add and edit classes, vehicles, zones, extras; class page with readiness checklist (`docs/FLEET-SETUP.md`) |
 | 30 | v2-design-foundation | Website in the Elite Protection V2 design: fonts, components, kit 1 pages (`docs/DESIGN-V2.md`) |
+| 31 | customers | Customers list and detail in the admin (migration 0013) |
+| 32 | fleet-feed | Import `data/fleet-feed.json` into Postgres and Sanity; DEMO flags; extras per booking type (`docs/FLEET-FEED.md`) |

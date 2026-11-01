@@ -1,12 +1,14 @@
 ---
-description: CSS, tokens and design fidelity
-globs: apps/**/*.css, apps/**/*.astro, apps/**/*.tsx
+description: CSS and tokens for the admin and for parts the V2 design does not have
+globs: apps/admin/**/*.css, apps/admin/**/*.astro, apps/admin/**/*.tsx, apps/web/**/*.css, apps/web/**/*.astro, apps/web/**/*.tsx
 alwaysApply: false
 ---
 
 # CSS and design rules
 
-Doc: `docs/DESIGN-SYSTEM.md`. Reference: `design/index.html`, `design/screens/*.html`.
+Doc: `docs/DESIGN-SYSTEM.md`.
+
+**Exception: the public website.** Public pages in `apps/web` follow `.cursor/rules/25-website-v2.mdc`: the classes and values of `design/v2/build/web/v2.css` are used as they are (hex values and pixel sizes included), and the token rules below apply only to new parts the design does not have (dev pages, the kitchen sink).
 
 - All colour, spacing, radius and type values come from the custom properties in `src/styles/tokens.css`, copied from `design/tokens.css`. No hex values, no magic pixel sizes in components. A brand swap changes `tokens.css` only.
 - Mobile first. Design targets are 390 px and 1440 px; nothing may overflow horizontally at either.
