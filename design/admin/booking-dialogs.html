@@ -10,8 +10,8 @@
 <a class="skip" href="#main">Skip to content</a>
 <div class="shell">
   <header class="sidebar">
-    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav" onclick="var n=document.getElementById('adminnav'),o=n.classList.toggle('open');this.setAttribute('aria-expanded',o)">Menu</button></div>
-    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html" aria-current="page"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
+    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav">Menu</button></div>
+    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html" aria-current="page"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="calendar.html"><span>Fleet calendar</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
     <div class="sidebar-foot"><span class="who">office@eliteprotection.gr</span><a href="login.html">Sign out</a></div>
   </header>
   <main class="main" id="main">
@@ -38,6 +38,17 @@
         </div>
         <div class="dialog-foot"><button class="btn btn-quiet" type="button">Keep booking</button><button class="btn btn-danger-solid" type="button">Cancel and refund € 220.00</button></div>
       </dialog>
+      <dialog class="dialog static" id="offline" open aria-labelledby="d-off">
+        <div class="dialog-head"><p class="eyebrow">EP-K7R2PM · added by the office</p><h2 id="d-off">Record an offline payment</h2></div>
+        <div class="dialog-body">
+          <dl class="restate"><dt>Customer</dt><dd>H. Laskaris</dd><dt>To collect</dt><dd class="amount">€ 170.00</dd></dl>
+          <div class="grid-fields"><div class="field"><label for="om">Method</label><select id="om" class="input"><option>Cash</option><option>Bank transfer</option><option>On account (invoice)</option></select></div>
+          <div class="field"><label for="oa">Amount</label><div class="input-money"><input id="oa" class="input" inputmode="decimal" value="170.00"></div></div></div>
+          <div class="field"><label for="on">Note (staff only)</label><input id="on" class="input" value="Paid to driver, receipt 0412"></div>
+          <p class="help">No money moves through Viva. Refunds of offline payments are recorded the same way.</p>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Back</button><button class="btn" type="button">Record € 170.00 cash</button></div>
+      </dialog>
       <section class="panel" aria-labelledby="h-conf">
         <div class="panel-head"><h2 id="h-conf">Vehicle conflict</h2></div>
         <div class="panel-body stack-sm">
@@ -56,5 +67,6 @@
     </div>
   </main>
 </div>
+<script src="admin.js" defer></script>
 </body>
 </html>

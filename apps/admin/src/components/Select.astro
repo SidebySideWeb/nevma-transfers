@@ -1,0 +1,63 @@
+---
+interface Option {
+  value: string;
+  label: string;
+  meta?: string;
+  disabled?: boolean;
+  selected?: boolean;
+}
+
+interface Props {
+  id: string;
+  name?: string;
+  options: Option[];
+  required?: boolean;
+  disabled?: boolean;
+  class?: string;
+  'aria-label'?: string;
+  'aria-invalid'?: boolean | string;
+  'aria-describedby'?: string;
+  /** When true, changing the value submits the nearest form (e.g. prices class filter). */
+  autoSubmit?: boolean;
+}
+
+const {
+  id,
+  name,
+  options,
+  required = false,
+  disabled = false,
+  class: className = 'input',
+  'aria-label': ariaLabel,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedby,
+  autoSubmit = false,
+} = Astro.props;
+
+const classes = className.includes('input') ? className : `input ${className}`;
+---
+
+<select
+  id={id}
+  class={classes}
+  name={name}
+  required={required || undefined}
+  disabled={disabled || undefined}
+  aria-label={ariaLabel}
+  aria-invalid={ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined}
+  aria-describedby={ariaDescribedby}
+  data-auto-submit={autoSubmit ? '1' : undefined}
+>
+  {
+    options.map((o) => (
+      <option
+        value={o.value}
+        selected={o.selected || undefined}
+        disabled={o.disabled || undefined}
+        data-meta={o.meta}
+      >
+        {o.label}
+      </option>
+    ))
+  }
+</select>

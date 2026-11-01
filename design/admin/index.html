@@ -37,7 +37,10 @@
     <li><a href="login.html"><strong>Sign in</strong><span>/login · error state</span></a></li>
     <li><a href="bookings.html"><strong>Bookings</strong><span>/bookings · stats, quick views, filters, day groups, phone cards</span></a></li>
     <li><a href="booking.html"><strong>Booking detail</strong><span>/bookings/[reference] · trip, vehicle, VIP, invoice, payment, timeline</span></a></li>
-    <li><a href="booking-dialogs.html"><strong>Dialogs and feedback</strong><span>refund, cancel, vehicle conflict, toasts, busy button</span></a></li>
+    <li><a href="booking-dialogs.html"><strong>Dialogs and feedback</strong><span>refund, cancel, offline payment, vehicle conflict, toasts</span></a></li>
+    <li><a href="new-booking.html"><strong>New booking</strong><span>/bookings/new · customer lookup, payment link or offline, price override</span></a></li>
+    <li><a href="calendar.html"><strong>Fleet calendar · day</strong><span>/calendar · per vehicle, free per hour, click to book or block</span></a></li>
+    <li><a href="calendar-week.html"><strong>Fleet calendar · week</strong><span>/calendar?view=week</span></a></li>
     <li><a href="blocked-slots.html"><strong>Blocked slots</strong><span>/blocked-slots</span></a></li>
     <li><a href="prices.html"><strong>Zone prices</strong><span>/prices · matrix per class, routes and durations, "update the website"</span></a></li>
     <li><a href="hourly-rates.html"><strong>Hourly rates</strong><span>/hourly-rates · inline validation</span></a></li>
@@ -46,7 +49,7 @@
     <li><a href="zones.html"><strong>Zones</strong><span>/zones</span></a></li>
     <li><a href="settings.html"><strong>Settings</strong><span>/settings · DEMO rows</span></a></li>
     <li><a href="states.html"><strong>States</strong><span>empty, loading, banners, not staff, not found</span></a></li>
-    <li><a href="components.html"><strong>Components</strong><span>buttons, badges, fields, panels, table, timeline</span></a></li>
+    <li><a href="components.html"><strong>Components</strong><span>buttons, badges, fields, dropdowns, panels, table, timeline</span></a></li>
   </ul>
 
   <h2>Rules</h2>
@@ -55,6 +58,8 @@
     <li><strong>Colour.</strong> Gold means "act here" (primary button, link, focus, current nav item, VIP flag). Status colours are for status only, always with a word. Red is for destructive actions and errors. No gradients except the sign-in background.</li>
     <li><strong>Shape and density.</strong> Square corners, 1px gold hairlines. Controls 40px high, table rows 44px (also the phone tap size). One primary button per area.</li>
     <li><strong>Tables first.</strong> Lists are tables with sticky headers, sorted server-side, grouped by Athens day where time matters. Below 720px a <code>.table-cards</code> table turns into stacked cards; every cell needs <code>data-label</code>.</li>
+    <li><strong>Dropdowns</strong> are the brand dropdown everywhere (never the browser's list): raised dark list with a gold top edge, gold check on the selected option, optional meta on the right, full keyboard support. See Components.</li>
+    <li><strong>Fleet calendar.</strong> One row per vehicle grouped by class; bars for bookings (gold edge, amber when waiting for a vehicle), hatched buffers, dashed holds, grey hatched blocks, a red "now" line; the class row shows free vehicles per hour. Click a bar to open, empty time to book or block.</li>
     <li><strong>Money and destructive actions</strong> always go through a dialog that restates reference, customer and amount; the confirm button names the action and the amount.</li>
     <li><strong>Feedback.</strong> Success is a toast (<code>role="status"</code>). Errors that need action stay on the page next to the field or as a red banner (<code>role="alert"</code>); never only a toast.</li>
     <li><strong>Banners</strong> on every page: DEMO data and Sanity mismatches (warning), "Prices changed: update the website" (info).</li>

@@ -5,6 +5,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import DataTable from '../../components/DataTable.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
+import Select from '../../components/Select.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import { athensDay, athensTime } from '../../lib/athens-day';
 import { formatEuro } from '../../lib/money';
@@ -149,7 +150,11 @@ function qs(overrides: Record<string, string | null>): string {
 ---
 
 <AdminLayout title="Bookings" current="bookings" staffEmail={staff.email}>
-  <a class="btn btn-secondary" slot="actions" href="/blocked-slots">Block a vehicle</a>
+  <div class="row" slot="actions">
+    <a class="btn btn-secondary" href="/calendar">Fleet calendar</a>
+    <a class="btn btn-secondary" href="/blocked-slots">Block a vehicle</a>
+    <a class="btn" href="/bookings/new">New booking</a>
+  </div>
 
   <dl class="stats" aria-label="Next 7 days">
     <div class="stat">
@@ -202,19 +207,27 @@ function qs(overrides: Record<string, string | null>): string {
     </div>
     <div class="field">
       <label for="ty">Type</label>
-      <select id="ty" class="input" name="type">
-        <option value="" selected={!type}>All types</option>
-        <option value="transfer" selected={type === 'transfer'}>Transfer</option>
-        <option value="hourly" selected={type === 'hourly'}>Hourly</option>
-      </select>
+      <Select
+        id="ty"
+        name="type"
+        options={[
+          { value: '', label: 'All types', selected: !type },
+          { value: 'transfer', label: 'Transfer', selected: type === 'transfer' },
+          { value: 'hourly', label: 'Hourly', selected: type === 'hourly' },
+        ]}
+      />
     </div>
     <div class="field">
       <label for="iv">Invoice</label>
-      <select id="iv" class="input" name="invoice">
-        <option value="" selected={!invoice}>Any</option>
-        <option value="requested" selected={invoice === 'requested'}>Requested</option>
-        <option value="issued" selected={invoice === 'issued'}>Issued</option>
-      </select>
+      <Select
+        id="iv"
+        name="invoice"
+        options={[
+          { value: '', label: 'Any', selected: !invoice },
+          { value: 'requested', label: 'Requested', selected: invoice === 'requested' },
+          { value: 'issued', label: 'Issued', selected: invoice === 'issued' },
+        ]}
+      />
     </div>
     <input type="hidden" name="status" value={status} />
     {needsVehicle && <input type="hidden" name="needs_vehicle" value="1" />}

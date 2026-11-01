@@ -10,8 +10,12 @@ begin
   select id into z2 from zones where code = 'demo-centre';
   rng := blocked_range_for(pickup, 45, 30);
 
-  delete from payments where booking_id in (select id from bookings where reference in ('TEM-ADAAAA', 'TEM-ADAAAB'));
+  delete from payments where viva_transaction_id in (
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1',
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'
+  ) or booking_id in (select id from bookings where reference in ('TEM-ADAAAA', 'TEM-ADAAAB'));
   delete from bookings where reference in ('TEM-ADAAAA', 'TEM-ADAAAB');
+
 
   insert into bookings (
     reference, booking_type, class_id, from_zone_id, to_zone_id,

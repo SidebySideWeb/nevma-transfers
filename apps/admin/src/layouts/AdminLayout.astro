@@ -40,6 +40,7 @@ const groups = [
     label: 'Operations',
     items: [
       { href: '/bookings', id: 'bookings', label: 'Bookings', count: needsVehicle },
+      { href: '/calendar', id: 'calendar', label: 'Fleet calendar' },
       { href: '/blocked-slots', id: 'blocked-slots', label: 'Blocked slots' },
     ],
   },
@@ -175,6 +176,9 @@ const groups = [
           btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
       })();
+    </script>
+    <script>
+      import '../scripts/enhance-selects';
     </script>
   </body>
 </html>

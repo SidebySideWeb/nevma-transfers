@@ -18,6 +18,15 @@ async function login(page: Page, email: string, password: string) {
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
 
+/** Set a brand-dropdown native <select> (aria-hidden) without Playwright selectOption waits. */
+async function setNativeSelect(page: Page, id: string, value: string) {
+  await page.locator(`#${id}`).evaluate((el, v) => {
+    const sel = el as HTMLSelectElement;
+    sel.value = v;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }, value);
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(() => {
@@ -60,21 +69,21 @@ test('AC-18 assign vehicle; overlap shows clear error; invoice; refund; cancel',
   const count = await options.count();
   expect(count).toBeGreaterThan(0);
   const vehicleValue = await options.first().getAttribute('value');
-  await vehicleSelect.selectOption(vehicleValue!);
+  await setNativeSelect(page, 'veh', vehicleValue!);
   await page.getByRole('button', { name: 'Assign' }).click();
   await expect(page.locator('.badge').filter({ hasText: 'assigned' })).toBeVisible({
     timeout: 15_000,
   });
 
   await page.goto('/bookings/TEM-ADAAAB');
-  await page.locator('#veh').selectOption(vehicleValue!);
+  await setNativeSelect(page, 'veh', vehicleValue!);
   await page.getByRole('button', { name: 'Assign' }).click();
   await expect(page.getByRole('alert')).toContainText(/overlap|not available|exclusion/i, {
     timeout: 15_000,
   });
 
   await page.goto('/bookings/TEM-ADAAAA');
-  await page.locator('#ist').selectOption('issued');
+  await setNativeSelect(page, 'ist', 'issued');
   await page.locator('#inr').fill('INV-1001');
   await page.getByRole('button', { name: /Save notes and invoice/i }).click();
   await expect(page.locator('#inr')).toHaveValue('INV-1001', { timeout: 20_000 });
@@ -86,7 +95,7 @@ test('AC-18 assign vehicle; overlap shows clear error; invoice; refund; cancel',
   await expect(page.locator('td', { hasText: '€ 10.00' }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Cancel booking…' }).click({ force: true });
-  await page.locator('#rf').selectOption('none');
+  await setNativeSelect(page, 'rf', 'none');
   await page.locator('#confirm-cancel').click({ force: true });
   await expect(page.locator('.badge').filter({ hasText: 'cancelled' })).toBeVisible({
     timeout: 90_000,
@@ -150,6 +159,25 @@ test('AC-19 axe on admin pages; tables keyboard-reachable', async ({ page }) => 
     await wrap.focus();
     await expect(wrap).toBeFocused();
   }
+});
+
+test('bookings Type filter dropdown is keyboard-operable and changes the list', async ({
+  page,
+}) => {
+  await login(page, STAFF_EMAIL, STAFF_PASS);
+  await page.goto('/bookings');
+  await expect(page.getByRole('link', { name: 'TEM-ADAAAB' })).toBeVisible();
+
+  const combo = page.locator('#ty').locator('xpath=ancestor::div[contains(@class,"ep-select")]').locator('.ep-select-btn');
+  await combo.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(combo).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('ArrowDown'); // Transfer
+  await page.keyboard.press('Enter');
+  await expect(combo).toHaveAttribute('aria-expanded', 'false');
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await expect(page).toHaveURL(/type=transfer/);
+  await expect(page.getByRole('link', { name: 'TEM-ADAAAB' })).toBeVisible();
 });
 
 test('admin menu opens at 390px; refund dialog Escape; no Google Fonts', async ({

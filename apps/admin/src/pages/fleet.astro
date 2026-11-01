@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import Select from '../components/Select.astro';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -94,10 +95,18 @@ const { data: vehicles } = await supabase
                       </div>
                       <div class="field">
                         <label for={`vs-${v.id}`}>Status</label>
-                        <select class="input status" id={`vs-${v.id}`}>
-                          <option value="active" selected={v.status === 'active'}>active</option>
-                          <option value="inactive" selected={v.status === 'inactive'}>inactive</option>
-                        </select>
+                        <Select
+                          id={`vs-${v.id}`}
+                          class="input status"
+                          options={[
+                            { value: 'active', label: 'active', selected: v.status === 'active' },
+                            {
+                              value: 'inactive',
+                              label: 'inactive',
+                              selected: v.status === 'inactive',
+                            },
+                          ]}
+                        />
                       </div>
                       <button class="btn btn-quiet" type="submit">Save</button>
                     </form>

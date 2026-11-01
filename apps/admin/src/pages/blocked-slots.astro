@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import Select from '../components/Select.astro';
 import { formatAthens } from '../lib/time';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { parseTstzRange } from '../lib/range';
@@ -40,10 +41,15 @@ const rows = (slots ?? []).map((s) => {
     <form method="POST" action={actions.createBlockedSlot} class="stack">
       <div class="field">
         <label for="vehicleId">Vehicle</label>
-        <select class="input" id="vehicleId" name="vehicleId" required>
-          <option value="">Select…</option>
-          {(vehicles ?? []).map((v) => <option value={v.id}>{v.label}</option>)}
-        </select>
+        <Select
+          id="vehicleId"
+          name="vehicleId"
+          required
+          options={[
+            { value: '', label: 'Select…', selected: true },
+            ...(vehicles ?? []).map((v) => ({ value: v.id, label: v.label })),
+          ]}
+        />
       </div>
       <div class="grid grid-2">
         <div class="field">

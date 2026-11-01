@@ -10,12 +10,12 @@
 <a class="skip" href="#main">Skip to content</a>
 <div class="shell">
   <header class="sidebar">
-    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav" onclick="var n=document.getElementById('adminnav'),o=n.classList.toggle('open');this.setAttribute('aria-expanded',o)">Menu</button></div>
-    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html" aria-current="page"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
+    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav">Menu</button></div>
+    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="calendar.html"><span>Fleet calendar</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html" aria-current="page"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
     <div class="sidebar-foot"><span class="who">office@eliteprotection.gr</span><a href="login.html">Sign out</a></div>
   </header>
   <main class="main" id="main">
-    <div class="banner banner-warning" role="note"><p><span class="tag">Demo data</span>3 settings still hold DEMO values: <strong>min_lead_minutes</strong>, <strong>cancel_window_hours</strong>, <strong>vat_rate_bp</strong>. Vehicle class <strong>demo-limo</strong> has no Sanity page.</p><a class="btn btn-secondary btn-sm" href="settings.html">Review settings</a></div>
+    <div class="banner banner-warning" role="note"><p><span class="tag">Demo data</span>3 settings still hold DEMO values: <strong>min_lead_minutes</strong>, <strong>cancel_window_hours</strong>, <strong>office_link_hold_minutes</strong>. Vehicle class <strong>demo-limo</strong> has no Sanity page.</p><a class="btn btn-secondary btn-sm" href="settings.html">Review settings</a></div>
     <div class="page-head"><div><h1 class="title">Zone prices</h1></div><div class="page-actions"></div></div>
     <div class="banner banner-info" role="status"><p><span class="tag">Prices changed</span>The website shows "from" prices built earlier. Update it when you finish editing.</p><button class="btn btn-sm" type="button">Update the website</button></div>
     <nav class="tabs" aria-label="Vehicle class"><a href="prices.html" aria-current="page">Executive sedan</a><a href="prices.html">Luxury SUV</a><a href="prices.html">Business van</a></nav>
@@ -40,5 +40,6 @@
     </section>
   </main>
 </div>
+<script src="admin.js" defer></script>
 </body>
 </html>

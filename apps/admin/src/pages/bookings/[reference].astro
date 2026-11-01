@@ -7,6 +7,7 @@ import Banner from '../../components/Banner.astro';
 import DataTable from '../../components/DataTable.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
+import Select from '../../components/Select.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import { confirmActionLabel } from '../../components/confirm-label';
 import { formatEuro } from '../../lib/money';
@@ -231,20 +232,25 @@ if (found && booking) {
                   <input type="hidden" name="reference" value={reference} />
                   <div class="field">
                     <label for="veh">Vehicle</label>
-                    <select
+                    <Select
                       id="veh"
-                      class="input"
                       name="vehicleId"
                       aria-invalid={vehicleError ? 'true' : undefined}
                       aria-describedby={vehicleError ? 'veh-err' : undefined}
-                    >
-                      <option value="">— Not assigned —</option>
-                      {classVehicles.map((v) => (
-                        <option value={v.id} selected={booking.vehicle_id === v.id}>
-                          {v.label}
-                        </option>
-                      ))}
-                    </select>
+                      options={[
+                        {
+                          value: '',
+                          label: '— Not assigned —',
+                          selected: !booking.vehicle_id,
+                        },
+                        ...classVehicles.map((v) => ({
+                          value: v.id,
+                          label: v.label,
+                          selected: booking.vehicle_id === v.id,
+                          meta: v.busy ? 'busy' : undefined,
+                        })),
+                      ]}
+                    />
                     {vehicleError && (
                       <p class="error-text" id="veh-err" role="alert">
                         {vehicleError}
@@ -306,20 +312,27 @@ if (found && booking) {
                   <div class="grid-fields">
                     <div class="field">
                       <label for="ist">Invoice status</label>
-                      <select id="ist" class="input" name="invoiceStatus">
-                        <option
-                          value="not_required"
-                          selected={booking.invoice_status === 'not_required'}
-                        >
-                          Not required
-                        </option>
-                        <option value="requested" selected={booking.invoice_status === 'requested'}>
-                          Requested
-                        </option>
-                        <option value="issued" selected={booking.invoice_status === 'issued'}>
-                          Issued
-                        </option>
-                      </select>
+                      <Select
+                        id="ist"
+                        name="invoiceStatus"
+                        options={[
+                          {
+                            value: 'not_required',
+                            label: 'Not required',
+                            selected: booking.invoice_status === 'not_required',
+                          },
+                          {
+                            value: 'requested',
+                            label: 'Requested',
+                            selected: booking.invoice_status === 'requested',
+                          },
+                          {
+                            value: 'issued',
+                            label: 'Issued',
+                            selected: booking.invoice_status === 'issued',
+                          },
+                        ]}
+                      />
                     </div>
                     <div class="field">
                       <label for="inr">Invoice number</label>
@@ -501,10 +514,14 @@ if (found && booking) {
             </div>
             <div class="field">
               <label for="rf">Refund</label>
-              <select id="rf" class="input" name="refund">
-                <option value="full">Full refund</option>
-                <option value="none">No refund</option>
-              </select>
+              <Select
+                id="rf"
+                name="refund"
+                options={[
+                  { value: 'full', label: 'Full refund', selected: true },
+                  { value: 'none', label: 'No refund' },
+                ]}
+              />
             </div>
           </div>
           <div class="dialog-foot">
@@ -519,6 +536,9 @@ if (found && booking) {
       </dialog>
 
       <script>
+        import { enhanceAllSelects } from '../../components/enhance-select';
+        enhanceAllSelects();
+
         const refundDlg = document.getElementById('refund-dialog') as HTMLDialogElement | null;
         const cancelDlg = document.getElementById('cancel-dialog') as HTMLDialogElement | null;
         document.getElementById('open-refund')?.addEventListener('click', () => {

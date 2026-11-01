@@ -1,6 +1,6 @@
 ---
 interface Props {
-  kind: 'vip' | 'invoice' | 'hourly' | 'demo';
+  kind: 'vip' | 'invoice' | 'hourly' | 'office' | 'demo';
   label?: string;
 }
 
@@ -9,6 +9,7 @@ const map = {
   vip: { className: 'flag-vip', text: label ?? 'VIP security' },
   invoice: { className: 'flag', text: label ?? 'Invoice' },
   hourly: { className: 's-info', text: label ?? 'Hourly' },
+  office: { className: 's-info', text: label ?? 'Office' },
   demo: { className: 's-pending', text: label ?? 'DEMO' },
 } as const;
 const conf = map[kind];

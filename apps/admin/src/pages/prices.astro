@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import Select from '../components/Select.astro';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 
@@ -45,15 +46,16 @@ const { data: routes } = await supabase
   <form method="get" class="filters">
     <div class="field">
       <label for="cls">Vehicle class</label>
-      <select id="cls" class="input" name="class" onchange="this.form.submit()">
-        {
-          (classes ?? []).map((c) => (
-            <option value={c.key} selected={selected?.id === c.id}>
-              {c.key}
-            </option>
-          ))
-        }
-      </select>
+      <Select
+        id="cls"
+        name="class"
+        autoSubmit
+        options={(classes ?? []).map((c) => ({
+          value: c.key,
+          label: c.key,
+          selected: selected?.id === c.id,
+        }))}
+      />
     </div>
   </form>
 
