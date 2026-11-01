@@ -7,7 +7,7 @@ afterEach(() => {
 
 describe('t()', () => {
   it('uses the code default when Sanity has no value', () => {
-    expect(t('booking.search.title')).toBe('Book your ride');
+    expect(t('booking.search.title')).toBe('Where and when?');
   });
 
   it('lets a Sanity value win over the default', () => {

@@ -1,25 +1,44 @@
 ---
-/**
- * V2 stub for CtaPanel — markup from design/v2/build/blocks/01-home/08-ctaPanel.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import CtaLink from '../CtaLink.astro';
+import { bgImage } from '../../../lib/v2/bg-image';
+import { getSiteSettings } from '../../../lib/sanity/content';
+import type { CtaLinkData } from '../../../lib/v2/cta';
+import type { SanityImage } from '../../../lib/sanity/image';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const settings = await getSiteSettings();
+const layout = typeof section.layout === 'string' ? section.layout : 'large';
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const lead = typeof section.lead === 'string' ? section.lead : '';
+const primary = section.primary as CtaLinkData | undefined;
+const secondary = section.secondary as CtaLinkData | undefined;
+const style = bgImage((section.image as SanityImage) ?? null);
+const headingClass = layout === 'large' ? 'display sc9e5e' : 'display sc9e5e';
+const sectionClass = layout === 'large' ? 'bgx6 s019b3' : 'bgx6 s019b3';
 ---
-<section data-block="ctaPanel" class="bgx6 s019b3">
+
+<section data-block="ctaPanel" class={sectionClass} style={style}>
   <div class="sc7e49">
     <div class="sbd96c">
-      <div class="eyebrow">Ready when you are</div>
-      <h2 class="display sc9e5e">Your chauffeur <em>is waiting.</em></h2>
-      <p class="se68f0">Book online in a few minutes, or call our office any time of day.</p>
+      {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+      <Heading heading={heading} variant="inline" as="h2" class={headingClass} />
+      {lead ? <p class="se68f0">{lead}</p> : null}
     </div>
-    <div class="s4ba17">
-      <a class="btn btn-gold" href="/book">Book a transfer</a>
-      <a class="btn btn-line" href="tel:+302109706967">+30 210 970 6967</a>
-    </div>
+    {
+      (primary || secondary) && (
+        <div class="s4ba17">
+          <CtaLink link={primary} class="btn btn-gold" phone={settings.phone} />
+          <CtaLink link={secondary} class="btn btn-line" phone={settings.phone} />
+        </div>
+      )
+    }
   </div>
 </section>

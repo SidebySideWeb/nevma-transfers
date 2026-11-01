@@ -1,20 +1,23 @@
 ---
-/**
- * V2 stub for QuoteBlock — markup from design/v2/build/blocks/01-home/07-quoteBlock.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import { bgImage } from '../../../lib/v2/bg-image';
+import type { SanityImage } from '../../../lib/sanity/image';
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const raw = typeof section.quote === 'string' ? section.quote.trim() : '';
+const quote = raw.replace(/^[“”"']+|[“”"']+$/g, '');
+const caption = typeof section.caption === 'string' ? section.caption : '';
+const style = bgImage((section.image as SanityImage) ?? null);
 ---
-<section data-block="quoteBlock" class="bgx5 s47064">
+
+<section data-block="quoteBlock" class="bgx5 s47064" style={style}>
   <div class="sf222b" aria-hidden="true"></div>
   <div class="sf8d84">
     <div class="s853d3"></div>
-    <p class="display s947b6">“Absolute confidentiality is a core commitment. Every engagement, and every piece of information, is treated with discretion.”</p>
-    <div class="eyebrow">Our promise</div>
+    {quote ? <p class="display s947b6">“{quote}”</p> : null}
+    {caption ? <div class="eyebrow">{caption}</div> : null}
   </div>
 </section>

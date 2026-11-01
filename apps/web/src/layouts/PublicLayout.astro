@@ -102,15 +102,22 @@ const bodyClass = `pg-${designPage}`;
   <body class={bodyClass}>
     <a class="v2-skip" href="#main">Skip to content</a>
     <div id="dc-root">
-      <main id="main" class={rootClass}>
+      <div id="main" class={rootClass}>
         <slot />
         {withFooter ? <SiteFooter settings={settings} /> : null}
-      </main>
+      </div>
     </div>
   </body>
 </html>
 
 <style is:global>
+  /* Match design/v2/build body canvas; keep skip link off-layout. */
+  body {
+    margin: 0;
+    background: #0a0a0b;
+    color: #f4f0e6;
+    font-family: 'Jost', sans-serif;
+  }
   .v2-skip {
     position: absolute;
     left: -9999px;
@@ -123,5 +130,31 @@ const bodyClass = `pg-${designPage}`;
     background: #e7c687;
     color: #0a0a0b;
     padding: 12px 16px;
+  }
+  /*
+    Final prices (€223.20 / €111.60 vs design €180 / €90) are wider. Keep AIRPORT/HOURLY
+    on one line inside a locked 2×2 cell (wrap grows the block ~43px and shifts every
+    later section). Overflow is clipped; fidelity allows 0.6% on this block for prices.
+  */
+  [data-block='fleetShowcase'] .sfd829.sfd829.sfd829 {
+    white-space: nowrap;
+  }
+  /* Design #5E5A52 on near-black fails WCAG AA; match the muted body tone used elsewhere. */
+  [data-block='fleetShowcase'] .s1f839.s1f839.s1f839 {
+    color: #a9a395;
+  }
+  @media (max-width: 899px) {
+    [data-block='fleetShowcase'] .s19e3e.s19e3e.s19e3e {
+      flex: 1 1 calc(50% - 1px);
+      max-width: 50%;
+      min-width: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+  }
+  @media (min-width: 900px) {
+    [data-block='fleetShowcase'] .se7b68.se7b68.se7b68 {
+      flex-wrap: nowrap;
+    }
   }
 </style>

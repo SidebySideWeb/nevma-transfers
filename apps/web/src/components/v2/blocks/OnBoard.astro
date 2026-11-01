@@ -1,49 +1,76 @@
 ---
-/**
- * V2 stub for OnBoard — markup from design/v2/build/blocks/01-home/06-onBoard.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import { bgImage } from '../../../lib/v2/bg-image';
+import type { SanityImage } from '../../../lib/sanity/image';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const layout = typeof section.layout === 'string' ? section.layout : 'feature';
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const lead = typeof section.lead === 'string' ? section.lead : '';
+const badgeValue = typeof section.badgeValue === 'string' ? section.badgeValue : '';
+const badgeLabel = typeof section.badgeLabel === 'string' ? section.badgeLabel : '';
+const image = section.image as SanityImage | undefined;
+const style = bgImage(image ?? null);
+const alt = image?.alt?.trim() || '';
+const items = Array.isArray(section.items)
+  ? (section.items as { title?: string; text?: string }[])
+  : [];
 ---
-<section data-block="onBoard" class="s3a297">
-  <div class="zoom s3dc7c">
-    <div class="bgx4 ph s22cbe" role="img" aria-label="Cream leather VIP cabin of a V-Class"></div>
-    <div class="s08b2e">
-      <div class="sc9672">24/7</div>
-      <div class="s65fce">OFFICE &amp; CHAUFFEURS</div>
-    </div>
-  </div>
-  <div class="s0720f">
-    <div class="eyebrow">On board</div>
-    <h2 class="display sd7c6c">Every detail <em>of hospitality</em></h2>
-    <p class="s0a0a6">Carefully maintained interiors and a chauffeur who knows the city, so the journey is time you get back.</p>
-    <div class="se2175">
 
-        <div class="sf6d2c">
-          <span class="sca7d9">01</span>
-          <div><div class="scf594">Wi-Fi on board</div><div class="sf0124">Stay connected for work and calls throughout the journey.</div></div>
+{
+  layout === 'feature' ? (
+    <section data-block="onBoard" class="s3a297">
+      <div class="zoom s3dc7c">
+        <div class="bgx4 ph s22cbe" role="img" aria-label={alt} style={style}></div>
+        {(badgeValue || badgeLabel) && (
+          <div class="s08b2e">
+            {badgeValue ? <div class="sc9672">{badgeValue}</div> : null}
+            {badgeLabel ? <div class="s65fce">{badgeLabel.toUpperCase()}</div> : null}
+          </div>
+        )}
+      </div>
+      <div class="s0720f">
+        {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+        <Heading heading={heading} variant="inline" as="h2" class="display sd7c6c" />
+        {lead ? <p class="s0a0a6">{lead}</p> : null}
+        <div class="se2175">
+          {items.map((item, i) => (
+            <div class="sf6d2c">
+              <span class="sca7d9">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <div class="scf594">{item.title ?? ''}</div>
+                <div class="sf0124">{item.text ?? ''}</div>
+              </div>
+            </div>
+          ))}
         </div>
-
-        <div class="sf6d2c">
-          <span class="sca7d9">02</span>
-          <div><div class="scf594">Bottled water</div><div class="sf0124">Thoughtful attention to the details of hospitality.</div></div>
+      </div>
+    </section>
+  ) : (
+    <section data-block="onBoard" class="s3a297">
+      <div class="s0720f">
+        {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+        <Heading heading={heading} variant="inline" as="h2" class="display sd7c6c" />
+        {lead ? <p class="s0a0a6">{lead}</p> : null}
+        <div class="se2175">
+          {items.map((item, i) => (
+            <div class="sf6d2c">
+              <span class="sca7d9">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <div class="scf594">{item.title ?? ''}</div>
+                <div class="sf0124">{item.text ?? ''}</div>
+              </div>
+            </div>
+          ))}
         </div>
-
-        <div class="sf6d2c">
-          <span class="sca7d9">03</span>
-          <div><div class="scf594">Device charging</div><div class="sf0124">Charging for phones and personal devices.</div></div>
-        </div>
-
-        <div class="sf6d2c">
-          <span class="sca7d9">04</span>
-          <div><div class="scf594">Luggage assistance</div><div class="sf0124">Your chauffeur meets you and handles the bags.</div></div>
-        </div>
-
-    </div>
-  </div>
-</section>
+      </div>
+    </section>
+  )
+}

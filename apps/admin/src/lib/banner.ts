@@ -172,7 +172,8 @@ export async function buildBanner(
   const demoActive = (demoRows ?? []).filter((r) => (r.n ?? 0) > 0);
   if (demoActive.length > 0) {
     const bits = demoActive.map((r) => {
-      const label = DEMO_LABEL[r.table_name] ?? r.table_name;
+      const table = r.table_name ?? '';
+      const label = DEMO_LABEL[table] ?? table;
       return `${r.n} ${label}`;
     });
     parts.push(`${bits.join(', ')} still DEMO.`);

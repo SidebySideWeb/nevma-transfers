@@ -2,8 +2,11 @@
 import SiteHeader from '../SiteHeader.astro';
 import Heading from '../Heading.astro';
 import CtaLink from '../CtaLink.astro';
+import { QuickBooking } from '../QuickBooking';
 import { bgImage } from '../../../lib/v2/bg-image';
 import { getSiteSettings } from '../../../lib/sanity/content';
+import { getCatalog } from '../../../lib/server/catalog';
+import { t } from '../../../lib/strings';
 import type { CtaLinkData } from '../../../lib/v2/cta';
 import type { SanityImage } from '../../../lib/sanity/image';
 
@@ -16,7 +19,8 @@ interface Props {
 const { section, pathname = '/' } = Astro.props;
 const settings = await getSiteSettings();
 const style = bgImage((section.image as SanityImage) ?? null);
-const isHome = section.layout === 'home';
+const layout = typeof section.layout === 'string' ? section.layout : 'page';
+const isHome = layout === 'home';
 const headingVariant = isHome ? 'break' : 'inline';
 const heading = section.heading as DisplayHeading | undefined;
 const primary = section.primary as CtaLinkData | undefined;
@@ -24,6 +28,40 @@ const secondary = section.secondary as CtaLinkData | undefined;
 const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
 const lead = typeof section.lead === 'string' ? section.lead : '';
 const widgetNote = typeof section.widgetNote === 'string' ? section.widgetNote : '';
+const showQuick = isHome && section.showQuickBooking === true;
+
+let zones: { code: string; name: string }[] = [];
+let hourlyBounds = { minHours: 3, maxHours: 12 };
+if (showQuick) {
+  try {
+    const cat = await getCatalog();
+    zones = cat.zones.map((z) => ({ code: z.code, name: z.name }));
+    if (cat.hourly.length) {
+      hourlyBounds = {
+        minHours: Math.min(...cat.hourly.map((h) => h.minHours)),
+        maxHours: Math.max(...cat.hourly.map((h) => h.maxHours)),
+      };
+    }
+  } catch {
+    zones = [];
+  }
+}
+
+const quickLabels = {
+  form: t('site.quick.label'),
+  from: t('site.quick.from'),
+  to: t('site.quick.to'),
+  hours: t('site.quick.hours'),
+  date: t('site.quick.date'),
+  time: t('site.quick.time'),
+  passengers: t('site.quick.passengers'),
+  submit: t('site.quick.submit'),
+  swap: t('site.quick.swap'),
+  transfer: t('booking.toggle.transfer'),
+  hourly: t('booking.toggle.hourly'),
+  fewerHours: t('site.quick.fewerHours'),
+  moreHours: t('site.quick.moreHours'),
+};
 ---
 
 <section data-block="pageHero" class="bgx1 s17762" style={style}>
@@ -31,47 +69,19 @@ const widgetNote = typeof section.widgetNote === 'string' ? section.widgetNote :
   <SiteHeader settings={settings} pathname={pathname} />
   <div class="s94251">
     {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
-    <Heading
-      heading={heading}
-      variant={headingVariant}
-      as="h1"
-      class="display xl s680b0"
-    />
+    <Heading heading={heading} variant={headingVariant} as="h1" class="display xl s680b0" />
     {lead ? <p class="se017e">{lead}</p> : null}
-    {(primary || secondary) && (
-      <div class="s4ba17">
-        <CtaLink link={primary} class="btn btn-gold" phone={settings.phone} arrow={isHome} />
-        <CtaLink link={secondary} class="btn btn-line" phone={settings.phone} />
-      </div>
-    )}
     {
-      section.showQuickBooking ? (
-        <form class="s70eaa" aria-label="Quick booking" action="/book" method="get">
-          <div class="field s2f216">
-            <label for="q-from">From</label>
-            <input id="q-from" name="from" type="text" />
-          </div>
-          <div class="sc5f4a" data-v2-extra>
-            <button type="button" class="swap" aria-label="Swap pick-up and drop-off">⇄</button>
-          </div>
-          <div class="field s2f216">
-            <label for="q-to">To</label>
-            <input id="q-to" name="to" type="text" />
-          </div>
-          <div class="field s984cb">
-            <label for="q-date">Date</label>
-            <input id="q-date" name="date" type="date" />
-          </div>
-          <div class="field s10827">
-            <label for="q-time">Time</label>
-            <input id="q-time" name="time" type="time" value="14:30" />
-          </div>
-          <div class="field s87a0c">
-            <label for="q-pax">Passengers</label>
-            <input id="q-pax" name="passengers" type="number" min="1" value="2" />
-          </div>
-          <button class="btn btn-gold sc27fa" type="submit">See prices</button>
-        </form>
+      (primary || secondary) && (
+        <div class="s4ba17">
+          <CtaLink link={primary} class="btn btn-gold" phone={settings.phone} arrow={isHome} />
+          <CtaLink link={secondary} class="btn btn-line" phone={settings.phone} />
+        </div>
+      )
+    }
+    {
+      showQuick ? (
+        <QuickBooking client:load zones={zones} hourlyBounds={hourlyBounds} labels={quickLabels} />
       ) : null
     }
     {widgetNote ? <div class="s8ad2a">{widgetNote}</div> : null}

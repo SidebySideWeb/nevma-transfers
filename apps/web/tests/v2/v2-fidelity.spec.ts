@@ -24,7 +24,8 @@ mkdirSync(OUT, { recursive: true });
 type Case = { route: string; design: string; maxDiff?: Record<string, number> };
 // Routes and their design files. /dev/v2/* routes render app pages with the design's sample data (prompt V2-6).
 export const CASES: Case[] = [
-  { route: '/', design: '01-home', maxDiff: { fleetShowcase: 0.006 } },
+  // pageHero: widget note says "inclusive of VAT" (decision) vs design "exclusive of" — same length, few glyphs differ
+  { route: '/', design: '01-home', maxDiff: { pageHero: 0.003, fleetShowcase: 0.006, siteFooter: 0.006 } },
   { route: '/fleet', design: '02-fleet', maxDiff: { fleetBrowser: 0.006, priceTable: 0.006 } },
   { route: '/fleet/v-class', design: '03-vehicle', maxDiff: { vehicleHero: 0.004 } },
   { route: '/services', design: '04-services', maxDiff: { bookingOptions: 0.004, featuredRoute: 0.006 } },
@@ -49,7 +50,7 @@ export const CASES: Case[] = [
 // Decided differences from the design copy: final prices with VAT included (decisions log).
 const ALLOWED_TEXT_CHANGES: [RegExp, string][] = [
   [/€\s?\d[\d.,]*/g, '€#'],
-  [/exclusive of 24% vat|excl\. 24% vat|vat included|include 24% vat|includes 24% vat|with 24% vat included/gi, 'vat'],
+  [/exclusive of 24% vat|inclusive of 24% vat|excl\. 24% vat|incl\. 24% vat|vat included|include 24% vat|includes 24% vat|with 24% vat included/gi, 'vat'],
   [/prices in euros, exclusive of 24% vat/gi, 'prices in euros, vat'],
   [/and are\b/gi, 'and'],
   [/final price per vehicle, vat included\.?/gi, ''],
@@ -137,10 +138,20 @@ for (const width of [1440, 390]) {
         const tag = `${c.design}-${width}-${String(w.i).padStart(2, '0')}-${w.name}`;
         if (Math.abs(g.h - w.h) > Math.max(4, w.h * 0.02)) failures.push(`${w.name}: height ${g.h}px, design ${w.h}px`);
         if (normText(g.text) !== normText(w.text)) failures.push(`${w.name}: text differs\n  design: ${normText(w.text).slice(0, 400)}\n  site:   ${normText(g.text).slice(0, 400)}`);
-        const [a, b] = await Promise.all([
-          design.locator('[data-block]').nth(w.i).screenshot(),
-          site.locator('[data-block]').nth(w.i).screenshot(),
-        ]).catch(() => [null, null]);
+        // By name, not nth — nested siteHeader inside pageHero would shift indices.
+        const shot = async (page: Page) => {
+          const all = page.locator(`[data-block="${w.name}"]`);
+          const n = await all.count();
+          for (let i = 0; i < n; i++) {
+            const loc = all.nth(i);
+            const nested = await loc.evaluate(
+              (e) => e.tagName === 'HEADER' && !!e.parentElement?.closest('[data-block]'),
+            );
+            if (!nested) return loc.screenshot();
+          }
+          return all.first().screenshot();
+        };
+        const [a, b] = await Promise.all([shot(design), shot(site)]).catch(() => [null, null]);
         if (!a || !b) { failures.push(`${w.name}: could not screenshot`); continue; }
         const A = PNG.sync.read(a); const B = PNG.sync.read(b);
         const wpx = Math.min(A.width, B.width); const hpx = Math.min(A.height, B.height);

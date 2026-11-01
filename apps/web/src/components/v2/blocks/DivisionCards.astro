@@ -1,43 +1,64 @@
 ---
-/**
- * V2 stub for DivisionCards — markup from design/v2/build/blocks/01-home/03-divisionCards.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import { bgImage } from '../../../lib/v2/bg-image';
+import { resolveCtaHref, type CtaLinkData } from '../../../lib/v2/cta';
+import type { SanityImage } from '../../../lib/sanity/image';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+type Card = {
+  label?: string;
+  title?: string;
+  text?: string;
+  link?: CtaLinkData;
+  image?: SanityImage;
+};
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const layout = typeof section.layout === 'string' ? section.layout : 'home';
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const lead = typeof section.lead === 'string' ? section.lead : '';
+const cards = Array.isArray(section.cards) ? (section.cards as Card[]) : [];
+const overlays = ['s40d0c', 'sff762'] as const;
+const bgs = ['bgx2', 'bgx3'] as const;
 ---
+
 <section data-block="divisionCards" class="sd67c2">
-  <div class="s9e1ac">
-    <div class="s5e6cc">
-      <div class="eyebrow">Two divisions, one standard</div>
-      <h2 class="display sa7950">Travel in comfort. <em>Move with protection.</em></h2>
-    </div>
-    <p class="s94d1d">Luxury vehicles, professional chauffeurs and specialist security teams, coordinated by one office in Athens.</p>
-  </div>
+  {
+    layout === 'home' ? (
+      <div class="s9e1ac">
+        <div class="s5e6cc">
+          {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+          <Heading heading={heading} variant="inline" as="h2" class="display sa7950" />
+        </div>
+        {lead ? <p class="s94d1d">{lead}</p> : null}
+      </div>
+    ) : null
+  }
   <div class="sebfdc">
-    <a href="/fleet" class="card zoom sd07e7">
-      <div class="bgx2 ph s22cbe"></div>
-      <div class="s40d0c"></div>
-      <div class="sbbe77">
-        <div class="eyebrow">01 / VIP Transfer</div>
-        <div class="display se2257">Luxury travel with a private chauffeur</div>
-        <div class="s62156">Mercedes-Benz vans and saloons for airports, hotels, business and private travel.</div>
-        <span class="link-arrow seae9b">View the fleet →</span>
-      </div>
-    </a>
-    <a href="/vip-security" class="card zoom sd07e7">
-      <div class="bgx3 ph s22cbe"></div>
-      <div class="sff762"></div>
-      <div class="sbbe77">
-        <div class="eyebrow">02 / VIP Security</div>
-        <div class="display se2257">Close protection &amp; security escorts</div>
-        <div class="s62156">Discreet protection for people, premises and property, on the move or on site.</div>
-        <span class="link-arrow seae9b">Discover VIP Security →</span>
-      </div>
-    </a>
+    {
+      cards.map((card, i) => {
+        const href = resolveCtaHref(card.link);
+        const style = bgImage(card.image ?? null);
+        const bg = bgs[i] ?? 'bgx2';
+        const overlay = overlays[i] ?? 's40d0c';
+        return (
+          <a href={href} class="card zoom sd07e7">
+            <div class:list={[bg, 'ph', 's22cbe']} style={style}></div>
+            <div class={overlay}></div>
+            <div class="sbbe77">
+              {card.label ? <div class="eyebrow">{card.label}</div> : null}
+              {card.title ? <div class="display se2257">{card.title}</div> : null}
+              {card.text ? <div class="s62156">{card.text}</div> : null}
+              {card.link?.label ? <span class="link-arrow seae9b">{card.link.label}</span> : null}
+            </div>
+          </a>
+        );
+      })
+    }
   </div>
 </section>
