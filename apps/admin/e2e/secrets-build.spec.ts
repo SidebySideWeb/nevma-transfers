@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('AC-24 admin build output contains no secrets', async (_fixtures, testInfo) => {
+test('AC-24 admin build output contains no secrets', async ({}, testInfo) => {
   // Parallel phone/desktop both building races pnpm symlinks on Windows.
   test.skip(testInfo.project.name !== 'desktop', 'build once on desktop project');
   test.setTimeout(300_000);
