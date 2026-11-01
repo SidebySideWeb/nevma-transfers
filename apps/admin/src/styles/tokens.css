@@ -1,63 +1,81 @@
-/* TEM Protection design tokens — NEUTRAL BASELINE (decided 31 Oct 2026).
-   The client's brand (logo, colours, fonts) replaces values in THIS FILE ONLY.
+/* Elite Protection design tokens (admin copy: apps/admin only until the public site moves to the V2 design) — from the Elite Protection V2 design (claude.ai/artifact/PMyt2svhi296ARrAJyHc7C),
+   chosen by the user on 1 Nov 2026: near-black, gold, Playfair Display + Jost, square corners, photo-led.
    Copy to apps/web/src/styles/tokens.css and apps/admin/src/styles/tokens.css.
    Contrast pairs are checked by scripts/contrast.test.mjs. */
 :root {
-  /* colour: dark, premium, calm */
-  --color-bg: #0e1116;
-  --color-surface: #161b22;
-  --color-surface-2: #1f2630;
-  --color-border: #2f3a47;
-  --color-text: #f3f4f6;
-  --color-muted: #a7b0bc;
-  --color-accent: #c9a86a;          /* brass: buttons, focus, highlights */
-  --color-accent-strong: #dcc08a;   /* hover */
-  --color-accent-text: #0e1116;     /* text on accent */
+  /* colour */
+  --color-bg: #0a0a0b;              /* page */
+  --color-bg-deep: #050505;         /* footer, photo frames */
+  --color-surface: #111315;         /* cards, form panels */
+  --color-surface-2: #15181a;       /* dropdown lists, hover */
+  --color-border: rgb(207 164 95 / 0.35);        /* gold hairline */
+  --color-border-strong: rgb(207 164 95 / 0.6);
+  --color-text: #f4f0e6;            /* ivory */
+  --color-text-soft: #d9d3c4;       /* lead paragraphs */
+  --color-muted: #a9a395;           /* secondary text */
+  --color-label: #b9a281;           /* tracked caps labels */
+  --color-faint: #8e887b;           /* fine print */
+  --color-accent: #e7c687;          /* gold: buttons, links, focus, prices */
+  --color-accent-strong: #f2ddae;   /* button hover */
+  --color-accent-deep: #cfa45f;     /* dots, rules, radio borders */
+  --color-accent-text: #0a0a0b;     /* text on gold */
   --color-success: #7fd1a8;
   --color-warning: #e8c36a;
   --color-danger: #f08a8a;
-  --color-overlay: rgb(14 17 22 / 0.72);
+  --color-danger-strong: #f5a3a3;   /* hover of solid danger buttons (admin dialogs) */
+  --color-danger-text: #1a0a0a;     /* text on solid danger */
+  --color-info: #9cc3e6;            /* admin information banners and the hourly flag */
+  --color-glow: #15130f;            /* warm top of the admin sign-in background */
+  --color-overlay: rgb(5 5 5 / 0.92);
+  --hero-scrim: linear-gradient(90deg, rgb(7 7 8 / 0.94) 0%, rgb(7 7 8 / 0.7) 50%, rgb(7 7 8 / 0.35) 100%);
+  --panel-gradient: linear-gradient(180deg, #121416, #0a0a0b);
 
   /* type */
-  --font-display: "Inter Tight", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-text: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;   /* weights 500, 600, italic 500 */
+  --font-text: "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* 300, 400, 500, 600 */
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --text-xs: 0.8125rem;   /* 13 */
-  --text-sm: 0.875rem;    /* 14 */
-  --text-md: 1rem;        /* 16 */
-  --text-lg: 1.125rem;    /* 18 */
-  --text-xl: 1.5rem;      /* 24 */
-  --text-2xl: 2rem;       /* 32 */
-  --text-3xl: clamp(2.25rem, 1.6rem + 2.6vw, 3.5rem);
-  --leading-tight: 1.15;
-  --leading-normal: 1.55;
-  --tracking-caps: 0.08em;
+  --text-xs: 0.6875rem;   /* 11: tracked labels */
+  --text-sm: 0.8125rem;   /* 13: buttons, nav */
+  --text-md: 1.0625rem;   /* 17: body */
+  --text-lg: 1.1875rem;   /* 19: lead */
+  --text-xl: 1.625rem;    /* 26 */
+  --text-2xl: 2.125rem;   /* 34 */
+  --text-3xl: clamp(2.5rem, 1.4rem + 4.2vw, 4.25rem); /* 40 to 68: page titles */
+  --leading-tight: 1.04;
+  --leading-normal: 1.65;
+  --tracking-caps: 0.24em;   /* labels */
+  --tracking-ui: 0.18em;     /* buttons, nav */
+  --tracking-eyebrow: 0.36em;
 
-  /* space (4 px base) */
+  /* space */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-7: 3rem;
-  --space-8: 4.5rem;
+  --space-3: 0.875rem;
+  --space-4: 1.125rem;
+  --space-5: 1.75rem;
+  --space-6: 2.25rem;
+  --space-7: 4.5rem;
+  --space-8: 7rem;
 
-  /* shape and depth */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-pill: 999px;
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
-  --shadow-2: 0 8px 28px rgb(0 0 0 / 0.45);
+  /* shape: the design uses square corners and hairlines */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-pill: 0;
+  --radius-round: 50%;      /* only for dots, radios, the swap button */
+  --shadow-1: 0 12px 32px rgb(231 198 135 / 0.3);   /* gold button hover */
+  --shadow-2: 0 16px 40px rgb(0 0 0 / 0.6);          /* dropdowns */
 
   /* layout */
-  --container: 1200px;
-  --container-narrow: 720px;
-  --tap: 44px;
+  --container: 1320px;
+  --container-narrow: 820px;
+  --gutter: 2rem;
+  --tap: 46px;
+  --button-height: 54px;
 
   /* motion */
-  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --dur-fast: 150ms;
-  --dur: 240ms;
+  --ease: ease;
+  --dur-fast: 200ms;
+  --dur: 250ms;
+  --dur-slow: 900ms;   /* photo zoom on hover */
 }

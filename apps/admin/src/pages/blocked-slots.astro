@@ -34,10 +34,8 @@ const rows = (slots ?? []).map((s) => {
 });
 ---
 
-<AdminLayout title="Blocked slots — TEM Admin" current="blocked-slots" staffEmail={staff.email}>
-  <h1>Blocked slots</h1>
-
-  <section class="card stack" aria-labelledby="c-h">
+<AdminLayout title="Blocked slots" current="blocked-slots" staffEmail={staff.email}>
+  <section class="panel stack" aria-labelledby="c-h">
     <h2 id="c-h">Create block</h2>
     <form method="POST" action={actions.createBlockedSlot} class="stack">
       <div class="field">
@@ -67,8 +65,8 @@ const rows = (slots ?? []).map((s) => {
 
   <section class="stack" aria-labelledby="l-h">
     <h2 id="l-h">Existing</h2>
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
-      <table>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
+      <table class="table table-cards">
         <thead>
           <tr>
             <th scope="col">Vehicle</th>
@@ -92,7 +90,7 @@ const rows = (slots ?? []).map((s) => {
                     {future ? (
                       <form method="POST" action={actions.deleteBlockedSlot}>
                         <input type="hidden" name="id" value={s.id} />
-                        <button class="btn btn-ghost" type="submit">
+                        <button class="btn btn-quiet" type="submit">
                           Delete
                         </button>
                       </form>

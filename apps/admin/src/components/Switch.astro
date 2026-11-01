@@ -1,0 +1,15 @@
+---
+interface Props {
+  name?: string;
+  checked?: boolean;
+  value?: string;
+  disabled?: boolean;
+}
+
+const { name, checked = false, value = '1', disabled = false } = Astro.props;
+---
+
+<label class="switch">
+  <input type="checkbox" name={name} value={value} checked={checked || undefined} disabled={disabled || undefined} />
+  <slot />
+</label>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Components — Elite Protection Admin (design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="admin.css">
+</head>
+<body class="ep-admin">
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <header class="sidebar">
+    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav" onclick="var n=document.getElementById('adminnav'),o=n.classList.toggle('open');this.setAttribute('aria-expanded',o)">Menu</button></div>
+    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
+    <div class="sidebar-foot"><span class="who">office@eliteprotection.gr</span><a href="login.html">Sign out</a></div>
+  </header>
+  <main class="main" id="main">
+    
+    <div class="page-head"><div><h1 class="title">Components</h1></div><div class="page-actions"></div></div>
+    <section class="stack-sm"><p class="eyebrow">Buttons</p>
+      <div class="row"><button class="btn" type="button">Primary</button><button class="btn btn-secondary" type="button">Secondary</button><button class="btn btn-quiet" type="button">Quiet</button><button class="btn btn-danger" type="button">Danger</button><button class="btn btn-danger-solid" type="button">Confirm danger</button><button class="btn" type="button" disabled>Disabled</button><button class="btn btn-sm" type="button">Small</button></div>
+      <p class="help">One primary per area. Destructive actions are outline red; the solid red button exists only inside a confirm dialog.</p></section>
+    <section class="stack-sm" style="margin-top:2rem"><p class="eyebrow">Booking status</p>
+      <div class="row"><span class="badge s-pending">Pending</span><span class="badge s-confirmed">Confirmed</span><span class="badge s-assigned">Assigned</span><span class="badge s-completed">Completed</span><span class="badge s-cancelled">Cancelled</span><span class="badge s-completed">Expired</span></div>
+      <p class="eyebrow" style="margin-top:1rem">Flags</p>
+      <div class="row"><span class="badge flag-vip">VIP security</span><span class="badge flag">Invoice</span><span class="badge s-info">Hourly</span><span class="badge s-pending">DEMO</span></div>
+      <p class="help">Status is always text plus colour, never colour alone. The dot is decoration.</p></section>
+    <section class="stack-sm" style="margin-top:2rem"><p class="eyebrow">Fields</p>
+      <div class="grid-fields">
+        <div class="field"><label for="c1">Text</label><input id="c1" class="input" value="Anna Papadopoulou"></div>
+        <div class="field"><label for="c2">Select</label><select id="c2" class="input"><option>Executive sedan</option></select></div>
+        <div class="field"><label for="c3">Money</label><div class="input-money"><input id="c3" class="input" value="70.00" inputmode="decimal"></div></div>
+        <div class="field"><label for="c4">Date and time (Athens)</label><input id="c4" class="input" type="datetime-local" value="2026-12-01T10:00"></div>
+        <div class="field"><label for="c5">With error</label><input id="c5" class="input" value="70.555" aria-invalid="true" aria-describedby="c5e"><p class="error-text" id="c5e">Use at most 2 decimals.</p></div>
+        <div class="field"><label for="c6">Read-only</label><input id="c6" class="input" value="EP-7K3QX2" readonly></div>
+      </div>
+      <div class="row"><label class="check"><input type="checkbox" checked> Checkbox</label><label class="switch"><input type="checkbox" checked> Switch (online / offline)</label></div></section>
+    <section class="stack-sm" style="margin-top:2rem"><p class="eyebrow">Panel, facts and totals</p>
+      <div class="cols cols-2">
+        <section class="panel" aria-labelledby="cp1"><div class="panel-head"><h2 id="cp1">Panel title</h2><span class="badge s-confirmed">Paid</span></div><div class="panel-body"><dl class="facts"><dt>Pick-up</dt><dd>Tue 1 Dec, 10:00</dd><dt>Class</dt><dd>Executive sedan</dd></dl></div></section>
+        <section class="panel" aria-labelledby="cp2"><div class="panel-head"><h2 id="cp2">Totals</h2></div><div class="panel-body"><dl class="totals"><div><dt>Vehicle</dt><dd>€ 70.00</dd></div><div><dt>VIP security</dt><dd>€ 150.00</dd></div><div class="grand"><dt>Total</dt><dd>€ 220.00</dd></div></dl></div></section>
+      </div></section>
+    <section class="stack-sm" style="margin-top:2rem"><p class="eyebrow">Table</p>
+      <div class="table-wrap" role="region" tabindex="0" aria-label="Example table"><table class="table table-cards"><thead><tr><th scope="col">Reference</th><th scope="col" aria-sort="ascending"><a href="#">Pick-up</a></th><th scope="col" class="num">Total</th><th scope="col">Status</th></tr></thead><tbody>
+        <tr class="day-row"><td colspan="4">Tuesday 1 December</td></tr>
+        <tr class="is-flag"><td class="card-title" data-label="Reference"><a class="ref" href="booking.html">EP-7K3QX2</a></td><td data-label="Pick-up">10:00</td><td class="num" data-label="Total">€ 220.00</td><td data-label="Status"><span class="badge s-confirmed">Confirmed</span></td></tr>
+        <tr class="is-muted"><td class="card-title" data-label="Reference"><a class="ref" href="booking.html">EP-C9ZD2H</a></td><td data-label="Pick-up">16:00</td><td class="num" data-label="Total">€ 70.00</td><td data-label="Status"><span class="badge s-cancelled">Cancelled</span></td></tr>
+      </tbody></table></div></section>
+    <section class="stack-sm" style="margin-top:2rem"><p class="eyebrow">Timeline</p>
+      <div class="panel"><div class="panel-body"><ol class="timeline"><li class="done"><time>30 Nov 18:07</time>Paid € 220.00</li><li class="done"><time>30 Nov 18:07</time>Confirmation email sent</li><li><time>Not yet</time>Vehicle assigned</li></ol></div></div></section>
+    <p class="board-note">Dialogs, toasts and banners: <a href="booking-dialogs.html">booking-dialogs.html</a> and <a href="states.html">states.html</a>.</p>
+  </main>
+</div>
+</body>
+</html>

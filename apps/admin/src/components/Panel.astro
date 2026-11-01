@@ -1,0 +1,22 @@
+---
+interface Props {
+  title?: string;
+  titleId?: string;
+}
+
+const { title, titleId = title ? `panel-${title.replace(/\W+/g, '-').toLowerCase()}` : undefined } = Astro.props;
+---
+
+<section class="panel" aria-labelledby={titleId}>
+  {
+    title && (
+      <div class="panel-head">
+        <h2 id={titleId}>{title}</h2>
+        <slot name="head" />
+      </div>
+    )
+  }
+  <div class="panel-body">
+    <slot />
+  </div>
+</section>

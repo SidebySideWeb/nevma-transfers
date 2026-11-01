@@ -11,12 +11,11 @@ const supabase = createSupabaseServerClient(Astro.cookies);
 const { data: extras } = await supabase.from('extras').select('*').order('code');
 ---
 
-<AdminLayout title="Extras — TEM Admin" current="extras" staffEmail={staff.email}>
-  <h1>Extras</h1>
+<AdminLayout title="Extras" current="extras" staffEmail={staff.email}>
   <form method="POST" action={actions.saveExtras} class="stack">
     <input type="hidden" name="rowsJson" id="rowsJson" value="[]" />
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
-      <table>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
+      <table class="table table-cards">
         <thead>
           <tr>
             <th scope="col">Code</th>

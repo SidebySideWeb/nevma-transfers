@@ -1,0 +1,62 @@
+---
+import { confirmActionLabel } from './confirm-label';
+import { formatEuro } from '../lib/money';
+
+interface Props {
+  id: string;
+  title: string;
+  reference: string;
+  customer: string;
+  amountCents: number;
+  amountLabel?: string;
+  confirmAction: string;
+  confirmVariant?: 'primary' | 'danger-solid';
+  cancelLabel?: string;
+  /** When set, the confirm button posts this form (Astro action form). */
+  formId?: string;
+}
+
+const {
+  id,
+  title,
+  reference,
+  customer,
+  amountCents,
+  amountLabel = 'Amount',
+  confirmAction,
+  confirmVariant = 'primary',
+  cancelLabel = 'Back',
+  formId,
+} = Astro.props;
+
+const titleId = `${id}-title`;
+const confirmLabel = confirmActionLabel(confirmAction, amountCents);
+const confirmClass = confirmVariant === 'danger-solid' ? 'btn btn-danger-solid' : 'btn';
+---
+
+<dialog class="dialog" id={id} aria-labelledby={titleId}>
+  <div class="dialog-head">
+    <p class="eyebrow">{reference}</p>
+    <h2 id={titleId}>{title}</h2>
+  </div>
+  <div class="dialog-body">
+    <dl class="restate">
+      <dt>Customer</dt>
+      <dd>{customer}</dd>
+      <dt>{amountLabel}</dt>
+      <dd class="amount">{formatEuro(amountCents)}</dd>
+    </dl>
+    <slot />
+  </div>
+  <div class="dialog-foot">
+    <button class="btn btn-quiet" type="button" data-close={id}>{cancelLabel}</button>
+    <button
+      class={confirmClass}
+      type="submit"
+      form={formId}
+      data-confirm-label={confirmLabel}
+    >
+      {confirmLabel}
+    </button>
+  </div>
+</dialog>

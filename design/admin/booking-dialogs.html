@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Dialogs and feedback — Elite Protection Admin (design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="admin.css">
+</head>
+<body class="ep-admin">
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <header class="sidebar">
+    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav" onclick="var n=document.getElementById('adminnav'),o=n.classList.toggle('open');this.setAttribute('aria-expanded',o)">Menu</button></div>
+    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html" aria-current="page"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
+    <div class="sidebar-foot"><span class="who">office@eliteprotection.gr</span><a href="login.html">Sign out</a></div>
+  </header>
+  <main class="main" id="main">
+    
+    <div class="page-head"><div><p class="crumbs"><a href="bookings.html">Bookings</a> / <a href="booking.html">EP-7K3QX2</a></p><h1 class="title">Dialogs and feedback</h1></div><div class="page-actions"></div></div>
+    <p class="muted" style="max-width:70ch">Every money or cancel action opens a native <code>&lt;dialog&gt;</code> that repeats the reference, the customer and the amount. The confirm button names the action and the amount. The idempotency key is created when the dialog opens. Focus goes to the first field; Escape and "Keep booking" close it.</p>
+    <div class="cols cols-2" style="align-items:start">
+      <dialog class="dialog static" id="refund" open aria-labelledby="d-ref">
+        <div class="dialog-head"><p class="eyebrow">EP-7K3QX2</p><h2 id="d-ref">Refund a payment</h2></div>
+        <div class="dialog-body">
+          <dl class="restate"><dt>Customer</dt><dd>Anna Papadopoulou</dd><dt>Paid</dt><dd>€ 220.00 on 30 Nov</dd><dt>Refundable</dt><dd class="amount">€ 220.00</dd></dl>
+          <div class="field"><label for="ra">Amount to refund</label><div class="input-money"><input id="ra" class="input" inputmode="decimal" value="10.00" aria-describedby="ra-help"></div><p class="help" id="ra-help">Up to € 220.00. Viva returns it to the same card in 3–5 working days.</p></div>
+          <div class="field"><label for="rr">Reason (staff only)</label><input id="rr" class="input" value="Waiting time waived"></div>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Back</button><button class="btn" type="button">Refund € 10.00</button></div>
+      </dialog>
+      <dialog class="dialog static" id="cancel" open aria-labelledby="d-can">
+        <div class="dialog-head"><p class="eyebrow">EP-7K3QX2</p><h2 id="d-can">Cancel this booking?</h2></div>
+        <div class="dialog-body">
+          <dl class="restate"><dt>Customer</dt><dd>Anna Papadopoulou</dd><dt>Pick-up</dt><dd>Tue 1 Dec, 10:00</dd><dt>Refund</dt><dd class="amount">€ 220.00</dd></dl>
+          <label class="check"><input type="checkbox" checked> Refund the full amount</label>
+          <label class="check"><input type="checkbox" checked> Email the customer a cancellation notice</label>
+          <p class="help">The vehicle is released straight away. This cannot be undone.</p>
+        </div>
+        <div class="dialog-foot"><button class="btn btn-quiet" type="button">Keep booking</button><button class="btn btn-danger-solid" type="button">Cancel and refund € 220.00</button></div>
+      </dialog>
+      <section class="panel" aria-labelledby="h-conf">
+        <div class="panel-head"><h2 id="h-conf">Vehicle conflict</h2></div>
+        <div class="panel-body stack-sm">
+          <div class="field"><label for="veh2">Vehicle</label><select id="veh2" class="input" aria-invalid="true" aria-describedby="veh2-err"><option>SEDAN-1 · Mercedes E-Class</option></select><p class="error-text" id="veh2-err">SEDAN-1 is already on EP-W2LK9F from 09:45 to 11:15. Choose another vehicle or change that booking first.</p></div>
+          <div class="row"><button class="btn" type="button">Assign</button></div>
+        </div>
+      </section>
+      <div class="stack-sm">
+        <p class="label">Toasts (role="status", 6 s, never for errors that need action)</p>
+        <div class="toast static" role="status">Vehicle SEDAN-2 assigned to EP-7K3QX2.</div>
+        <div class="toast static" role="status">Refund of € 10.00 sent to Viva. It shows in the history when Viva confirms it.</div>
+        <div class="toast static is-error" role="alert">Viva did not accept the refund. Nothing was charged or returned. Try again or call Viva support.</div>
+        <p class="label" style="margin-top:1rem">Button while waiting</p>
+        <div class="row"><button class="btn" type="button" aria-disabled="true"><span class="spin" aria-hidden="true"></span>Refunding…</button></div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

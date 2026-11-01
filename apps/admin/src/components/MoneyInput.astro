@@ -1,0 +1,25 @@
+---
+interface Props {
+  id: string;
+  name?: string;
+  value?: string;
+  required?: boolean;
+  describedBy?: string;
+  invalid?: boolean;
+}
+
+const { id, name, value = '', required = false, describedBy, invalid = false } = Astro.props;
+---
+
+<div class="input-money">
+  <input
+    id={id}
+    class="input"
+    name={name}
+    value={value}
+    inputmode="decimal"
+    required={required || undefined}
+    aria-describedby={describedBy}
+    aria-invalid={invalid || undefined}
+  />
+</div>

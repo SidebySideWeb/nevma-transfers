@@ -10,12 +10,11 @@ const supabase = createSupabaseServerClient(Astro.cookies);
 const { data: zones } = await supabase.from('zones').select('*').order('sort_order');
 ---
 
-<AdminLayout title="Zones — TEM Admin" current="zones" staffEmail={staff.email}>
-  <h1>Zones</h1>
+<AdminLayout title="Zones" current="zones" staffEmail={staff.email}>
   <div class="stack">
     {
       (zones ?? []).map((z) => (
-        <form method="POST" action={actions.saveZone} class="card stack zone-form">
+        <form method="POST" action={actions.saveZone} class="panel stack zone-form">
           <input type="hidden" name="id" value={z.id} />
           <div class="grid grid-2">
             <div class="field">
@@ -34,7 +33,7 @@ const { data: zones } = await supabase.from('zones').select('*').order('sort_ord
               <input type="checkbox" name="active" value="true" checked={z.active} /> Active
             </label>
           </div>
-          <button class="btn btn-ghost" type="submit">Save zone</button>
+          <button class="btn btn-quiet" type="submit">Save zone</button>
         </form>
       ))
     }

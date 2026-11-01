@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Admin design kit — Elite Protection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="admin.css">
+<style>
+  .kit { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  .kit h1 { font: 500 clamp(2rem, 1.4rem + 2.4vw, 3rem)/1.1 var(--font-display); margin: 0 0 .75rem; }
+  .kit h1 em { color: var(--color-accent); }
+  .kit h2 { font: 500 1.5rem/1.2 var(--font-display); margin: 2.5rem 0 1rem; }
+  .kit p, .kit li { max-width: 72ch; color: var(--color-text-soft); }
+  .kit ul.rules { padding-left: 1.125rem; }
+  .kit ul.rules li { margin: .375rem 0; }
+  .boards { display: grid; gap: 1px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); background: var(--color-border); border: 1px solid var(--color-border); list-style: none; padding: 0; margin: 0; }
+  .boards li { background: var(--color-surface); max-width: none; }
+  .boards a { display: block; padding: 1rem 1.125rem; text-decoration: none; color: var(--color-text); min-height: 100%; }
+  .boards a:hover { background: var(--color-surface-2); }
+  .boards strong { display: block; font-weight: 500; color: var(--color-accent); }
+  .boards span { font-size: var(--admin-text-sm); color: var(--color-muted); }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
+  .sw { border: 1px solid var(--color-border); }
+  .sw i { display: block; height: 48px; }
+  .sw span { display: block; padding: .5rem .625rem; font-size: var(--admin-text-sm); color: var(--color-text-soft); }
+  .sw code { color: var(--color-muted); }
+</style>
+</head>
+<body class="ep-admin">
+<main class="kit" id="main">
+  <p class="eyebrow">Elite Protection · design kit</p>
+  <h1>The office tool, <em>in the house style</em></h1>
+  <p>The admin (<code>apps/admin</code>) uses the same tokens as the public site: near-black, gold hairlines, ivory text, Playfair Display and Jost, square corners. The public site is spacious and photo-led; the admin is the same brand at work density. Staff use it for hours a day, so calm and legible beats decorative.</p>
+
+  <h2>Boards</h2>
+  <ul class="boards">
+    <li><a href="login.html"><strong>Sign in</strong><span>/login · error state</span></a></li>
+    <li><a href="bookings.html"><strong>Bookings</strong><span>/bookings · stats, quick views, filters, day groups, phone cards</span></a></li>
+    <li><a href="booking.html"><strong>Booking detail</strong><span>/bookings/[reference] · trip, vehicle, VIP, invoice, payment, timeline</span></a></li>
+    <li><a href="booking-dialogs.html"><strong>Dialogs and feedback</strong><span>refund, cancel, vehicle conflict, toasts, busy button</span></a></li>
+    <li><a href="blocked-slots.html"><strong>Blocked slots</strong><span>/blocked-slots</span></a></li>
+    <li><a href="prices.html"><strong>Zone prices</strong><span>/prices · matrix per class, routes and durations, "update the website"</span></a></li>
+    <li><a href="hourly-rates.html"><strong>Hourly rates</strong><span>/hourly-rates · inline validation</span></a></li>
+    <li><a href="extras.html"><strong>Extras</strong><span>/extras · VIP security, night surcharge</span></a></li>
+    <li><a href="fleet.html"><strong>Fleet</strong><span>/fleet · classes and vehicles</span></a></li>
+    <li><a href="zones.html"><strong>Zones</strong><span>/zones</span></a></li>
+    <li><a href="settings.html"><strong>Settings</strong><span>/settings · DEMO rows</span></a></li>
+    <li><a href="states.html"><strong>States</strong><span>empty, loading, banners, not staff, not found</span></a></li>
+    <li><a href="components.html"><strong>Components</strong><span>buttons, badges, fields, panels, table, timeline</span></a></li>
+  </ul>
+
+  <h2>Rules</h2>
+  <ul class="rules">
+    <li><strong>Type.</strong> Jost for everything you read and type: 15px body and table text, 13px meta. Playfair Display only for the wordmark, page titles (30px) and money totals. Labels are 11px tracked caps in the label gold. All numbers tabular.</li>
+    <li><strong>Colour.</strong> Gold means "act here" (primary button, link, focus, current nav item, VIP flag). Status colours are for status only, always with a word. Red is for destructive actions and errors. No gradients except the sign-in background.</li>
+    <li><strong>Shape and density.</strong> Square corners, 1px gold hairlines. Controls 40px high, table rows 44px (also the phone tap size). One primary button per area.</li>
+    <li><strong>Tables first.</strong> Lists are tables with sticky headers, sorted server-side, grouped by Athens day where time matters. Below 720px a <code>.table-cards</code> table turns into stacked cards; every cell needs <code>data-label</code>.</li>
+    <li><strong>Money and destructive actions</strong> always go through a dialog that restates reference, customer and amount; the confirm button names the action and the amount.</li>
+    <li><strong>Feedback.</strong> Success is a toast (<code>role="status"</code>). Errors that need action stay on the page next to the field or as a red banner (<code>role="alert"</code>); never only a toast.</li>
+    <li><strong>Banners</strong> on every page: DEMO data and Sanity mismatches (warning), "Prices changed: update the website" (info).</li>
+    <li><strong>Motion.</strong> Colour changes only, 150ms. No slide-ins, no photo zoom. Reduced motion removes even those.</li>
+    <li><strong>Accessibility.</strong> AA contrast on every pair, visible gold focus ring, keyboard reachable tables (<code>role="region" tabindex="0"</code>), labels on every input, status never by colour alone.</li>
+  </ul>
+
+  <h2>Admin colour roles</h2>
+  <div class="swatches">
+    <div class="sw"><i style="background:var(--color-bg)"></i><span>Page <code>--color-bg</code></span></div>
+    <div class="sw"><i style="background:var(--color-bg-deep)"></i><span>Sidebar <code>--color-bg-deep</code></span></div>
+    <div class="sw"><i style="background:var(--color-surface)"></i><span>Panels <code>--color-surface</code></span></div>
+    <div class="sw"><i style="background:var(--color-surface-2)"></i><span>Table head <code>--color-surface-2</code></span></div>
+    <div class="sw"><i style="background:var(--color-accent)"></i><span>Act here <code>--color-accent</code></span></div>
+    <div class="sw"><i style="background:var(--status-pending)"></i><span>Pending, DEMO <code>--status-pending</code></span></div>
+    <div class="sw"><i style="background:var(--status-confirmed)"></i><span>Confirmed, paid <code>--status-confirmed</code></span></div>
+    <div class="sw"><i style="background:var(--status-cancelled)"></i><span>Cancelled, errors <code>--status-cancelled</code></span></div>
+    <div class="sw"><i style="background:var(--status-info)"></i><span>Information <code>--status-info</code></span></div>
+  </div>
+  <p class="board-note"><strong>Files.</strong> <code>design/admin/admin.css</code> is the component layer; copy it with <code>design/admin/tokens.css</code> into <code>apps/admin/src/styles/</code> and self-host Jost and Playfair Display (the boards load Google Fonts only for preview). Written rules: <code>docs/DESIGN-ADMIN.md</code>.</p>
+</main>
+</body>
+</html>

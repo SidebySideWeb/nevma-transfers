@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title><span class="mono" style="font-family:var(--font-mono);font-size:.85em">EP-7K3QX2</span> — Elite Protection Admin (design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="admin.css">
+</head>
+<body class="ep-admin">
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <header class="sidebar">
+    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav" onclick="var n=document.getElementById('adminnav'),o=n.classList.toggle('open');this.setAttribute('aria-expanded',o)">Menu</button></div>
+    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html" aria-current="page"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
+    <div class="sidebar-foot"><span class="who">office@eliteprotection.gr</span><a href="login.html">Sign out</a></div>
+  </header>
+  <main class="main" id="main">
+    <div class="banner banner-warning" role="note"><p><span class="tag">Demo data</span>3 settings still hold DEMO values: <strong>min_lead_minutes</strong>, <strong>cancel_window_hours</strong>, <strong>vat_rate_bp</strong>. Vehicle class <strong>demo-limo</strong> has no Sanity page.</p><a class="btn btn-secondary btn-sm" href="settings.html">Review settings</a></div>
+    <div class="page-head"><div><p class="crumbs"><a href="bookings.html">Bookings</a> / Tue 1 Dec</p><h1 class="title"><span class="mono" style="font-family:var(--font-mono);font-size:.85em">EP-7K3QX2</span></h1></div><div class="page-actions"><a class="btn btn-quiet" href="mailto:anna@example.com">Email customer</a><a class="btn btn-secondary" href="#">Mark completed</a></div></div>
+    <div class="row" style="margin:-.5rem 0 1.25rem"><span class="badge s-confirmed">Confirmed</span><span class="badge flag-vip">VIP security</span><span class="badge flag">Invoice requested</span><span class="muted small">Booked 30 Nov 18:07 · paid by card through Viva</span></div>
+    <div class="cols cols-main">
+      <div class="stack">
+        <section class="panel panel-flag" aria-labelledby="h-trip">
+          <div class="panel-head"><h2 id="h-trip">Trip</h2><span class="muted small">Transfer</span></div>
+          <div class="panel-body">
+            <dl class="facts">
+              <dt>Pick-up</dt><dd><strong>Tue 1 Dec 2026, 10:00</strong> <span class="muted">Athens time</span></dd>
+              <dt>From</dt><dd>Athens International Airport · Arrivals, meeting point 3</dd>
+              <dt>To</dt><dd>Hotel Grande Bretagne, Syntagma</dd>
+              <dt>Flight</dt><dd>A3 123 from Brussels</dd>
+              <dt>Passengers</dt><dd>2 adults · 2 suitcases · 1 cabin bag</dd>
+              <dt>Class</dt><dd>Executive sedan</dd>
+              <dt>Blocked time</dt><dd>09:30 – 11:30 <span class="muted">(includes buffers)</span></dd>
+            </dl>
+            <form class="row" id="assign" aria-label="Assign vehicle" style="align-items:end;margin-top:1.25rem">
+              <div class="field" style="flex:1 1 220px"><label for="veh">Vehicle</label><select id="veh" class="input" aria-describedby="veh-help"><option>Not assigned</option><option>SEDAN-1 · Mercedes E-Class</option><option>SEDAN-2 · BMW 5 Series</option></select></div>
+              <button class="btn" type="button">Assign</button>
+            </form>
+            <p class="help" id="veh-help" style="margin-top:.5rem">Only active Executive sedans that are free 09:30 – 11:30 are listed.</p>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="h-cust">
+          <div class="panel-head"><h2 id="h-cust">Customer</h2></div>
+          <div class="panel-body">
+            <dl class="facts">
+              <dt>Name</dt><dd>Anna Papadopoulou</dd>
+              <dt>Email</dt><dd><a href="mailto:anna@example.com">anna@example.com</a></dd>
+              <dt>Phone</dt><dd><a href="tel:+306900000000">+30 690 000 0000</a></dd>
+              <dt>Notes</dt><dd>Name board with company logo, please.</dd>
+            </dl>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="h-sec">
+          <div class="panel-head"><h2 id="h-sec">VIP security</h2><span class="badge flag-vip">Booked</span></div>
+          <div class="panel-body stack-sm">
+            <div class="field"><label for="sec">Security notes</label><textarea id="sec" class="input" aria-describedby="sec-help">Two agents from partner. Confirm names by 30 Nov 12:00.</textarea></div>
+            <p class="help" id="sec-help">Visible to staff only. Never sent to the customer.</p>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="h-inv">
+          <div class="panel-head"><h2 id="h-inv">Invoice</h2><span class="badge s-pending">Requested</span></div>
+          <div class="panel-body stack-sm">
+            <dl class="facts"><dt>Company</dt><dd>Example Holdings S.A.</dd><dt>VAT number</dt><dd>EL 000000000</dd><dt>Tax office</dt><dd>A' Athens</dd><dt>Address</dt><dd>Vasilissis Sofias 1, 106 71 Athens</dd></dl>
+            <div class="grid-fields"><div class="field"><label for="ist">Status</label><select id="ist" class="input"><option>Requested</option><option>Issued</option></select></div><div class="field"><label for="inr">Invoice number</label><input id="inr" class="input" placeholder="e.g. A-2026-0187"></div></div>
+            <div class="row"><button class="btn btn-secondary" type="button">Save notes and invoice</button></div>
+          </div>
+        </section>
+      </div>
+      <div class="stack">
+        <section class="panel" aria-labelledby="h-pay">
+          <div class="panel-head"><h2 id="h-pay">Payment</h2><span class="badge s-confirmed">Paid</span></div>
+          <div class="panel-body">
+            <dl class="totals">
+              <div><dt>Executive sedan · Airport → Centre</dt><dd>€ 70.00</dd></div>
+              <div><dt>VIP security</dt><dd>€ 150.00</dd></div>
+              <div class="grand"><dt>Total paid (VAT included)</dt><dd>€ 220.00</dd></div>
+              <div><dt>Price before VAT</dt><dd>€ 177.42</dd></div>
+              <div><dt>VAT 24%</dt><dd>€ 42.58</dd></div>
+              <div><dt>Refunded</dt><dd>€ 0.00</dd></div>
+              <div><dt>Refundable</dt><dd>€ 220.00</dd></div>
+            </dl>
+            <div class="row" style="margin-top:1rem"><a class="btn btn-secondary" href="booking-dialogs.html#refund">Refund…</a><a class="btn btn-danger" href="booking-dialogs.html#cancel">Cancel booking…</a></div>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="h-time">
+          <div class="panel-head"><h2 id="h-time">Timeline</h2></div>
+          <div class="panel-body">
+            <ol class="timeline">
+              <li class="done"><time datetime="2026-11-30T18:02">30 Nov 18:02</time>Vehicle held for 20 minutes</li>
+              <li class="done"><time datetime="2026-11-30T18:07">30 Nov 18:07</time>Paid € 220.00 · Viva order 1234…5678</li>
+              <li class="done"><time datetime="2026-11-30T18:07">30 Nov 18:07</time>Confirmation email sent</li>
+              <li><time>Not yet</time>Vehicle assigned</li>
+              <li><time datetime="2026-11-30T10:00">30 Nov 10:00 (planned)</time>Reminder email, 24 h before</li>
+            </ol>
+          </div>
+        </section>
+        <section class="panel" aria-labelledby="h-hist">
+          <div class="panel-head"><h2 id="h-hist">Payments and refunds</h2></div>
+          <div class="table-wrap" role="region" tabindex="0" aria-label="Payments and refunds table" style="border:0">
+            <table class="table"><thead><tr><th scope="col">When</th><th scope="col">Kind</th><th scope="col" class="num">Amount</th><th scope="col">By</th></tr></thead>
+            <tbody><tr><td>30 Nov 18:07</td><td>Payment</td><td class="num">€ 220.00</td><td>Viva</td></tr></tbody></table>
+          </div>
+        </section>
+      </div>
+    </div>
+    <p class="board-note"><strong>Board notes.</strong> Left column: what the office edits (vehicle, security notes, invoice). Right column: money and history, read-only except the two actions, which open the dialogs on <a href="booking-dialogs.html">booking-dialogs.html</a>. Staff cannot change prices or customer data here (database rights, AC-10).</p>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,17 @@
+---
+interface Props {
+  tone?: 'warning' | 'info' | 'danger' | 'success';
+  tag?: string;
+  role?: 'note' | 'alert' | 'status';
+}
+
+const { tone = 'warning', tag, role = 'note' } = Astro.props;
+---
+
+<div class={`banner banner-${tone}`} role={role}>
+  <p>
+    {tag && <span class="tag">{tag}</span>}
+    <slot />
+  </p>
+  <slot name="action" />
+</div>

@@ -1,0 +1,66 @@
+---
+interface Props {
+  variant?: 'primary' | 'secondary' | 'quiet' | 'danger' | 'danger-solid';
+  size?: 'default' | 'small';
+  busy?: boolean;
+  busyLabel?: string;
+  type?: 'button' | 'submit' | 'reset';
+  href?: string;
+  disabled?: boolean;
+  id?: string;
+  class?: string;
+}
+
+const {
+  variant = 'primary',
+  size = 'default',
+  busy = false,
+  busyLabel = 'Working…',
+  type = 'button',
+  href,
+  disabled = false,
+  id,
+  class: className,
+} = Astro.props;
+
+const classes = [
+  'btn',
+  variant !== 'primary' ? `btn-${variant}` : '',
+  size === 'small' ? 'btn-sm' : '',
+  className,
+]
+  .filter(Boolean)
+  .join(' ');
+---
+
+{
+  href ? (
+    <a class={classes} href={disabled || busy ? undefined : href} aria-disabled={disabled || busy || undefined} id={id}>
+      {busy ? (
+        <>
+          <span class="spin" aria-hidden="true" />
+          {busyLabel}
+        </>
+      ) : (
+        <slot />
+      )}
+    </a>
+  ) : (
+    <button
+      class={classes}
+      type={type}
+      id={id}
+      disabled={disabled || undefined}
+      aria-disabled={busy || undefined}
+    >
+      {busy ? (
+        <>
+          <span class="spin" aria-hidden="true" />
+          {busyLabel}
+        </>
+      ) : (
+        <slot />
+      )}
+    </button>
+  )
+}

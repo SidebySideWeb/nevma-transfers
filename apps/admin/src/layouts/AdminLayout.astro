@@ -1,28 +1,66 @@
 ---
+import '../styles/fonts.css';
 import '../styles/tokens.css';
-import '../styles/base.css';
+import '../styles/admin.css';
+import Banner from '../components/Banner.astro';
 import { buildBanner } from '../lib/banner';
+import { countNeedsVehicle } from '../lib/nav-count';
 import { createSupabaseServerClient } from '../lib/supabase';
 
-interface Props {
-  title?: string;
-  current?: string;
-  staffEmail?: string;
+interface Crumb {
+  href?: string;
+  label: string;
 }
 
-const { title = 'TEM Admin', current = 'bookings', staffEmail } = Astro.props;
-const supabase = createSupabaseServerClient(Astro.cookies);
-const banner = await buildBanner(supabase);
+interface Props {
+  title: string;
+  current?: string;
+  staffEmail?: string;
+  crumbs?: Crumb[];
+  htmlTitle?: string;
+}
 
-const nav = [
-  { href: '/bookings', id: 'bookings', label: 'Bookings' },
-  { href: '/blocked-slots', id: 'blocked-slots', label: 'Blocked slots' },
-  { href: '/prices', id: 'prices', label: 'Prices' },
-  { href: '/hourly-rates', id: 'hourly-rates', label: 'Hourly rates' },
-  { href: '/extras', id: 'extras', label: 'Extras' },
-  { href: '/fleet', id: 'fleet', label: 'Fleet' },
-  { href: '/zones', id: 'zones', label: 'Zones' },
-  { href: '/settings', id: 'settings', label: 'Settings' },
+const {
+  title,
+  current = 'bookings',
+  staffEmail,
+  crumbs = [],
+  htmlTitle = `${title} — Elite Protection Admin`,
+} = Astro.props;
+
+const supabase = createSupabaseServerClient(Astro.cookies);
+const [bannerText, needsVehicle] = await Promise.all([
+  buildBanner(supabase),
+  countNeedsVehicle(supabase),
+]);
+
+const groups = [
+  {
+    id: 'operations',
+    label: 'Operations',
+    items: [
+      { href: '/bookings', id: 'bookings', label: 'Bookings', count: needsVehicle },
+      { href: '/blocked-slots', id: 'blocked-slots', label: 'Blocked slots' },
+    ],
+  },
+  {
+    id: 'pricing',
+    label: 'Pricing',
+    items: [
+      { href: '/prices', id: 'prices', label: 'Zone prices' },
+      { href: '/hourly-rates', id: 'hourly-rates', label: 'Hourly rates' },
+      { href: '/extras', id: 'extras', label: 'Extras' },
+    ],
+  },
+  {
+    id: 'setup',
+    label: 'Setup',
+    items: [
+      { href: '/fleet', id: 'fleet', label: 'Fleet' },
+      { href: '/zones', id: 'zones', label: 'Zones' },
+      { href: '/settings', id: 'settings', label: 'Settings' },
+    ],
+  },
 ] as const;
 ---
 
@@ -32,55 +70,111 @@ const nav = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>{title}</title>
+    <title>{htmlTitle}</title>
+    <link rel="preload" href="/fonts/jost-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link
       rel="preload"
-      href="/fonts/inter-latin-wght-normal.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
-    <link
-      rel="preload"
-      href="/fonts/inter-tight-latin-wght-normal.woff2"
+      href="/fonts/playfair-display-latin-500-normal.woff2"
       as="font"
       type="font/woff2"
       crossorigin
     />
   </head>
-  <body>
-    <div class="admin">
-      <nav class="admin-nav" aria-label="Admin">
-        <a class="logo" href="/bookings">TEM Admin</a>
-        <ul>
+  <body class="ep-admin">
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="shell">
+      <header class="sidebar">
+        <div class="nav-toggle">
+          <a class="brand" href="/bookings">
+            <span class="brand-mark" aria-hidden="true">EP</span>
+            <span class="brand-name">Elite Protection<small>Office</small></span>
+          </a>
+          <button
+            class="menu-btn"
+            type="button"
+            id="menu-btn"
+            aria-expanded="false"
+            aria-controls="adminnav"
+          >
+            Menu
+          </button>
+        </div>
+        <nav class="navlist" id="adminnav" aria-label="Admin">
           {
-            nav.map((item) => (
-              <li>
-                <a href={item.href} aria-current={current === item.id ? 'page' : undefined}>
-                  {item.label}
-                </a>
-              </li>
+            groups.map((g) => (
+              <>
+                <p class="nav-label" id={`g-${g.id}`}>
+                  {g.label}
+                </p>
+                <ul class="nav-group" aria-labelledby={`g-${g.id}`}>
+                  {g.items.map((item) => (
+                    <li>
+                      <a href={item.href} aria-current={current === item.id ? 'page' : undefined}>
+                        <span>{item.label}</span>
+                        {'count' in item && item.count > 0 ? (
+                          <span class="nav-count" aria-label={`${item.count} need a vehicle`}>
+                            {item.count}
+                          </span>
+                        ) : null}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
             ))
           }
-        </ul>
-      </nav>
-      <main class="admin-main" id="main">
+        </nav>
+        <div class="sidebar-foot">
+          {staffEmail && <span class="who">{staffEmail}</span>}
+          <form method="POST" action="/logout">
+            <button class="btn btn-quiet btn-sm" type="submit">Sign out</button>
+          </form>
+        </div>
+      </header>
+      <main class="main" id="main">
         {
-          banner && (
-            <p class="banner" role="note">
-              {banner}
-            </p>
+          bannerText && (
+            <Banner tone="warning" tag="Demo data">
+              {bannerText}
+              <a class="btn btn-secondary btn-sm" slot="action" href="/settings">
+                Review settings
+              </a>
+            </Banner>
           )
         }
-        {
-          staffEmail && (
-            <p class="muted" style="margin-bottom: var(--space-3);">
-              Signed in as {staffEmail}
-            </p>
-          )
-        }
+        <div class="page-head">
+          <div>
+            {
+              crumbs.length > 0 && (
+                <p class="crumbs">
+                  {crumbs.map((c, i) => (
+                    <>
+                      {i > 0 && ' / '}
+                      {c.href ? <a href={c.href}>{c.label}</a> : <span>{c.label}</span>}
+                    </>
+                  ))}
+                </p>
+              )
+            }
+            <h1 class="title">{title}</h1>
+          </div>
+          <div class="page-actions">
+            <slot name="actions" />
+          </div>
+        </div>
         <slot />
       </main>
     </div>
+    <script is:inline>
+      (function () {
+        const btn = document.getElementById('menu-btn');
+        const nav = document.getElementById('adminnav');
+        if (!btn || !nav) return;
+        btn.addEventListener('click', function () {
+          const open = nav.classList.toggle('open');
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      })();
+    </script>
   </body>
 </html>

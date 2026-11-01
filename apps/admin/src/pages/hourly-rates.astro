@@ -15,12 +15,11 @@ const { data: classes } = await supabase
   .order('sort_order');
 ---
 
-<AdminLayout title="Hourly rates — TEM Admin" current="hourly-rates" staffEmail={staff.email}>
-  <h1>Hourly rates</h1>
+<AdminLayout title="Hourly rates" current="hourly-rates" staffEmail={staff.email}>
   <form method="POST" action={actions.saveHourlyRates} class="stack">
     <input type="hidden" name="rowsJson" id="rowsJson" value="[]" />
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
-      <table>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
+      <table class="table table-cards">
         <thead>
           <tr>
             <th scope="col">Class</th>

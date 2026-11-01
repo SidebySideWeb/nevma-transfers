@@ -14,8 +14,7 @@ function valueForInput(value: unknown): string {
 }
 ---
 
-<AdminLayout title="Settings — TEM Admin" current="settings" staffEmail={staff.email}>
-  <h1>Settings</h1>
+<AdminLayout title="Settings" current="settings" staffEmail={staff.email}>
   <p class="muted">Saving a value clears the DEMO flag for that row. Enter JSON (e.g. 20 or "Europe/Athens").</p>
   <div class="stack">
     {
@@ -23,11 +22,11 @@ function valueForInput(value: unknown): string {
         <form
           method="POST"
           action={actions.saveSetting}
-          class:list={['card', 'stack', { demo: s.is_demo }]}
+          class:list={['panel', 'stack', { demo: s.is_demo }]}
         >
           <div class="row" style="justify-content:space-between">
             <strong>{s.key}</strong>
-            {s.is_demo ? <span class="flag">DEMO</span> : null}
+            {s.is_demo ? <span class="badge s-pending">DEMO</span> : null}
           </div>
           {s.description ? <p class="muted">{s.description}</p> : null}
           <input type="hidden" name="key" value={s.key} />
@@ -35,7 +34,7 @@ function valueForInput(value: unknown): string {
             <label for={`v-${s.key}`}>Value</label>
             <input class="input" id={`v-${s.key}`} name="value" value={valueForInput(s.value)} />
           </div>
-          <button class="btn btn-ghost" type="submit">Save</button>
+          <button class="btn btn-quiet" type="submit">Save</button>
         </form>
       ))
     }
@@ -43,7 +42,7 @@ function valueForInput(value: unknown): string {
 </AdminLayout>
 
 <style>
-  .card.demo {
+  .panel.demo {
     border-color: var(--color-warning, #c9a227);
     background: color-mix(in srgb, var(--color-warning, #c9a227) 8%, transparent);
   }

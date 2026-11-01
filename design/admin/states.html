@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Empty, loading and error states — Elite Protection Admin (design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="admin.css">
+</head>
+<body class="ep-admin">
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <header class="sidebar">
+    <div class="nav-toggle"><a class="brand" href="bookings.html"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></a><button class="menu-btn" type="button" aria-expanded="false" aria-controls="adminnav" onclick="var n=document.getElementById('adminnav'),o=n.classList.toggle('open');this.setAttribute('aria-expanded',o)">Menu</button></div>
+    <nav class="navlist" id="adminnav" aria-label="Admin"><p class="nav-label" id="g-operations">Operations</p><ul class="nav-group" aria-labelledby="g-operations"><li><a href="bookings.html"><span>Bookings</span><span class="nav-count" aria-label="12 need a vehicle">12</span></a></li><li><a href="blocked-slots.html"><span>Blocked slots</span></a></li></ul><p class="nav-label" id="g-pricing">Pricing</p><ul class="nav-group" aria-labelledby="g-pricing"><li><a href="prices.html"><span>Zone prices</span></a></li><li><a href="hourly-rates.html"><span>Hourly rates</span></a></li><li><a href="extras.html"><span>Extras</span></a></li></ul><p class="nav-label" id="g-setup">Setup</p><ul class="nav-group" aria-labelledby="g-setup"><li><a href="fleet.html"><span>Fleet</span></a></li><li><a href="zones.html"><span>Zones</span></a></li><li><a href="settings.html"><span>Settings</span></a></li></ul></nav>
+    <div class="sidebar-foot"><span class="who">office@eliteprotection.gr</span><a href="login.html">Sign out</a></div>
+  </header>
+  <main class="main" id="main">
+    
+    <div class="page-head"><div><h1 class="title">Empty, loading and error states</h1></div><div class="page-actions"></div></div>
+    <div class="cols cols-2" style="align-items:start">
+      <div class="stack-sm"><p class="label">Empty list</p>
+        <div class="empty"><h2>No bookings in this range</h2><p>Try other dates or clear the filters.</p><a class="btn btn-secondary btn-sm" href="bookings.html">Clear filters</a></div></div>
+      <div class="stack-sm"><p class="label">Loading (server render is the default; this is only for client-sorted tables)</p>
+        <div class="panel"><div class="panel-body stack-sm" role="status" aria-busy="true" aria-label="Loading bookings"><div class="skeleton" style="width:60%"></div><div class="skeleton"></div><div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:70%"></div></div></div></div>
+      <div class="stack-sm"><p class="label">Banners</p>
+        <div class="banner banner-warning" role="note"><p><span class="tag">Demo data</span>2 settings still hold DEMO values.</p></div>
+        <div class="banner banner-info" role="status"><p><span class="tag">Prices changed</span>Update the website when you finish.</p><button class="btn btn-sm" type="button">Update the website</button></div>
+        <div class="banner banner-success" role="status"><p><span class="tag">Website updating</span>Started 18:42. Takes about 2 minutes. The button is back at 18:44.</p></div>
+        <div class="banner banner-danger" role="alert"><p><span class="tag">Sanity</span>Route "port-north" uses zone code <strong>north2</strong>, which does not exist. It is hidden from the website.</p></div></div>
+      <div class="stack-sm"><p class="label">Signed in but not staff (shown on /login after sign-out)</p>
+        <div class="banner banner-danger" role="alert"><p>This account cannot use the office tool. Ask the office manager for access.</p></div>
+        <p class="label" style="margin-top:1rem">Not found</p>
+        <div class="empty"><h2>Booking not found</h2><p>Check the reference. References look like <span class="mono">EP-7K3QX2</span>.</p><a class="btn btn-secondary btn-sm" href="bookings.html">Back to bookings</a></div></div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

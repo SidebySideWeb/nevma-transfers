@@ -17,14 +17,12 @@ const { data: vehicles } = await supabase
   .order('label');
 ---
 
-<AdminLayout title="Fleet — TEM Admin" current="fleet" staffEmail={staff.email}>
-  <h1>Fleet</h1>
-
+<AdminLayout title="Fleet" current="fleet" staffEmail={staff.email}>
   <section class="stack" aria-labelledby="c-h">
     <h2 id="c-h">Vehicle classes</h2>
     {
       (classes ?? []).map((c) => (
-        <form method="POST" action={actions.saveFleet} class="card stack">
+        <form method="POST" action={actions.saveFleet} class="panel stack">
           <input type="hidden" name="kind" value="class" />
           <input
             type="hidden"
@@ -57,7 +55,7 @@ const { data: vehicles } = await supabase
               <input type="checkbox" class="act" checked={c.active} /> Active
             </label>
           </div>
-          <button class="btn btn-ghost" type="submit">Save class</button>
+          <button class="btn btn-quiet" type="submit">Save class</button>
         </form>
       ))
     }
@@ -65,8 +63,8 @@ const { data: vehicles } = await supabase
 
   <section class="stack" aria-labelledby="v-h">
     <h2 id="v-h">Vehicles</h2>
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
-      <table>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
+      <table class="table table-cards">
         <thead>
           <tr>
             <th scope="col">Label</th>
@@ -101,7 +99,7 @@ const { data: vehicles } = await supabase
                           <option value="inactive" selected={v.status === 'inactive'}>inactive</option>
                         </select>
                       </div>
-                      <button class="btn btn-ghost" type="submit">Save</button>
+                      <button class="btn btn-quiet" type="submit">Save</button>
                     </form>
                   </td>
                 </tr>

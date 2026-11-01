@@ -81,13 +81,13 @@ test('AC-18 assign vehicle; overlap shows clear error; invoice; refund; cancel',
 
   await page.getByRole('button', { name: 'Refund…' }).click({ force: true });
   await page.locator('#amt').fill('10');
-  await page.getByRole('button', { name: 'Confirm refund' }).click({ force: true });
+  await page.locator('#confirm-refund').click({ force: true });
   await expect(page.locator('td', { hasText: 'refund' }).first()).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('td', { hasText: '€ 10.00' }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Cancel booking…' }).click({ force: true });
   await page.locator('#rf').selectOption('none');
-  await page.getByRole('button', { name: 'Confirm cancel' }).click({ force: true });
+  await page.locator('#confirm-cancel').click({ force: true });
   await expect(page.locator('.badge').filter({ hasText: 'cancelled' })).toBeVisible({
     timeout: 90_000,
   });
@@ -123,17 +123,63 @@ test('AC-19 axe on admin pages; tables keyboard-reachable', async ({ page }) => 
     '/zones',
     '/settings',
   ];
+  const widths = [390, 1024, 1440] as const;
   for (const route of routes) {
-    await page.goto(route);
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-    const serious = results.violations.filter(
-      (v) => v.impact === 'serious' || v.impact === 'critical',
-    );
-    expect(serious, `${route}: ${JSON.stringify(serious)}`).toEqual([]);
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(route);
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+      const serious = results.violations.filter(
+        (v) => v.impact === 'serious' || v.impact === 'critical',
+      );
+      expect(serious, `${route}@${width}: ${JSON.stringify(serious)}`).toEqual([]);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      );
+      expect(overflow, `${route}@${width} horizontal overflow`).toBe(false);
+    }
   }
 
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/bookings');
-  const wrap = page.getByRole('region', { name: 'Scrollable table' }).first();
-  await wrap.focus();
-  await expect(wrap).toBeFocused();
+  const wraps = page.getByRole('region');
+  const n = await wraps.count();
+  expect(n).toBeGreaterThan(0);
+  for (let i = 0; i < n; i++) {
+    const wrap = wraps.nth(i);
+    await wrap.focus();
+    await expect(wrap).toBeFocused();
+  }
+});
+
+test('admin menu opens at 390px; refund dialog Escape; no Google Fonts', async ({ page }) => {
+  await login(page, STAFF_EMAIL, STAFF_PASS);
+
+  const fontHits: string[] = [];
+  page.on('request', (req) => {
+    if (req.url().includes('fonts.googleapis.com') || req.url().includes('fonts.gstatic.com')) {
+      fontHits.push(req.url());
+    }
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/bookings');
+  const menu = page.getByRole('button', { name: 'Menu' });
+  await expect(menu).toBeVisible();
+  await expect(menu).toHaveAttribute('aria-expanded', 'false');
+  await menu.click();
+  await expect(menu).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#adminnav')).toHaveClass(/open/);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/bookings/TEM-ADAAAB');
+  await page.getByRole('button', { name: 'Refund…' }).click({ force: true });
+  const dialog = page.locator('#refund-dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('TEM-ADAAAB');
+  await expect(dialog.locator('.restate')).toContainText(/Refundable|€/);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  expect(fontHits, 'no Google Fonts requests').toEqual([]);
 });

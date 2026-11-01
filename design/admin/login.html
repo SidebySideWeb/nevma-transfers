@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Sign in — Elite Protection Admin (design)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="tokens.css"><link rel="stylesheet" href="admin.css">
+</head>
+<body class="ep-admin">
+<main class="login">
+  <div class="login-card">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">EP</span><span class="brand-name">Elite Protection<small>Office</small></span></div>
+    <h1>Sign in</h1>
+    <p class="muted" style="margin:0 0 1.5rem">For Elite Protection staff only.</p>
+    <div class="banner banner-danger" role="alert"><p>Email or password is not correct.</p></div>
+    <form class="stack-sm">
+      <div class="field"><label for="em">Email</label><input id="em" class="input" type="email" autocomplete="username" value="office@eliteprotection.gr"></div>
+      <div class="field"><label for="pw">Password</label><input id="pw" class="input" type="password" autocomplete="current-password" aria-invalid="true"></div>
+      <button class="btn" type="submit" style="width:100%;margin-top:.5rem">Sign in</button>
+    </form>
+    <p class="help" style="margin-top:1.25rem">Forgot your password? Ask the office manager to send a reset link.</p>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,16 @@
+---
+import { statusClass, statusWord, type BookingStatus } from './status';
+
+interface Props {
+  status: BookingStatus | string;
+}
+
+const raw = Astro.props.status;
+const status = (
+  ['pending', 'confirmed', 'assigned', 'completed', 'cancelled', 'expired'].includes(raw)
+    ? raw
+    : 'pending'
+) as BookingStatus;
+---
+
+<span class={`badge ${statusClass(status)}`}>{statusWord(status)}</span>

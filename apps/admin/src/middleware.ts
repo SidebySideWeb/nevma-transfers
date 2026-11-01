@@ -1,7 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { getStaffSession, signOut } from './lib/auth';
 
-const PUBLIC = new Set(['/login']);
+const PUBLIC = new Set(['/login', '/logout']);
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;

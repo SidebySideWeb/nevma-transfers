@@ -37,13 +37,12 @@ const { data: routes } = await supabase
   .select('from_zone_id, to_zone_id, duration_minutes');
 ---
 
-<AdminLayout title="Prices — TEM Admin" current="prices" staffEmail={staff.email}>
-  <h1>Prices and rates</h1>
+<AdminLayout title="Zone prices" current="prices" staffEmail={staff.email}>
   <p class="muted">
     Prices in euros. Changes apply to new bookings only. An empty cell means no online price.
   </p>
 
-  <form method="get" class="toolbar">
+  <form method="get" class="filters">
     <div class="field">
       <label for="cls">Vehicle class</label>
       <select id="cls" class="input" name="class" onchange="this.form.submit()">
@@ -63,8 +62,8 @@ const { data: routes } = await supabase
       <form method="POST" action={actions.saveZonePrices} class="stack">
         <input type="hidden" name="classId" value={selected.id} />
         <input type="hidden" name="cellsJson" id="cellsJson" value="{}" />
-        <div class="table-wrap matrix" role="region" tabindex="0" aria-label="Scrollable table">
-          <table>
+        <div class="table-wrap" role="region" tabindex="0" aria-label="Zone price matrix">
+          <table class="table matrix">
             <thead>
               <tr>
                 <th scope="col">From \ To</th>
@@ -104,8 +103,8 @@ const { data: routes } = await supabase
 
   <section class="stack" aria-labelledby="r-h">
     <h2 id="r-h">Routes (duration minutes)</h2>
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Scrollable table">
-      <table>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
+      <table class="table table-cards">
         <thead>
           <tr>
             <th scope="col">From</th>

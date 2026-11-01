@@ -1,0 +1,22 @@
+---
+interface Props {
+  label: string;
+  labelledBy?: string;
+  cards?: boolean;
+  class?: string;
+}
+
+const { label, labelledBy, cards = true, class: className } = Astro.props;
+---
+
+<div
+  class:list={['table-wrap', className]}
+  role="region"
+  tabindex="0"
+  aria-label={labelledBy ? undefined : label}
+  aria-labelledby={labelledBy}
+>
+  <table class:list={['table', { 'table-cards': cards }]}>
+    <slot />
+  </table>
+</div>

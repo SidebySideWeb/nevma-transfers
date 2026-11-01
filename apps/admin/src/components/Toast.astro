@@ -1,0 +1,11 @@
+---
+interface Props {
+  error?: boolean;
+}
+
+const { error = false } = Astro.props;
+---
+
+<div class:list={['toast', { 'is-error': error }]} role={error ? 'alert' : 'status'}>
+  <slot />
+</div>

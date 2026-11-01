@@ -1,0 +1,17 @@
+---
+interface Props {
+  kind: 'vip' | 'invoice' | 'hourly' | 'demo';
+  label?: string;
+}
+
+const { kind, label } = Astro.props;
+const map = {
+  vip: { className: 'flag-vip', text: label ?? 'VIP security' },
+  invoice: { className: 'flag', text: label ?? 'Invoice' },
+  hourly: { className: 's-info', text: label ?? 'Hourly' },
+  demo: { className: 's-pending', text: label ?? 'DEMO' },
+} as const;
+const conf = map[kind];
+---
+
+<span class={`badge ${conf.className}`}>{conf.text}</span>
