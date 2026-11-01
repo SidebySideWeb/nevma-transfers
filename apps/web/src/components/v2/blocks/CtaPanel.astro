@@ -21,24 +21,48 @@ const lead = typeof section.lead === 'string' ? section.lead : '';
 const primary = section.primary as CtaLinkData | undefined;
 const secondary = section.secondary as CtaLinkData | undefined;
 const style = bgImage((section.image as SanityImage) ?? null);
-const headingClass = layout === 'large' ? 'display sc9e5e' : 'display sc9e5e';
-const sectionClass = layout === 'large' ? 'bgx6 s019b3' : 'bgx6 s019b3';
 ---
 
-<section data-block="ctaPanel" class={sectionClass} style={style}>
-  <div class="sc7e49">
-    <div class="sbd96c">
-      {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
-      <Heading heading={heading} variant="inline" as="h2" class={headingClass} />
-      {lead ? <p class="se68f0">{lead}</p> : null}
-    </div>
-    {
-      (primary || secondary) && (
-        <div class="s4ba17">
-          <CtaLink link={primary} class="btn btn-gold" phone={settings.phone} />
-          <CtaLink link={secondary} class="btn btn-line" phone={settings.phone} />
+{
+  layout === 'escort' ? (
+    <section data-block="ctaPanel" class="s3da4c">
+      <div class="scf6b4">
+        {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+        <Heading heading={heading} variant="inline" as="h2" class="display sb3db9" />
+        {lead ? <p class="s0b4ef">{lead}</p> : null}
+      </div>
+      <div class="s4ba17">
+        <CtaLink link={primary} class="btn btn-line" phone={settings.phone} />
+        <CtaLink link={secondary} class="btn btn-gold" phone={settings.phone} />
+      </div>
+    </section>
+  ) : layout === 'compact' ? (
+    <section data-block="ctaPanel" class="bgx3 s6f967" style={style}>
+      <div class="sb1820">
+        <Heading heading={heading} variant="inline" as="h2" class="display sbbbfc" />
+        {(primary || secondary) && (
+          <div class="s4ba17">
+            <CtaLink link={primary} class="btn btn-line" phone={settings.phone} />
+            <CtaLink link={secondary} class="btn btn-gold" phone={settings.phone} />
+          </div>
+        )}
+      </div>
+    </section>
+  ) : (
+    <section data-block="ctaPanel" class="bgx6 s019b3" style={style}>
+      <div class="sc7e49">
+        <div class="sbd96c">
+          {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+          <Heading heading={heading} variant="inline" as="h2" class="display sc9e5e" />
+          {lead ? <p class="se68f0">{lead}</p> : null}
         </div>
-      )
-    }
-  </div>
-</section>
+        {(primary || secondary) && (
+          <div class="s4ba17">
+            <CtaLink link={primary} class="btn btn-gold" phone={settings.phone} />
+            <CtaLink link={secondary} class="btn btn-line" phone={settings.phone} />
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}

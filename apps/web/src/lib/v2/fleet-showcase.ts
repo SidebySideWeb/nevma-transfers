@@ -5,6 +5,7 @@ import {
   hourlyFromForClass,
   type Catalog,
 } from '../server/catalog';
+import { portablePlain } from './portable';
 
 export type FleetShowcaseCard = {
   key: string;
@@ -19,20 +20,6 @@ export type FleetShowcaseCard = {
   photoUrl: string;
   photoAlt: string;
 };
-
-function portablePlain(blocks: unknown): string {
-  if (!Array.isArray(blocks)) return '';
-  return blocks
-    .map((b) => {
-      if (!b || typeof b !== 'object') return '';
-      const children = (b as { children?: { text?: string }[] }).children;
-      if (!Array.isArray(children)) return '';
-      return children.map((c) => c?.text ?? '').join('');
-    })
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 function specValue(specs: { label: string; value: string }[] | null | undefined, label: string) {
   const row = specs?.find((s) => s.label.toLowerCase() === label.toLowerCase());

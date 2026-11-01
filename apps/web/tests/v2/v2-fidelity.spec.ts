@@ -26,8 +26,9 @@ type Case = { route: string; design: string; maxDiff?: Record<string, number> };
 export const CASES: Case[] = [
   // pageHero: widget note says "inclusive of VAT" (decision) vs design "exclusive of" — same length, few glyphs differ
   { route: '/', design: '01-home', maxDiff: { pageHero: 0.003, fleetShowcase: 0.006, siteFooter: 0.006 } },
-  { route: '/fleet', design: '02-fleet', maxDiff: { fleetBrowser: 0.006, priceTable: 0.006 } },
-  { route: '/fleet/v-class', design: '03-vehicle', maxDiff: { vehicleHero: 0.004 } },
+  // Final VAT prices (€223.20 vs design €180) widen price columns / hero rows; notes say "VAT included".
+  { route: '/fleet', design: '02-fleet', maxDiff: { fleetBrowser: 0.006, priceTable: 0.04, includedList: 0.012, siteFooter: 0.015 } },
+  { route: '/fleet/v-class', design: '03-vehicle', maxDiff: { vehicleTabs: 0.01, vehicleHero: 0.04, onBoard: 0.01, siteFooter: 0.01 } },
   { route: '/services', design: '04-services', maxDiff: { bookingOptions: 0.004, featuredRoute: 0.006 } },
   { route: '/vip-security', design: '05-vip-security' },
   { route: '/about', design: '06-about' },

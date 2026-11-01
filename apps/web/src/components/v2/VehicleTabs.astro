@@ -1,0 +1,56 @@
+---
+import { t } from '../../lib/strings';
+
+export type VehicleTab = { key: string; name: string; fullName?: string | null };
+
+interface Props {
+  classes: VehicleTab[];
+  currentKey: string;
+  currentLabel: string;
+}
+const { classes, currentKey, currentLabel } = Astro.props;
+const fleetLabel = t('nav.fleet');
+---
+
+<div data-block="vehicleTabs" class="s98358">
+  <div class="s8ad2a"><a class="s72467" href="/fleet">{fleetLabel}</a> <span class="sbbc0f" aria-hidden="true">/</span> <span class="s8b46f">{currentLabel}</span></div>
+  <div class="s20bb0" role="tablist" aria-label="Choose a vehicle">
+    {
+      classes.map((c) => {
+        const on = c.key === currentKey;
+        return (
+          <a
+            href={`/fleet/${c.key}`}
+            role="tab"
+            class:list={['seg', on ? 'sc6a85' : 's1bc7c']}
+            aria-selected={on ? 'true' : 'false'}
+            aria-current={on ? 'page' : undefined}
+          >
+            {c.name}
+          </a>
+        );
+      })
+    }
+  </div>
+</div>
+
+<style is:global>
+  /* Anchors must match design `<button class="seg">` chrome for fidelity. */
+  [data-block='vehicleTabs'] a.seg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    box-sizing: border-box;
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: 'Jost', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+    line-height: 1;
+    border-radius: 0;
+  }
+</style>

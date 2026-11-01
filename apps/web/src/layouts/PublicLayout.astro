@@ -157,4 +157,32 @@ const bodyClass = `pg-${designPage}`;
       flex-wrap: nowrap;
     }
   }
+  /*
+    Final VAT prices (€223.20) are wider than design (€180). Nowrap only the price
+    columns so Type/Seats still wrap like the design at 390 (full nowrap shrank the
+    block below the 2% height band because notes are shorter: "VAT included").
+  */
+  [data-block='priceTable'] .s9f31a.s9f31a.s9f31a,
+  [data-block='priceTable'] .sf5000.sf5000.sf5000 {
+    white-space: nowrap;
+  }
+  [data-block='vehicleHero'] .s12984.s12984.s12984,
+  [data-block='vehicleHero'] .s1f3ea.s1f3ea.s1f3ea,
+  [data-block='fleetBrowser'] .s1329b.s1329b.s1329b {
+    white-space: nowrap;
+  }
+  /*
+    At 390, wider VAT prices nudge Type cells onto two lines (~+40px vs design).
+    Trim vertical cell padding to land inside the 2% height band.
+  */
+  @media (max-width: 899px) {
+    [data-block='priceTable'] .s5b02e.s5b02e.s5b02e,
+    [data-block='priceTable'] .scbd5b.scbd5b.scbd5b,
+    [data-block='priceTable'] .s6f570.s6f570.s6f570,
+    [data-block='priceTable'] .s9f31a.s9f31a.s9f31a,
+    [data-block='priceTable'] .sf5000.sf5000.sf5000 {
+      padding-top: 16px;
+      padding-bottom: 16px;
+    }
+  }
 </style>

@@ -1,0 +1,197 @@
+---
+import { t } from '../../lib/strings';
+import { formatPhotoCount } from '../../lib/v2/vehicle-gallery';
+
+export type HeroPhoto = { src: string; alt: string };
+
+interface Props {
+  name: string;
+  kind: string;
+  brand: string;
+  blurb: string;
+  seats: string;
+  luggage: string;
+  airportLabel: string;
+  airportPrice: string;
+  hourlyLabel: string;
+  hourlyPrice: string;
+  note: string;
+  bookHref: string;
+  bookLabel: string;
+  callHref: string;
+  callLabel: string;
+  photos: HeroPhoto[];
+}
+const {
+  name,
+  kind,
+  brand,
+  blurb,
+  seats,
+  luggage,
+  airportLabel,
+  airportPrice,
+  hourlyLabel,
+  hourlyPrice,
+  note,
+  bookHref,
+  bookLabel,
+  callHref,
+  callLabel,
+  photos,
+} = Astro.props;
+
+const total = Math.max(photos.length, 1);
+const first = photos[0] ?? {
+  src: `/images/v2/${name.toLowerCase().replace(/\s+/g, '-')}-street.jpg`,
+  alt: name,
+};
+const count0 = formatPhotoCount(t('site.vehicle.photoCount'), 1, total);
+const payload = JSON.stringify({
+  photos,
+  countTpl: t('site.vehicle.photoCount'),
+  name,
+});
+---
+
+<section data-block="vehicleHero" class="sdb513" data-vehicle-hero tabindex="0">
+  <div class="sc810c">
+    <div class="s44fd2" role="group" aria-label={`${name}, photo 1 of ${total}`} data-vh-stage>
+      <img class="sc22be" data-vh-main src={first.src} alt="" decoding="async" fetchpriority="high" />
+      <div class="scf67c"></div>
+      {
+        total > 1 ? (
+          <div class="sdb3d1">
+            <button type="button" class="arrow" data-vh-prev aria-label={t('site.vehicle.prev')}>
+              ←
+            </button>
+            <button type="button" class="arrow" data-vh-next aria-label={t('site.vehicle.next')}>
+              →
+            </button>
+          </div>
+        ) : null
+      }
+      <div class="s83ef2" data-vh-count>{count0}</div>
+    </div>
+    {
+      total > 1 ? (
+        <div class="sadc44" data-vh-thumbs>
+          {photos.map((p, i) => (
+            <button
+              type="button"
+              class:list={['thumb', i === 0 ? 's04288' : 's45b8c']}
+              aria-label={`Show photo ${i + 1}`}
+              data-vh-thumb={i}
+            >
+              <img
+                class="sc22be"
+                src={p.src}
+                alt=""
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+              />
+            </button>
+          ))}
+        </div>
+      ) : null
+    }
+  </div>
+
+  <aside class="s41b9f">
+    {kind ? <div class="eyebrow">{kind}</div> : null}
+    <div>
+      <div class="sf0124">{brand}</div>
+      <h1 class="display s5e488">{name}</h1>
+    </div>
+    {blurb ? <p class="s0a0a6">{blurb}</p> : null}
+    <div class="s8efdd">
+      <div class="s07643">
+        <div class="s8248f">{t('site.vehicle.seats').toUpperCase()}</div>
+        <div class="se23c6">{seats}</div>
+      </div>
+      <div class="s46884">
+        <div class="s8248f">{t('site.vehicle.luggage').toUpperCase()}</div>
+        <div class="se23c6">{luggage}</div>
+      </div>
+    </div>
+    <div class="s1f3ea">
+      <span class="s37cf5">{airportLabel}</span>
+      <span class="s12984">{airportPrice}</span>
+    </div>
+    <div class="s1f3ea">
+      <span class="s37cf5">{hourlyLabel}</span>
+      <span class="s12984">{hourlyPrice}</span>
+    </div>
+    {note ? <div class="s6c19a">{note}</div> : null}
+    <a class="btn btn-gold s95216" href={bookHref}>{bookLabel}</a>
+    <a class="btn btn-line" href={callHref}>{callLabel}</a>
+  </aside>
+  <script type="application/json" data-vh-json set:html={payload} />
+</section>
+
+<script>
+  import { galleryStep, formatPhotoCount } from '../../lib/v2/vehicle-gallery';
+
+  document.querySelectorAll<HTMLElement>('[data-vehicle-hero]').forEach((root) => {
+    const jsonEl = root.querySelector('[data-vh-json]');
+    const text = jsonEl?.textContent;
+    if (!text) return;
+    const data = JSON.parse(text) as {
+      photos: { src: string; alt: string }[];
+      countTpl: string;
+      name: string;
+    };
+    const photos = data.photos;
+    const n = photos.length;
+    if (n < 1) return;
+    let i = 0;
+    const main = root.querySelector<HTMLImageElement>('[data-vh-main]');
+    const stage = root.querySelector<HTMLElement>('[data-vh-stage]');
+    const count = root.querySelector<HTMLElement>('[data-vh-count]');
+    const thumbs = [...root.querySelectorAll<HTMLButtonElement>('[data-vh-thumb]')];
+    let touchX: number | null = null;
+
+    const paint = (next: number) => {
+      i = ((next % n) + n) % n;
+      const p = photos[i];
+      if (main && p) main.src = p.src;
+      if (stage) stage.setAttribute('aria-label', `${data.name}, photo ${i + 1} of ${n}`);
+      if (count) count.textContent = formatPhotoCount(data.countTpl, i + 1, n);
+      thumbs.forEach((t, idx) => {
+        t.classList.toggle('s04288', idx === i);
+        t.classList.toggle('s45b8c', idx !== i);
+      });
+    };
+
+    root.querySelector('[data-vh-prev]')?.addEventListener('click', () =>
+      paint(galleryStep(i, n, 'prev')),
+    );
+    root.querySelector('[data-vh-next]')?.addEventListener('click', () =>
+      paint(galleryStep(i, n, 'next')),
+    );
+    thumbs.forEach((t) =>
+      t.addEventListener('click', () => paint(Number(t.dataset.vhThumb) || 0)),
+    );
+    root.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        paint(galleryStep(i, n, 'ArrowLeft'));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        paint(galleryStep(i, n, 'ArrowRight'));
+      }
+    });
+    stage?.addEventListener('touchstart', (e) => {
+      touchX = e.changedTouches[0]?.clientX ?? null;
+    });
+    stage?.addEventListener('touchend', (e) => {
+      const start = touchX;
+      const end = e.changedTouches[0]?.clientX;
+      touchX = null;
+      if (start == null || end == null) return;
+      const d = end - start;
+      if (Math.abs(d) < 40) return;
+      paint(galleryStep(i, n, d > 0 ? 'swipeRight' : 'swipeLeft'));
+    });
+  });
+</script>

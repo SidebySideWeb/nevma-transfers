@@ -57,6 +57,36 @@ export function getV2SeedPage(slug: string): CmsPage | null {
   return load().get(slug) ?? null;
 }
 
+const V2_SECTION = new Set([
+  'pageHero',
+  'promiseStrip',
+  'divisionCards',
+  'fleetShowcase',
+  'howItWorks',
+  'onBoard',
+  'quoteBlock',
+  'ctaPanel',
+  'fleetBrowser',
+  'galleryMosaic',
+  'priceTable',
+  'includedList',
+  'bookingOptions',
+  'featuredRoute',
+  'occasions',
+  'faqList',
+  'featureTrio',
+  'serviceColumns',
+  'escortFeature',
+  'statsBar',
+  'clientsBlock',
+  'contactCards',
+  'enquiryForm',
+  'legalDocument',
+]);
+
+/** True when the page already carries V2 section types (incl. vehicle template without pageHero). */
 export function pageHasV2Sections(page: CmsPage): boolean {
-  return (page.sections ?? []).some((s) => s && typeof s === 'object' && '_type' in s && s._type === 'pageHero');
+  return (page.sections ?? []).some(
+    (s) => s && typeof s === 'object' && '_type' in s && V2_SECTION.has(String(s._type)),
+  );
 }

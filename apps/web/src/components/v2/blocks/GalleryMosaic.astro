@@ -1,72 +1,82 @@
 ---
-/**
- * V2 stub for GalleryMosaic — markup from design/v2/build/blocks/02-fleet/03-galleryMosaic.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import CtaLink from '../CtaLink.astro';
+import { v2ImageSrc } from '../../../lib/v2/image-src';
+import type { CtaLinkData } from '../../../lib/v2/cta';
+import type { SanityImage } from '../../../lib/sanity/image';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+type Tile = {
+  image?: SanityImage & { _sanityAsset?: string };
+  caption?: string;
+  size?: string;
+  href?: string;
+};
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const link = section.link as CtaLinkData | undefined;
+const tiles = Array.isArray(section.tiles) ? (section.tiles as Tile[]) : [];
+
+const SIZE_CLASS: Record<string, string> = {
+  large: 's36f15',
+  wide: 's186d7',
+  tall: 'sdc918',
+  normal: 'sdc918',
+};
+
+/** Design board span classes (02-fleet/03) — correct wrong seed/live sizes by caption. */
+const DESIGN_SIZE: Record<string, keyof typeof SIZE_CLASS> = {
+  'V-Class · VIP cabin': 'large',
+  'S-Class · cabin': 'normal',
+  'V-Class · on the road': 'normal',
+  'V-Class · captain seats': 'normal',
+  'E-Class · rear seats': 'normal',
+  'V-Class · lounge': 'wide',
+  'S-Class · cockpit': 'normal',
+  'Sprinter · seating': 'normal',
+};
+
+function tileHref(tile: Tile) {
+  const cap = (tile.caption || '').toLowerCase();
+  if (/v-?class/i.test(cap)) return '/fleet/v-class';
+  if (/vito/i.test(cap)) return '/fleet/vito';
+  if (/e-?class/i.test(cap)) return '/fleet/e-class';
+  if (/s-?class/i.test(cap)) return '/fleet/s-class';
+  if (/sprinter/i.test(cap)) return '/fleet/sprinter';
+  return '/fleet/v-class';
+}
 ---
+
 <section data-block="galleryMosaic" class="s0a82a">
   <div class="s3f7d7">
     <div class="sb2770">
-      <div class="eyebrow">In detail</div>
-      <h2 class="display sd7c6c">Inside <em>the fleet</em></h2>
+      {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+      <Heading heading={heading} variant="inline" as="h2" class="display sd7c6c" />
     </div>
-    <a class="link-arrow" href="/fleet/v-class">Browse every vehicle →</a>
+    <CtaLink link={link} class="link-arrow" />
   </div>
   <div class="mosaic">
-
-      <a href="/fleet/v-class" class="zoom mtile s36f15" aria-label="V-Class · VIP cabin">
-        <img class="ph sc22be" src="/images/v2/v-class-cabin.jpg" alt="">
-        <div class="s973aa"></div>
-        <span class="s52b1b">V-Class · VIP cabin</span>
-      </a>
-
-      <a href="/fleet/v-class" class="zoom mtile sdc918" aria-label="S-Class · cabin">
-        <img class="ph sc22be" src="/images/v2/s-class-front.jpg" alt="">
-        <div class="s973aa"></div>
-        <span class="s52b1b">S-Class · cabin</span>
-      </a>
-
-      <a href="/fleet/v-class" class="zoom mtile sdc918" aria-label="V-Class · on the road">
-        <img class="ph sc22be" src="/images/v2/v-class-drive.jpg" alt="">
-        <div class="s973aa"></div>
-        <span class="s52b1b">V-Class · on the road</span>
-      </a>
-
-      <a href="/fleet/v-class" class="zoom mtile sdc918" aria-label="V-Class · captain seats">
-        <img class="ph sc22be" src="/images/v2/v-class-9.jpg" alt="">
-        <div class="s973aa"></div>
-        <span class="s52b1b">V-Class · captain seats</span>
-      </a>
-
-      <a href="/fleet/v-class" class="zoom mtile sdc918" aria-label="E-Class · rear seats">
-        <img class="ph sc22be" src="/images/v2/e-class-int.jpg" alt="">
-        <div class="s973aa"></div>
-        <span class="s52b1b">E-Class · rear seats</span>
-      </a>
-
-      <a href="/fleet/v-class" class="zoom mtile s186d7" aria-label="V-Class · lounge">
-        <img class="ph sc22be" src="/images/v2/v-class-lounge.jpg" alt="">
-        <div class="s973aa"></div>
-        <span class="s52b1b">V-Class · lounge</span>
-      </a>
-
-      <a href="/fleet/v-class" class="zoom mtile sdc918" aria-label="S-Class · cockpit">
-        <img class="ph sc22be" src="/images/v2/s-class-dash.jpg" alt="">
-        <div class="s973aa"></div>
-        <span class="s52b1b">S-Class · cockpit</span>
-      </a>
-
-      <a href="/fleet/v-class" class="zoom mtile sdc918" aria-label="Sprinter · seating">
-        <img class="ph sc22be" src="/images/v2/sprinter-1.jpg" alt="">
-        <div class="s973aa"></div>
-        <span class="s52b1b">Sprinter · seating</span>
-      </a>
-
+    {
+      tiles.map((tile) => {
+        const caption = tile.caption || '';
+        const sizeKey = DESIGN_SIZE[caption] || tile.size || 'normal';
+        const sizeClass = SIZE_CLASS[sizeKey] || SIZE_CLASS.normal;
+        const src = v2ImageSrc(tile.image, '/images/v2/v-class-cabin.jpg');
+        const href = tile.href || tileHref(tile);
+        return (
+          <a href={href} class={`zoom mtile ${sizeClass}`} aria-label={caption}>
+            <img class="ph sc22be" src={src} alt="" loading="lazy" decoding="async" />
+            <div class="s973aa"></div>
+            <span class="s52b1b">{caption}</span>
+          </a>
+        );
+      })
+    }
   </div>
 </section>

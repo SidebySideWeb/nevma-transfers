@@ -133,7 +133,9 @@ export const VEHICLE_CLASSES_QUERY = defineQuery(`
   *[_type == "vehicleClass"] | order(sortOrder asc){
     key,
     name,
+    fullName,
     tagline,
+    group,
     photos[]{
       ${imageProjection}
     },
@@ -157,7 +159,9 @@ export const VEHICLE_CLASS_BY_KEY_QUERY = defineQuery(`
   *[_type == "vehicleClass" && key == $key][0]{
     key,
     name,
+    fullName,
     tagline,
+    group,
     photos[]{
       ${imageProjection}
     },

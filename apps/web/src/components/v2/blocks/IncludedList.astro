@@ -1,43 +1,48 @@
 ---
-/**
- * V2 stub for IncludedList — markup from design/v2/build/blocks/02-fleet/05-includedList.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import { bgImage } from '../../../lib/v2/bg-image';
+import { resolveCtaHref, resolveCtaLabel, type CtaLinkData } from '../../../lib/v2/cta';
+import type { SanityImage } from '../../../lib/sanity/image';
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const items = Array.isArray(section.items) ? (section.items as string[]) : [];
+const addOnLabel = typeof section.addOnLabel === 'string' ? section.addOnLabel : '';
+const addOnTitle = typeof section.addOnTitle === 'string' ? section.addOnTitle : '';
+const addOnText = typeof section.addOnText === 'string' ? section.addOnText : '';
+const addOnLink = section.addOnLink as CtaLinkData | undefined;
+const image = section.image as SanityImage | undefined;
+const style = bgImage(image ?? null);
+const href = resolveCtaHref(addOnLink);
+const linkLabel = resolveCtaLabel(addOnLink);
 ---
+
 <section data-block="includedList" class="s82488">
   <div class="sebfdc">
     <div class="s52f59">
-      <div class="eyebrow">Included in every journey</div>
+      {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
       <div class="se8466">
-
-          <div class="s53e3f"><span class="sbbc0f">—</span><span>Professional chauffeur</span></div>
-
-          <div class="s53e3f"><span class="sbbc0f">—</span><span>Air conditioning</span></div>
-
-          <div class="s53e3f"><span class="sbbc0f">—</span><span>Wi-Fi on board</span></div>
-
-          <div class="s53e3f"><span class="sbbc0f">—</span><span>Bottled water</span></div>
-
-          <div class="s53e3f"><span class="sbbc0f">—</span><span>Device charging</span></div>
-
-          <div class="s53e3f"><span class="sbbc0f">—</span><span>Luggage assistance</span></div>
-
+        {
+          items.map((item) => (
+            <div class="s53e3f">
+              <span class="sbbc0f">—</span>
+              <span>{item}</span>
+            </div>
+          ))
+        }
       </div>
     </div>
-    <a href="/vip-security" class="card zoom s3078d">
-      <div class="bgx2 ph s22cbe"></div>
+    <a href={href} class="card zoom s3078d">
+      <div class="bgx2 ph s22cbe" style={style}></div>
       <div class="s5bfdd"></div>
       <div class="s4f9a1">
-        <div class="eyebrow">Add-on</div>
-        <div class="display se47a0">Add a security escort</div>
-        <div class="s331e6">Vehicle, chauffeur and escort team on one coordinated plan.</div>
-        <span class="link-arrow s147c5">VIP Security →</span>
+        {addOnLabel ? <div class="eyebrow">{addOnLabel}</div> : null}
+        {addOnTitle ? <div class="display se47a0">{addOnTitle}</div> : null}
+        {addOnText ? <div class="s331e6">{addOnText}</div> : null}
+        {linkLabel ? <span class="link-arrow s147c5">{linkLabel}</span> : null}
       </div>
     </a>
   </div>

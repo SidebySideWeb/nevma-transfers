@@ -1,154 +1,132 @@
 ---
-/**
- * V2 stub for FleetBrowser — markup from design/v2/build/blocks/02-fleet/02-fleetBrowser.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import { getPublishableClasses } from '../../../lib/content/vehicles';
+import { getSiteSettings } from '../../../lib/sanity/content';
+import { getCatalog } from '../../../lib/server/catalog';
+import { t } from '../../../lib/strings';
+import { buildFleetCards, filterCounts } from '../../../lib/v2/fleet-cards';
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const settings = await getSiteSettings();
+const show = settings.showFromPrices !== false;
+const brand = t('fleet.brand');
+const allLabel = typeof section.allLabel === 'string' ? section.allLabel : 'All';
+const vansLabel = typeof section.vansLabel === 'string' ? section.vansLabel : 'Vans';
+const saloonsLabel = typeof section.saloonsLabel === 'string' ? section.saloonsLabel : 'Saloons';
+const note = typeof section.note === 'string' ? section.note : '';
+const airportLabel = (
+  typeof section.airportLabel === 'string' ? section.airportLabel : 'Airport · one way'
+).toUpperCase();
+const hourlyLabelTpl =
+  typeof section.hourlyLabel === 'string' ? section.hourlyLabel : 'Hourly · min {hours} hours';
+const detailsLabel =
+  typeof section.detailsLabel === 'string' ? section.detailsLabel : t('fleet.details');
+const bookLabel = typeof section.bookLabel === 'string' ? section.bookLabel : t('fleet.book');
+
+let cards: ReturnType<typeof buildFleetCards> = [];
+try {
+  const [classes, cat] = await Promise.all([getPublishableClasses(), getCatalog()]);
+  cards = buildFleetCards(classes, cat, show);
+} catch {
+  cards = [];
+}
+const counts = filterCounts(cards);
 ---
-<section data-block="fleetBrowser" class="s46271">
+
+<section data-block="fleetBrowser" class="s46271" data-fleet-browser>
   <div class="sb7c9b">
-    <div class="s4ed5d" role="tablist" aria-label="Filter vehicles">
-
-        <button type="button" role="tab" aria-selected="true" class="chip sc6a85">All <span class="s96884">(5)</span></button>
-
-        <button type="button" role="tab" aria-selected="false" class="chip s1bc7c">Vans <span class="s96884">(3)</span></button>
-
-        <button type="button" role="tab" aria-selected="false" class="chip s1bc7c">Saloons <span class="s96884">(2)</span></button>
-
+    <div class="s4ed5d" role="group" aria-label="Filter vehicles">
+      <button type="button" class="chip sc6a85" aria-pressed="true" data-filter="all">
+        {allLabel}{' '}<span class="s96884">({counts.all})</span>
+      </button>
+      <button type="button" class="chip s1bc7c" aria-pressed="false" data-filter="van">
+        {vansLabel}{' '}<span class="s96884">({counts.vans})</span>
+      </button>
+      <button type="button" class="chip s1bc7c" aria-pressed="false" data-filter="saloon">
+        {saloonsLabel}{' '}<span class="s96884">({counts.saloons})</span>
+      </button>
     </div>
-    <div class="s8ad2a">Prices in euros, exclusive of 24% VAT · Capacity indicative, to be confirmed</div>
+    {note ? <div class="s8ad2a">{note}</div> : null}
   </div>
-  <div class="sebfdc">
-
-      <article class="card sd9345">
-        <a href="/fleet/v-class" class="zoom sfc2ca" aria-label="V-Class details">
-          <img class="ph sc22be" src="/images/v2/v-class-street.jpg" alt="">
-          <span class="s85b16">Luxury van</span>
-        </a>
-        <div class="s4c805">
-          <div>
-            <div class="sa1347">Mercedes-Benz</div>
-            <h2 class="display sec254">V-Class</h2>
-          </div>
-          <div class="s70008">
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 7 seats</span>
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 6 bags</span>
-          </div>
-          <div class="s94fe9">
-            <div class="s07643"><div class="s8248f">AIRPORT · ONE WAY</div><div class="s1329b">€180</div></div>
-            <div class="s2767f"><div class="s8248f">HOURLY · MIN 4 hours</div><div class="s1329b">€90</div></div>
-          </div>
-          <div class="s6affc">
-            <a class="btn btn-line s24f7c" href="/fleet/v-class">Details</a>
-            <a class="btn btn-gold s24f7c" href="/book">Book</a>
-          </div>
-        </div>
-      </article>
-
-      <article class="card sd9345">
-        <a href="/fleet/v-class" class="zoom sfc2ca" aria-label="Vito details">
-          <img class="ph sc22be" src="/images/v2/vito-ext.jpg" alt="">
-          <span class="s85b16">Van</span>
-        </a>
-        <div class="s4c805">
-          <div>
-            <div class="sa1347">Mercedes-Benz</div>
-            <h2 class="display sec254">Vito</h2>
-          </div>
-          <div class="s70008">
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 8 seats</span>
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 6 bags</span>
-          </div>
-          <div class="s94fe9">
-            <div class="s07643"><div class="s8248f">AIRPORT · ONE WAY</div><div class="s1329b">€150</div></div>
-            <div class="s2767f"><div class="s8248f">HOURLY · MIN 4 hours</div><div class="s1329b">€70</div></div>
-          </div>
-          <div class="s6affc">
-            <a class="btn btn-line s24f7c" href="/fleet/v-class">Details</a>
-            <a class="btn btn-gold s24f7c" href="/book">Book</a>
-          </div>
-        </div>
-      </article>
-
-      <article class="card sd9345">
-        <a href="/fleet/v-class" class="zoom sfc2ca" aria-label="E-Class details">
-          <img class="ph sc22be" src="/images/v2/e-class-ext.jpg" alt="">
-          <span class="s85b16">Saloon</span>
-        </a>
-        <div class="s4c805">
-          <div>
-            <div class="sa1347">Mercedes-Benz</div>
-            <h2 class="display sec254">E-Class</h2>
-          </div>
-          <div class="s70008">
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 3 seats</span>
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 2 bags</span>
-          </div>
-          <div class="s94fe9">
-            <div class="s07643"><div class="s8248f">AIRPORT · ONE WAY</div><div class="s1329b">€150</div></div>
-            <div class="s2767f"><div class="s8248f">HOURLY · MIN 3 hours</div><div class="s1329b">€60</div></div>
-          </div>
-          <div class="s6affc">
-            <a class="btn btn-line s24f7c" href="/fleet/v-class">Details</a>
-            <a class="btn btn-gold s24f7c" href="/book">Book</a>
-          </div>
-        </div>
-      </article>
-
-      <article class="card sd9345">
-        <a href="/fleet/v-class" class="zoom sfc2ca" aria-label="S-Class details">
-          <img class="ph sc22be" src="/images/v2/s-class-ext.jpg" alt="">
-          <span class="s85b16">Executive saloon</span>
-        </a>
-        <div class="s4c805">
-          <div>
-            <div class="sa1347">Mercedes-Benz</div>
-            <h2 class="display sec254">S-Class</h2>
-          </div>
-          <div class="s70008">
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 3 seats</span>
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 2 bags</span>
-          </div>
-          <div class="s94fe9">
-            <div class="s07643"><div class="s8248f">AIRPORT · ONE WAY</div><div class="s1329b">€180</div></div>
-            <div class="s2767f"><div class="s8248f">HOURLY · MIN 4 hours</div><div class="s1329b">€90</div></div>
-          </div>
-          <div class="s6affc">
-            <a class="btn btn-line s24f7c" href="/fleet/v-class">Details</a>
-            <a class="btn btn-gold s24f7c" href="/book">Book</a>
-          </div>
-        </div>
-      </article>
-
-      <article class="card sd9345">
-        <a href="/fleet/v-class" class="zoom sfc2ca" aria-label="Sprinter details">
-          <img class="ph sc22be" src="/images/v2/sprinter-ext.jpg" alt="">
-          <span class="s85b16">VIP van</span>
-        </a>
-        <div class="s4c805">
-          <div>
-            <div class="sa1347">Mercedes-Benz</div>
-            <h2 class="display sec254">Sprinter</h2>
-          </div>
-          <div class="s70008">
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 12 seats</span>
-            <span><span class="sbbc0f" aria-hidden="true">◦ </span>Up to 10 bags</span>
-          </div>
-          <div class="s94fe9">
-            <div class="s07643"><div class="s8248f">AIRPORT · ONE WAY</div><div class="s1329b">€180</div></div>
-            <div class="s2767f"><div class="s8248f">HOURLY · MIN 4 hours</div><div class="s1329b">€90</div></div>
-          </div>
-          <div class="s6affc">
-            <a class="btn btn-line s24f7c" href="/fleet/v-class">Details</a>
-            <a class="btn btn-gold s24f7c" href="/book">Book</a>
-          </div>
-        </div>
-      </article>
-
+  <div class="sebfdc" data-fleet-grid>
+    {
+      cards.map((c) => {
+        const hourlyLabel = hourlyLabelTpl
+          .replaceAll('{hours}', String(c.hourlyMin ?? ''))
+          .replace(/^(.*)(hours?)\s*$/i, (_: string, a: string, h: string) => a.toUpperCase() + h.toLowerCase());
+        const group = c.group === 'saloon' ? 'saloon' : 'van';
+        return (
+          <article class="card sd9345" data-group={group}>
+            <a href={`/fleet/${c.key}`} class="zoom sfc2ca" aria-label={`${c.name} details`}>
+              <img class="ph sc22be" src={c.photoUrl} alt={c.photoAlt} loading="lazy" decoding="async" />
+              <span class="s85b16">{c.kind}</span>
+            </a>
+            <div class="s4c805">
+              <div>
+                <div class="sa1347">{brand}</div>
+                <h2 class="display sec254">{c.name}</h2>
+              </div>
+              <div class="s70008">
+                <span>
+                  <span class="sbbc0f" aria-hidden="true">
+                    ◦{' '}
+                  </span>
+                  {c.seats}
+                  {/seat/i.test(c.seats) ? '' : ' seats'}
+                </span>
+                <span>
+                  <span class="sbbc0f" aria-hidden="true">
+                    ◦{' '}
+                  </span>
+                  {c.luggage}
+                  {/bag/i.test(c.luggage) ? '' : ' bags'}
+                </span>
+              </div>
+              <div class="s94fe9">
+                <div class="s07643">
+                  <div class="s8248f">{airportLabel}</div>
+                  <div class="s1329b">{c.airportText}</div>
+                </div>
+                <div class="s2767f">
+                  <div class="s8248f">{hourlyLabel}</div>
+                  <div class="s1329b">{c.hourlyText}</div>
+                </div>
+              </div>
+              <div class="s6affc">
+                <a class="btn btn-line s24f7c" href={`/fleet/${c.key}`}>
+                  {detailsLabel}
+                </a>
+                <a class="btn btn-gold s24f7c" href={`/book?class=${encodeURIComponent(c.key)}`}>
+                  {bookLabel}
+                </a>
+              </div>
+            </div>
+          </article>
+        );
+      })
+    }
   </div>
 </section>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-fleet-browser]').forEach((root) => {
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const cards = [...root.querySelectorAll<HTMLElement>('[data-group]')];
+    const paint = (filter: string) => {
+      buttons.forEach((btn) => {
+        const on = btn.dataset.filter === filter;
+        btn.setAttribute('aria-pressed', String(on));
+        btn.classList.toggle('sc6a85', on);
+        btn.classList.toggle('s1bc7c', !on);
+      });
+      cards.forEach((card) => {
+        const show = filter === 'all' || card.dataset.group === filter;
+        card.hidden = !show;
+      });
+    };
+    buttons.forEach((btn) => btn.addEventListener('click', () => paint(btn.dataset.filter || 'all')));
+  });
+</script>

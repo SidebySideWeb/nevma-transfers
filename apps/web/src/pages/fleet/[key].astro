@@ -1,21 +1,20 @@
 ---
 export const prerender = true;
 
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import Breadcrumbs from '../../components/Breadcrumbs.astro';
-import { Gallery } from '../../components/v2/Gallery';
-import { getPublishableClasses } from '../../lib/content/vehicles';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import SiteHeader from '../../components/v2/SiteHeader.astro';
+import VehicleTabs from '../../components/v2/VehicleTabs.astro';
+import VehicleHero from '../../components/v2/VehicleHero.astro';
+import Sections from '../../components/sections/Sections.astro';
+import { getPublishableClasses, fleetVehiclePaths } from '../../lib/content/vehicles';
 import { isBookingOpen } from '../../lib/booking-open';
-import { formatEuro } from '../../lib/booking/pricing';
 import { getSiteSettings } from '../../lib/sanity/content';
-import { responsiveImage, type SanityImage } from '../../lib/sanity/image';
-import {
-  fromPriceForClass,
-  getCatalog,
-  hourlyFromForClass,
-} from '../../lib/server/catalog';
-import { resolveSeo, serviceJsonLd } from '../../lib/seo';
+import { getPageBySlug } from '../../lib/sanity/pages';
+import { fromPriceForClass, getCatalog } from '../../lib/server/catalog';
+import { breadcrumbJsonLd, resolveSeo, serviceJsonLd } from '../../lib/seo';
 import { t } from '../../lib/strings';
+import { buildFleetCards } from '../../lib/v2/fleet-cards';
+import { portablePlain } from '../../lib/v2/portable';
 
 export async function getStaticPaths() {
   let classes: Awaited<ReturnType<typeof getPublishableClasses>> = [];
@@ -30,10 +29,7 @@ export async function getStaticPaths() {
   if (!classes.length) {
     console.warn('[fleet] no publishable classes — /fleet/[key] paths empty');
   }
-  return classes.map((cls) => ({
-    params: { key: cls.key },
-    props: { cls },
-  }));
+  return fleetVehiclePaths(classes);
 }
 
 interface Props {
@@ -43,9 +39,10 @@ interface Props {
 const { cls } = Astro.props;
 const key = cls.key;
 const settings = await getSiteSettings();
-const [cat, allClasses] = await Promise.all([
+const [cat, allClasses, template] = await Promise.all([
   getCatalog(),
   getPublishableClasses().catch(() => [cls]),
+  getPageBySlug('vehicle'),
 ]);
 const show = settings.showFromPrices !== false;
 const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
@@ -55,37 +52,40 @@ const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://
 const bookingOpen = isBookingOpen();
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 
-const transferCents = fromPriceForClass(cat, key);
-const hourlyCents = hourlyFromForClass(cat, key);
+const cards = buildFleetCards([cls], cat, show);
+const card = cards[0]!;
 const hourlyRow = cat.hourly.find((h) => h.classKey === key);
-const minHours = hourlyRow?.minHours ?? 4;
-const transferLabel =
-  show && transferCents != null ? formatEuro(transferCents) : t('site.noOnlinePrice');
-const hourlyLabel =
-  show && hourlyCents != null ? formatEuro(hourlyCents) : t('site.noOnlinePrice');
+const minHours = hourlyRow?.minHours ?? card.hourlyMin ?? 4;
+const transferCents = fromPriceForClass(cat, key);
 
-const gallery = (cls.photos ?? [])
-  .map((p) =>
-    responsiveImage(
-      {
-        alt: p.alt ?? undefined,
-        asset: p.asset
-          ? { ...p.asset, url: p.asset.url ?? undefined }
-          : p.url
-            ? { url: p.url }
-            : null,
-      } satisfies SanityImage,
-      { fallbackWidth: 1600, fallbackHeight: 1000 },
-    ),
-  )
-  .filter((img): img is NonNullable<typeof img> => Boolean(img))
-  .map((img) => ({
-    src: img.src,
-    srcset: img.srcset,
-    alt: img.alt || cls.name,
-    width: img.width,
-    height: img.height,
-  }));
+const photos = (cls.photos ?? [])
+  .map((p) => ({
+    src: p.url || p.asset?.url || '',
+    alt: p.alt || cls.name,
+  }))
+  .filter((p) => p.src);
+if (!photos.length) {
+  photos.push({
+    src: card.photoUrl || `/images/v2/${key}-street.jpg`,
+    alt: cls.name,
+  });
+}
+
+const preloadPhoto = cls.photos?.[0];
+const preloadImage = preloadPhoto
+  ? {
+      alt: preloadPhoto.alt ?? cls.name,
+      asset: preloadPhoto.asset
+        ? { ...preloadPhoto.asset, url: preloadPhoto.asset.url ?? undefined }
+        : preloadPhoto.url
+          ? { url: preloadPhoto.url }
+          : null,
+    }
+  : undefined;
+
+const brand = t('fleet.brand');
+const fullLabel = cls.fullName || `${brand} ${cls.name}`;
+const blurb = portablePlain(cls.copy) || card.blurb;
 
 const pageSeo = {
   title: cls.seo?.title || `${cls.name} · ${settings.companyName}`,
@@ -111,137 +111,48 @@ const jsonLd = [
     lowPriceCents: transferCents,
     showPrice: show && transferCents != null,
   }),
+  breadcrumbJsonLd(
+    [
+      { name: t('site.breadcrumb.home'), item: '/' },
+      { name: t('nav.fleet'), item: '/fleet' },
+      { name: fullLabel },
+    ],
+    siteUrl,
+  ),
 ];
 
 const primaryHref = bookingOpen
   ? `/book?class=${encodeURIComponent(key)}`
   : `/request-a-transfer?class=${encodeURIComponent(key)}`;
-const escortHref = bookingOpen
-  ? `/book?class=${encodeURIComponent(key)}&vip=1`
-  : `/request-a-transfer?class=${encodeURIComponent(key)}`;
 
-const hospAccent = t('vehicle.hospitality.accent');
-const hospParts = t('vehicle.hospitality.title', { accent: hospAccent }).split(hospAccent);
-const vipAccent = t('vehicle.vip.accent');
-const vipParts = t('vehicle.vip.title', { accent: vipAccent }).split(vipAccent);
-
-const hospitality = [
-  { title: t('vehicle.hospitality.wifi.title'), text: t('vehicle.hospitality.wifi.text') },
-  { title: t('vehicle.hospitality.water.title'), text: t('vehicle.hospitality.water.text') },
-  { title: t('vehicle.hospitality.charging.title'), text: t('vehicle.hospitality.charging.text') },
-  { title: t('vehicle.hospitality.comfort.title'), text: t('vehicle.hospitality.comfort.text') },
-];
+// Escort CTA on the template may use /book?vip=1 — leave as seeded.
 ---
 
-<BaseLayout seo={seo} jsonLd={jsonLd}>
-  <div class="wrap" style="padding-top: var(--space-5); display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--space-4); align-items:center;">
-    <Breadcrumbs
-      items={[{ label: t('nav.fleet'), href: '/fleet' }, { label: `${t('fleet.brand')} ${cls.name}` }]}
-      siteUrl={siteUrl}
-    />
-    <nav class="vehicle-switcher" aria-label={t('vehicle.switcher')}>
-      {
-        allClasses.map((c) => (
-          <a href={`/fleet/${c.key}`} aria-current={c.key === key ? 'page' : undefined}>
-            {c.name}
-          </a>
-        ))
-      }
-    </nav>
-  </div>
-
-  <section class="wrap vehicle-board">
-    <div class="vehicle-board-gallery">
-      {
-        gallery.length > 0 ? (
-          <Gallery
-            client:load
-            images={gallery}
-            labelPrev={t('vehicle.gallery.prev')}
-            labelNext={t('vehicle.gallery.next')}
-          />
-        ) : (
-          <div class="media" aria-hidden="true" style="height: 20rem;" />
-        )
-      }
-    </div>
-    <aside class="vehicle-board-panel">
-      {cls.tagline ? <p class="eyebrow">{cls.tagline}</p> : null}
-      <div>
-        <div class="muted">{t('fleet.brand')}</div>
-        <h1 class="display" style="font-size: clamp(2rem, 4vw, 3.5rem); color: var(--color-accent); margin:0;">
-          {cls.name}
-        </h1>
-      </div>
-      {
-        (() => {
-          const block = cls.copy?.[0] as { children?: { text?: string }[] } | undefined;
-          const text = block?.children?.[0]?.text;
-          return text ? <p class="muted" style="margin:0">{text}</p> : null;
-        })()
-      }
-      <div class="vehicle-spec-row">
-        <div>
-          <div class="fleet-card-price-label">{t('vehicle.seats')}</div>
-          <div>{t('fleet.seats', { n: cls.maxPassengers })}</div>
-        </div>
-        <div>
-          <div class="fleet-card-price-label">{t('vehicle.luggage')}</div>
-          <div>{t('fleet.bags', { n: cls.maxLuggage })}</div>
-        </div>
-      </div>
-      <div class="row between">
-        <span class="muted">{t('vehicle.airport')}</span>
-        <span class="fleet-card-price-value">{transferLabel}</span>
-      </div>
-      <div class="row between">
-        <span class="muted">{t('vehicle.hourly', { hours: minHours })}</span>
-        <span class="fleet-card-price-value">{hourlyLabel}</span>
-      </div>
-      <p class="muted" style="margin:0; font-size: var(--text-sm);">{t('vehicle.priceNote')}</p>
-      <a class="btn btn-gold" href={primaryHref}>{t('vehicle.book', { name: cls.name })}</a>
-      <a class="btn btn-line" href={phoneHref}>{t('vehicle.call', { phone: settings.phone })}</a>
-    </aside>
+<PublicLayout designPage="03-vehicle" seo={seo} jsonLd={jsonLd} preloadImage={preloadImage}>
+  <section data-block="siteHeader" class="sa5a9f">
+    <SiteHeader settings={settings} pathname={`/fleet/${key}`} />
   </section>
 
-  <section class="section" style="background: #0f1112; border-block: 1px solid var(--color-border);">
-    <div class="wrap band-split">
-      <div class="band-split-copy">
-        <p class="eyebrow">{t('vehicle.hospitality.eyebrow')}</p>
-        <h2 class="display" style="font-size: var(--text-2xl);">
-          {hospParts[0]}
-          <em>{hospAccent}</em>
-          {hospParts[1] ?? ''}
-        </h2>
-      </div>
-      <div class="hospitality-grid" style="flex: 2 1 28rem;">
-        {
-          hospitality.map((h) => (
-            <div class="hospitality-item">
-              <strong>{h.title}</strong>
-              <span class="muted">{h.text}</span>
-            </div>
-          ))
-        }
-      </div>
-    </div>
-  </section>
+  <VehicleTabs classes={allClasses} currentKey={key} currentLabel={fullLabel} />
 
-  <section class="section">
-    <div class="wrap band-split">
-      <div class="band-split-copy">
-        <p class="eyebrow">{t('vehicle.vip.eyebrow')}</p>
-        <h2 class="display" style="font-size: var(--text-2xl);">
-          {vipParts[0]}
-          <em>{vipAccent}</em>
-          {vipParts[1] ?? ''}
-        </h2>
-        <p class="muted" style="margin:0; max-width: 34rem;">{t('vehicle.vip.text')}</p>
-      </div>
-      <div class="row">
-        <a class="btn btn-line" href="/vip-security">{t('vehicle.vip.about')}</a>
-        <a class="btn btn-gold" href={escortHref}>{t('vehicle.vip.book')}</a>
-      </div>
-    </div>
-  </section>
-</BaseLayout>
+  <VehicleHero
+    name={cls.name}
+    kind={cls.tagline || card.kind}
+    brand={brand}
+    blurb={blurb}
+    seats={card.seats}
+    luggage={card.luggage}
+    airportLabel={t('site.vehicle.airport')}
+    airportPrice={card.airportText}
+    hourlyLabel={t('site.vehicle.hourly', { hours: minHours })}
+    hourlyPrice={card.hourlyText}
+    note={t('site.vehicle.note')}
+    bookHref={primaryHref}
+    bookLabel={t('site.vehicle.book', { name: cls.name })}
+    callHref={phoneHref}
+    callLabel={t('site.vehicle.call', { phone: settings.phone })}
+    photos={photos}
+  />
+
+  <Sections sections={template.sections} pathname={`/fleet/${key}`} />
+</PublicLayout>

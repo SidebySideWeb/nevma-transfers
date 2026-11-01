@@ -22,7 +22,9 @@ import { verifyTurnstile } from './turnstile';
 export type SanityVehicleClass = {
   key: string;
   name: string;
+  fullName?: string | null;
   tagline?: string | null;
+  group?: string | null;
   photos?: {
     url?: string | null;
     alt?: string | null;
@@ -78,7 +80,9 @@ async function loadSanityClasses(): Promise<SanityVehicleClass[]> {
       {
         key: string;
         name: string;
+        fullName?: string | null;
         tagline?: string | null;
+        group?: string | null;
         photos?: {
           alt?: string | null;
           asset?: {
@@ -99,7 +103,9 @@ async function loadSanityClasses(): Promise<SanityVehicleClass[]> {
     return (rows ?? []).map((r) => ({
       key: r.key,
       name: r.name,
+      fullName: r.fullName ?? null,
       tagline: r.tagline,
+      group: r.group ?? null,
       photos: (r.photos ?? []).map((p) => ({
         url: p.asset?.url ?? null,
         alt: p.alt ?? null,

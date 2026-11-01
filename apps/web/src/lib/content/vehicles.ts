@@ -23,3 +23,11 @@ export async function getPublishableClasses(): Promise<PublishableClass[]> {
   }
   return out;
 }
+
+/** Static paths for `/fleet/[key]`. Keys not returned here 404. */
+export function fleetVehiclePaths<T extends { key: string }>(classes: T[]) {
+  return classes.map((cls) => ({
+    params: { key: cls.key },
+    props: { cls },
+  }));
+}

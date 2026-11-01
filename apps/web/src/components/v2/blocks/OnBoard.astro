@@ -25,7 +25,24 @@ const items = Array.isArray(section.items)
 ---
 
 {
-  layout === 'feature' ? (
+  layout === 'grid' ? (
+    <section data-block="onBoard" class="s1eb68">
+      <div class="s34860">
+        <div class="s7de52">
+          {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+          <Heading heading={heading} variant="inline" as="h2" class="display scf6e9" />
+        </div>
+        <div class="se5eaa">
+          {items.map((item) => (
+            <div class="se204f">
+              <div class="s5e37e">{item.title ?? ''}</div>
+              <div class="s63bcf">{item.text ?? ''}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  ) : layout === 'feature' ? (
     <section data-block="onBoard" class="s3a297">
       <div class="zoom s3dc7c">
         <div class="bgx4 ph s22cbe" role="img" aria-label={alt} style={style}></div>

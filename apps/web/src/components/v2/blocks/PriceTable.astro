@@ -1,95 +1,78 @@
 ---
-/**
- * V2 stub for PriceTable — markup from design/v2/build/blocks/02-fleet/04-priceTable.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import CtaLink from '../CtaLink.astro';
+import { getPublishableClasses } from '../../../lib/content/vehicles';
+import { getSiteSettings } from '../../../lib/sanity/content';
+import { getCatalog } from '../../../lib/server/catalog';
+import { buildFleetCards } from '../../../lib/v2/fleet-cards';
+import { portableNotesHtml } from '../../../lib/v2/portable';
+import type { CtaLinkData } from '../../../lib/v2/cta';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const settings = await getSiteSettings();
+const show = settings.showFromPrices !== false;
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const link = section.link as CtaLinkData | undefined;
+const columns = (section.columns || {}) as Record<string, string>;
+const notesHtml = portableNotesHtml(section.notes);
+
+let cards: ReturnType<typeof buildFleetCards> = [];
+try {
+  const [classes, cat] = await Promise.all([getPublishableClasses(), getCatalog()]);
+  cards = buildFleetCards(classes, cat, show);
+} catch {
+  cards = [];
+}
 ---
+
 <section data-block="priceTable" class="se45c2">
   <div class="s3f7d7">
     <div class="sb2770">
-      <div class="eyebrow">Price list 2026</div>
-      <h2 class="display sd7c6c">Compare <em>at a glance</em></h2>
+      {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+      <Heading heading={heading} variant="inline" as="h2" class="display sd7c6c" />
     </div>
-    <a class="link-arrow" href="/book">Check availability →</a>
+    <CtaLink link={link} class="link-arrow" />
   </div>
-  <div class="s7dde3">
+  <div class="s7dde3" tabindex="0" role="region" aria-label="Price comparison table">
     <table class="s2124b">
       <thead>
         <tr class="s36792">
-          <th scope="col" class="th s6599c">Vehicle</th>
-          <th scope="col" class="th s6599c">Type</th>
-          <th scope="col" class="th">Seats*</th>
-          <th scope="col" class="th">Luggage*</th>
-          <th scope="col" class="th">Airport (AIA – Athens)</th>
-          <th scope="col" class="th">Hourly</th>
-          <th scope="col" class="th">Minimum</th>
+          <th scope="col" class="th s6599c">{columns.vehicle || 'Vehicle'}</th>
+          <th scope="col" class="th s6599c">{columns.type || 'Type'}</th>
+          <th scope="col" class="th">{columns.seats || 'Seats*'}</th>
+          <th scope="col" class="th">{columns.luggage || 'Luggage*'}</th>
+          <th scope="col" class="th">{columns.airport || 'Airport'}</th>
+          <th scope="col" class="th">{columns.hourly || 'Hourly'}</th>
+          <th scope="col" class="th">{columns.minimum || 'Minimum'}</th>
         </tr>
       </thead>
       <tbody>
-
-          <tr class="tr">
-            <th class="s5b02e" scope="row"><span class="sd7eda">V-Class</span></th>
-            <td class="scbd5b">Luxury van</td>
-            <td class="s6f570">Up to 7</td>
-            <td class="s6f570">Up to 6</td>
-            <td class="s9f31a">€180</td>
-            <td class="s9f31a">€90</td>
-            <td class="sf5000">4 hours</td>
-          </tr>
-
-          <tr class="tr">
-            <th class="s5b02e" scope="row"><span class="sd7eda">Vito</span></th>
-            <td class="scbd5b">Van</td>
-            <td class="s6f570">Up to 8</td>
-            <td class="s6f570">Up to 6</td>
-            <td class="s9f31a">€150</td>
-            <td class="s9f31a">€70</td>
-            <td class="sf5000">4 hours</td>
-          </tr>
-
-          <tr class="tr">
-            <th class="s5b02e" scope="row"><span class="sd7eda">E-Class</span></th>
-            <td class="scbd5b">Saloon</td>
-            <td class="s6f570">Up to 3</td>
-            <td class="s6f570">Up to 2</td>
-            <td class="s9f31a">€150</td>
-            <td class="s9f31a">€60</td>
-            <td class="sf5000">3 hours</td>
-          </tr>
-
-          <tr class="tr">
-            <th class="s5b02e" scope="row"><span class="sd7eda">S-Class</span></th>
-            <td class="scbd5b">Executive saloon</td>
-            <td class="s6f570">Up to 3</td>
-            <td class="s6f570">Up to 2</td>
-            <td class="s9f31a">€180</td>
-            <td class="s9f31a">€90</td>
-            <td class="sf5000">4 hours</td>
-          </tr>
-
-          <tr class="tr">
-            <th class="s5b02e" scope="row"><span class="sd7eda">Sprinter</span></th>
-            <td class="scbd5b">VIP van</td>
-            <td class="s6f570">Up to 12</td>
-            <td class="s6f570">Up to 10</td>
-            <td class="s9f31a">€180</td>
-            <td class="s9f31a">€90</td>
-            <td class="sf5000">4 hours</td>
-          </tr>
-
+        {
+          cards.map((c) => (
+            <tr class="tr">
+              <th class="s5b02e" scope="row">
+                <span class="sd7eda">{c.name}</span>
+              </th>
+              <td class="scbd5b">{c.kind}</td>
+              <td class="s6f570">{c.seats}</td>
+              <td class="s6f570">{c.luggage}</td>
+              <td class="s9f31a">{c.airportText}</td>
+              <td class="s9f31a">{c.hourlyText}</td>
+              <td class="sf5000">{c.hourlyMin != null ? `${c.hourlyMin} hours` : ''}</td>
+            </tr>
+          ))
+        }
       </tbody>
     </table>
   </div>
   <div class="s182f1">
-    <span>All prices in euros, <strong class="sd01f5">exclusive of 24% VAT</strong></span>
-    <span>Airport rates are <strong class="sd01f5">one-way</strong> between AIA and Athens</span>
-    <span>Minimum hours apply to <strong class="sd01f5">hourly chauffeur services</strong></span>
-    <span>*Capacity indicative, to be confirmed</span>
+    {notesHtml.map((html) => <span set:html={html} />)}
   </div>
 </section>

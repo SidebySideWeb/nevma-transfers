@@ -21,6 +21,7 @@ const settings = await getSiteSettings();
 const style = bgImage((section.image as SanityImage) ?? null);
 const layout = typeof section.layout === 'string' ? section.layout : 'page';
 const isHome = layout === 'home';
+const isStatus = layout === 'status';
 const headingVariant = isHome ? 'break' : 'inline';
 const heading = section.heading as DisplayHeading | undefined;
 const primary = section.primary as CtaLinkData | undefined;
@@ -62,28 +63,61 @@ const quickLabels = {
   fewerHours: t('site.quick.fewerHours'),
   moreHours: t('site.quick.moreHours'),
 };
+
+// Exact section shell classes from design/v2/build/blocks/*/01-pageHero.html
+const pageShell =
+  pathname.startsWith('/fleet')
+    ? { section: 'bgx1 sc9e46', body: 's7dc06', title: 'display xl s5e154', lead: 's136bc' }
+    : pathname.startsWith('/services')
+      ? { section: 'bgx1 s8143b', body: 's5a27c', title: 'display xl sec8ab', lead: 's623d6' }
+      : pathname.startsWith('/vip-security')
+        ? { section: 'bgx1 sd72ff', body: 's5a27c', title: 'display xl sec8ab', lead: 's623d6' }
+        : pathname.startsWith('/about')
+          ? { section: 'bgx1 s8143b', body: 's5a27c', title: 'display xl sec8ab', lead: 's623d6' }
+          : pathname.startsWith('/contact')
+            ? { section: 'bgx1 s62dcf', body: 's5a27c', title: 'display xl sec8ab', lead: 's623d6' }
+            : pathname.startsWith('/request')
+              ? { section: 'bgx1 sebbae', body: 's5a27c', title: 'display xl sec8ab', lead: 's623d6' }
+              : isStatus
+                ? { section: 'bgx1 s3e822', body: 's5a27c', title: 'display xl sec8ab', lead: 's623d6' }
+                : { section: 'bgx1 sc9e46', body: 's7dc06', title: 'display xl s5e154', lead: 's136bc' };
 ---
 
-<section data-block="pageHero" class="bgx1 s17762" style={style}>
-  <div class="s01dbe" aria-hidden="true"></div>
-  <SiteHeader settings={settings} pathname={pathname} />
-  <div class="s94251">
-    {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
-    <Heading heading={heading} variant={headingVariant} as="h1" class="display xl s680b0" />
-    {lead ? <p class="se017e">{lead}</p> : null}
-    {
-      (primary || secondary) && (
-        <div class="s4ba17">
-          <CtaLink link={primary} class="btn btn-gold" phone={settings.phone} arrow={isHome} />
-          <CtaLink link={secondary} class="btn btn-line" phone={settings.phone} />
-        </div>
-      )
-    }
-    {
-      showQuick ? (
-        <QuickBooking client:load zones={zones} hourlyBounds={hourlyBounds} labels={quickLabels} />
-      ) : null
-    }
-    {widgetNote ? <div class="s8ad2a">{widgetNote}</div> : null}
-  </div>
-</section>
+{
+  isHome ? (
+    <section data-block="pageHero" class="bgx1 s17762" style={style}>
+      <div class="s01dbe" aria-hidden="true"></div>
+      <SiteHeader settings={settings} pathname={pathname} />
+      <div class="s94251">
+        {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+        <Heading heading={heading} variant={headingVariant} as="h1" class="display xl s680b0" />
+        {lead ? <p class="se017e">{lead}</p> : null}
+        {(primary || secondary) && (
+          <div class="s4ba17">
+            <CtaLink link={primary} class="btn btn-gold" phone={settings.phone} arrow />
+            <CtaLink link={secondary} class="btn btn-line" phone={settings.phone} />
+          </div>
+        )}
+        {showQuick ? (
+          <QuickBooking client:load zones={zones} hourlyBounds={hourlyBounds} labels={quickLabels} />
+        ) : null}
+        {widgetNote ? <div class="s8ad2a">{widgetNote}</div> : null}
+      </div>
+    </section>
+  ) : (
+    <section data-block="pageHero" class={pageShell.section} style={style}>
+      <SiteHeader settings={settings} pathname={pathname} />
+      <div class={pageShell.body}>
+        {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+        <Heading heading={heading} variant="inline" as="h1" class={pageShell.title} />
+        {lead ? <p class={pageShell.lead}>{lead}</p> : null}
+        {(primary || secondary) && (
+          <div class="s4ba17">
+            <CtaLink link={primary} class="btn btn-gold" phone={settings.phone} />
+            <CtaLink link={secondary} class="btn btn-line" phone={settings.phone} />
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
