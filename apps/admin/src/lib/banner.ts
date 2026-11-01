@@ -49,7 +49,7 @@ async function fetchSanityClasses(): Promise<SanityClass[]> {
       return [];
     }
     const rows = await client.fetch<SanityClass[]>(
-      '*[_type == "vehicleClass"]{key, "photos": count(gallery)}',
+      '*[_type == "vehicleClass"]{key, "photos": count(photos)}',
     );
     const cleaned = (rows ?? []).filter((r) => r.key);
     sanityClassCache = { rows: cleaned, expiresAt: Date.now() + CACHE_MS };

@@ -1,4 +1,5 @@
 import { defineField, defineType } from 'sanity';
+import { ctaUrlField } from '../lib/ctaUrl';
 
 export const ctaBand = defineType({
   name: 'ctaBand',
@@ -12,10 +13,17 @@ export const ctaBand = defineType({
       name: 'ctaTarget',
       title: 'Button goes to',
       type: 'string',
-      options: { list: [{ title: 'Booking page', value: 'book' }, { title: 'Other link', value: 'url' }], layout: 'radio' },
+      options: {
+        list: [
+          { title: 'Booking page', value: 'book' },
+          { title: 'Request a quote', value: 'quote' },
+          { title: 'Other link', value: 'url' },
+        ],
+        layout: 'radio',
+      },
       initialValue: 'book',
     }),
-    defineField({ name: 'ctaUrl', title: 'Other link', type: 'url', hidden: ({ parent }) => parent?.ctaTarget !== 'url' }),
+    ctaUrlField,
   ],
   preview: { select: { title: 'heading' }, prepare: ({ title }) => ({ title: title ?? 'Call to action', subtitle: 'Call to action band' }) },
 });

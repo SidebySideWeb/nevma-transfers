@@ -45,7 +45,7 @@ export async function fetchSanityClass(key: string): Promise<SanityClassDoc | nu
       token: token || undefined,
     });
     const row = await client.fetch<SanityClassDoc | null>(
-      `*[_type == "vehicleClass" && key == $key][0]{_id, name, "photos": count(gallery), _updatedAt}`,
+      `*[_type == "vehicleClass" && key == $key][0]{_id, name, "photos": count(photos), _updatedAt}`,
       { key },
     );
     return row ?? null;

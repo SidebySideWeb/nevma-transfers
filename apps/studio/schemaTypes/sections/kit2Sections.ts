@@ -1,5 +1,6 @@
 // Kit 2 page sections. Each is an object registered in page.sections.
 import { defineArrayMember, defineField, defineType } from 'sanity';
+import { ctaUrlField } from '../lib/ctaUrl';
 import { altField, imageOptions } from '../lib/imageWithAlt';
 
 const blockBody = defineArrayMember({
@@ -21,7 +22,7 @@ const cta = [
     options: { list: [{ title: 'Booking page', value: 'book' }, { title: 'Request a quote', value: 'quote' }, { title: 'Other link', value: 'url' }], layout: 'radio' },
     initialValue: 'book',
   }),
-  defineField({ name: 'ctaUrl', title: 'Other link', type: 'url', validation: (Rule) => Rule.uri({ allowRelative: true }), hidden: ({ parent }) => parent?.ctaTarget !== 'url' }),
+  ctaUrlField,
 ];
 
 export const featureGrid = defineType({
