@@ -72,7 +72,11 @@ const gallery = (cls.photos ?? [])
     responsiveImage(
       {
         alt: p.alt ?? undefined,
-        asset: p.asset ?? (p.url ? { url: p.url } : null),
+        asset: p.asset
+          ? { ...p.asset, url: p.asset.url ?? undefined }
+          : p.url
+            ? { url: p.url }
+            : null,
       } satisfies SanityImage,
       { fallbackWidth: 1600, fallbackHeight: 1000 },
     ),
@@ -191,7 +195,7 @@ const primaryLabel = bookingOpen ? t('nav.book') : t('site.requestQuote');
       <div class="stack prose">
         <h2>{t('site.vehicle.about')}</h2>
         {
-          copy && copy.length > 0 ? (
+          Array.isArray(copy) && copy.length > 0 ? (
             <PortableText
               value={copy}
               components={{

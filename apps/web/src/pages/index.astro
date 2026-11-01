@@ -36,11 +36,15 @@ let fleet: Array<{
 if (sanityConfigured()) {
   try {
     const client = createSanityClient();
-    const rows = await client.fetch(VEHICLE_CLASSES_QUERY);
+    type FleetRow = {
+      key?: string | null;
+      name?: string | null;
+      tagline?: string | null;
+      photos?: Array<{ alt?: string | null; asset?: { url?: string | null } | null }> | null;
+    };
+    const rows = await client.fetch<FleetRow[]>(VEHICLE_CLASSES_QUERY);
     fleet = (rows ?? [])
-      .filter((r): r is NonNullable<typeof r> & { key: string; name: string } =>
-        Boolean(r?.key && r?.name),
-      )
+      .filter((r): r is FleetRow & { key: string; name: string } => Boolean(r?.key && r?.name))
       .map((r) => ({
         key: r.key,
         name: r.name,

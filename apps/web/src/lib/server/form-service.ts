@@ -95,9 +95,17 @@ export async function loadForm(key: FormKey): Promise<FormDoc> {
   const value: FormDoc = {
     _id: id,
     key: doc.key as FormKey,
-    title: doc.title,
+    title: doc.title ?? doc.key,
     recipientEmail: doc.recipientEmail,
-    topics: doc.topics,
+    topics: (doc.topics ?? [])
+      .filter((t): t is { key: string; label: string; recipientEmail: string | null; _key: string } =>
+        Boolean(t?.key && t?.label),
+      )
+      .map((t) => ({
+        key: t.key,
+        label: t.label,
+        recipientEmail: t.recipientEmail,
+      })),
     retentionMonths: doc.retentionMonths,
   };
   formCache.set(key, { value, expiresAt: Date.now() + CACHE_MS });
@@ -223,8 +231,10 @@ export async function submitForm(
     };
   }
 
+  // Playwright sets FORM_E2E_MOCK; never honour it under Vitest (unit tests need real write path).
   const e2eMock =
-    import.meta.env.FORM_E2E_MOCK === '1' || process.env.FORM_E2E_MOCK === '1';
+    !process.env.VITEST &&
+    (import.meta.env.FORM_E2E_MOCK === '1' || process.env.FORM_E2E_MOCK === '1');
   if (!e2eMock) {
     try {
       const limit = rateLimitFn ?? assertRateLimit;

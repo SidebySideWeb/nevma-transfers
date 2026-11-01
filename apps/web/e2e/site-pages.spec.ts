@@ -9,7 +9,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 test.describe('home and legal pages', () => {
   test('home renders DEMO content', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(/DEMO|Arrive|Travel/i);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      /DEMO|Arrive|Travel|Discreet luxury/i,
+    );
     await expect(page.locator('script[type="application/ld+json"]').first()).toHaveCount(1);
   });
 

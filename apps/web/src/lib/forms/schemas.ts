@@ -30,7 +30,7 @@ const checkbox = z.preprocess(
 
 const consent = z.preprocess(
   (v) => v === true || v === 'on' || v === 'true' || v === '1',
-  z.literal(true, { errorMap: () => ({ message: 'form.error.required' }) }),
+  z.literal(true, { message: 'form.error.required' }),
 );
 
 function intField(min: number, max: number) {

@@ -94,7 +94,12 @@ export type PageSection =
         title?: string;
         intro?: string | null;
         recipientEmail?: string;
-        topics?: unknown;
+        topics?: {
+          key: string;
+          label: string;
+          recipientEmail?: string | null;
+          _key?: string;
+        }[] | null;
         submitLabel?: string | null;
         successTitle?: string | null;
         successMessage?: string | null;

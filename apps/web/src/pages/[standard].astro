@@ -3,6 +3,7 @@ export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Sections from '../components/sections/Sections.astro';
+import { FORM_FLASH_COOKIE } from '../lib/forms/form-cookie';
 import { getSiteSettings } from '../lib/sanity/content';
 import {
   getPageBySlug,
@@ -64,9 +65,18 @@ if (slug === 'vip-security') {
 
 const formBlockId = slug === 'vip-security' ? 'enquiry' : undefined;
 
-Astro.response.headers.set('Cache-Control', 'no-store');
+// Only bypass caches when a form flash is present (validation return).
+const hasFlash = Boolean(Astro.cookies.get(FORM_FLASH_COOKIE)?.value);
+Astro.response.headers.set(
+  'Cache-Control',
+  hasFlash ? 'no-store' : 'public, s-maxage=60, stale-while-revalidate=300',
+);
+
+const hero = page.sections.find((s) => s._type === 'hero');
+const heroImage =
+  hero && hero._type === 'hero' ? hero.image : undefined;
 ---
 
-<BaseLayout seo={seo} jsonLd={jsonLd}>
+<BaseLayout seo={seo} jsonLd={jsonLd} preloadImage={heroImage}>
   <Sections sections={page.sections} formBlockId={formBlockId} />
 </BaseLayout>

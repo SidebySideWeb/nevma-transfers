@@ -231,11 +231,11 @@ const duration = t('site.duration', { minutes: route.durationMinutes });
   </section>
 
   {
-    (body && body.length > 0) || faqItems.length > 0 ? (
+    (Array.isArray(body) && body.length > 0) || faqItems.length > 0 ? (
       <section class="section">
         <div class="narrow stack">
           {
-            body && body.length > 0 ? (
+            Array.isArray(body) && body.length > 0 ? (
               <div class="stack prose">
                 <h2>About this trip</h2>
                 <PortableText

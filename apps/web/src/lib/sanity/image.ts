@@ -53,8 +53,8 @@ export function responsiveImage(
   const source = imageSource(image);
 
   if (b && source) {
-    const base = b.image(source).auto('format').fit('max');
-    const src = base.width(1200).url();
+    const base = b.image(source).auto('format').fit('max').quality(70);
+    const src = base.width(768).url();
     const srcset = SRCSET_WIDTHS.map((w) => `${base.width(w).url()} ${w}w`).join(', ');
     return { src, srcset, width: naturalW, height: naturalH, alt };
   }
