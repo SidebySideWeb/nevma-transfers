@@ -2,6 +2,7 @@ import { createSanityClient, sanityConfigured } from './client';
 import type { SanityImage } from './image';
 import { SITE_SETTINGS_QUERY, UI_STRINGS_QUERY } from './queries';
 import { setStringOverrides, type UiStringKey } from '../strings';
+import { seedUiStringOverrides } from './v2-seed-strings';
 
 export type SiteSettings = {
   companyName: string;
@@ -44,20 +45,22 @@ let settingsCache: { value: SiteSettings; expiresAt: number } | null = null;
 const CACHE_MS = 5 * 60 * 1000;
 
 export async function loadUiStrings(): Promise<void> {
-  if (!sanityConfigured()) return;
-  try {
-    const client = createSanityClient();
-    const doc = await client.fetch(UI_STRINGS_QUERY);
-    const overrides: Partial<Record<UiStringKey, string>> = {};
-    for (const row of doc?.strings ?? []) {
-      if (row?.key && typeof row.value === 'string') {
-        overrides[row.key as UiStringKey] = row.value;
+  // Prefer the V2 seed strings so the site matches the design before `import:v2` is applied.
+  const overrides: Partial<Record<UiStringKey, string>> = { ...seedUiStringOverrides() };
+  if (sanityConfigured()) {
+    try {
+      const client = createSanityClient();
+      const doc = await client.fetch(UI_STRINGS_QUERY);
+      for (const row of doc?.strings ?? []) {
+        if (row?.key && typeof row.value === 'string' && !(row.key in overrides)) {
+          overrides[row.key as UiStringKey] = row.value;
+        }
       }
+    } catch {
+      // Keep seed / code defaults when Sanity is unreachable.
     }
-    setStringOverrides(overrides);
-  } catch {
-    // Keep code defaults when Sanity is unreachable (local without seed).
   }
+  if (Object.keys(overrides).length > 0) setStringOverrides(overrides);
 }
 
 export async function getSiteSettings(): Promise<SiteSettings> {

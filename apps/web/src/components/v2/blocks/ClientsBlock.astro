@@ -1,0 +1,27 @@
+---
+/**
+ * V2 stub for ClientsBlock — markup from design/v2/build/blocks/06-about/05-clientsBlock.html.
+ * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
+ */
+interface Props {
+  section: Record<string, unknown>;
+  pathname?: string;
+}
+const { section } = Astro.props;
+void section;
+---
+<section data-block="clientsBlock" class="s3a297">
+  <div class="zoom se477e">
+    <div class="bgx2 ph s22cbe" role="img" aria-label="Chauffeur at a hotel entrance in the evening"></div>
+  </div>
+  <div class="sed1a9">
+    <div class="eyebrow">Clients</div>
+    <h2 class="display sd7c6c">Relationships <em>built on trust</em></h2>
+    <p class="s0a0a6">We serve businesses, public organisations, retail premises, industrial facilities and discerning private clients.</p>
+    <p class="s0a0a6">Absolute confidentiality is a core commitment. Every engagement, and every piece of information, is treated with discretion and respect for our clients’ privacy.</p>
+    <div class="s9e984">
+      <a class="btn btn-gold" href="/contact">Contact us</a>
+      <a class="btn btn-line" href="/book">Book a transfer</a>
+    </div>
+  </div>
+</section>

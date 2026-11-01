@@ -1,0 +1,47 @@
+---
+/**
+ * V2 stub for HowItWorks — markup from design/v2/build/blocks/01-home/05-howItWorks.html.
+ * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
+ */
+interface Props {
+  section: Record<string, unknown>;
+  pathname?: string;
+}
+const { section } = Astro.props;
+void section;
+---
+<section data-block="howItWorks" class="s1eb68">
+  <div class="sd890e">
+    <div class="s9cad5">
+      <div class="eyebrow">How booking works</div>
+      <h2 class="display sd7c6c">Four steps. <em>No surprises.</em></h2>
+    </div>
+    <ol class="s5bce6">
+
+        <li class="s0b704">
+          <span class="s2a2be">i.</span>
+          <span class="s6a7cc">Choose your route</span>
+          <span class="s63bcf">Pick-up and drop-off zone, date, time and passengers.</span>
+        </li>
+
+        <li class="s0b704">
+          <span class="s2a2be">ii.</span>
+          <span class="s6a7cc">Pick a vehicle</span>
+          <span class="s63bcf">Fixed prices for every class. Your car is held for 20 minutes.</span>
+        </li>
+
+        <li class="s0b704">
+          <span class="s2a2be">iii.</span>
+          <span class="s6a7cc">Pay securely</span>
+          <span class="s63bcf">Card payment on Viva’s hosted page. Add VIP security if needed.</span>
+        </li>
+
+        <li class="s0b704">
+          <span class="s2a2be">iv.</span>
+          <span class="s6a7cc">Meet your chauffeur</span>
+          <span class="s63bcf">Confirmation by email, a reminder 24 hours before, chauffeur details on the day.</span>
+        </li>
+
+    </ol>
+  </div>
+</section>

@@ -1,0 +1,118 @@
+---
+import type { SiteSettings } from '../../lib/sanity/content';
+import { isBookingOpen } from '../../lib/booking-open';
+import { t } from '../../lib/strings';
+
+interface Props {
+  settings: SiteSettings;
+  pathname?: string;
+}
+
+const { settings, pathname = '/' } = Astro.props;
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const bookingOpen = isBookingOpen();
+const bookHref = bookingOpen ? '/book' : '/request-a-transfer';
+const bookLabel = bookingOpen ? t('nav.book') : t('site.requestQuote');
+const menuBookLabel = bookingOpen ? t('nav.menuBook') : t('site.requestQuote');
+
+function active(section: 'fleet' | 'services' | 'vip' | 'about' | 'contact'): boolean {
+  const p = pathname.replace(/\/$/, '') || '/';
+  if (section === 'fleet') return p === '/fleet' || p.startsWith('/fleet/');
+  if (section === 'services') return p === '/services' || p.startsWith('/routes/');
+  if (section === 'vip') return p === '/vip-security';
+  if (section === 'about') return p === '/about';
+  if (section === 'contact') return p === '/contact';
+  return false;
+}
+
+const items = [
+  { href: '/fleet', label: t('nav.fleet'), section: 'fleet' as const },
+  { href: '/services', label: t('nav.services'), section: 'services' as const },
+  { href: '/vip-security', label: t('nav.vipSecurity'), section: 'vip' as const },
+  { href: '/about', label: t('nav.about'), section: 'about' as const },
+  { href: '/contact', label: t('nav.contact'), section: 'contact' as const },
+];
+---
+
+<header data-block="siteHeader" class="s5420c">
+  <div class="s9b0ab">
+    <a class="s5d8d1" href="/" aria-label={`${settings.companyName} home`}>
+      <img class="sf7837" src="/images/v2/logo-white.png" alt={settings.companyName} />
+    </a>
+    <nav class="nav" aria-label={t('site.nav.main')}>
+      {
+        items.map((item) => (
+          <a
+            href={item.href}
+            class:list={[active(item.section) && 'on']}
+            aria-current={active(item.section) ? 'page' : undefined}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+    <div class="sb7318">
+      <a class="hide-m sf0e3c" href={phoneHref}>{settings.phone}</a>
+      <a class="btn btn-gold hide-m sb2d40" href={bookHref}>{bookLabel}</a>
+      <button
+        type="button"
+        class="burger s5aee5 js-menu-open"
+        aria-label={t('nav.menu')}
+        aria-expanded="false"
+        aria-controls="v2-menu"
+      >
+        ☰
+      </button>
+      {/* No-JS fallback (hidden when JS runs) */}
+      <a class="burger s5aee5 v2-menu-nojs" href="#menu" aria-label={t('nav.menu')}>☰</a>
+    </div>
+  </div>
+</header>
+
+<template id="v2-menu-template">
+  <div class="mm s1cd3b" id="v2-menu" role="dialog" aria-modal="true" aria-label={t('nav.menu')}>
+    <div class="s6166c">
+      <span class="eyebrow">{t('nav.menu')}</span>
+      <button class="sd4817 js-menu-close" type="button" aria-label={t('nav.close')}>✕</button>
+    </div>
+    {
+      items.map((item) => (
+        <a href={item.href} class="js-menu-link">
+          {item.label}
+        </a>
+      ))
+    }
+    <a class="btn btn-gold s8b016 js-menu-link" href={bookHref}>{menuBookLabel}</a>
+  </div>
+</template>
+
+{/* display:none until :target — skipped by innerText when closed */}
+<div class="mm s1cd3b" id="menu">
+  <div class="s6166c">
+    <span class="eyebrow">{t('nav.menu')}</span>
+    <a class="sd4817" href="#" aria-label={t('nav.close')}>✕</a>
+  </div>
+  {items.map((item) => <a href={item.href}>{item.label}</a>)}
+  <a class="btn btn-gold s8b016" href={bookHref}>{menuBookLabel}</a>
+</div>
+
+<script is:inline>
+  document.documentElement.classList.add('js');
+</script>
+<script src="../../scripts/v2-menu.ts"></script>
+
+<style is:global>
+  #menu {
+    display: none;
+  }
+  #menu:target {
+    display: flex !important;
+  }
+  html.js .v2-menu-nojs {
+    display: none !important;
+  }
+  html:not(.js) .js-menu-open {
+    display: none !important;
+  }
+</style>

@@ -2,8 +2,39 @@ import { createSanityClient, sanityConfigured } from './client';
 import { DEMO_PAGES } from './demo-pages';
 import { PAGE_BY_SLUG_QUERY } from './queries';
 import type { SanityImage } from './image';
+import { getV2SeedPage, pageHasV2Sections } from './v2-seed-pages';
 
+/** V2 (and legacy) page sections. V2 fields vary by `_type`; block components read what they need. */
 export type PageSection =
+  | ({
+      _type:
+        | 'pageHero'
+        | 'promiseStrip'
+        | 'divisionCards'
+        | 'fleetShowcase'
+        | 'howItWorks'
+        | 'onBoard'
+        | 'quoteBlock'
+        | 'ctaPanel'
+        | 'fleetBrowser'
+        | 'galleryMosaic'
+        | 'priceTable'
+        | 'includedList'
+        | 'bookingOptions'
+        | 'featuredRoute'
+        | 'occasions'
+        | 'faqList'
+        | 'featureTrio'
+        | 'serviceColumns'
+        | 'escortFeature'
+        | 'statsBar'
+        | 'clientsBlock'
+        | 'contactCards'
+        | 'enquiryForm'
+        | 'legalDocument';
+      _key?: string;
+      [key: string]: unknown;
+    })
   | {
       _type: 'hero';
       _key?: string;
@@ -107,7 +138,7 @@ export type PageSection =
     };
 
 export type CmsPage = {
-  kind: 'home' | 'legal' | 'standard';
+  kind: 'home' | 'legal' | 'standard' | 'template';
   title: string;
   slug: string;
   sections: PageSection[];
@@ -120,6 +151,11 @@ export type CmsPage = {
 };
 
 function demoOrThrow(slug: string, reason: string): CmsPage {
+  const seeded = getV2SeedPage(slug);
+  if (seeded && pageHasV2Sections(seeded)) {
+    console.warn(`[sanity] Using V2 seed page "${slug}" (${reason}).`);
+    return seeded;
+  }
   const demo = DEMO_PAGES[slug];
   if (demo) {
     console.warn(`[sanity] Using DEMO page "${slug}" (${reason}).`);
@@ -142,7 +178,10 @@ export async function getPageBySlug(slug: string): Promise<CmsPage> {
     if (
       !doc?.title ||
       !doc?.slug ||
-      (doc.kind !== 'home' && doc.kind !== 'legal' && doc.kind !== 'standard')
+      (doc.kind !== 'home' &&
+        doc.kind !== 'legal' &&
+        doc.kind !== 'standard' &&
+        doc.kind !== 'template')
     ) {
       return demoOrThrow(slug, 'document not published or not found');
     }
@@ -154,13 +193,22 @@ export async function getPageBySlug(slug: string): Promise<CmsPage> {
           image: (doc.seo.image ?? undefined) as SanityImage | undefined,
         }
       : null;
-    return {
+    const page: CmsPage = {
       kind: doc.kind,
       title: doc.title,
       slug: doc.slug,
       sections: (doc.sections ?? []) as PageSection[],
       seo,
     };
+    // Until V2-1 import is applied to the live dataset, prefer the V2 seed page.
+    if (!pageHasV2Sections(page)) {
+      const seeded = getV2SeedPage(slug);
+      if (seeded && pageHasV2Sections(seeded)) {
+        console.warn(`[sanity] Page "${slug}" has no V2 sections yet; using seed.`);
+        return seeded;
+      }
+    }
+    return page;
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'fetch failed';
     // Re-throw our own missing-page errors that have no DEMO fallback.

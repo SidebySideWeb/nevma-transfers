@@ -1,0 +1,52 @@
+---
+/**
+ * V2 stub for LegalDocument — markup from design/v2/build/blocks/17-legal/02-legalDocument.html.
+ * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
+ */
+interface Props {
+  section: Record<string, unknown>;
+  pathname?: string;
+}
+const { section } = Astro.props;
+void section;
+---
+<section data-block="legalDocument" class="s2e203">
+  <nav class="s71cc6" aria-label="On this page">
+
+      <a href="#terms" class="toc"><span class="s0ad5e">i.</span>Terms &amp; conditions</a>
+
+      <a href="#cancellation" class="toc"><span class="s0ad5e">ii.</span>Cancellation &amp; refunds</a>
+
+      <a href="#privacy" class="toc"><span class="s0ad5e">iii.</span>Privacy policy</a>
+
+      <a href="#cookies" class="toc"><span class="s0ad5e">iv.</span>Cookies</a>
+
+  </nav>
+  <div class="s4f684">
+    <section id="terms" class="lsec">
+      <h2 class="display sde22b">Terms &amp; <em>conditions</em></h2>
+      <p>All prices are quoted in euros (€) and are <strong>exclusive of 24% VAT.</strong></p>
+      <p>Airport transfer rates apply to <strong>one-way journeys</strong> between Athens International Airport (AIA) and Athens.</p>
+      <p>Minimum booking hours apply to <strong>hourly chauffeur services.</strong></p>
+      <p class="ph">[Further terms of service: waiting time, additional stops, luggage, liability, security services: to be supplied.]</p>
+    </section>
+    <section id="cancellation" class="lsec">
+      <h2 class="display sde22b">Cancellation <em>&amp; refunds</em></h2>
+      <p class="ph">[Cancellation windows and refund amounts: to be supplied.]</p>
+      <p>You can cancel with the secure link in your confirmation email or through <a href="/booking/find">Find my booking</a>. Refunds are returned to the original payment method.</p>
+    </section>
+    <section id="privacy" class="lsec">
+      <h2 class="display sde22b">Privacy <em>policy</em></h2>
+      <p>Absolute confidentiality is a core commitment. We treat every engagement and every piece of information with discretion and respect for our clients’ privacy.</p>
+      <h3>Who we are</h3><p class="ph">[Legal entity name, registered address and data controller contact: to be supplied.]</p>
+      <h3>What we collect and why</h3><p>Details you give us in a booking, request or enquiry (name, email, phone, journey details, optional invoice details), used to provide and confirm your service. <span class="ph">[Full list and legal bases: to be supplied.]</span></p>
+      <h3>Who processes it</h3><p class="ph">[Payment provider, email provider and hosting providers: names and locations to be confirmed.]</p>
+      <h3>How long we keep it</h3><p class="ph">[Retention period for booking data: to be supplied.]</p>
+      <h3>Your rights</h3><p>You may ask to access, correct or delete your data by writing to <a href="mailto:info@eliteprotection.gr">info@eliteprotection.gr</a>. <span class="ph">[Process and response time: to be supplied.]</span></p>
+    </section>
+    <section id="cookies" class="lsec">
+      <h2 class="display sde22b">Cookies</h2>
+      <p class="ph">[Cookies and similar technologies used, their purpose and how to change your choice: to be supplied once the final tools are confirmed.]</p>
+    </section>
+  </div>
+</section>

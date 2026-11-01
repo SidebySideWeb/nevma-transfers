@@ -1,0 +1,25 @@
+---
+/**
+ * V2 stub for CtaPanel — markup from design/v2/build/blocks/01-home/08-ctaPanel.html.
+ * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
+ */
+interface Props {
+  section: Record<string, unknown>;
+  pathname?: string;
+}
+const { section } = Astro.props;
+void section;
+---
+<section data-block="ctaPanel" class="bgx6 s019b3">
+  <div class="sc7e49">
+    <div class="sbd96c">
+      <div class="eyebrow">Ready when you are</div>
+      <h2 class="display sc9e5e">Your chauffeur <em>is waiting.</em></h2>
+      <p class="se68f0">Book online in a few minutes, or call our office any time of day.</p>
+    </div>
+    <div class="s4ba17">
+      <a class="btn btn-gold" href="/book">Book a transfer</a>
+      <a class="btn btn-line" href="tel:+302109706967">+30 210 970 6967</a>
+    </div>
+  </div>
+</section>

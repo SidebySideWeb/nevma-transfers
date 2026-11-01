@@ -39,8 +39,8 @@
   --text-md: 1.0625rem;   /* 17: body */
   --text-lg: 1.1875rem;   /* 19: lead */
   --text-xl: 1.625rem;    /* 26 */
-  --text-2xl: 2.125rem;   /* 34 */
-  --text-3xl: clamp(2.5rem, 1.4rem + 4.2vw, 4.25rem); /* 40 to 68: page titles */
+  --text-2xl: clamp(2rem, 1.35rem + 2.2vw, 3.25rem); /* 32 to 52: section titles (V2 boards) */
+  --text-3xl: clamp(2.75rem, 1rem + 6vw, 6rem); /* 44 to 96: page heroes (V2 boards) */
   --leading-tight: 1.04;
   --leading-normal: 1.65;
   --tracking-caps: 0.24em;   /* labels */

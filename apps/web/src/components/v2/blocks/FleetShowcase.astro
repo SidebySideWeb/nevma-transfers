@@ -1,0 +1,60 @@
+---
+/**
+ * V2 stub for FleetShowcase — markup from design/v2/build/blocks/01-home/04-fleetShowcase.html.
+ * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
+ */
+interface Props {
+  section: Record<string, unknown>;
+  pathname?: string;
+}
+const { section } = Astro.props;
+void section;
+---
+<section data-block="fleetShowcase" class="s82488">
+  <div class="s248d4">
+    <div class="sc9439">
+      <div class="eyebrow">The fleet</div>
+      <h2 class="display sd7c6c">Choose <em>your</em> Mercedes-Benz</h2>
+      <p class="sdd144">Five vehicle classes, each with a fixed airport price and an hourly rate.</p>
+      <div class="sd1014" role="tablist" aria-label="Vehicles">
+
+          <button type="button" role="tab" class="tab s832a0" aria-selected="true"><span>V-Class</span><span class="s153f6">LUXURY VAN</span></button>
+
+          <button type="button" role="tab" class="tab s0a350" aria-selected="false"><span>Vito</span><span class="s1f839">VAN</span></button>
+
+          <button type="button" role="tab" class="tab s0a350" aria-selected="false"><span>E-Class</span><span class="s1f839">SALOON</span></button>
+
+          <button type="button" role="tab" class="tab s0a350" aria-selected="false"><span>S-Class</span><span class="s1f839">EXECUTIVE SALOON</span></button>
+
+          <button type="button" role="tab" class="tab s0a350" aria-selected="false"><span>Sprinter</span><span class="s1f839">VIP VAN</span></button>
+
+      </div>
+      <a class="link-arrow s51a69" href="/fleet">Compare all vehicles →</a>
+    </div>
+    <div class="s5353d">
+      <div class="sd154e" role="tabpanel" aria-label="V-Class">
+        <img class="sc22be" src="/images/v2/v-class-street.jpg" alt="">
+        <div class="s097ed"></div>
+        <div class="se7ae6">
+          <div class="s7e901">Mercedes-Benz</div>
+          <div class="display sc2da6">V-Class</div>
+        </div>
+        <span class="seaf9a">LUXURY VAN</span>
+      </div>
+      <div class="s11d2b">
+        <p class="s0a0a6">Space and comfort for families and small groups, with generous room for luggage.</p>
+        <div class="se7b68">
+          <div class="s19e3e"><div class="s36738">SEATS*</div><div class="sda08d">Up to 7</div></div>
+          <div class="s19e3e"><div class="s36738">LUGGAGE*</div><div class="sda08d">Up to 6</div></div>
+          <div class="s19e3e"><div class="s36738">AIRPORT</div><div class="sfd829">€180</div></div>
+          <div class="s19e3e"><div class="s36738">HOURLY</div><div class="sfd829">€90<span class="sd26cd"> /h · min 4h</span></div></div>
+        </div>
+        <div class="s8dac8">
+          <a class="btn btn-gold" href="/book">Book the V-Class</a>
+          <a class="btn btn-line" href="/fleet/v-class">Vehicle details</a>
+          <span class="s6c19a">*Indicative capacity, to be confirmed. Prices excl. 24% VAT.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -12,75 +12,138 @@ import RouteList from './RouteList.astro';
 import Steps from './Steps.astro';
 import VehicleClassList from './VehicleClassList.astro';
 
+import PageHero from '../v2/blocks/PageHero.astro';
+import PromiseStrip from '../v2/blocks/PromiseStrip.astro';
+import DivisionCards from '../v2/blocks/DivisionCards.astro';
+import FleetShowcase from '../v2/blocks/FleetShowcase.astro';
+import HowItWorks from '../v2/blocks/HowItWorks.astro';
+import OnBoard from '../v2/blocks/OnBoard.astro';
+import QuoteBlock from '../v2/blocks/QuoteBlock.astro';
+import CtaPanel from '../v2/blocks/CtaPanel.astro';
+import FleetBrowser from '../v2/blocks/FleetBrowser.astro';
+import GalleryMosaic from '../v2/blocks/GalleryMosaic.astro';
+import PriceTable from '../v2/blocks/PriceTable.astro';
+import IncludedList from '../v2/blocks/IncludedList.astro';
+import BookingOptions from '../v2/blocks/BookingOptions.astro';
+import FeaturedRoute from '../v2/blocks/FeaturedRoute.astro';
+import Occasions from '../v2/blocks/Occasions.astro';
+import FaqList from '../v2/blocks/FaqList.astro';
+import FeatureTrio from '../v2/blocks/FeatureTrio.astro';
+import ServiceColumns from '../v2/blocks/ServiceColumns.astro';
+import EscortFeature from '../v2/blocks/EscortFeature.astro';
+import StatsBar from '../v2/blocks/StatsBar.astro';
+import ClientsBlock from '../v2/blocks/ClientsBlock.astro';
+import ContactCards from '../v2/blocks/ContactCards.astro';
+import EnquiryForm from '../v2/blocks/EnquiryForm.astro';
+import LegalDocument from '../v2/blocks/LegalDocument.astro';
+
 interface Props {
   sections: PageSection[];
-  /** When set, the formBlock section root uses this id (VIP `#enquiry`). */
+  pathname?: string;
   formBlockId?: string;
 }
 
-const { sections, formBlockId } = Astro.props;
+const { sections, pathname = '/', formBlockId } = Astro.props;
+
+const V2 = {
+  pageHero: PageHero,
+  promiseStrip: PromiseStrip,
+  divisionCards: DivisionCards,
+  fleetShowcase: FleetShowcase,
+  howItWorks: HowItWorks,
+  onBoard: OnBoard,
+  quoteBlock: QuoteBlock,
+  ctaPanel: CtaPanel,
+  fleetBrowser: FleetBrowser,
+  galleryMosaic: GalleryMosaic,
+  priceTable: PriceTable,
+  includedList: IncludedList,
+  bookingOptions: BookingOptions,
+  featuredRoute: FeaturedRoute,
+  occasions: Occasions,
+  faqList: FaqList,
+  featureTrio: FeatureTrio,
+  serviceColumns: ServiceColumns,
+  escortFeature: EscortFeature,
+  statsBar: StatsBar,
+  clientsBlock: ClientsBlock,
+  contactCards: ContactCards,
+  enquiryForm: EnquiryForm,
+  legalDocument: LegalDocument,
+} as const;
+
+type V2Type = keyof typeof V2;
+function isV2(type: string): type is V2Type {
+  return type in V2;
+}
 ---
 
 {
   sections.map((section) => {
-    switch (section._type) {
-      case 'hero':
-        return (
-          <Hero
-            heading={section.heading}
-            subheading={section.subheading}
-            ctaLabel={section.ctaLabel}
-            ctaTarget={section.ctaTarget}
-            ctaUrl={section.ctaUrl}
-            image={section.image}
-          />
-        );
-      case 'richText':
-        return <RichText heading={section.heading} body={section.body} />;
-      case 'ctaBand':
-        return (
-          <CtaBand
-            heading={section.heading}
-            text={section.text}
-            ctaLabel={section.ctaLabel}
-            ctaTarget={section.ctaTarget}
-            ctaUrl={section.ctaUrl}
-          />
-        );
-      case 'faq':
-        return <Faq heading={section.heading} items={section.items} />;
-      case 'featureGrid':
-        return (
-          <FeatureGrid heading={section.heading} intro={section.intro} items={section.items} />
-        );
-      case 'imageText':
-        return (
-          <ImageText
-            heading={section.heading}
-            body={section.body}
-            image={section.image}
-            imageSide={section.imageSide}
-            ctaLabel={section.ctaLabel}
-            ctaTarget={section.ctaTarget}
-            ctaUrl={section.ctaUrl}
-          />
-        );
-      case 'steps':
-        return <Steps heading={section.heading} items={section.items} />;
-      case 'vehicleClassList':
-        return <VehicleClassList heading={section.heading} intro={section.intro} />;
-      case 'routeList':
-        return (
-          <RouteList heading={section.heading} intro={section.intro} routes={section.routes} />
-        );
-      case 'contactDetails':
-        return <ContactDetails heading={section.heading} showHours={section.showHours} />;
-      case 'formBlock':
-        return (
-          <FormBlock heading={section.heading} form={section.form} id={formBlockId} />
-        );
-      default:
-        return null;
+    if (isV2(section._type)) {
+      const Comp = V2[section._type];
+      return <Comp section={section} pathname={pathname} />;
     }
+    if (section._type === 'hero') {
+      return (
+        <Hero
+          heading={section.heading}
+          subheading={section.subheading}
+          ctaLabel={section.ctaLabel}
+          ctaTarget={section.ctaTarget}
+          ctaUrl={section.ctaUrl}
+          image={section.image}
+        />
+      );
+    }
+    if (section._type === 'richText') {
+      return <RichText heading={section.heading} body={section.body} />;
+    }
+    if (section._type === 'ctaBand') {
+      return (
+        <CtaBand
+          heading={section.heading}
+          text={section.text}
+          ctaLabel={section.ctaLabel}
+          ctaTarget={section.ctaTarget}
+          ctaUrl={section.ctaUrl}
+        />
+      );
+    }
+    if (section._type === 'faq') {
+      return <Faq heading={section.heading} items={section.items} />;
+    }
+    if (section._type === 'featureGrid') {
+      return <FeatureGrid heading={section.heading} intro={section.intro} items={section.items} />;
+    }
+    if (section._type === 'imageText') {
+      return (
+        <ImageText
+          heading={section.heading}
+          body={section.body}
+          image={section.image}
+          imageSide={section.imageSide}
+          ctaLabel={section.ctaLabel}
+          ctaTarget={section.ctaTarget}
+          ctaUrl={section.ctaUrl}
+        />
+      );
+    }
+    if (section._type === 'steps') {
+      return <Steps heading={section.heading} items={section.items} />;
+    }
+    if (section._type === 'vehicleClassList') {
+      return <VehicleClassList heading={section.heading} intro={section.intro} />;
+    }
+    if (section._type === 'routeList') {
+      return <RouteList heading={section.heading} intro={section.intro} routes={section.routes} />;
+    }
+    if (section._type === 'contactDetails') {
+      return <ContactDetails heading={section.heading} showHours={section.showHours} />;
+    }
+    if (section._type === 'formBlock') {
+      return <FormBlock heading={section.heading} form={section.form} id={formBlockId} />;
+    }
+    return null;
   })
 }

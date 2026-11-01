@@ -1,0 +1,53 @@
+---
+import type { SiteSettings } from '../../lib/sanity/content';
+import { isBookingOpen } from '../../lib/booking-open';
+import { t } from '../../lib/strings';
+
+interface Props {
+  settings: SiteSettings;
+}
+
+const { settings } = Astro.props;
+const year = new Date().getFullYear();
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const mobile = settings.mobilePhone || '';
+const mobileHref = mobile ? `tel:${mobile.replace(/[^\d+]/g, '')}` : '';
+const bookingOpen = isBookingOpen();
+const bookHref = bookingOpen ? '/book' : '/request-a-transfer';
+---
+
+<footer data-block="siteFooter" class="sbd87a">
+  <div class="s3b07c">
+    <div class="sa2a3e">
+      <img class="sff789" src="/images/v2/logo-white.png" alt={settings.companyName} />
+      <p class="sa16aa">{t('site.footer.about')}</p>
+    </div>
+    <div class="sab6b0">
+      <div class="eyebrow sac4ba">{t('site.footer.transfers')}</div>
+      <a class="s01465" href="/fleet">{t('site.footer.fleet')}</a>
+      <a class="s01465" href="/services">{t('site.footer.services')}</a>
+      <a class="s01465" href={bookHref}>{t('site.footer.book')}</a>
+      <a class="s01465" href="/booking/find">{t('site.footer.find')}</a>
+    </div>
+    <div class="sab6b0">
+      <div class="eyebrow sac4ba">{t('site.footer.company')}</div>
+      <a class="s01465" href="/vip-security">{t('nav.vipSecurity')}</a>
+      <a class="s01465" href="/about">{t('nav.about')}</a>
+      <a class="s01465" href="/contact">{t('nav.contact')}</a>
+    </div>
+    <div class="s59eb5">
+      <div class="eyebrow sac4ba">{t('site.footer.247')}</div>
+      <a class="s53c3d" href={phoneHref}>{settings.phone}</a>
+      {mobile && mobileHref ? <a class="s53c3d" href={mobileHref}>{mobile}</a> : null}
+      <a class="s19255" href={`mailto:${settings.email}`}>{settings.email}</a>
+    </div>
+  </div>
+  <div class="s3fa37">
+    <div>{t('site.footer.copyright', { year })}</div>
+    <div class="s3ca6d">
+      <a class="s95872" href="/legal#terms">{t('site.footer.terms')}</a>
+      <a class="s95872" href="/legal#privacy">{t('site.footer.privacy')}</a>
+      <a class="s95872" href="/legal#cookies">{t('site.footer.cookies')}</a>
+    </div>
+  </div>
+</footer>

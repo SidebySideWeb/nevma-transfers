@@ -174,11 +174,11 @@ const hospitality = [
         </h1>
       </div>
       {
-        (cls.copy?.[0] as { children?: Array<{ text?: string }> } | undefined)?.children?.[0]?.text ? (
-          <p class="muted" style="margin:0">
-            {(cls.copy?.[0] as { children?: Array<{ text?: string }> }).children?.[0]?.text}
-          </p>
-        ) : null
+        (() => {
+          const block = cls.copy?.[0] as { children?: { text?: string }[] } | undefined;
+          const text = block?.children?.[0]?.text;
+          return text ? <p class="muted" style="margin:0">{text}</p> : null;
+        })()
       }
       <div class="vehicle-spec-row">
         <div>

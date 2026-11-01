@@ -1,17 +1,8 @@
 ---
 export const prerender = false;
 
-import BaseLayout from '../layouts/BaseLayout.astro';
-import Faq from '../components/sections/Faq.astro';
-import FeatureGrid from '../components/sections/FeatureGrid.astro';
-import FormBlock from '../components/sections/FormBlock.astro';
-import ContactDetails from '../components/sections/ContactDetails.astro';
-import RichText from '../components/sections/RichText.astro';
-import CtaBand from '../components/sections/CtaBand.astro';
-import ImageText from '../components/sections/ImageText.astro';
-import Steps from '../components/sections/Steps.astro';
-import PageHero from '../components/v2/PageHero.astro';
-import FeatureList from '../components/v2/FeatureList.astro';
+import PublicLayout from '../layouts/PublicLayout.astro';
+import Sections from '../components/sections/Sections.astro';
 import { FORM_FLASH_COOKIE } from '../lib/forms/form-cookie';
 import { getSiteSettings } from '../lib/sanity/content';
 import {
@@ -21,7 +12,13 @@ import {
   type StandardSlug,
 } from '../lib/sanity/pages';
 import { organizationJsonLd, resolveSeo, serviceJsonLd } from '../lib/seo';
-import { t } from '../lib/strings';
+
+const DESIGN_PAGE: Record<StandardSlug, string> = {
+  'vip-security': '05-vip-security',
+  about: '06-about',
+  contact: '07-contact',
+  'request-a-transfer': '12-request-transfer',
+};
 
 const standard = Astro.params.standard as string;
 if (!(STANDARD_SLUGS as readonly string[]).includes(standard)) {
@@ -32,16 +29,7 @@ if ((LEGAL_SLUGS as readonly string[]).includes(standard)) {
 }
 
 const slug = standard as StandardSlug;
-let page;
-try {
-  page = await getPageBySlug(slug);
-} catch (e) {
-  const msg = e instanceof Error ? e.message : String(e);
-  throw new Error(
-    `Missing standard page "${slug}" (expected Sanity document page-${slug}). ${msg}`,
-  );
-}
-
+const page = await getPageBySlug(slug);
 const settings = await getSiteSettings();
 const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
   /\/$/,
@@ -67,266 +55,17 @@ if (slug === 'vip-security') {
       showPrice: false,
     }),
   );
-} else if (slug === 'about') {
-  jsonLd.push(organizationJsonLd(settings, siteUrl));
-} else if (slug === 'contact') {
-  jsonLd.push(organizationJsonLd(settings, siteUrl, { contactPoint: true }));
+} else if (slug === 'about' || slug === 'contact') {
+  jsonLd.push(organizationJsonLd(settings, siteUrl, slug === 'contact' ? { contactPoint: true } : undefined));
 }
-
-const formBlockId = slug === 'vip-security' ? 'enquiry' : undefined;
 
 const hasFlash = Boolean(Astro.cookies.get(FORM_FLASH_COOKIE)?.value);
 Astro.response.headers.set(
   'Cache-Control',
-  hasFlash ? 'no-store' : 'public, s-maxage=60, stale-while-revalidate=300',
+  hasFlash ? 'private, no-store' : 'public, s-maxage=60, stale-while-revalidate=300',
 );
-
-const hero = page.sections.find((s) => s._type === 'hero');
-const heroImage =
-  hero && hero._type === 'hero' ? hero.image?.asset?.url : undefined;
-const heroHeading =
-  hero && hero._type === 'hero' ? hero.heading : page.title;
-const heroSub =
-  hero && hero._type === 'hero' ? hero.subheading : undefined;
-const heroCta =
-  hero && hero._type === 'hero' ? { label: hero.ctaLabel, target: hero.ctaTarget, url: hero.ctaUrl } : null;
-
-const rest = page.sections.filter((s) => s._type !== 'hero');
-
-const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
-
-function boardMeta(s: StandardSlug): {
-  eyebrow: string;
-  titleBefore: string;
-  titleAccent: string;
-  titleAfter: string;
-  lead?: string;
-} {
-  if (s === 'vip-security') {
-    const accent = t('vip.accent');
-    const parts = t('vip.title', { accent }).split(accent);
-    return {
-      eyebrow: t('vip.eyebrow'),
-      titleBefore: parts[0] ?? '',
-      titleAccent: accent,
-      titleAfter: parts[1] ?? '',
-      lead: heroSub,
-    };
-  }
-  if (s === 'about') {
-    const accent = t('about.accent');
-    const parts = t('about.title', { accent }).split(accent);
-    return {
-      eyebrow: t('about.eyebrow'),
-      titleBefore: parts[0] ?? '',
-      titleAccent: accent,
-      titleAfter: parts[1] ?? '',
-      lead: heroSub,
-    };
-  }
-  if (s === 'contact') {
-    const accent = t('contact.accent');
-    const parts = t('contact.title', { accent }).split(accent);
-    return {
-      eyebrow: t('contact.eyebrow'),
-      titleBefore: parts[0] ?? '',
-      titleAccent: accent,
-      titleAfter: parts[1] ?? '',
-      lead: heroSub,
-    };
-  }
-  const accent = t('request.accent');
-  const parts = t('request.title', { accent }).split(accent);
-  return {
-    eyebrow: t('request.eyebrow'),
-    titleBefore: parts[0] ?? '',
-    titleAccent: accent,
-    titleAfter: parts[1] ?? '',
-    lead: heroSub,
-  };
-}
-
-const meta = boardMeta(slug);
-const useAccentTitle = Boolean(meta.titleAccent);
 ---
 
-<BaseLayout seo={seo} jsonLd={jsonLd} heroHeader preloadImage={hero && hero._type === 'hero' ? hero.image : undefined}>
-  <PageHero
-    settings={settings}
-    eyebrow={meta.eyebrow}
-    title={useAccentTitle ? undefined : heroHeading}
-    titleBefore={useAccentTitle ? meta.titleBefore : undefined}
-    titleAccent={useAccentTitle ? meta.titleAccent : undefined}
-    titleAfter={useAccentTitle ? meta.titleAfter : undefined}
-    lead={meta.lead}
-    imageUrl={heroImage}
-    class="page-hero--tall"
-  >
-    {
-      slug === 'vip-security' ? (
-        <>
-          <a class="btn btn-gold" slot="actions" href="#enquiry">
-            {t('vip.enquiry')}
-          </a>
-          <a class="btn btn-line" slot="actions" href={phoneHref}>
-            {t('vip.call')}
-          </a>
-        </>
-      ) : heroCta?.label ? (
-        <a
-          class="btn btn-gold"
-          slot="actions"
-          href={
-            heroCta.target === 'book'
-              ? '/book'
-              : heroCta.target === 'url' && heroCta.url
-                ? heroCta.url
-                : '#main'
-          }
-        >
-          {heroCta.label}
-        </a>
-      ) : null
-    }
-  </PageHero>
-
-  {
-    slug === 'vip-security' ? (
-      <FeatureList
-        items={[
-          { title: t('vip.f1.title'), text: t('vip.f1.text') },
-          { title: t('vip.f2.title'), text: t('vip.f2.text') },
-          { title: t('vip.f3.title'), text: t('vip.f3.text') },
-        ]}
-      />
-    ) : null
-  }
-
-  {
-    slug === 'about' ? (
-      <section class="section" style="padding-top:0;">
-        <div class="wrap">
-          <div class="about-stats">
-            <div class="about-stat">
-              <div class="about-stat-value">{t('about.stat.247')}</div>
-              <div class="about-stat-label">{t('about.stat.247.label')}</div>
-            </div>
-            <div class="about-stat">
-              <div class="about-stat-value">{t('about.stat.divisions')}</div>
-              <div class="about-stat-label">{t('about.stat.divisions.label')}</div>
-            </div>
-            <div class="about-stat">
-              <div class="about-stat-value">{t('about.stat.classes')}</div>
-              <div class="about-stat-label">{t('about.stat.classes.label')}</div>
-            </div>
-            <div class="about-stat">
-              <div class="about-stat-value">{t('about.stat.founded')}</div>
-              <div class="about-stat-label">{t('about.stat.founded.label')}</div>
-            </div>
-          </div>
-        </div>
-      </section>
-    ) : null
-  }
-
-  {
-    slug === 'contact' ? (
-      <section class="section">
-        <div class="wrap" style="display:flex;flex-wrap:wrap;gap:var(--space-4);">
-          <div class="card stack" style="flex:1 1 14rem;padding:var(--space-5);border:1px solid var(--color-border);background:var(--color-surface);">
-            <p class="eyebrow">{t('contact.call')} · {t('contact.247')}</p>
-            <a href={phoneHref} style="font-size:var(--text-lg);color:var(--color-text);text-decoration:none;">{settings.phone}</a>
-            {settings.mobilePhone ? (
-              <a href={`tel:${settings.mobilePhone.replace(/[^\d+]/g, '')}`} style="font-size:var(--text-lg);color:var(--color-text);text-decoration:none;">
-                {settings.mobilePhone}
-              </a>
-            ) : null}
-          </div>
-          <div class="card stack" style="flex:1 1 14rem;padding:var(--space-5);border:1px solid var(--color-border);background:var(--color-surface);">
-            <p class="eyebrow">{t('contact.email')}</p>
-            <a href={`mailto:${settings.email}`}>{settings.email}</a>
-            <p class="muted" style="margin:0;">{t('contact.email.note')}</p>
-          </div>
-          <div class="card stack" style="flex:1 1 14rem;padding:var(--space-5);border:1px solid var(--color-border);background:var(--color-surface);">
-            <p class="eyebrow">{t('site.office')}</p>
-            <p class="muted" style="margin:0;">{settings.address || settings.tagline}</p>
-          </div>
-        </div>
-      </section>
-    ) : null
-  }
-
-  {
-    rest.map((section) => {
-      const heading =
-        'heading' in section && typeof section.heading === 'string' ? section.heading : '';
-      // Hide leftover DEMO CMS chrome until client replaces copy (layout is V2-hardcoded).
-      if (heading.startsWith('DEMO')) return null;
-      switch (section._type) {
-        case 'richText':
-          return <RichText heading={section.heading} body={section.body} />;
-        case 'ctaBand':
-          return (
-            <CtaBand
-              heading={section.heading}
-              text={section.text}
-              ctaLabel={section.ctaLabel}
-              ctaTarget={section.ctaTarget}
-              ctaUrl={section.ctaUrl}
-            />
-          );
-        case 'faq':
-          return <Faq heading={section.heading} items={section.items} />;
-        case 'featureGrid':
-          return slug === 'vip-security' ? null : (
-            <FeatureGrid heading={section.heading} intro={section.intro} items={section.items} />
-          );
-        case 'imageText':
-          return (
-            <ImageText
-              heading={section.heading}
-              body={section.body}
-              image={section.image}
-              imageSide={section.imageSide}
-              ctaLabel={section.ctaLabel}
-              ctaTarget={section.ctaTarget}
-              ctaUrl={section.ctaUrl}
-            />
-          );
-        case 'steps':
-          return <Steps heading={section.heading} items={section.items} />;
-        case 'contactDetails':
-          return slug === 'contact' ? null : (
-            <ContactDetails heading={section.heading} showHours={section.showHours} />
-          );
-        case 'formBlock':
-          if (slug === 'contact') {
-            const formAccent = t('contact.form.accent');
-            const formParts = t('contact.form.title', { accent: formAccent }).split(formAccent);
-            return (
-              <section class="section">
-                <div class="wrap contact-form-layout">
-                  <div class="stack" style="flex:2 1 28rem;">
-                    <p class="eyebrow">{t('contact.form.eyebrow')}</p>
-                    <h2 class="display" style="font-size:var(--text-2xl);">
-                      {formParts[0]}
-                      <em>{formAccent}</em>
-                      {formParts[1] ?? ''}
-                    </h2>
-                    <p class="muted">{t('contact.form.lead')}</p>
-                    <FormBlock heading={undefined} form={section.form} id={formBlockId} />
-                  </div>
-                  <div class="contact-form-aside" aria-hidden="true" />
-                </div>
-              </section>
-            );
-          }
-          return (
-            <FormBlock heading={section.heading} form={section.form} id={formBlockId} />
-          );
-        default:
-          return null;
-      }
-    })
-  }
-</BaseLayout>
+<PublicLayout designPage={DESIGN_PAGE[slug]} seo={seo} jsonLd={jsonLd}>
+  <Sections sections={page.sections} pathname={Astro.url.pathname} />
+</PublicLayout>

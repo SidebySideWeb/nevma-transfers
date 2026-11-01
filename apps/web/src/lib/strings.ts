@@ -54,7 +54,7 @@ function fillPlaceholders(
  */
 export function t(key: UiStringKey, vars?: Record<string, string | number>): string {
   const overrides = activeOverrides();
-  const template = overrides[key] ?? defaultByKey[key];
+  const template = overrides[key] ?? defaultByKey[key] ?? key;
   const strictMissing = import.meta.env.MODE === 'test' || process.env.VITEST === 'true';
   return fillPlaceholders(template, vars, strictMissing);
 }
@@ -62,5 +62,7 @@ export function t(key: UiStringKey, vars?: Record<string, string | number>): str
 /** Defaults only - used by tests and 500 page (no Sanity). */
 export function tDefault(key: UiStringKey, vars?: Record<string, string | number>): string {
   const strictMissing = import.meta.env.MODE === 'test' || process.env.VITEST === 'true';
-  return fillPlaceholders(defaultByKey[key], vars, strictMissing);
+  return fillPlaceholders(defaultByKey[key] ?? key, vars, strictMissing);
 }
+
+export { tAccent } from './v2/accent';

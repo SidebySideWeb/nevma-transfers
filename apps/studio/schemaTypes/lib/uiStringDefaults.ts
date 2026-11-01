@@ -570,5 +570,7 @@ export const uiStringDefaults: UiStringDefault[] = [
   { area: 'booking', key: 'booking.network', value: 'We could not reach the server. Check your connection and try again.' },
   { area: 'emails', key: 'email.paymentLink.subject', value: 'Complete your booking {reference}' },
   { area: 'emails', key: 'email.paymentLink.button', value: 'Pay securely' },
-
+  { area: 'emails', key: 'email.paymentLink.body', value: 'Complete payment for booking {reference}.' },
 ];
+
+export type UiStringKey = (typeof uiStringDefaults)[number]['key'];

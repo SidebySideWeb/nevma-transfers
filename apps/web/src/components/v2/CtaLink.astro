@@ -1,0 +1,24 @@
+---
+import { resolveCtaHref, resolveCtaLabel, type CtaLinkData } from '../../lib/v2/cta';
+
+interface Props {
+  link?: CtaLinkData | null;
+  class?: string;
+  phone?: string | null;
+  /** Append a decorative arrow span (home hero primary). */
+  arrow?: boolean;
+}
+
+const { link, class: className, phone, arrow = false } = Astro.props;
+const href = resolveCtaHref(link, phone);
+const label = resolveCtaLabel(link, phone);
+---
+
+{
+  label ? (
+    <a class={className} href={href}>
+      {label}{arrow ? <>{' '}<span aria-hidden="true">→</span></> : null}
+      <slot />
+    </a>
+  ) : null
+}

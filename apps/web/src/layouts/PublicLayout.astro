@@ -1,0 +1,127 @@
+---
+import SiteFooter from '../components/v2/SiteFooter.astro';
+import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
+import { responsiveImage, type SanityImage } from '../lib/sanity/image';
+import type { ResolvedSeo } from '../lib/seo';
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/v2.css';
+
+interface Props {
+  designPage: string;
+  title?: string;
+  description?: string;
+  robots?: string;
+  ogImage?: string;
+  seo?: ResolvedSeo;
+  jsonLd?: unknown[];
+  preloadImage?: SanityImage;
+  /** Root inner wrapper class from the design file (default sf2a7c). */
+  rootClass?: string;
+  /** When false, the page supplies its own footer (rare). */
+  withFooter?: boolean;
+}
+
+await loadUiStrings();
+const settings = await getSiteSettings();
+
+const {
+  designPage,
+  seo,
+  jsonLd = [],
+  title = seo?.title || settings.defaultSeo?.title || settings.companyName,
+  description = seo?.description || settings.defaultSeo?.description || settings.tagline || '',
+  robots = seo?.robots || 'index,follow',
+  ogImage = seo?.ogImage || settings.defaultSeo?.image?.asset?.url || settings.logo?.asset?.url,
+  preloadImage,
+  rootClass = 'sf2a7c',
+  withFooter = true,
+} = Astro.props;
+
+const preload = responsiveImage(preloadImage ?? null, {
+  fallbackWidth: 1600,
+  fallbackHeight: 1000,
+});
+
+const canonical =
+  seo?.canonical || new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:4321').href;
+const twitterCard = seo?.twitterCard || (ogImage ? 'summary_large_image' : 'summary');
+const bodyClass = `pg-${designPage}`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <meta name="robots" content={robots} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={twitterCard} />
+    <meta name="twitter:title" content={title} />
+    {description && <meta name="twitter:description" content={description} />}
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+    {
+      jsonLd.map((block) => (
+        <script type="application/ld+json" set:html={JSON.stringify(block)} />
+      ))
+    }
+    <link
+      rel="preload"
+      href="/fonts/jost-latin-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/playfair-display-latin-500-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    {
+      preload && (
+        <link
+          rel="preload"
+          as="image"
+          href={preload.src}
+          imagesrcset={preload.srcset}
+          imagesizes="100vw"
+          fetchpriority="high"
+        />
+      )
+    }
+  </head>
+  <body class={bodyClass}>
+    <a class="v2-skip" href="#main">Skip to content</a>
+    <div id="dc-root">
+      <main id="main" class={rootClass}>
+        <slot />
+        {withFooter ? <SiteFooter settings={settings} /> : null}
+      </main>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  .v2-skip {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+  }
+  .v2-skip:focus {
+    left: 16px;
+    top: 16px;
+    z-index: 100;
+    background: #e7c687;
+    color: #0a0a0b;
+    padding: 12px 16px;
+  }
+</style>

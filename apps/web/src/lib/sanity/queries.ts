@@ -41,9 +41,26 @@ const routeProjection = /* groq */ `
   internalNote
 `;
 
+const ctaProjection = /* groq */ `label, target, url`;
+const displayHeadingProjection = /* groq */ `before, accent, after`;
+
 const sectionProjection = /* groq */ `
-  _type,
-  _key,
+  ...,
+  image{ ${imageProjection} },
+  photo{ ${imageProjection} },
+  heading{ ${displayHeadingProjection} },
+  primary{ ${ctaProjection} },
+  secondary{ ${ctaProjection} },
+  link{ ${ctaProjection} },
+  asideLink{ ${ctaProjection} },
+  form->{ ${formProjection} },
+  route->{ ${routeProjection} },
+  cards[]{ ..., image{ ${imageProjection} }, link{ ${ctaProjection} } },
+  tiles[]{ ..., image{ ${imageProjection} } },
+  items[]{ ... },
+  steps[]{ ... },
+  notes[]{ ... },
+  faqs[]{ ... },
   _type == "hero" => {
     heading,
     subheading,
@@ -52,55 +69,27 @@ const sectionProjection = /* groq */ `
     ctaUrl,
     image{ ${imageProjection} }
   },
-  _type == "richText" => {
-    heading,
-    body
-  },
-  _type == "ctaBand" => {
-    heading,
-    text,
-    ctaLabel,
-    ctaTarget,
-    ctaUrl
-  },
-  _type == "faq" => {
-    heading,
-    items[]{ question, answer, _key }
-  },
-  _type == "featureGrid" => {
-    heading,
-    intro,
-    items[]{ title, text, link, _key }
-  },
-  _type == "imageText" => {
-    heading,
-    body,
-    image{ ${imageProjection} },
-    imageSide,
-    ctaLabel,
-    ctaTarget,
-    ctaUrl
-  },
-  _type == "steps" => {
-    heading,
-    items[]{ title, text, _key }
-  },
-  _type == "vehicleClassList" => {
-    heading,
-    intro
-  },
   _type == "routeList" => {
     heading,
     intro,
     routes[]->{ ${routeProjection} }
   },
-  _type == "contactDetails" => {
-    heading,
-    showHours
-  },
   _type == "formBlock" => {
     heading,
     form->{ ${formProjection} }
+  },
+  _type == "featuredRoute" => {
+    ...,
+    route->{ ${routeProjection} },
+    image{ ${imageProjection} },
+    heading{ ${displayHeadingProjection} },
+    primary{ ${ctaProjection} }
+  },
+  _type == "enquiryForm" => {
+    ...,
+    form->{ ${formProjection} },
+    heading{ ${displayHeadingProjection} },
+    asideLink{ ${ctaProjection} }
   }
 `;
 

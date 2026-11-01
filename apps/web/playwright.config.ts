@@ -18,12 +18,10 @@ export default defineConfig({
     command:
       'pnpm exec astro dev stop 2>nul & pnpm exec astro dev --port 4321 --host 127.0.0.1 --force',
     url: `${baseURL}/book`,
-    // Fresh server so TURNSTILE dummy keys and DATABASE_URL from this config win over a leftover .env server.
     reuseExistingServer: false,
     timeout: 180_000,
     env: {
       ...process.env,
-      // Astro skips its page middleware when VITEST is set (see vite-plugin-astro-server).
       VITEST: '',
       DATABASE_URL: process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:54329/postgres',
       PUBLIC_TURNSTILE_SITE_KEY:
@@ -35,7 +33,6 @@ export default defineConfig({
       FORM_E2E_MOCK: '1',
     },
   },
-
   projects: [
     {
       name: 'phone',
@@ -44,4 +41,3 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
   ],
 });
-

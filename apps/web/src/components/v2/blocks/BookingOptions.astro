@@ -1,0 +1,49 @@
+---
+/**
+ * V2 stub for BookingOptions — markup from design/v2/build/blocks/04-services/02-bookingOptions.html.
+ * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
+ */
+interface Props {
+  section: Record<string, unknown>;
+  pathname?: string;
+}
+const { section } = Astro.props;
+void section;
+---
+<section data-block="bookingOptions" class="s12ef3">
+  <div class="s177b7">
+    <div class="eyebrow">Booking options</div>
+    <h2 class="display sd5a38">Choose <em>how you travel</em></h2>
+  </div>
+  <div class="s061fa">
+
+      <div class="card s3a1c8">
+        <span class="sbfcc8">i.</span>
+        <h3 class="s0f85e">One-off transfer</h3>
+        <p class="se404f">A single journey from your pick-up point to your chosen destination.</p>
+        <span class="s7e51b">From €150</span>
+      </div>
+
+      <div class="card s3a1c8">
+        <span class="sbfcc8">ii.</span>
+        <h3 class="s0f85e">Transfer with waiting time</h3>
+        <p class="se404f">Your chauffeur remains available for your return or onward journey.</p>
+        <span class="s7e51b">On request</span>
+      </div>
+
+      <div class="card s3a1c8">
+        <span class="sbfcc8">iii.</span>
+        <h3 class="s0f85e">Hourly chauffeur</h3>
+        <p class="se404f">A vehicle and chauffeur at your disposal for meetings and multiple stops.</p>
+        <span class="s7e51b">From €60 / hour</span>
+      </div>
+
+      <div class="card s3a1c8">
+        <span class="sbfcc8">iv.</span>
+        <h3 class="s0f85e">Full-day chauffeur</h3>
+        <p class="se404f">A dedicated chauffeur and vehicle for your whole itinerary.</p>
+        <span class="s7e51b">On request</span>
+      </div>
+
+  </div>
+</section>

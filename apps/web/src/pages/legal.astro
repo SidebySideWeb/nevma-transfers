@@ -1,0 +1,27 @@
+---
+export const prerender = true;
+
+import PublicLayout from '../layouts/PublicLayout.astro';
+import Sections from '../components/sections/Sections.astro';
+import { getSiteSettings } from '../lib/sanity/content';
+import { getPageBySlug } from '../lib/sanity/pages';
+import { resolveSeo } from '../lib/seo';
+
+const settings = await getSiteSettings();
+const page = await getPageBySlug('legal');
+const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
+  /\/$/,
+  '',
+);
+const seo = resolveSeo({
+  pageTitle: page.title,
+  pageSeo: page.seo ?? null,
+  settings,
+  pathname: '/legal',
+  siteUrl,
+});
+---
+
+<PublicLayout designPage="17-legal" seo={seo}>
+  <Sections sections={page.sections} pathname={Astro.url.pathname} />
+</PublicLayout>

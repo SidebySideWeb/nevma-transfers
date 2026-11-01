@@ -1,0 +1,42 @@
+---
+export type DisplayHeading = {
+  before?: string | null;
+  accent?: string | null;
+  after?: string | null;
+};
+
+interface Props {
+  heading?: DisplayHeading | null;
+  /** `break`: before<br><em>accent</em>after. `inline`: before <em>accent</em> after. */
+  variant?: 'break' | 'inline';
+  as?: 'h1' | 'h2' | 'h3';
+  class?: string;
+}
+
+const { heading, variant = 'inline', as: Tag = 'h2', class: className } = Astro.props;
+const before = heading?.before ?? '';
+const accent = heading?.accent ?? '';
+const after = heading?.after ?? '';
+---
+
+{
+  accent ? (
+    variant === 'break' ? (
+      <Tag class={className}>
+        {before}
+        <br />
+        <em>{accent}</em>
+        {after}
+      </Tag>
+    ) : (
+      <Tag class={className}>
+        {before}
+        {before && !before.endsWith(' ') ? ' ' : ''}
+        <em>{accent}</em>
+        {after ? (after.startsWith(' ') || after.startsWith(',') ? after : ` ${after}`) : ''}
+      </Tag>
+    )
+  ) : (
+    <Tag class={className}>{before}{after}</Tag>
+  )
+}

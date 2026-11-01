@@ -29,6 +29,31 @@ function renderSectionKinds(sections: PageSection[]): string[] {
         return `contactDetails:${section.heading ?? ''}:${section.showHours ? 'hours' : 'no-hours'}`;
       case 'formBlock':
         return `formBlock:${section.heading ?? section.form?.title ?? ''}`;
+      case 'pageHero':
+      case 'promiseStrip':
+      case 'divisionCards':
+      case 'fleetShowcase':
+      case 'howItWorks':
+      case 'onBoard':
+      case 'quoteBlock':
+      case 'ctaPanel':
+      case 'fleetBrowser':
+      case 'galleryMosaic':
+      case 'priceTable':
+      case 'includedList':
+      case 'bookingOptions':
+      case 'featuredRoute':
+      case 'occasions':
+      case 'faqList':
+      case 'featureTrio':
+      case 'serviceColumns':
+      case 'escortFeature':
+      case 'statsBar':
+      case 'clientsBlock':
+      case 'contactCards':
+      case 'enquiryForm':
+      case 'legalDocument':
+        return section._type;
       default:
         return 'unknown';
     }
