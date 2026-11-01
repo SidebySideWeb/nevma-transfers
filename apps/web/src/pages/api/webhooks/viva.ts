@@ -14,15 +14,8 @@ export const GET: APIRoute = async () => {
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    // Read as text first so large OrderCode integers are not corrupted by JSON.parse.
-    const raw = await request.text();
-    let body: unknown = null;
-    try {
-      body = raw ? JSON.parse(raw) : null;
-    } catch {
-      body = null;
-    }
-    await handleVivaPost(body, raw);
+    const body = await request.json().catch(() => null);
+    await handleVivaPost(body);
     return json({ ok: true }, 200);
   } catch {
     // Always 200 so Viva does not retry forever on our bugs after we logged.
