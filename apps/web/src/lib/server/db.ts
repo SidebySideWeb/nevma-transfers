@@ -11,18 +11,12 @@ let override: BookingDb | null = null;
 let pool: pg.Pool | null = null;
 
 function poolFromEnv(): pg.Pool {
-  const url = String(process.env.DATABASE_URL || import.meta.env.DATABASE_URL || '');
+  const url = process.env.DATABASE_URL || import.meta.env.DATABASE_URL;
   if (!url) {
     throw new Error('DATABASE_URL is required for booking API database access');
   }
   if (!pool) {
-    // Supabase (and many hosted Postgres) present a cert chain Node rejects by default.
-    const remote = /supabase\.(co|com)|sslmode=require/i.test(url);
-    pool = new pg.Pool({
-      connectionString: url,
-      max: remote ? 4 : 6,
-      ssl: remote ? { rejectUnauthorized: false } : undefined,
-    });
+    pool = new pg.Pool({ connectionString: String(url), max: 6 });
   }
   return pool;
 }
