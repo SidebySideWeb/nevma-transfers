@@ -1,10 +1,15 @@
 ---
+import { actions } from 'astro:actions';
 import '../styles/fonts.css';
 import '../styles/tokens.css';
 import '../styles/admin.css';
 import Banner from '../components/Banner.astro';
 import { buildBanner } from '../lib/banner';
 import { countNeedsVehicle } from '../lib/nav-count';
+import {
+  hasPricesChanged,
+  rebuildCooldownRemainingMs,
+} from '../lib/price-update-cookies';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 interface Crumb {
@@ -33,6 +38,13 @@ const [bannerText, needsVehicle] = await Promise.all([
   buildBanner(supabase),
   countNeedsVehicle(supabase),
 ]);
+
+const pricesChanged = hasPricesChanged(Astro.cookies);
+const cooldownMs = rebuildCooldownRemainingMs(Astro.cookies);
+const rebuildDisabled = cooldownMs > 0;
+const cooldownSeconds = Math.ceil(cooldownMs / 1000);
+const rebuildError =
+  Astro.getActionResult?.(actions.requestWebsiteRebuild)?.error?.message ?? null;
 
 const groups = [
   {
@@ -135,11 +147,41 @@ const groups = [
       <main class="main" id="main">
         {
           bannerText && (
-            <Banner tone="warning" tag="Demo data">
+            <Banner tone="warning" tag="Checks">
               {bannerText}
               <a class="btn btn-secondary btn-sm" slot="action" href="/settings">
                 Review settings
               </a>
+            </Banner>
+          )
+        }
+        {
+          (pricesChanged || rebuildDisabled || rebuildError) && (
+            <Banner tone="info" tag="Website" role="status">
+              {
+                pricesChanged
+                  ? 'Prices changed: update the website'
+                  : 'Update the website'
+              }
+              {
+                rebuildError ? (
+                  <span class="muted"> — {rebuildError}</span>
+                ) : rebuildDisabled ? (
+                  <span class="muted">
+                    {' '}
+                    — Rebuild requested. You can request again in {cooldownSeconds}s.
+                  </span>
+                ) : null
+              }
+              <form method="POST" action={actions.requestWebsiteRebuild} slot="action">
+                <button
+                  class="btn btn-secondary btn-sm"
+                  type="submit"
+                  disabled={rebuildDisabled}
+                >
+                  Update the website
+                </button>
+              </form>
             </Banner>
           )
         }

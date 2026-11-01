@@ -25,3 +25,34 @@ test('AC-21 dry-run fails while DEMO seed/content is present', () => {
   assert.match(res.stdout, /DEMO placeholders remain|placeholders/);
   assert.doesNotMatch(res.stdout + res.stderr, /eyJ[A-Za-z0-9_-]{10,}/); // no JWT-looking dumps
 });
+
+test('kit 2 dry-run against live DEMO Sanity lists routes, forms and example.com', () => {
+  const projectId = process.env.SANITY_PROJECT_ID || '';
+  const dataset = process.env.SANITY_DATASET || '';
+  const token = process.env.SANITY_READ_TOKEN || '';
+  if (!projectId || !dataset || !token) {
+    // Local without Sanity: still prove the incomplete-config path mentions Sanity.
+    const res = spawnSync(process.execPath, [script, '--dry-run'], {
+      encoding: 'utf8',
+      cwd: root,
+      env: {
+        ...process.env,
+        SANITY_PROJECT_ID: '',
+        SANITY_DATASET: '',
+        SANITY_READ_TOKEN: '',
+        DATABASE_URL: '',
+      },
+    });
+    assert.equal(res.status, 1);
+    assert.match(res.stdout, /Sanity is not configured|DEMO/);
+    return;
+  }
+  const res = spawnSync(process.execPath, [script, '--dry-run'], {
+    encoding: 'utf8',
+    cwd: root,
+    env: { ...process.env },
+  });
+  assert.equal(res.status, 1, res.stdout + res.stderr);
+  assert.match(res.stdout, /route|form|example\.com|DEMO/i);
+  assert.doesNotMatch(res.stdout + res.stderr, /sk[A-Za-z0-9]{20,}/);
+});

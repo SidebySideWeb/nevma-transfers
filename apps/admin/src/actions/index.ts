@@ -8,7 +8,14 @@ import {
   freeVehiclesForClass as tripFreeVehicles,
   TripError,
 } from '../lib/office-trip';
+import { callWebsiteDeployHook } from '../lib/deploy-hook';
 import { eurosToCents, optionalEurosToCents } from '../lib/money';
+import {
+  clearPricesChanged,
+  markPricesChanged,
+  rebuildCooldownRemainingMs,
+  setRebuildRequestedAt,
+} from '../lib/price-update-cookies';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { athensLocalToInstant } from '../lib/time';
 
@@ -288,6 +295,7 @@ export const server = {
           if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
         }
       }
+      markPricesChanged(ctx.cookies);
       return { ok: true };
     },
   }),
@@ -330,6 +338,7 @@ export const server = {
         );
         if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
       }
+      markPricesChanged(ctx.cookies);
       return { ok: true };
     },
   }),
@@ -364,6 +373,7 @@ export const server = {
           .eq('id', row.id);
         if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
       }
+      markPricesChanged(ctx.cookies);
       return { ok: true };
     },
   }),
@@ -402,6 +412,7 @@ export const server = {
           .eq('id', id);
         if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
       }
+      markPricesChanged(ctx.cookies);
       return { ok: true };
     },
   }),
@@ -426,6 +437,29 @@ export const server = {
         })
         .eq('id', input.id);
       if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  requestWebsiteRebuild: defineAction({
+    accept: 'form',
+    input: z.object({}),
+    async handler(_input, ctx) {
+      requireStaff(ctx.locals);
+      const remaining = rebuildCooldownRemainingMs(ctx.cookies);
+      if (remaining > 0) {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: `Please wait ${Math.ceil(remaining / 1000)} seconds before requesting another rebuild.`,
+        });
+      }
+      const result = await callWebsiteDeployHook();
+      if (!result.ok) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
+      }
+      clearPricesChanged(ctx.cookies);
+      setRebuildRequestedAt(ctx.cookies);
       return { ok: true };
     },
   }),

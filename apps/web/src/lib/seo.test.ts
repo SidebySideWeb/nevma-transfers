@@ -40,9 +40,20 @@ describe('resolveSeo', () => {
       siteUrl: 'https://example.com',
     });
     expect(seo.title).toBe('Default SEO · TEM Protection');
-    expect(seo.description).toBe('Default description');
+    expect(seo.description).toBe('Home. Default description');
     expect(seo.robots).toBe('noindex,nofollow');
     expect(seo.canonical).toBe('https://example.com/');
+  });
+
+  it('keeps an explicit page seo.description unchanged', () => {
+    const seo = resolveSeo({
+      pageTitle: 'Privacy',
+      pageSeo: { description: 'Privacy-specific copy' },
+      settings,
+      pathname: '/privacy',
+      siteUrl: 'https://example.com',
+    });
+    expect(seo.description).toBe('Privacy-specific copy');
   });
 });
 

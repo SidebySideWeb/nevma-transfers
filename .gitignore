@@ -15,6 +15,8 @@ playwright-report
 test-results
 coverage
 **/coverage
+apps/admin/e2e/.deploy-hook-hits
+apps/admin/e2e/.last-e2e-out.txt
 
 apps/admin/tmp-screenshots/
 

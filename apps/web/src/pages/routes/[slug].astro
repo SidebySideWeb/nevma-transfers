@@ -81,9 +81,14 @@ const seoDoc = (route.seo ?? null) as {
 } | null;
 
 const defaultTitle = `${route.title} transfer · ${settings.companyName}`;
+const rawDescription = seoDoc?.description || route.intro || '';
 const pageSeo = {
   title: seoDoc?.title || defaultTitle,
-  description: seoDoc?.description || route.intro || undefined,
+  description: rawDescription
+    ? rawDescription.includes(route.title)
+      ? rawDescription
+      : `${route.title}. ${rawDescription}`
+    : undefined,
   noindex: seoDoc?.noindex ?? undefined,
   image: seoDoc?.image,
 };

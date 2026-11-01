@@ -36,11 +36,14 @@ export function resolveSeo(opts: {
   const defaultSeo = settings.defaultSeo;
   const titleSource = pageSeo?.title || defaultSeo?.title || opts.pageTitle || settings.companyName;
   const title = pageTitle(titleSource, settings.companyName);
+  const fallbackDescription =
+    defaultSeo?.description || settings.tagline || '';
+  // Unique per page when editors omit seo.description (avoids identical meta across legal/routes).
   const description =
     pageSeo?.description ||
-    defaultSeo?.description ||
-    settings.tagline ||
-    '';
+    (opts.pageTitle && fallbackDescription
+      ? `${opts.pageTitle}. ${fallbackDescription}`
+      : fallbackDescription || opts.pageTitle || '');
   const noindex = Boolean(pageSeo?.noindex ?? defaultSeo?.noindex);
   const image =
     ogImageUrl(pageSeo?.image ?? null) ||

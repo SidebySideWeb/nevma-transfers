@@ -56,8 +56,8 @@ section('placeholders (pnpm check:placeholders)');
   }
 }
 
-// --- 2. Sanity internalNote ---
-section('Sanity internalNote');
+// --- 2. Sanity internalNote + kit 2 route/form DEMO + example.com recipients ---
+section('Sanity internalNote / routes / forms');
 {
   const projectId = process.env.SANITY_PROJECT_ID || '';
   const dataset = process.env.SANITY_DATASET || '';
@@ -67,29 +67,24 @@ section('Sanity internalNote');
       'Sanity is not configured (SANITY_PROJECT_ID / SANITY_DATASET / SANITY_READ_TOKEN). Cannot prove content is free of DEMO notes.',
     );
   } else {
-    const query = 'count(*[defined(internalNote) && internalNote match "DEMO*"])';
-    const url = new URL(
-      `https://${projectId}.api.sanity.io/v2026-10-01/data/query/${encodeURIComponent(dataset)}`,
-    );
-    url.searchParams.set('query', query);
+    const api = (query) => {
+      const url = new URL(
+        `https://${projectId}.api.sanity.io/v2026-10-01/data/query/${encodeURIComponent(dataset)}`,
+      );
+      url.searchParams.set('query', query);
+      return fetch(url, { headers: { authorization: `Bearer ${token}` } });
+    };
     try {
-      const res = await fetch(url, {
-        headers: { authorization: `Bearer ${token}` },
-      });
+      const res = await api('count(*[defined(internalNote) && internalNote match "DEMO*"])');
       if (!res.ok) {
         fail(`Sanity query HTTP ${res.status}`);
       } else {
         const body = await res.json();
         const count = Number(body.result ?? 0);
         if (count > 0) {
-          const listUrl = new URL(url);
-          listUrl.searchParams.set(
-            'query',
+          const listRes = await api(
             '*[defined(internalNote) && internalNote match "DEMO*"][0...20]{_id,_type}',
           );
-          const listRes = await fetch(listUrl, {
-            headers: { authorization: `Bearer ${token}` },
-          });
           const listBody = listRes.ok ? await listRes.json() : { result: [] };
           const ids = (listBody.result || [])
             .map((d) => `${d._type}:${d._id}`)
@@ -97,6 +92,69 @@ section('Sanity internalNote');
           fail(`${count} published Sanity document(s) still have internalNote matching DEMO* (${ids})`);
         } else {
           ok('no published Sanity documents with DEMO internalNote');
+        }
+      }
+
+      const routeRes = await api(
+        '*[_type == "route" && defined(internalNote) && internalNote match "DEMO*"]{"slug": slug.current, title}',
+      );
+      if (routeRes.ok) {
+        const routes = (await routeRes.json()).result || [];
+        if (routes.length) {
+          fail(
+            `published route(s) still DEMO in internalNote: ${routes
+              .map((r) => r.slug || r.title)
+              .join(', ')}`,
+          );
+        } else {
+          ok('no published routes with DEMO internalNote');
+        }
+      }
+
+      const formRes = await api(
+        `*[_type == "form"]{
+          key,
+          internalNote,
+          recipientEmail,
+          "topicRecipients": topics[].recipientEmail
+        }`,
+      );
+      if (formRes.ok) {
+        const forms = (await formRes.json()).result || [];
+        const demoForms = forms.filter(
+          (f) => typeof f.internalNote === 'string' && /DEMO/i.test(f.internalNote),
+        );
+        if (demoForms.length) {
+          fail(`published form(s) still DEMO in internalNote: ${demoForms.map((f) => f.key).join(', ')}`);
+        } else {
+          ok('no published forms with DEMO internalNote');
+        }
+        const exampleRecipients = [];
+        for (const f of forms) {
+          if (typeof f.recipientEmail === 'string' && f.recipientEmail.endsWith('@example.com')) {
+            exampleRecipients.push(`${f.key}:${f.recipientEmail}`);
+          }
+          for (const addr of f.topicRecipients || []) {
+            if (typeof addr === 'string' && addr.endsWith('@example.com')) {
+              exampleRecipients.push(`${f.key} topic:${addr}`);
+            }
+          }
+        }
+        if (exampleRecipients.length) {
+          fail(`form recipient(s) still @example.com (${exampleRecipients.join('; ')})`);
+        } else {
+          ok('no form recipients end with @example.com');
+        }
+      }
+
+      const settingsRes = await api('*[_type == "siteSettings"][0]{email}');
+      if (settingsRes.ok) {
+        const settings = (await settingsRes.json()).result;
+        const email = settings?.email || '';
+        if (typeof email === 'string' && email.endsWith('@example.com')) {
+          fail(`siteSettings.email still ends with @example.com`);
+        } else {
+          ok('siteSettings.email is not @example.com');
         }
       }
     } catch (e) {
