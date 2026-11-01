@@ -12,16 +12,46 @@ describe('AC-01 pricing', () => {
     expect(quoteHourly({ rateCents: 6000, minHours: 3, maxHours: 12, hours: 4 })).toBe(24000);
   });
 
-  it('AC-01: extras add up; duplicates counted once', () => {
+  it('AC-01: extras add up; duplicate string codes counted once', () => {
     const result = totalWithExtras(7000, ['vip-security', 'night-surcharge', 'vip-security'], [
       { code: 'vip-security', priceCents: 15000, active: true },
       { code: 'night-surcharge', priceCents: 2000, active: true },
     ]);
     expect(result.totalCents).toBe(24000);
     expect(result.lines).toEqual([
-      { code: 'vip-security', cents: 15000 },
-      { code: 'night-surcharge', cents: 2000 },
+      { code: 'vip-security', quantity: 1, cents: 15000 },
+      { code: 'night-surcharge', quantity: 1, cents: 2000 },
     ]);
+  });
+
+  it('extras filtered by booking type; child seat qty 2 → 2× price; qty 4 rejected', () => {
+    const catalog = [
+      {
+        code: 'child-seat',
+        priceCents: 1000,
+        active: true,
+        maxQuantity: 3,
+        appliesTo: ['transfer'],
+      },
+      {
+        code: 'vip-security',
+        priceCents: 15000,
+        active: true,
+        maxQuantity: 1,
+        appliesTo: ['transfer', 'hourly'],
+      },
+    ];
+    const ok = totalWithExtras(7000, [{ code: 'child-seat', quantity: 2 }], catalog, 'transfer');
+    expect(ok.totalCents).toBe(9000);
+    expect(ok.lines[0]).toEqual({ code: 'child-seat', quantity: 2, cents: 2000 });
+
+    expect(() =>
+      totalWithExtras(7000, [{ code: 'child-seat', quantity: 4 }], catalog, 'transfer'),
+    ).toThrow(BookingError);
+
+    expect(() =>
+      totalWithExtras(7000, [{ code: 'child-seat', quantity: 1 }], catalog, 'hourly'),
+    ).toThrow(BookingError);
   });
 
   it('AC-01: inactive vip-security is rejected', () => {

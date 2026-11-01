@@ -3,7 +3,17 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import Flag from '../components/Flag.astro';
+import Select from '../components/Select.astro';
 import { createSupabaseServerClient } from '../lib/supabase';
+
+const ZONE_KINDS = [
+  { value: 'airport', label: 'Airport' },
+  { value: 'city', label: 'City' },
+  { value: 'port', label: 'Port' },
+  { value: 'area', label: 'Area' },
+  { value: 'other', label: 'Other' },
+] as const;
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
@@ -17,7 +27,8 @@ function actionErr(result: { error?: { message?: string } | Error } | undefined)
 const pageError =
   actionErr(Astro.getActionResult?.(actions.addZone)) ||
   actionErr(Astro.getActionResult?.(actions.saveZone)) ||
-  actionErr(Astro.getActionResult?.(actions.deleteZone));
+  actionErr(Astro.getActionResult?.(actions.deleteZone)) ||
+  actionErr(Astro.getActionResult?.(actions.clearDemo));
 
 const [{ data: zones }, { data: routes }, { data: bookings }] = await Promise.all([
   supabase.from('zones').select('*').order('sort_order'),
@@ -62,6 +73,7 @@ for (const b of bookings ?? []) {
           <th scope="col">Order</th>
           <th scope="col">Zone</th>
           <th scope="col">Code</th>
+          <th scope="col">Kind</th>
           <th scope="col">Online</th>
           <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
         </tr>
@@ -72,8 +84,8 @@ for (const b of bookings ?? []) {
             const codeFixed = usedIds.has(z.id);
             const canDelete = !bookedIds.has(z.id);
             return (
-              <tr>
-                <td colspan="5">
+              <tr class:list={[{ 'is-flag': z.is_demo }]}>
+                <td colspan="6">
                   <form method="POST" action={actions.saveZone} class="row" style="align-items:end;gap:var(--space-2);flex-wrap:wrap">
                     <input type="hidden" name="id" value={z.id} />
                     <div class="field">
@@ -83,6 +95,7 @@ for (const b of bookings ?? []) {
                     <div class="field" style="flex:1;min-width:10rem">
                       <label for={`zn-${z.id}`}>Zone</label>
                       <input class="input" id={`zn-${z.id}`} name="name" value={z.name} required />
+                      {z.is_demo && <Flag kind="demo" />}
                     </div>
                     <div class="field">
                       <label for={`zc-${z.id}`}>Code</label>
@@ -106,11 +119,37 @@ for (const b of bookings ?? []) {
                         </p>
                       )}
                     </div>
+                    <div class="field">
+                      <label for={`zk-${z.id}`}>Kind</label>
+                      <Select
+                        id={`zk-${z.id}`}
+                        name="kind"
+                        options={ZONE_KINDS.map((k) => ({
+                          value: k.value,
+                          label: k.label,
+                          selected: (z.kind ?? 'area') === k.value,
+                        }))}
+                      />
+                    </div>
                     <label class="switch">
                       <input type="checkbox" name="active" value="true" checked={z.active} />
                       <span class="sr-only">Online</span>
                     </label>
                     <button class="btn btn-quiet btn-sm" type="submit">Save</button>
+                    {
+                      z.is_demo && (
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          type="submit"
+                          formaction={actions.clearDemo}
+                          name="clear"
+                          value={`zones|${z.id}`}
+                          formnovalidate
+                        >
+                          Confirmed
+                        </button>
+                      )
+                    }
                     {
                       canDelete ? (
                         <button class="btn btn-danger-solid btn-sm" type="submit" formaction={actions.deleteZone}>
@@ -151,6 +190,18 @@ for (const b of bookings ?? []) {
             name="code"
             required
             pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+          />
+        </div>
+        <div class="field">
+          <label for="az-kind">Kind</label>
+          <Select
+            id="az-kind"
+            name="kind"
+            options={ZONE_KINDS.map((k) => ({
+              value: k.value,
+              label: k.label,
+              selected: k.value === 'area',
+            }))}
           />
         </div>
       </div>

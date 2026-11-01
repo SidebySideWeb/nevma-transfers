@@ -14,17 +14,17 @@ function fakeSupabase(opts: {
   hourlyRates?: { class_id: string }[];
   zoneCodes?: { id: string; code: string }[];
   routes?: { from_zone_id: string; to_zone_id: string }[];
-  demoSettings?: string[];
+  demoRows?: { table_name: string; n: number }[];
 }) {
   const classes =
     opts.classes ??
     (opts.classKeys ?? []).map((key, i) => ({ id: `c${i}`, key, active: true }));
   const zones = opts.zoneCodes ?? [];
   const zoneRoutes = opts.routes ?? [];
-  const demo = (opts.demoSettings ?? []).map((key) => ({ key }));
   const vehicles = opts.vehicles ?? [];
   const zonePrices = opts.zonePrices ?? [];
   const hourlyRates = opts.hourlyRates ?? [];
+  const demoRows = opts.demoRows ?? [];
 
   return {
     from(table: string) {
@@ -41,8 +41,8 @@ function fakeSupabase(opts: {
                   ? zones
                   : table === 'zone_routes'
                     ? zoneRoutes
-                    : table === 'settings'
-                      ? demo
+                    : table === 'demo_rows'
+                      ? demoRows
                       : [];
       const result = Promise.resolve({ data: rows, error: null });
       return {
@@ -76,7 +76,7 @@ describe('buildBanner AC-32', () => {
     ]);
     setSanityClassesForBanner([{ key: 'demo-e-class', photos: 1 }]);
 
-    const text = await buildBanner(
+    const { text } = await buildBanner(
       fakeSupabase({
         classKeys: ['demo-e-class'],
         vehicles: [{ class_id: 'c0', status: 'active' }],
@@ -99,7 +99,7 @@ describe('buildBanner AC-32', () => {
       },
     ]);
     setSanityClassesForBanner([]);
-    const text = await buildBanner(
+    const { text } = await buildBanner(
       fakeSupabase({
         zoneCodes: [
           { id: 'a', code: 'demo-airport' },
@@ -114,7 +114,7 @@ describe('buildBanner AC-32', () => {
 
   it('flags an online class that is not ready', async () => {
     setSanityClassesForBanner([{ key: 'limo', photos: 0 }]);
-    const text = await buildBanner(
+    const { text } = await buildBanner(
       fakeSupabase({
         classes: [{ id: 'c1', key: 'limo', active: true }],
         vehicles: [],
@@ -123,5 +123,23 @@ describe('buildBanner AC-32', () => {
       }) as never,
     );
     expect(text).toMatch(/Class limo is online but not ready/i);
+  });
+
+  it('summarises demo_rows and links to the first page', async () => {
+    setSanityClassesForBanner([]);
+    const banner = await buildBanner(
+      fakeSupabase({
+        demoRows: [
+          { table_name: 'zone_prices', n: 3 },
+          { table_name: 'extras', n: 1 },
+          { table_name: 'settings', n: 2 },
+        ],
+      }) as never,
+    );
+    expect(banner.text).toMatch(/3 prices/);
+    expect(banner.text).toMatch(/1 extras/);
+    expect(banner.text).toMatch(/2 settings/);
+    expect(banner.text).toMatch(/still DEMO/);
+    expect(banner.href).toBe('/prices');
   });
 });

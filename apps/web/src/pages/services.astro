@@ -2,10 +2,18 @@
 export const prerender = true;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Sections from '../components/sections/Sections.astro';
+import PageHero from '../components/v2/PageHero.astro';
+import FeatureList from '../components/v2/FeatureList.astro';
+import Faq from '../components/sections/Faq.astro';
+import { getPublishableRoutes } from '../lib/content/routes';
+import { getPublishableClasses } from '../lib/content/vehicles';
+import { isBookingOpen } from '../lib/booking-open';
+import { formatEuro } from '../lib/booking/pricing';
 import { getSiteSettings } from '../lib/sanity/content';
 import { getPageBySlug } from '../lib/sanity/pages';
+import { fromPriceForRoute, getCatalog } from '../lib/server/catalog';
 import { resolveSeo } from '../lib/seo';
+import { t } from '../lib/strings';
 
 const settings = await getSiteSettings();
 const page = await getPageBySlug('services');
@@ -13,6 +21,63 @@ const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://
   /\/$/,
   '',
 );
+const bookingOpen = isBookingOpen();
+const show = settings.showFromPrices !== false;
+
+const [routes, classes, cat] = await Promise.all([
+  getPublishableRoutes().catch(() => []),
+  getPublishableClasses().catch(() => []),
+  getCatalog().catch(() => null),
+]);
+
+const hero = page.sections.find((s) => s._type === 'hero');
+const heroImage =
+  hero && hero._type === 'hero'
+    ? hero.image?.asset?.url
+    : routes.find((r) => r.featured)?.photo &&
+        typeof routes.find((r) => r.featured)?.photo === 'object'
+      ? ((routes.find((r) => r.featured)?.photo as { asset?: { url?: string } })?.asset?.url ?? null)
+      : null;
+
+const faqSection = page.sections.find((s) => s._type === 'faq');
+const faqItems =
+  faqSection && faqSection._type === 'faq'
+    ? faqSection.items.map((i) => ({ question: i.question, answer: i.answer }))
+    : [];
+
+const featured = routes.find((r) => r.featured) ?? routes[0] ?? null;
+const featuredPrices =
+  featured && cat
+    ? fromPriceForRoute(cat, featured.fromZone, featured.toZone).map((row) => {
+        const cls = classes.find((c) => c.key === row.classKey);
+        return {
+          name: cls?.name ?? row.classKey,
+          price: show && row.cents != null ? formatEuro(row.cents) : t('site.noOnlinePrice'),
+        };
+      })
+    : [];
+
+const featuredPhoto =
+  featured?.photo && typeof featured.photo === 'object'
+    ? ((featured.photo as { asset?: { url?: string } }).asset?.url ?? null)
+    : null;
+
+const accent = t('services.accent');
+const titleParts = t('services.title', { accent }).split(accent);
+const optAccent = t('services.options.accent');
+const optParts = t('services.options.title', { accent: optAccent }).split(optAccent);
+const faqAccent = t('services.faq.accent');
+const faqParts = t('services.faq.title', { accent: faqAccent }).split(faqAccent);
+const ctaAccent = t('services.cta.accent');
+const ctaParts = t('services.cta.title', { accent: ctaAccent }).split(ctaAccent);
+
+const bookHref = featured
+  ? bookingOpen
+    ? `/book?from=${encodeURIComponent(featured.fromZone)}&to=${encodeURIComponent(featured.toZone)}`
+    : `/request-a-transfer?from=${encodeURIComponent(featured.fromZone)}&to=${encodeURIComponent(featured.toZone)}`
+  : bookingOpen
+    ? '/book'
+    : '/request-a-transfer';
 
 const seo = resolveSeo({
   pageTitle: page.title,
@@ -23,6 +88,141 @@ const seo = resolveSeo({
 });
 ---
 
-<BaseLayout seo={seo}>
-  <Sections sections={page.sections} />
+<BaseLayout seo={seo} heroHeader>
+  <PageHero
+    settings={settings}
+    eyebrow={t('services.eyebrow')}
+    titleBefore={titleParts[0]}
+    titleAccent={accent}
+    titleAfter={titleParts[1] ?? ''}
+    lead={t('services.lead')}
+    imageUrl={heroImage}
+    class="page-hero--tall"
+  />
+
+  <FeatureList
+    eyebrow={t('services.options.eyebrow')}
+    titleBefore={optParts[0]}
+    titleAccent={optAccent}
+    titleAfter={optParts[1] ?? ''}
+    items={[
+      { title: t('services.opt1.title'), text: t('services.opt1.text') },
+      { title: t('services.opt2.title'), text: t('services.opt2.text') },
+      { title: t('services.opt3.title'), text: t('services.opt3.text') },
+    ]}
+  />
+
+  {
+    featured ? (
+      <section class="section">
+        <div class="wrap">
+          <div class="featured-route" style="display:flex;flex-wrap:wrap;border:1px solid var(--color-accent-deep);overflow:hidden;">
+            <div
+              class="featured-route-media"
+              style={`flex:1 1 22rem;min-height:22rem;background: ${featuredPhoto ? `url(${featuredPhoto}) center/cover` : 'var(--color-bg-deep)'};`}
+              role="img"
+              aria-label={featured.title}
+            />
+            <div style="flex:1 1 26rem;padding:var(--space-6);display:flex;flex-direction:column;gap:var(--space-4);background:var(--panel-gradient);">
+              <p class="eyebrow">{t('services.featured.eyebrow')}</p>
+              <h2 class="display" style="font-size:var(--text-2xl);margin:0;">
+                {featured.title}
+              </h2>
+              {featured.intro ? <p class="muted" style="margin:0;">{featured.intro}</p> : null}
+              <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);">
+                {featuredPrices.map((r) => (
+                  <div class="rate-chip" style="display:flex;flex-direction:column;gap:4px;border:1px solid var(--color-border);padding:var(--space-3) var(--space-4);min-width:7rem;">
+                    <span class="fleet-card-price-label">{r.name}</span>
+                    <span class="fleet-card-price-value" style="font-size:var(--text-xl);">{r.price}</span>
+                  </div>
+                ))}
+              </div>
+              <p class="muted" style="margin:0;font-size:var(--text-sm);">{t('services.featured.note')}</p>
+              <div class="row">
+                <a class="btn btn-gold" href={bookHref}>
+                  {bookingOpen ? t('site.bookRoute') : t('site.requestQuote')}
+                </a>
+                <a class="btn btn-line" href="/fleet">
+                  {t('services.featured.fleet')}
+                </a>
+                {featured.slug ? (
+                  <a class="link-arrow" href={`/routes/${featured.slug}`}>
+                    {t('site.viewRoute')} →
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    ) : null
+  }
+
+  {
+    routes.length > 1 ? (
+      <section class="section" style="background:#0f1112;border-block:1px solid var(--color-border);">
+        <div class="wrap stack">
+          <p class="eyebrow">{t('nav.services')}</p>
+          <h2 class="display">{t('nav.services')}</h2>
+          <div class="grid grid-3">
+            {routes.map((r) => (
+              <a class="card stack" href={`/routes/${r.slug}`} style="text-decoration:none;color:inherit;padding:0;overflow:hidden;border:1px solid var(--color-border);">
+                {r.photo && (r.photo as { asset?: { url?: string } }).asset?.url ? (
+                  <div class="media" style="height:12rem;">
+                    <img src={(r.photo as { asset: { url: string } }).asset.url} alt="" loading="lazy" />
+                  </div>
+                ) : (
+                  <div class="media" style="height:12rem;" aria-hidden="true" />
+                )}
+                <div style="padding:var(--space-4);">
+                  <h3 class="display" style="font-size:var(--text-xl);margin:0;">{r.title}</h3>
+                  {r.intro ? <p class="muted">{r.intro}</p> : null}
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    ) : null
+  }
+
+  {
+    faqItems.length > 0 ? (
+      <section class="section">
+        <div class="wrap" style="display:flex;flex-wrap:wrap;gap:var(--space-6);">
+          <div style="flex:1 1 16rem;">
+            <p class="eyebrow">{t('services.faq.eyebrow')}</p>
+            <h2 class="display" style="font-size:var(--text-2xl);">
+              {faqParts[0]}
+              <em>{faqAccent}</em>
+              {faqParts[1] ?? ''}
+            </h2>
+            <p class="muted">
+              {t('services.faq.lead')}{' '}
+              <a href={`tel:${settings.phone.replace(/[^\d+]/g, '')}`}>{settings.phone}</a>
+            </p>
+          </div>
+          <div style="flex:2 1 28rem;">
+            <Faq items={faqItems} />
+          </div>
+        </div>
+      </section>
+    ) : null
+  }
+
+  <section class="section home-cta">
+    <div class="wrap home-cta-inner">
+      <h2 class="display">
+        {ctaParts[0]}
+        <em>{ctaAccent}</em>
+        {ctaParts[1] ?? ''}
+      </h2>
+      <div class="row">
+        <a class="btn btn-line" href="/request-a-transfer">{t('site.requestQuote')}</a>
+        <a class="btn btn-gold" href={bookingOpen ? '/book' : '/request-a-transfer'}>
+          {t('home.cta.book')}
+        </a>
+      </div>
+    </div>
+  </section>
 </BaseLayout>

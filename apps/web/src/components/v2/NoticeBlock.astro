@@ -1,0 +1,24 @@
+---
+interface Props {
+  tone?: 'info' | 'danger' | 'success' | 'expired';
+  eyebrow?: string;
+  title: string;
+  lead?: string;
+}
+
+const { tone = 'info', eyebrow, title, lead } = Astro.props;
+---
+
+<section class:list={['notice-block', `notice-block--${tone}`]}>
+  <div class="narrow notice-block-inner">
+    {eyebrow ? <p class="eyebrow">{eyebrow}</p> : null}
+    <h1 class="display notice-block-title">{title}</h1>
+    {lead ? <p class="notice-block-lead">{lead}</p> : null}
+    <div class="notice-block-body">
+      <slot />
+    </div>
+    <div class="notice-block-actions">
+      <slot name="actions" />
+    </div>
+  </div>
+</section>

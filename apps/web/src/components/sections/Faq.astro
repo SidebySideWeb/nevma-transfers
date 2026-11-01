@@ -1,25 +1,56 @@
 ---
 interface Props {
   heading?: string;
+  eyebrow?: string;
   items: Array<{ question: string; answer: string; _key?: string }>;
 }
 
-const { heading, items } = Astro.props;
+const { heading, eyebrow, items } = Astro.props;
 const headingId = 'faq-h';
 ---
 
-<section class="section" id="faq" aria-labelledby={heading ? headingId : undefined}>
+<section class="section faq-section" id="faq" aria-labelledby={heading ? headingId : undefined}>
   <div class="narrow stack">
-    {heading ? <h2 id={headingId}>{heading}</h2> : null}
-    {
-      items.map((item) => (
-        <details class="card faq-item">
-          <summary>
-            <strong>{item.question}</strong>
-          </summary>
-          <p class="muted">{item.answer}</p>
-        </details>
-      ))
-    }
+    {eyebrow ? <p class="eyebrow">{eyebrow}</p> : null}
+    {heading ? <h2 id={headingId} class="display">{heading}</h2> : null}
+    <div class="faq-list">
+      {
+        items.map((item, i) => (
+          <div class="faq-item">
+            <h3>
+              <button
+                type="button"
+                class="faq-trigger"
+                aria-expanded="false"
+                aria-controls={`faq-panel-${i}`}
+                id={`faq-btn-${i}`}
+              >
+                <span>{item.question}</span>
+                <span class="faq-chevron" aria-hidden="true">
+                  +
+                </span>
+              </button>
+            </h3>
+            <div class="faq-panel" id={`faq-panel-${i}`} role="region" aria-labelledby={`faq-btn-${i}`} hidden>
+              <p class="muted">{item.answer}</p>
+            </div>
+          </div>
+        ))
+      }
+    </div>
   </div>
 </section>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.faq-trigger').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      const panelId = btn.getAttribute('aria-controls');
+      const panel = panelId ? document.getElementById(panelId) : null;
+      btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      if (panel) panel.hidden = expanded;
+      const chevron = btn.querySelector('.faq-chevron');
+      if (chevron) chevron.textContent = expanded ? '+' : '−';
+    });
+  });
+</script>

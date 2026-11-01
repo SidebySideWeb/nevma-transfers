@@ -1,0 +1,61 @@
+---
+import Header from '../Header.astro';
+import type { SiteSettings } from '../../lib/sanity/content';
+
+interface Props {
+  settings: SiteSettings;
+  eyebrow?: string;
+  /** Plain title, or use titleBefore / titleAccent / titleAfter for italic gold accent. */
+  title?: string;
+  titleBefore?: string;
+  titleAccent?: string;
+  titleAfter?: string;
+  lead?: string;
+  /** CSS background-image value, e.g. url(...) */
+  imageUrl?: string | null;
+  /** Extra class on the section (e.g. page-hero--tall). */
+  class?: string;
+  /** When true, Header is rendered inside this hero (board layout). */
+  withHeader?: boolean;
+}
+
+const {
+  settings,
+  eyebrow,
+  title,
+  titleBefore,
+  titleAccent,
+  titleAfter,
+  lead,
+  imageUrl,
+  class: className,
+  withHeader = true,
+} = Astro.props;
+
+const style = imageUrl ? `--hero-image: url(${imageUrl})` : undefined;
+---
+
+<section class:list={['page-hero', className]} style={style}>
+  {withHeader ? <Header settings={settings} overlay /> : null}
+  <div class="wrap page-hero-inner">
+    {eyebrow ? <p class="eyebrow">{eyebrow}</p> : null}
+    <h1 class="display page-hero-title">
+      {
+        titleAccent != null ? (
+          <>
+            {titleBefore}
+            <em>{titleAccent}</em>
+            {titleAfter}
+          </>
+        ) : (
+          title
+        )
+      }
+    </h1>
+    {lead ? <p class="page-hero-lead">{lead}</p> : null}
+    <div class="page-hero-actions">
+      <slot name="actions" />
+    </div>
+    <slot />
+  </div>
+</section>

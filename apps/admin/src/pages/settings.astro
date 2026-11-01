@@ -34,7 +34,23 @@ function valueForInput(value: unknown): string {
             <label for={`v-${s.key}`}>Value</label>
             <input class="input" id={`v-${s.key}`} name="value" value={valueForInput(s.value)} />
           </div>
-          <button class="btn btn-quiet" type="submit">Save</button>
+          <div class="row" style="gap:0.5rem">
+            <button class="btn btn-quiet" type="submit">Save</button>
+            {
+              s.is_demo ? (
+                <button
+                  class="btn btn-secondary btn-sm"
+                  type="submit"
+                  formaction={actions.clearDemo}
+                  name="clear"
+                  value={`settings|${s.key}`}
+                  formnovalidate
+                >
+                  Confirmed
+                </button>
+              ) : null
+            }
+          </div>
         </form>
       ))
     }

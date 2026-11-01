@@ -4,6 +4,7 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Banner from '../components/Banner.astro';
+import Flag from '../components/Flag.astro';
 import Select from '../components/Select.astro';
 import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { centsToEuroInput } from '../lib/money';
@@ -32,13 +33,27 @@ const zonesLoad = resolveListLoad('zones', zonesRes.data, zonesRes.error);
 if (zonesRes.error) logListError('prices_zones', zonesRes.error.message);
 
 const pricesRes = selected
-  ? await supabase.from('zone_prices').select('from_zone_id, to_zone_id, price_cents').eq('class_id', selected.id)
-  : { data: [] as { from_zone_id: string; to_zone_id: string; price_cents: number }[], error: null };
+  ? await supabase
+      .from('zone_prices')
+      .select('from_zone_id, to_zone_id, price_cents, is_demo')
+      .eq('class_id', selected.id)
+  : {
+      data: [] as {
+        from_zone_id: string;
+        to_zone_id: string;
+        price_cents: number;
+        is_demo: boolean;
+      }[],
+      error: null,
+    };
 if (pricesRes.error) logListError('prices_zone_prices', pricesRes.error.message);
 const pricesLoad = resolveListLoad('zone prices', pricesRes.data, pricesRes.error);
 
 const priceMap = new Map(
-  (pricesLoad.ok ? pricesLoad.rows : []).map((p) => [`${p.from_zone_id}:${p.to_zone_id}`, p.price_cents]),
+  (pricesLoad.ok ? pricesLoad.rows : []).map((p) => [
+    `${p.from_zone_id}:${p.to_zone_id}`,
+    { cents: p.price_cents, isDemo: p.is_demo },
+  ]),
 );
 
 const routesRes = await supabase
@@ -104,16 +119,34 @@ const listError =
                   <th scope="row">{fromZ.name}</th>
                   {zones.map((toZ) => {
                     if (fromZ.id === toZ.id) return <td>-</td>;
-                    const cents = priceMap.get(`${fromZ.id}:${toZ.id}`);
+                    const cell = priceMap.get(`${fromZ.id}:${toZ.id}`);
+                    const cellId = `${fromZ.id}:${toZ.id}:${selected.id}`;
                     return (
-                      <td>
+                      <td class:list={[{ 'is-dashed': cell?.isDemo }]} title={cell?.isDemo ? 'DEMO price' : undefined}>
                         <input
                           class="input price-cell"
                           data-key={`${fromZ.id}:${toZ.id}`}
                           aria-label={`${fromZ.name} to ${toZ.name}`}
-                          value={cents != null ? centsToEuroInput(cents) : ''}
+                          value={cell != null ? centsToEuroInput(cell.cents) : ''}
                           inputmode="decimal"
                         />
+                        {
+                          cell?.isDemo && (
+                            <>
+                              <Flag kind="demo" />
+                              <button
+                                class="btn btn-secondary btn-sm"
+                                type="submit"
+                                formaction={actions.clearDemo}
+                                name="clear"
+                                value={`zone_prices|${cellId}`}
+                                formnovalidate
+                              >
+                                Confirmed
+                              </button>
+                            </>
+                          )
+                        }
                       </td>
                     );
                   })}

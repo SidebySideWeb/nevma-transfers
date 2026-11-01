@@ -2,6 +2,8 @@
 export const prerender = false;
 
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import StatusBadge from '../../../components/v2/StatusBadge.astro';
+import Timeline from '../../../components/v2/Timeline.astro';
 import { formatEuro, formatVatRate } from '../../../lib/booking/pricing';
 import { getSiteSettings, loadUiStrings } from '../../../lib/sanity/content';
 import { managePageView } from '../../../lib/server/booking-manage';
@@ -57,7 +59,7 @@ const pickupTime = comma >= 0 ? pickupDisplay.slice(comma + 1).trim() : '';
               ) : null}
             </h1>
             <div class="row">
-              <span class="badge badge-accent">{view.statusLabel}</span>
+              <StatusBadge tone="info" label={view.statusLabel} />
               <span class="muted">{t('manage.chauffeurNote')}</span>
             </div>
           </div>
@@ -107,14 +109,13 @@ const pickupTime = comma >= 0 ? pickupDisplay.slice(comma + 1).trim() : '';
 
               <div class="stack">
                 <p class="eyebrow">Status</p>
-                <ol class="manage-timeline">
-                  {view.timeline.map((step) => (
-                    <li class:list={[{ current: step.current, done: step.done }]}>
-                      <span class="manage-timeline-dot" aria-hidden="true" />
-                      <div class="manage-timeline-title">{step.title}</div>
-                    </li>
-                  ))}
-                </ol>
+                <Timeline
+                  items={view.timeline.map((step) => ({
+                    label: step.title,
+                    done: step.done,
+                    current: step.current,
+                  }))}
+                />
               </div>
             </div>
 

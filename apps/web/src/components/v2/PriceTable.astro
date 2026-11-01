@@ -1,0 +1,76 @@
+---
+interface Col {
+  key: string;
+  label: string;
+  numeric?: boolean;
+}
+
+interface Props {
+  caption?: string;
+  columns: Col[];
+  rows: Array<Record<string, string | number | null | undefined> & { href?: string; name?: string }>;
+  nameKey?: string;
+  footnotes?: string[];
+}
+
+const { caption, columns, rows, nameKey = 'name', footnotes = [] } = Astro.props;
+---
+
+<div class="price-table-block">
+  {
+    caption ? (
+      <p class="price-table-caption muted">{caption}</p>
+    ) : null
+  }
+  <div class="table-wrap" role="region" tabindex="0" aria-label={caption || 'Price table'}>
+    <table class="price-table v2-price-table">
+      <thead>
+        <tr>
+          {
+            columns.map((col) => (
+              <th scope="col" class:list={[col.numeric && 'num']}>
+                {col.label}
+              </th>
+            ))
+          }
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((row) => (
+            <tr>
+              {columns.map((col, ci) => {
+                const raw = row[col.key];
+                const text = raw == null || raw === '' ? '—' : String(raw);
+                if (ci === 0) {
+                  return (
+                    <th scope="row">
+                      {row.href ? (
+                        <a class="price-table-name" href={row.href}>
+                          {row[nameKey] ?? text}
+                        </a>
+                      ) : (
+                        <span class="price-table-name">{row[nameKey] ?? text}</span>
+                      )}
+                    </th>
+                  );
+                }
+                return (
+                  <td class:list={[col.numeric && 'num', col.numeric && 'price-cell']}>{text}</td>
+                );
+              })}
+            </tr>
+          ))}
+      </tbody>
+    </table>
+  </div>
+  {
+    footnotes.length > 0 ? (
+      <ul class="price-table-notes">
+        {footnotes.map((n) => (
+          <li>{n}</li>
+        ))}
+      </ul>
+    ) : null
+  }
+</div>

@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import Flag from '../components/Flag.astro';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 
@@ -16,17 +17,20 @@ function actionErr(result: { error?: { message?: string } | Error } | undefined)
 }
 const pageError = actionErr(Astro.getActionResult?.(actions.saveHourlyRates));
 
+const pageErrorClear = actionErr(Astro.getActionResult?.(actions.clearDemo));
+const pageErrorAll = pageError || pageErrorClear;
+
 const { data: classes } = await supabase
   .from('vehicle_classes')
-  .select('id, key, active, hourly_rates(price_per_hour_cents, min_hours, max_hours)')
+  .select('id, key, active, hourly_rates(price_per_hour_cents, min_hours, max_hours, is_demo)')
   .order('sort_order');
 ---
 
 <AdminLayout title="Hourly rates" current="hourly-rates" staffEmail={staff.email}>
   {
-    pageError && (
+    pageErrorAll && (
       <div class="banner banner-danger" role="alert">
-        <p>{pageError}</p>
+        <p>{pageErrorAll}</p>
       </div>
     )
   }
@@ -40,16 +44,19 @@ const { data: classes } = await supabase
             <th scope="col" class="num">Rate per hour (€)</th>
             <th scope="col" class="num">Min hours</th>
             <th scope="col" class="num">Max hours</th>
+            <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
           {
             (classes ?? []).map((c) => {
               const rate = Array.isArray(c.hourly_rates) ? c.hourly_rates[0] : c.hourly_rates;
+              const isDemo = Boolean(rate && 'is_demo' in rate && rate.is_demo);
               return (
-                <tr data-class-id={c.id}>
+                <tr data-class-id={c.id} class:list={[{ 'is-flag': isDemo }]}>
                   <th scope="row">
                     {c.key}
+                    {isDemo && <Flag kind="demo" />}
                     {!c.active && <span class="badge s-completed">Off</span>}
                   </th>
                   <td class="num">
@@ -65,6 +72,22 @@ const { data: classes } = await supabase
                   <td class="num">
                     <input class="input max" aria-label={`${c.key} max hours`} value={rate?.max_hours ?? 12} />
                   </td>
+                  <td class="actions">
+                    {
+                      isDemo && (
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          type="submit"
+                          formaction={actions.clearDemo}
+                          name="clear"
+                          value={`hourly_rates|${c.id}`}
+                          formnovalidate
+                        >
+                          Confirmed
+                        </button>
+                      )
+                    }
+                  </td>
                 </tr>
               );
             })
@@ -77,7 +100,8 @@ const { data: classes } = await supabase
 </AdminLayout>
 
 <script is:inline>
-  document.getElementById('hourly-rates-form')?.addEventListener('submit', () => {
+  document.getElementById('hourly-rates-form')?.addEventListener('submit', (ev) => {
+    if (ev.submitter && ev.submitter.getAttribute('formaction')) return;
     const rows = [];
     document.querySelectorAll('tbody tr[data-class-id]').forEach((tr) => {
       rows.push({

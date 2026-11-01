@@ -1,0 +1,10 @@
+---
+interface Props {
+  tone?: 'pending' | 'confirmed' | 'assigned' | 'completed' | 'cancelled' | 'expired' | 'info';
+  label: string;
+}
+
+const { tone = 'info', label } = Astro.props;
+---
+
+<span class:list={['status-badge', `status-badge--${tone}`]}>{label}</span>

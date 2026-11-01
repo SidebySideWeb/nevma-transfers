@@ -2,6 +2,7 @@
 export const prerender = true;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import NoticeBlock from '../../components/v2/NoticeBlock.astro';
 import { FORM_KEYS, isFormKey, type FormKey } from '../../lib/forms/schemas';
 import { createSanityClient, sanityConfigured } from '../../lib/sanity/client';
 import { getSiteSettings } from '../../lib/sanity/content';
@@ -57,18 +58,13 @@ if (sanityConfigured()) {
   description={successMessage}
   robots="noindex,nofollow"
 >
-  <section class="section">
-    <div class="narrow card stack notice-success">
-      <h1 tabindex="-1" id="thank-you-h">{successTitle}</h1>
-      <p>{successMessage}</p>
-      <div class="row">
-        <a class="btn btn-ghost" href="/">{t('site.breadcrumb.home')}</a>
-        <a class="btn btn-gold" href="/book">{t('nav.book')}</a>
-      </div>
-    </div>
-  </section>
+  <NoticeBlock tone="success" eyebrow={t('nav.contact')} title={successTitle} lead={successMessage}>
+    <a class="btn btn-line" slot="actions" href="/">{t('site.breadcrumb.home')}</a>
+    <a class="btn btn-gold" slot="actions" href="/book">{t('nav.book')}</a>
+  </NoticeBlock>
 </BaseLayout>
 
 <script is:inline>
-  document.getElementById('thank-you-h')?.focus();
+  document.querySelector('.notice-block-title')?.setAttribute('tabindex', '-1');
+  document.querySelector('.notice-block-title')?.focus();
 </script>

@@ -50,7 +50,7 @@ const [
   { data: allClasses },
   sanity,
 ] = await Promise.all([
-  supabase.from('vehicles').select('id, label, status, note, class_id').eq('class_id', cls.id).order('label'),
+  supabase.from('vehicles').select('id, label, status, note, plate, class_id, is_demo').eq('class_id', cls.id).order('label'),
   supabase.from('zone_prices').select('class_id').eq('class_id', cls.id),
   supabase
     .from('hourly_rates')
@@ -299,6 +299,7 @@ const usageBits = [
                             label: v.label,
                             classId: v.class_id,
                             note: v.note ?? '',
+                            plate: v.plate ?? '',
                             status: v.status,
                             used: bookedVehicleIds.has(v.id) || future > 0,
                             future,
@@ -420,8 +421,12 @@ const usageBits = [
         <input id="av-lab" class="input" name="label" required />
       </div>
       <div class="field">
-        <label for="av-mod">Model, colour, plate (staff only)</label>
+        <label for="av-mod">Model, colour (staff only)</label>
         <input id="av-mod" class="input" name="note" />
+      </div>
+      <div class="field">
+        <label for="av-plate">Plate (staff only)</label>
+        <input id="av-plate" class="input mono" name="plate" />
       </div>
       <input type="hidden" name="status" value="active" />
     </div>
@@ -476,8 +481,12 @@ const usageBits = [
         </div>
       </div>
       <div class="field">
-        <label for="ev-mod">Model, colour, plate (staff only)</label>
+        <label for="ev-mod">Model, colour (staff only)</label>
         <input id="ev-mod" class="input" name="note" />
+      </div>
+      <div class="field">
+        <label for="ev-plate">Plate (staff only)</label>
+        <input id="ev-plate" class="input mono" name="plate" />
       </div>
     </div>
     <div class="dialog-foot">
@@ -531,6 +540,7 @@ const usageBits = [
       document.getElementById('ev-id').value = v.id;
       document.getElementById('ev-lab').value = v.label;
       document.getElementById('ev-mod').value = v.note;
+      document.getElementById('ev-plate').value = v.plate || '';
       const cls = document.getElementById('ev-cls');
       cls.value = v.classId;
       cls.dispatchEvent(new Event('change', { bubbles: true }));

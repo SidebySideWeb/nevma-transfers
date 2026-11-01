@@ -1,0 +1,783 @@
+{
+  "$schema_note": "TEM Protection fleet & pricing feed. One file for the admin (Postgres seed/import) and the website (Sanity content keys). Joined by vehicle class `key`. Amounts are integer euro cents, EXCLUSIVE of VAT. Rows with demo:true are placeholders until the client confirms; scripts/check-placeholders.mjs must fail production if any remain.",
+  "version": "2026-11-01",
+  "currency": "EUR",
+  "settings": {
+    "vat_rate_percent": {
+      "value": 24,
+      "demo": false,
+      "note": "Price list: prices exclusive of 24% VAT. Checkout VAT treatment still to confirm."
+    },
+    "prices_include_vat": false,
+    "hold_minutes": {
+      "value": 20,
+      "demo": false
+    },
+    "min_lead_minutes": {
+      "value": 120,
+      "demo": true
+    },
+    "default_buffer_minutes": {
+      "value": 30,
+      "demo": true
+    },
+    "hourly_max_hours": {
+      "value": 12,
+      "demo": true
+    },
+    "refund_window_hours": {
+      "value": 48,
+      "demo": true,
+      "note": "Cancellation and refund policy due from client Fri 4 Dec."
+    },
+    "booking_reference_format": "TEM-XXXXXX (alphabet without 0/O/1/I)"
+  },
+  "vehicle_classes": [
+    {
+      "key": "v-class",
+      "sort_order": 1,
+      "active": true,
+      "operations": {
+        "max_passengers": 7,
+        "max_luggage": 6,
+        "buffer_minutes": 30,
+        "demo": true,
+        "note": "Capacity and buffer indicative until the client confirms."
+      },
+      "content": {
+        "name": "Mercedes-Benz V-Class",
+        "short_name": "V-Class",
+        "kind_label": "Luxury van",
+        "group": "van",
+        "blurb": "Space and comfort for families and small groups, with generous room for luggage.",
+        "amenities": [
+          "Wi-Fi on board",
+          "Bottled water",
+          "Device charging",
+          "Air conditioning",
+          "Luggage assistance"
+        ],
+        "images": [
+          "v-class-street.jpg",
+          "v-class-london.jpg",
+          "v-class-cabin.jpg",
+          "v-class-9.jpg",
+          "v-class-lounge.jpg",
+          "v-class-chauffeur.jpg",
+          "v-class-drive.jpg",
+          "v-class-dash.jpg",
+          "v-class-night.jpg",
+          "v-class-marina.jpg"
+        ],
+        "hero_image": "v-class-street.jpg",
+        "seo": {
+          "title": "Mercedes-Benz V-Class with chauffeur in Athens | TEM Protection",
+          "description": "Space and comfort for families and small groups, with generous room for luggage."
+        }
+      }
+    },
+    {
+      "key": "vito",
+      "sort_order": 2,
+      "active": true,
+      "operations": {
+        "max_passengers": 8,
+        "max_luggage": 6,
+        "buffer_minutes": 30,
+        "demo": true,
+        "note": "Capacity and buffer indicative until the client confirms."
+      },
+      "content": {
+        "name": "Mercedes-Benz Vito",
+        "short_name": "Vito",
+        "kind_label": "Van",
+        "group": "van",
+        "blurb": "A practical, comfortable van for groups and airport runs with plenty of luggage.",
+        "amenities": [
+          "Wi-Fi on board",
+          "Bottled water",
+          "Device charging",
+          "Air conditioning",
+          "Luggage assistance"
+        ],
+        "images": [
+          "vito-ext.jpg"
+        ],
+        "hero_image": "vito-ext.jpg",
+        "seo": {
+          "title": "Mercedes-Benz Vito with chauffeur in Athens | TEM Protection",
+          "description": "A practical, comfortable van for groups and airport runs with plenty of luggage."
+        }
+      }
+    },
+    {
+      "key": "e-class",
+      "sort_order": 3,
+      "active": true,
+      "operations": {
+        "max_passengers": 3,
+        "max_luggage": 2,
+        "buffer_minutes": 30,
+        "demo": true,
+        "note": "Capacity and buffer indicative until the client confirms."
+      },
+      "content": {
+        "name": "Mercedes-Benz E-Class",
+        "short_name": "E-Class",
+        "kind_label": "Saloon",
+        "group": "saloon",
+        "blurb": "Understated business travel, ideal for one to three passengers.",
+        "amenities": [
+          "Wi-Fi on board",
+          "Bottled water",
+          "Device charging",
+          "Air conditioning",
+          "Luggage assistance"
+        ],
+        "images": [
+          "e-class-ext.jpg",
+          "e-class-int.jpg",
+          "e-class-int2.jpg"
+        ],
+        "hero_image": "e-class-ext.jpg",
+        "seo": {
+          "title": "Mercedes-Benz E-Class with chauffeur in Athens | TEM Protection",
+          "description": "Understated business travel, ideal for one to three passengers."
+        }
+      }
+    },
+    {
+      "key": "s-class",
+      "sort_order": 4,
+      "active": true,
+      "operations": {
+        "max_passengers": 3,
+        "max_luggage": 2,
+        "buffer_minutes": 30,
+        "demo": true,
+        "note": "Capacity and buffer indicative until the client confirms."
+      },
+      "content": {
+        "name": "Mercedes-Benz S-Class",
+        "short_name": "S-Class",
+        "kind_label": "Executive saloon",
+        "group": "saloon",
+        "blurb": "Privacy and prestige: a premium experience with an understated presence.",
+        "amenities": [
+          "Wi-Fi on board",
+          "Bottled water",
+          "Device charging",
+          "Air conditioning",
+          "Luggage assistance"
+        ],
+        "images": [
+          "s-class-terminal.jpg",
+          "s-class-ext.jpg",
+          "s-class-front.jpg",
+          "s-class-int.jpg",
+          "s-class-dash.jpg",
+          "s-class-city.jpg"
+        ],
+        "hero_image": "s-class-terminal.jpg",
+        "seo": {
+          "title": "Mercedes-Benz S-Class with chauffeur in Athens | TEM Protection",
+          "description": "Privacy and prestige: a premium experience with an understated presence."
+        }
+      }
+    },
+    {
+      "key": "sprinter",
+      "sort_order": 5,
+      "active": true,
+      "operations": {
+        "max_passengers": 12,
+        "max_luggage": 10,
+        "buffer_minutes": 30,
+        "demo": true,
+        "note": "Capacity and buffer indicative until the client confirms."
+      },
+      "content": {
+        "name": "Mercedes-Benz Sprinter",
+        "short_name": "Sprinter",
+        "kind_label": "VIP van",
+        "group": "van",
+        "blurb": "A lounge on wheels for larger groups, delegations and events.",
+        "amenities": [
+          "Wi-Fi on board",
+          "Bottled water",
+          "Device charging",
+          "Air conditioning",
+          "Luggage assistance"
+        ],
+        "images": [
+          "sprinter-ext.jpg",
+          "sprinter-2.jpg",
+          "sprinter-1.jpg",
+          "sprinter-3.jpg"
+        ],
+        "hero_image": "sprinter-ext.jpg",
+        "seo": {
+          "title": "Mercedes-Benz Sprinter with chauffeur in Athens | TEM Protection",
+          "description": "A lounge on wheels for larger groups, delegations and events."
+        }
+      }
+    }
+  ],
+  "vehicles": [
+    {
+      "label": "V-Class #1",
+      "class_key": "v-class",
+      "plate": null,
+      "status": "active",
+      "demo": true
+    },
+    {
+      "label": "V-Class #2",
+      "class_key": "v-class",
+      "plate": null,
+      "status": "active",
+      "demo": true
+    },
+    {
+      "label": "Vito #1",
+      "class_key": "vito",
+      "plate": null,
+      "status": "active",
+      "demo": true
+    },
+    {
+      "label": "Vito #2",
+      "class_key": "vito",
+      "plate": null,
+      "status": "active",
+      "demo": true
+    },
+    {
+      "label": "E-Class #1",
+      "class_key": "e-class",
+      "plate": null,
+      "status": "active",
+      "demo": true
+    },
+    {
+      "label": "E-Class #2",
+      "class_key": "e-class",
+      "plate": null,
+      "status": "active",
+      "demo": true
+    },
+    {
+      "label": "S-Class #1",
+      "class_key": "s-class",
+      "plate": null,
+      "status": "active",
+      "demo": true
+    },
+    {
+      "label": "Sprinter #1",
+      "class_key": "sprinter",
+      "plate": null,
+      "status": "active",
+      "demo": true
+    }
+  ],
+  "zones": [
+    {
+      "code": "ath-airport",
+      "name": "Athens International Airport (AIA)",
+      "type": "airport",
+      "sort_order": 1,
+      "active": true,
+      "demo": false
+    },
+    {
+      "code": "athens-centre",
+      "name": "Athens",
+      "type": "city",
+      "sort_order": 2,
+      "active": true,
+      "demo": false
+    },
+    {
+      "code": "piraeus-port",
+      "name": "Piraeus port",
+      "type": "port",
+      "sort_order": 3,
+      "active": true,
+      "demo": true
+    },
+    {
+      "code": "athens-south",
+      "name": "Athens Riviera (Glyfada, Vouliagmeni)",
+      "type": "area",
+      "sort_order": 4,
+      "active": true,
+      "demo": true
+    },
+    {
+      "code": "athens-north",
+      "name": "Athens North (Kifissia, Marousi)",
+      "type": "area",
+      "sort_order": 5,
+      "active": true,
+      "demo": true
+    }
+  ],
+  "zone_routes": [
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-centre",
+      "duration_minutes": 45,
+      "bidirectional": true,
+      "demo": true
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "piraeus-port",
+      "duration_minutes": 55,
+      "bidirectional": true,
+      "demo": true
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-south",
+      "duration_minutes": 40,
+      "bidirectional": true,
+      "demo": true
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-north",
+      "duration_minutes": 35,
+      "bidirectional": true,
+      "demo": true
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "piraeus-port",
+      "duration_minutes": 30,
+      "bidirectional": true,
+      "demo": true
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-south",
+      "duration_minutes": 30,
+      "bidirectional": true,
+      "demo": true
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-north",
+      "duration_minutes": 30,
+      "bidirectional": true,
+      "demo": true
+    }
+  ],
+  "zone_prices": [
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-centre",
+      "class_key": "v-class",
+      "price_cents": 18000,
+      "bidirectional": true,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-centre",
+      "class_key": "vito",
+      "price_cents": 15000,
+      "bidirectional": true,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-centre",
+      "class_key": "e-class",
+      "price_cents": 15000,
+      "bidirectional": true,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-centre",
+      "class_key": "s-class",
+      "price_cents": 18000,
+      "bidirectional": true,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-centre",
+      "class_key": "sprinter",
+      "price_cents": 18000,
+      "bidirectional": true,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "piraeus-port",
+      "class_key": "v-class",
+      "price_cents": 20500,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "piraeus-port",
+      "class_key": "vito",
+      "price_cents": 17000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "piraeus-port",
+      "class_key": "e-class",
+      "price_cents": 17000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "piraeus-port",
+      "class_key": "s-class",
+      "price_cents": 20500,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "piraeus-port",
+      "class_key": "sprinter",
+      "price_cents": 20500,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-south",
+      "class_key": "v-class",
+      "price_cents": 19000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-south",
+      "class_key": "vito",
+      "price_cents": 16000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-south",
+      "class_key": "e-class",
+      "price_cents": 16000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-south",
+      "class_key": "s-class",
+      "price_cents": 19000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-south",
+      "class_key": "sprinter",
+      "price_cents": 19000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-north",
+      "class_key": "v-class",
+      "price_cents": 18000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-north",
+      "class_key": "vito",
+      "price_cents": 15000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-north",
+      "class_key": "e-class",
+      "price_cents": 15000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-north",
+      "class_key": "s-class",
+      "price_cents": 18000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "ath-airport",
+      "to_zone": "athens-north",
+      "class_key": "sprinter",
+      "price_cents": 18000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "piraeus-port",
+      "class_key": "v-class",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "piraeus-port",
+      "class_key": "vito",
+      "price_cents": 9000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "piraeus-port",
+      "class_key": "e-class",
+      "price_cents": 9000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "piraeus-port",
+      "class_key": "s-class",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "piraeus-port",
+      "class_key": "sprinter",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-south",
+      "class_key": "v-class",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-south",
+      "class_key": "vito",
+      "price_cents": 9000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-south",
+      "class_key": "e-class",
+      "price_cents": 9000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-south",
+      "class_key": "s-class",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-south",
+      "class_key": "sprinter",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-north",
+      "class_key": "v-class",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-north",
+      "class_key": "vito",
+      "price_cents": 9000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-north",
+      "class_key": "e-class",
+      "price_cents": 9000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-north",
+      "class_key": "s-class",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    },
+    {
+      "from_zone": "athens-centre",
+      "to_zone": "athens-north",
+      "class_key": "sprinter",
+      "price_cents": 11000,
+      "bidirectional": true,
+      "demo": true,
+      "source": "DEMO estimate"
+    }
+  ],
+  "hourly_rates": [
+    {
+      "class_key": "v-class",
+      "price_per_hour_cents": 9000,
+      "min_hours": 4,
+      "max_hours": 12,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "class_key": "vito",
+      "price_per_hour_cents": 7000,
+      "min_hours": 4,
+      "max_hours": 12,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "class_key": "e-class",
+      "price_per_hour_cents": 6000,
+      "min_hours": 3,
+      "max_hours": 12,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "class_key": "s-class",
+      "price_per_hour_cents": 9000,
+      "min_hours": 4,
+      "max_hours": 12,
+      "demo": false,
+      "source": "Price List 2026"
+    },
+    {
+      "class_key": "sprinter",
+      "price_per_hour_cents": 9000,
+      "min_hours": 4,
+      "max_hours": 12,
+      "demo": false,
+      "source": "Price List 2026"
+    }
+  ],
+  "extras": [
+    {
+      "code": "vip-security",
+      "name": "VIP security escort",
+      "price_cents": 0,
+      "applies_to": [
+        "transfer",
+        "hourly"
+      ],
+      "active": true,
+      "demo": true,
+      "note": "Price, inclusions and provider to be supplied by the client. Sets bookings.vip_security."
+    },
+    {
+      "code": "child-seat",
+      "name": "Child seat",
+      "price_cents": 1000,
+      "applies_to": [
+        "transfer",
+        "hourly"
+      ],
+      "max_quantity": 3,
+      "active": true,
+      "demo": true
+    },
+    {
+      "code": "night-surcharge",
+      "name": "Night pick-up (00:00–06:00)",
+      "price_cents": 2000,
+      "applies_to": [
+        "transfer"
+      ],
+      "active": true,
+      "demo": true,
+      "note": "Customer-picked for now; client to decide if automatic by pickup time."
+    },
+    {
+      "code": "meet-greet",
+      "name": "Meet & greet with name sign",
+      "price_cents": 0,
+      "applies_to": [
+        "transfer"
+      ],
+      "active": true,
+      "demo": true
+    }
+  ]
+}

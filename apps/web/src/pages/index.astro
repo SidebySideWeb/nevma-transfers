@@ -2,6 +2,8 @@
 export const prerender = true;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import FeatureList from '../components/v2/FeatureList.astro';
 import HomeQuickBook from '../components/home/HomeQuickBook';
 import { getSiteSettings } from '../lib/sanity/content';
 import { getPageBySlug } from '../lib/sanity/pages';
@@ -79,13 +81,18 @@ const ctaAccent = t('home.cta.accent');
 const ctaTitleParts = t('home.cta.title', { accent: ctaAccent }).split(ctaAccent);
 const divAccent = t('home.divisions.accent');
 const divTitleParts = t('home.divisions.title', { accent: divAccent }).split(divAccent);
+const howAccent = t('home.how.accent');
+const howParts = t('home.how.title', { accent: howAccent }).split(howAccent);
+const amenAccent = t('home.amenities.accent');
+const amenParts = t('home.amenities.title', { accent: amenAccent }).split(amenAccent);
 ---
 
-<BaseLayout seo={seo} jsonLd={jsonLd}>
+<BaseLayout seo={seo} jsonLd={jsonLd} heroHeader preloadImage={hero && hero._type === 'hero' ? hero.image : undefined}>
   <section
-    class="home-hero"
+    class="home-hero page-hero--tall"
     style={heroImage ? `--hero-image: url(${heroImage})` : undefined}
   >
+    <Header settings={settings} overlay />
     <div class="wrap home-hero-inner">
       <p class="eyebrow">{t('home.eyebrow')}</p>
       <h1 class="display home-hero-title">
@@ -224,6 +231,54 @@ const divTitleParts = t('home.divisions.title', { accent: divAccent }).split(div
       </section>
     )
   }
+
+  <FeatureList
+    eyebrow={t('home.how.eyebrow')}
+    titleBefore={howParts[0]}
+    titleAccent={howAccent}
+    titleAfter={howParts[1] ?? ''}
+    items={[
+      { title: t('home.how.1.title'), text: t('home.how.1.text') },
+      { title: t('home.how.2.title'), text: t('home.how.2.text') },
+      { title: t('home.how.3.title'), text: t('home.how.3.text') },
+      { title: t('home.how.4.title'), text: t('home.how.4.text') },
+    ]}
+  />
+
+  <section class="section" style="background:#0f1112;border-block:1px solid var(--color-border);">
+    <div class="wrap band-split">
+      <div class="band-split-copy">
+        <p class="eyebrow">{t('home.amenities.eyebrow')}</p>
+        <h2 class="display" style="font-size:var(--text-2xl);">
+          {amenParts[0]}
+          <em>{amenAccent}</em>
+          {amenParts[1] ?? ''}
+        </h2>
+      </div>
+      <div class="hospitality-grid" style="flex:2 1 28rem;">
+        {
+          [
+            t('home.amenities.wifi'),
+            t('home.amenities.water'),
+            t('home.amenities.charging'),
+            t('home.amenities.luggage'),
+          ].map((label) => (
+            <div class="hospitality-item">
+              <strong>{label}</strong>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section home-quote">
+    <div class="wrap">
+      <blockquote class="display" style="font-style:italic;font-size:clamp(1.75rem,3vw,3rem);max-width:40rem;margin:0;">
+        {t('home.quote.text')}
+      </blockquote>
+    </div>
+  </section>
 
   <section class="home-cta">
     <div class="wrap home-cta-inner">

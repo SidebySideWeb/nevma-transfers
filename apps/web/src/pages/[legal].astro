@@ -33,11 +33,13 @@ const seo = resolveSeo({
 ---
 
 <BaseLayout seo={seo}>
-  <section class="legal-page">
-    <div class="narrow">
+  <section class="legal-page section">
+    <div class="narrow stack">
       <p class="eyebrow">Legal</p>
-      <h1 class="display">{page.title}</h1>
-      <Sections sections={page.sections} />
+      <h1 class="display" style="font-size: var(--text-3xl); margin-bottom: var(--space-5);">{page.title}</h1>
+      <div class="prose legal-body">
+        <Sections sections={page.sections} />
+      </div>
     </div>
   </section>
 </BaseLayout>

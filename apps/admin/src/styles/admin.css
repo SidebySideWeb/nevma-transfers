@@ -246,6 +246,7 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .matrix td .input { min-height: 36px; min-width: 96px; }
 .matrix th[scope="row"] { position: sticky; left: 0; z-index: 1; background: var(--color-surface-2); text-transform: none; letter-spacing: 0; font-size: var(--admin-text); font-weight: 400; color: var(--color-text); }
 .matrix .empty .input { border-style: dashed; }
+.matrix td.is-dashed .input { border-style: dashed; border-color: var(--status-pending); }
 .matrix .changed .input { border-color: var(--color-accent); background: var(--tint-accent); }
 
 /* pagination */

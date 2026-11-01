@@ -181,6 +181,19 @@ section('Postgres DEMO rows and settings.is_demo');
       });
       try {
         await client.connect();
+        const { rows: demoRows } = await client.query(
+          `select table_name, n from public.demo_rows where n > 0 order by table_name`,
+        );
+        const demoSum = demoRows.reduce((s, r) => s + Number(r.n), 0);
+        if (demoSum > 0) {
+          fail(
+            `demo_rows still has ${demoSum} active DEMO row(s): ${demoRows
+              .map((r) => `${r.table_name}=${r.n}`)
+              .join(', ')}`,
+          );
+        } else {
+          ok('demo_rows is empty (no active DEMO rows)');
+        }
         const checks = [
           {
             label: 'zones.name',
@@ -211,14 +224,6 @@ section('Postgres DEMO rows and settings.is_demo');
           } else {
             ok(`${c.label}: none start with DEMO`);
           }
-        }
-        const { rows: demoSettings } = await client.query(
-          `select key from public.settings where is_demo = true order by key`,
-        );
-        if (demoSettings.length) {
-          fail(`settings.is_demo still true for: ${demoSettings.map((r) => r.key).join(', ')}`);
-        } else {
-          ok('no settings.is_demo rows');
         }
       } catch (e) {
         fail(`Postgres check failed: ${e instanceof Error ? e.message : 'error'}`);

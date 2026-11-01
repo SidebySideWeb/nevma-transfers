@@ -15,6 +15,8 @@ interface Props {
   seo?: ResolvedSeo;
   jsonLd?: unknown[];
   preloadImage?: SanityImage;
+  /** When true, page renders Header inside a photo hero (V2 boards). */
+  heroHeader?: boolean;
 }
 
 await loadUiStrings();
@@ -28,6 +30,7 @@ const {
   robots = seo?.robots || 'index,follow',
   ogImage = seo?.ogImage || settings.defaultSeo?.image?.asset?.url || settings.logo?.asset?.url,
   preloadImage,
+  heroHeader = false,
 } = Astro.props;
 
 const preload = responsiveImage(preloadImage ?? null, {
@@ -90,9 +93,9 @@ const twitterCard = seo?.twitterCard || (ogImage ? 'summary_large_image' : 'summ
       )
     }
   </head>
-  <body>
+  <body class:list={[heroHeader && 'has-hero-header']}>
     <a class="skip-link btn btn-gold" href="#main">Skip to content</a>
-    <Header settings={settings} />
+    {!heroHeader ? <Header settings={settings} /> : null}
     <main id="main">
       <slot />
     </main>

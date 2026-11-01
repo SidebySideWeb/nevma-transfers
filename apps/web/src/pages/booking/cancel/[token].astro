@@ -26,12 +26,13 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
   description={pageTitle}
   robots="noindex,nofollow"
 >
-  <section class="section">
-    <div class="narrow stack">
+  <section class="notice-block">
+    <div class="narrow notice-block-inner stack">
       {
         view.kind === 'invalid' && (
-          <div class="notice" role="status">
-            <h1 tabindex="-1">{invalid}</h1>
+          <div class="notice notice-block--expired" role="status">
+            <p class="eyebrow">{pageTitle}</p>
+            <h1 class="display notice-block-title" tabindex="-1">{invalid}</h1>
             <p>
               <a href={`tel:${settings.phone.replace(/\s/g, '')}`}>{settings.phone}</a>
               {' · '}
@@ -43,8 +44,9 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
 
       {
         view.kind === 'tooLate' && (
-          <div class="notice" role="status">
-            <h1 tabindex="-1">{tooLate}</h1>
+          <div class="notice notice-block--expired" role="status">
+            <p class="eyebrow">{pageTitle}</p>
+            <h1 class="display notice-block-title" tabindex="-1">{tooLate}</h1>
             <p>
               <a href={`tel:${settings.phone.replace(/\s/g, '')}`}>{settings.phone}</a>
               {' · '}

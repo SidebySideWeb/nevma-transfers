@@ -1,18 +1,15 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import NoticeBlock from '../components/v2/NoticeBlock.astro';
 import { tDefault } from '../lib/strings';
 
-const title = 'Page not found';
-const body = tDefault('error.invalid_request');
+const title = tDefault('error.404.title');
+const lead = tDefault('error.404.lead');
 ---
 
-<BaseLayout title={title} description={body} robots="noindex">
-  <section class="state-page">
-    <div class="state-card notice-danger">
-      <p class="eyebrow">404</p>
-      <h1 class="display" tabindex="-1">{title}</h1>
-      <p class="muted">{body}</p>
-      <a class="btn btn-gold" href="/">Back to home</a>
-    </div>
-  </section>
+<BaseLayout title={title} description={lead} robots="noindex">
+  <NoticeBlock tone="danger" eyebrow="404" title={title} lead={lead}>
+    <a class="btn btn-gold" slot="actions" href="/">{tDefault('error.home')}</a>
+    <a class="btn btn-line" slot="actions" href="/book">{tDefault('nav.book')}</a>
+  </NoticeBlock>
 </BaseLayout>

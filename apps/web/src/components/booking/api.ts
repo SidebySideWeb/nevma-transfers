@@ -68,7 +68,13 @@ export const bookingApi = {
         photo: { url: string; alt: string } | null;
         tagline: string | null;
       }[];
-      extras: { code: string; name: string; priceCents: number }[];
+      extras: {
+        code: string;
+        name: string;
+        priceCents: number;
+        appliesTo: string[];
+        maxQuantity: number;
+      }[];
     }>('/api/booking-options'),
 
   quote: (body: unknown) =>

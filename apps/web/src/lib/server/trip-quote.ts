@@ -1,5 +1,5 @@
 import 'server-only';
-import { quoteHourly, quoteTransfer } from '../booking/pricing';
+import { normaliseExtraChoices, quoteHourly, quoteTransfer } from '../booking/pricing';
 import { BookingError } from '../booking/types';
 import { bookingDb, type BookingDb } from './db';
 
@@ -167,20 +167,27 @@ export async function quoteTrip(input: {
   };
 }
 
-export async function sumExtras(codes: string[]): Promise<{
+export async function sumExtras(
+  codes: Array<string | { code: string; quantity?: number }>,
+  bookingType?: 'transfer' | 'hourly',
+): Promise<{
   totalCents: number;
-  lines: { code: string; label: string; cents: number; id: string }[];
+  lines: { code: string; label: string; cents: number; id: string; quantity: number }[];
   vipSecurity: boolean;
 }> {
-  const unique = [...new Set(codes.filter(Boolean))];
-  if (!unique.length) return { totalCents: 0, lines: [], vipSecurity: false };
+  const choices = normaliseExtraChoices(codes);
+  if (!choices.length) return { totalCents: 0, lines: [], vipSecurity: false };
+  const unique = choices.map((c) => c.code);
   const { rows } = await db().query<{
     id: string;
     code: string;
     name: string;
     price_cents: number;
+    applies_to: string[];
+    max_quantity: number;
   }>(
-    `select id, code, name, price_cents from public.extras where code = any($1::text[]) and active`,
+    `select id, code, name, price_cents, applies_to, max_quantity
+       from public.extras where code = any($1::text[]) and active`,
     [unique],
   );
   if (rows.length !== unique.length) {
@@ -190,9 +197,38 @@ export async function sumExtras(codes: string[]): Promise<{
       field: 'extras',
     });
   }
+  const byCode = new Map(rows.map((r) => [r.code, r]));
+  const lines: { code: string; label: string; cents: number; id: string; quantity: number }[] = [];
+  let totalCents = 0;
+  for (const choice of choices) {
+    const r = byCode.get(choice.code)!;
+    if (bookingType && !(r.applies_to ?? []).includes(bookingType)) {
+      throw new BookingError('invalid_request', {
+        stringKey: 'error.invalid_request',
+        message: `extra ${choice.code} not offered for ${bookingType}`,
+        field: 'extras',
+      });
+    }
+    if (choice.quantity < 1 || choice.quantity > (r.max_quantity ?? 1)) {
+      throw new BookingError('invalid_request', {
+        stringKey: 'error.invalid_request',
+        message: `quantity ${choice.quantity} for ${choice.code} exceeds max ${r.max_quantity}`,
+        field: 'extras',
+      });
+    }
+    const cents = r.price_cents * choice.quantity;
+    totalCents += cents;
+    lines.push({
+      code: r.code,
+      label: choice.quantity > 1 ? `${r.name} × ${choice.quantity}` : r.name,
+      cents,
+      id: r.id,
+      quantity: choice.quantity,
+    });
+  }
   return {
-    totalCents: rows.reduce((s, r) => s + r.price_cents, 0),
-    lines: rows.map((r) => ({ code: r.code, label: r.name, cents: r.price_cents, id: r.id })),
-    vipSecurity: rows.some((r) => r.code === 'vip-security'),
+    totalCents,
+    lines,
+    vipSecurity: lines.some((r) => r.code === 'vip-security'),
   };
 }

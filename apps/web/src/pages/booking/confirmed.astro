@@ -24,13 +24,8 @@ const homeLabel = t('booking.confirmed.home');
   description={waiting}
   robots="noindex,nofollow"
 >
-  <section class="state-page">
-    <div
-      class="state-card stack"
-      id="confirmed-root"
-      data-order-code={orderCode}
-      data-body-template={bodyTemplate}
-    >
+  <section class="notice-block notice-block--success" id="confirmed-root" data-order-code={orderCode} data-body-template={bodyTemplate}>
+    <div class="narrow notice-block-inner stack">
       <div id="confirmed-waiting" class="notice" role="status" aria-live="polite">
         <div class="row">
           <div class="spinner" aria-hidden="true"></div>
@@ -38,25 +33,24 @@ const homeLabel = t('booking.confirmed.home');
         </div>
       </div>
 
-      <section
-        id="confirmed-ok"
-        class="stack notice-success"
-        aria-labelledby="confirmed-title"
-        hidden
-      >
+      <section id="confirmed-ok" class="stack" aria-labelledby="confirmed-title" hidden>
         <p class="eyebrow">Confirmed</p>
-        <h1 class="display" id="confirmed-title" tabindex="-1">{title}</h1>
-        <p id="confirmed-body"></p>
-        <a class="btn btn-gold" href="/">{homeLabel}</a>
+        <h1 class="display notice-block-title" id="confirmed-title" tabindex="-1">{title}</h1>
+        <p id="confirmed-body" class="notice-block-lead"></p>
+        <div class="notice-block-actions">
+          <a class="btn btn-gold" href="/">{homeLabel}</a>
+        </div>
       </section>
 
       <div id="confirmed-timeout" class="stack" role="status" hidden>
-        <h1 class="display" id="confirmed-timeout-title" tabindex="-1">{title}</h1>
-        <p>{timeoutMsg}</p>
+        <h1 class="display notice-block-title" id="confirmed-timeout-title" tabindex="-1">{title}</h1>
+        <p class="notice-block-lead">{timeoutMsg}</p>
         <p>
           <a href={`tel:${settings.phone.replace(/\s/g, '')}`}>{settings.phone}</a>
         </p>
-        <a class="btn btn-line" href="/">{homeLabel}</a>
+        <div class="notice-block-actions">
+          <a class="btn btn-line" href="/">{homeLabel}</a>
+        </div>
       </div>
     </div>
   </section>

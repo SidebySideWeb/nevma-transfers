@@ -4,7 +4,10 @@ export const prerender = true;
 import { PortableText } from 'astro-portabletext';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Faq from '../../components/sections/Faq.astro';
 import PortableLink from '../../components/sections/PortableLink.astro';
+import PageHero from '../../components/v2/PageHero.astro';
+import PriceTable from '../../components/v2/PriceTable.astro';
 import { priceLabel } from '../../lib/content/price-label';
 import { getPublishableRoutes } from '../../lib/content/routes';
 import { getPublishableClasses } from '../../lib/content/vehicles';
@@ -58,13 +61,19 @@ const priceRows = fromPriceForRoute(cat, route.fromZone, route.toZone).map((row)
   return {
     key: row.classKey,
     name: cls?.name ?? row.classKey,
-    maxPassengers: cls?.maxPassengers ?? 0,
-    maxLuggage: cls?.maxLuggage ?? 0,
-    cents: row.cents,
+    href: `/fleet/${row.classKey}`,
+    capacity: t('booking.vehicle.capacity', {
+      passengers: cls?.maxPassengers ?? 0,
+      luggage: cls?.maxLuggage ?? 0,
+    }),
+    price:
+      show && row.cents != null
+        ? formatEuro(row.cents)
+        : priceLabel(null, { show: true }).text,
   };
 });
 
-const pricedCents = priceRows
+const pricedCents = fromPriceForRoute(cat, route.fromZone, route.toZone)
   .map((r) => r.cents)
   .filter((c): c is number => c != null);
 
@@ -119,151 +128,66 @@ const jsonLd = [
 ];
 
 const body = (route.body ?? []) as Parameters<typeof PortableText>[0]['value'];
-const bookHref = `/book?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}`;
+const bookHref = bookingOpen
+  ? `/book?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}`
+  : `/request-a-transfer?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}`;
 const duration = t('site.duration', { minutes: route.durationMinutes });
 ---
 
-<BaseLayout seo={seo} jsonLd={jsonLd}>
-  <Breadcrumbs
-    items={[
-      { label: t('nav.services'), href: '/services' },
-      { label: route.title },
-    ]}
-    siteUrl={siteUrl}
-  />
+<BaseLayout seo={seo} jsonLd={jsonLd} heroHeader preloadImage={(route.photo ?? null) as SanityImage}>
+  <PageHero
+    settings={settings}
+    eyebrow={t('services.featured.eyebrow')}
+    title={route.title}
+    lead={route.intro || duration}
+    imageUrl={photo?.src}
+    class="page-hero--tall"
+  >
+    <a class="btn btn-gold" slot="actions" href={bookHref}>
+      {bookingOpen ? t('site.bookRoute') : t('site.requestQuote')}
+    </a>
+    <a class="btn btn-line" slot="actions" href="/fleet">{t('services.featured.fleet')}</a>
+  </PageHero>
 
-  <section class="section">
-    <div class="wrap image-text">
-      <div class="stack">
-        <h1 class="display">{route.title}</h1>
-        {route.intro ? <p class="muted">{route.intro}</p> : null}
-        <ul class="facts">
-          <li>{duration}</li>
-        </ul>
-        {
-          bookingOpen ? (
-            <a class="btn btn-gold" href={bookHref}>
-              {t('site.bookRoute')}
-            </a>
-          ) : (
-            <a
-              class="btn btn-gold"
-              href={`/request-a-transfer?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}`}
-            >
-              {t('site.requestQuote')}
-            </a>
-          )
-        }
-      </div>
-      {
-        photo ? (
-          <div class="media">
-            <img
-              src={photo.src}
-              srcset={photo.srcset}
-              sizes="(min-width: 900px) 50vw, 100vw"
-              width={photo.width}
-              height={photo.height}
-              alt={photo.alt}
-              fetchpriority="high"
-              loading="eager"
-              decoding="async"
-            />
-          </div>
-        ) : (
-          <div class="media" aria-hidden="true" />
-        )
-      }
-    </div>
-  </section>
+  <div class="wrap" style="padding-top: var(--space-4);">
+    <Breadcrumbs
+      items={[
+        { label: t('nav.services'), href: '/services' },
+        { label: route.title },
+      ]}
+      siteUrl={siteUrl}
+    />
+  </div>
 
   <section class="section" aria-labelledby="prices-h">
     <div class="wrap stack">
-      <h2 id="prices-h">{t('site.pricesForRoute')}</h2>
-      <div
-        class="table-wrap"
-        role="region"
-        tabindex="0"
-        aria-label={t('site.pricesForRoute')}
-      >
-        <table class="price-table">
-          <thead>
-            <tr>
-              <th scope="col">Vehicle</th>
-              <th scope="col">Capacity</th>
-              <th scope="col" class="num">Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-              priceRows.map((row) => {
-                const capacity = t('booking.vehicle.capacity', {
-                  passengers: row.maxPassengers,
-                  luggage: row.maxLuggage,
-                });
-                const priced = show && row.cents != null;
-                const quoteHref = `/request-a-transfer?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}&class=${encodeURIComponent(row.key)}`;
-                return (
-                  <tr data-class={row.key}>
-                    <th scope="row">{row.name}</th>
-                    <td>{capacity}</td>
-                    <td class="num">
-                      {
-                        priced ? (
-                          formatEuro(row.cents as number)
-                        ) : (
-                          <>
-                            {priceLabel(null, { show: true }).text}
-                            {' · '}
-                            <a href={quoteHref}>{t('site.requestQuote')}</a>
-                          </>
-                        )
-                      }
-                    </td>
-                  </tr>
-                );
-              })
-            }
-          </tbody>
-        </table>
-      </div>
+      <h2 id="prices-h" class="display">{t('site.pricesForRoute')}</h2>
+      <PriceTable
+        columns={[
+          { key: 'name', label: t('fleet.col.vehicle') },
+          { key: 'capacity', label: t('fleet.col.seats') },
+          { key: 'price', label: t('booking.total'), numeric: true },
+        ]}
+        rows={priceRows}
+        footnotes={[t('fleet.note.vat'), t('fleet.note.capacity')]}
+      />
     </div>
   </section>
 
   {
-    (Array.isArray(body) && body.length > 0) || faqItems.length > 0 ? (
+    Array.isArray(body) && body.length > 0 ? (
       <section class="section">
-        <div class="narrow stack">
-          {
-            Array.isArray(body) && body.length > 0 ? (
-              <div class="stack prose">
-                <h2>About this trip</h2>
-                <PortableText
-                  value={body}
-                  components={{
-                    mark: { link: PortableLink },
-                  }}
-                />
-              </div>
-            ) : null
-          }
-          {
-            faqItems.length > 0 ? (
-              <div class="stack">
-                <h2>Questions</h2>
-                {faqItems.map((item) => (
-                  <details class="card faq-item">
-                    <summary>
-                      <strong>{item.question}</strong>
-                    </summary>
-                    <p class="muted">{item.answer}</p>
-                  </details>
-                ))}
-              </div>
-            ) : null
-          }
+        <div class="narrow stack prose">
+          <PortableText
+            value={body}
+            components={{
+              mark: { link: PortableLink },
+            }}
+          />
         </div>
       </section>
     ) : null
   }
+
+  {faqItems.length > 0 ? <Faq heading={t('services.faq.eyebrow')} items={faqItems} /> : null}
 </BaseLayout>

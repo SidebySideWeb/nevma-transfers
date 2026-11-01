@@ -67,7 +67,18 @@ export const BookingRequest = z
     passengers: z.number().int().positive(),
     luggage: z.number().int().nonnegative(),
     flightNumber: z.string().optional(),
-    extras: z.array(z.string().min(1)).default([]),
+    // Strings mean quantity 1; objects set an explicit quantity (expanded to repeated codes for the RPC).
+    extras: z
+      .array(
+        z.union([
+          z.string().min(1),
+          z.object({
+            code: z.string().min(1),
+            quantity: z.number().int().min(1).max(10).optional(),
+          }),
+        ]),
+      )
+      .default([]),
     customer: z
       .object({
         name: z.string().min(1),

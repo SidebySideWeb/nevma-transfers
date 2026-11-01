@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import Flag from '../components/Flag.astro';
 import Select from '../components/Select.astro';
 import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { createSupabaseServerClient } from '../lib/supabase';
@@ -26,9 +27,9 @@ const pageError =
 const [classesRes, vehiclesRes, bookingsRes, sanityKeys] = await Promise.all([
   supabase
     .from('vehicle_classes')
-    .select('id, key, name, max_passengers, max_luggage, buffer_minutes, active, sort_order')
+    .select('id, key, name, max_passengers, max_luggage, buffer_minutes, active, sort_order, is_demo')
     .order('sort_order'),
-  supabase.from('vehicles').select('id, label, status, note, class_id').order('label'),
+  supabase.from('vehicles').select('id, label, status, note, plate, class_id, is_demo').order('label'),
   supabase
     .from('bookings')
     .select('id, vehicle_id, class_id, pickup_at, reference, status')
@@ -146,10 +147,20 @@ function fmtNext(iso: string) {
             classes.map((c) => {
               const noSanity = !sanityKeys.has(c.key);
               return (
-                <tr class={c.active ? undefined : 'is-muted'}>
+                <tr class:list={[{ 'is-muted': !c.active, 'is-flag': c.is_demo }]}>
                   <td class="card-title" data-label="Class">
                     {c.name}
+                    {c.is_demo && <Flag kind="demo" />}
                     {noSanity && <span class="badge s-pending">No Sanity page</span>}
+                    {
+                      c.is_demo && (
+                        <form method="POST" action={actions.clearDemo} style="display:inline">
+                          <button class="btn btn-secondary btn-sm" type="submit" name="clear" value={`vehicle_classes|${c.id}`}>
+                            Confirmed
+                          </button>
+                        </form>
+                      )
+                    }
                   </td>
                   <td data-label="Key" class="mono">
                     {c.key}
@@ -197,6 +208,7 @@ function fmtNext(iso: string) {
             <th scope="col">Label</th>
             <th scope="col">Class</th>
             <th scope="col">Model (staff only)</th>
+            <th scope="col">Plate</th>
             <th scope="col">Status</th>
             <th scope="col">Next booking</th>
           </tr>
@@ -208,7 +220,7 @@ function fmtNext(iso: string) {
               const badge = statusBadge(v.status);
               const next = nextByVehicle.get(v.id);
               return (
-                <tr>
+                <tr class:list={[{ 'is-flag': v.is_demo }]}>
                   <td class="card-title" data-label="Label">
                     <button
                       class="btn btn-quiet btn-sm"
@@ -218,15 +230,27 @@ function fmtNext(iso: string) {
                         label: v.label,
                         classId: v.class_id,
                         note: v.note ?? '',
+                        plate: v.plate ?? '',
                         status: v.status,
                         used: bookedVehicleIds.has(v.id),
                       })}
                     >
                       {v.label}
                     </button>
+                    {v.is_demo && <Flag kind="demo" />}
+                    {
+                      v.is_demo && (
+                        <form method="POST" action={actions.clearDemo} style="display:inline">
+                          <button class="btn btn-secondary btn-sm" type="submit" name="clear" value={`vehicles|${v.id}`}>
+                            Confirmed
+                          </button>
+                        </form>
+                      )
+                    }
                   </td>
                   <td data-label="Class">{cls?.name ?? '—'}</td>
                   <td data-label="Model">{v.note || '—'}</td>
+                  <td data-label="Plate" class="mono">{v.plate || '—'}</td>
                   <td data-label="Status">
                     <span class={`badge ${badge.cls}`}>{badge.label}</span>
                   </td>
@@ -319,8 +343,12 @@ function fmtNext(iso: string) {
         </div>
       </div>
       <div class="field">
-        <label for="av-mod">Model, colour, plate (staff only)</label>
+        <label for="av-mod">Model, colour (staff only)</label>
         <input id="av-mod" class="input" name="note" />
+      </div>
+      <div class="field">
+        <label for="av-plate">Plate (staff only)</label>
+        <input id="av-plate" class="input mono" name="plate" />
       </div>
       <input type="hidden" name="status" value="active" />
       <div id="av-waiting" class="banner banner-info" role="status" hidden>
@@ -374,8 +402,12 @@ function fmtNext(iso: string) {
         </div>
       </div>
       <div class="field">
-        <label for="ev-mod">Model, colour, plate (staff only)</label>
+        <label for="ev-mod">Model, colour (staff only)</label>
         <input id="ev-mod" class="input" name="note" />
+      </div>
+      <div class="field">
+        <label for="ev-plate">Plate (staff only)</label>
+        <input id="ev-plate" class="input mono" name="plate" />
       </div>
       <p class="help">For a few hours off use Block a vehicle instead; it keeps the vehicle active.</p>
     </div>
@@ -454,6 +486,7 @@ function fmtNext(iso: string) {
       document.getElementById('ev-id').value = v.id;
       document.getElementById('ev-lab').value = v.label;
       document.getElementById('ev-mod').value = v.note;
+      document.getElementById('ev-plate').value = v.plate || '';
       const cls = document.getElementById('ev-cls');
       cls.value = v.classId;
       cls.dispatchEvent(new Event('change', { bubbles: true }));

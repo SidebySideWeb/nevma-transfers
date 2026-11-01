@@ -269,8 +269,8 @@ export async function createOfficeBooking(
     for (const line of extras.lines) {
       await bookingDb().query(
         `insert into public.booking_extras (booking_id, extra_id, quantity, price_cents)
-         values ($1::uuid, $2::uuid, 1, $3::int)`,
-        [booking.id, line.id, line.cents],
+         values ($1::uuid, $2::uuid, $3::int, $4::int)`,
+        [booking.id, line.id, line.quantity, line.cents],
       );
     }
 

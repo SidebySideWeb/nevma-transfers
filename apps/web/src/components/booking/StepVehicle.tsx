@@ -60,8 +60,11 @@ export function StepVehicle({
     <>
       <h1 tabIndex={-1}>{strings['booking.vehicle.title']}</h1>
       {holdExpiredMessage && (
-        <Notice tone="danger" role="status">
-          {strings['booking.hold.expired']}
+        <Notice tone="danger" role="status" className="hold-expired-notice">
+          <p className="eyebrow">{strings['booking.step.journey']}</p>
+          <p className="display" style={{ fontSize: '1.5rem', margin: 0 }}>
+            {strings['booking.hold.expired']}
+          </p>
         </Notice>
       )}
       {formError && (

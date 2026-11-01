@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "node run-tests.mjs"
+    "test": "node run-tests.mjs",
+    "import:feed": "node scripts/import-fleet-feed.mjs --file ../../data/fleet-feed.json"
   },
   "devDependencies": {
     "pg": "^8.16.0"

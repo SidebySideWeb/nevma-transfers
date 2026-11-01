@@ -5,9 +5,11 @@ import { t } from '../lib/strings';
 
 interface Props {
   settings: SiteSettings;
+  /** Soft border over a photo hero. */
+  overlay?: boolean;
 }
 
-const { settings } = Astro.props;
+const { settings, overlay = false } = Astro.props;
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 const bookingOpen = isBookingOpen();
 const path = Astro.url.pathname;
@@ -31,7 +33,7 @@ const primaryCta = bookingOpen
   : { href: '/request-a-transfer', label: t('site.requestQuote') };
 ---
 
-<header class="site-header">
+<header class:list={['site-header', overlay && 'site-header--overlay']}>
   <div class="wrap site-header-inner">
     <a class="logo" href="/" aria-label={`${settings.companyName} home`}>
       <img src="/logo-white.png" alt="" width="160" height="52" />

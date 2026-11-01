@@ -34,9 +34,9 @@ const loading = t('booking.loading');
   description={body}
   robots="noindex,nofollow"
 >
-  <section class="state-page">
+  <section class="notice-block notice-block--danger">
     <div
-      class="state-card"
+      class="narrow notice-block-inner"
       id="not-completed-root"
       data-mode={view.kind}
       data-reference={view.kind === 'live' ? view.reference : ''}
@@ -46,10 +46,10 @@ const loading = t('booking.loading');
       {
         view.kind === 'live' ? (
           <>
-            <div id="live-panel" class="stack notice-danger">
+            <div id="live-panel" class="stack">
               <p class="eyebrow">Payment</p>
-              <h1 class="display" tabindex="-1">{pageTitle}</h1>
-              <p>{body}</p>
+              <h1 class="display notice-block-title" tabindex="-1">{pageTitle}</h1>
+              <p class="notice-block-lead">{body}</p>
               <p class="timer" role="status" aria-live="polite">
                 <span id="hold-remain">
                   {timerTemplate.replace('{time}', '-')}
@@ -77,11 +77,13 @@ const loading = t('booking.loading');
             </div>
           </>
         ) : (
-          <div class="stack notice-danger">
+          <div class="stack">
             <p class="eyebrow">Hold</p>
-            <h1 class="display" tabindex="-1">{pageTitle}</h1>
-            <p>{expired}</p>
-            <a class="btn btn-gold" href="/book">{startAgain}</a>
+            <h1 class="display notice-block-title" tabindex="-1">{pageTitle}</h1>
+            <p class="notice-block-lead">{expired}</p>
+            <div class="notice-block-actions">
+              <a class="btn btn-gold" href="/book">{startAgain}</a>
+            </div>
           </div>
         )
       }

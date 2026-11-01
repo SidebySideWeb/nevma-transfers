@@ -311,7 +311,8 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
   ) : null;
 
   return (
-    <div id="booking-app" className="wrap section">
+    <div id="booking-app" className="wrap section booking-v2">
+      <p className="eyebrow">{strings['home.eyebrow'] ?? 'VIP Transfer'}</p>
       <StepIndicator
         steps={[
           strings['booking.step.journey'] ?? 'Journey',

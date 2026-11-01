@@ -63,8 +63,27 @@ const options: OptionsData = {
     },
   ],
   extras: [
-    { code: 'night-surcharge', name: 'Night', priceCents: 1500 },
-    { code: 'vip-security', name: 'VIP', priceCents: 15000 },
+    {
+      code: 'night-surcharge',
+      name: 'Night',
+      priceCents: 1500,
+      appliesTo: ['transfer', 'hourly'],
+      maxQuantity: 1,
+    },
+    {
+      code: 'vip-security',
+      name: 'VIP',
+      priceCents: 15000,
+      appliesTo: ['transfer', 'hourly'],
+      maxQuantity: 1,
+    },
+    {
+      code: 'child-seat',
+      name: 'Child seat',
+      priceCents: 1000,
+      appliesTo: ['transfer'],
+      maxQuantity: 3,
+    },
   ],
 };
 

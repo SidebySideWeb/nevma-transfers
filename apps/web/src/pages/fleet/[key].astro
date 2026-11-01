@@ -1,12 +1,9 @@
 ---
 export const prerender = true;
 
-import { PortableText } from 'astro-portabletext';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
-import PortableLink from '../../components/sections/PortableLink.astro';
-import { priceLabel } from '../../lib/content/price-label';
-import { getPublishableRoutes } from '../../lib/content/routes';
+import { Gallery } from '../../components/v2/Gallery';
 import { getPublishableClasses } from '../../lib/content/vehicles';
 import { isBookingOpen } from '../../lib/booking-open';
 import { formatEuro } from '../../lib/booking/pricing';
@@ -46,9 +43,9 @@ interface Props {
 const { cls } = Astro.props;
 const key = cls.key;
 const settings = await getSiteSettings();
-const [cat, routes] = await Promise.all([
+const [cat, allClasses] = await Promise.all([
   getCatalog(),
-  getPublishableRoutes().catch(() => []),
+  getPublishableClasses().catch(() => [cls]),
 ]);
 const show = settings.showFromPrices !== false;
 const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
@@ -56,18 +53,18 @@ const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://
   '',
 );
 const bookingOpen = isBookingOpen();
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 
 const transferCents = fromPriceForClass(cat, key);
 const hourlyCents = hourlyFromForClass(cat, key);
-const transferLabel = priceLabel(transferCents, { show });
-const hourlyLabel = priceLabel(hourlyCents, { show, perHour: true });
-const capacity = t('booking.vehicle.capacity', {
-  passengers: cls.maxPassengers,
-  luggage: cls.maxLuggage,
-});
+const hourlyRow = cat.hourly.find((h) => h.classKey === key);
+const minHours = hourlyRow?.minHours ?? 4;
+const transferLabel =
+  show && transferCents != null ? formatEuro(transferCents) : t('site.noOnlinePrice');
+const hourlyLabel =
+  show && hourlyCents != null ? formatEuro(hourlyCents) : t('site.noOnlinePrice');
 
 const gallery = (cls.photos ?? [])
-  .slice(0, 3)
   .map((p) =>
     responsiveImage(
       {
@@ -81,17 +78,14 @@ const gallery = (cls.photos ?? [])
       { fallbackWidth: 1600, fallbackHeight: 1000 },
     ),
   )
-  .filter((img): img is NonNullable<typeof img> => Boolean(img));
-
-const featuredWithPrice = routes
-  .filter((r) => r.featured)
-  .map((r) => {
-    const row = cat.prices.find(
-      (p) => p.fromCode === r.fromZone && p.toCode === r.toZone && p.classKey === key,
-    );
-    return row ? { route: r, cents: row.cents } : null;
-  })
-  .filter((x): x is { route: (typeof routes)[number]; cents: number } => Boolean(x));
+  .filter((img): img is NonNullable<typeof img> => Boolean(img))
+  .map((img) => ({
+    src: img.src,
+    srcset: img.srcset,
+    alt: img.alt || cls.name,
+    width: img.width,
+    height: img.height,
+  }));
 
 const pageSeo = {
   title: cls.seo?.title || `${cls.name} · ${settings.companyName}`,
@@ -106,7 +100,6 @@ const seo = resolveSeo({
   pathname: `/fleet/${key}`,
   siteUrl,
 });
-// Prompt: title "<name> · Elite Protection"
 seo.title = `${cls.name} · ${settings.companyName}`;
 
 const jsonLd = [
@@ -120,149 +113,135 @@ const jsonLd = [
   }),
 ];
 
-const copy = (cls.copy ?? []) as Parameters<typeof PortableText>[0]['value'];
-const primaryHref = bookingOpen ? `/book?class=${encodeURIComponent(key)}` : `/request-a-transfer?class=${encodeURIComponent(key)}`;
-const primaryLabel = bookingOpen ? t('nav.book') : t('site.requestQuote');
+const primaryHref = bookingOpen
+  ? `/book?class=${encodeURIComponent(key)}`
+  : `/request-a-transfer?class=${encodeURIComponent(key)}`;
+const escortHref = bookingOpen
+  ? `/book?class=${encodeURIComponent(key)}&vip=1`
+  : `/request-a-transfer?class=${encodeURIComponent(key)}`;
+
+const hospAccent = t('vehicle.hospitality.accent');
+const hospParts = t('vehicle.hospitality.title', { accent: hospAccent }).split(hospAccent);
+const vipAccent = t('vehicle.vip.accent');
+const vipParts = t('vehicle.vip.title', { accent: vipAccent }).split(vipAccent);
+
+const hospitality = [
+  { title: t('vehicle.hospitality.wifi.title'), text: t('vehicle.hospitality.wifi.text') },
+  { title: t('vehicle.hospitality.water.title'), text: t('vehicle.hospitality.water.text') },
+  { title: t('vehicle.hospitality.charging.title'), text: t('vehicle.hospitality.charging.text') },
+  { title: t('vehicle.hospitality.comfort.title'), text: t('vehicle.hospitality.comfort.text') },
+];
 ---
 
 <BaseLayout seo={seo} jsonLd={jsonLd}>
-  <Breadcrumbs
-    items={[{ label: t('nav.fleet'), href: '/fleet' }, { label: cls.name }]}
-    siteUrl={siteUrl}
-  />
+  <div class="wrap" style="padding-top: var(--space-5); display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--space-4); align-items:center;">
+    <Breadcrumbs
+      items={[{ label: t('nav.fleet'), href: '/fleet' }, { label: `${t('fleet.brand')} ${cls.name}` }]}
+      siteUrl={siteUrl}
+    />
+    <nav class="vehicle-switcher" aria-label={t('vehicle.switcher')}>
+      {
+        allClasses.map((c) => (
+          <a href={`/fleet/${c.key}`} aria-current={c.key === key ? 'page' : undefined}>
+            {c.name}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
 
-  <section class="section">
-    <div class="wrap image-text">
-      <div class="stack">
-        <h1 class="display">{cls.name}</h1>
-        {cls.tagline ? <p class="muted">{cls.tagline}</p> : null}
-        <ul class="facts">
-          <li>{capacity}</li>
-          {(cls.specs ?? [])
-            .filter((spec) => !/passenger|luggage/i.test(spec.label))
-            .map((spec) => (
-              <li>{spec.value}</li>
-            ))}
-        </ul>
-        <p class="from-price">
-          {transferLabel.text}
-          <small>{hourlyLabel.text}</small>
-        </p>
-        <div class="row">
-          <a class="btn btn-gold" href={primaryHref}>{primaryLabel}</a>
-          {
-            bookingOpen ? (
-              <a
-                class="btn btn-ghost"
-                href={`/request-a-transfer?class=${encodeURIComponent(key)}`}
-              >
-                {t('site.requestQuote')}
-              </a>
-            ) : null
-          }
-        </div>
-      </div>
+  <section class="wrap vehicle-board">
+    <div class="vehicle-board-gallery">
       {
         gallery.length > 0 ? (
-          <div class="gallery">
-            {gallery.map((img, i) => (
-              <div class="media">
-                <img
-                  src={img.src}
-                  srcset={img.srcset}
-                  sizes={i === 0 ? '(min-width: 900px) 50vw, 100vw' : '(min-width: 900px) 25vw, 50vw'}
-                  width={img.width}
-                  height={img.height}
-                  alt={img.alt}
-                  fetchpriority={i === 0 ? 'high' : undefined}
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  decoding="async"
-                />
-              </div>
-            ))}
-          </div>
+          <Gallery
+            client:load
+            images={gallery}
+            labelPrev={t('vehicle.gallery.prev')}
+            labelNext={t('vehicle.gallery.next')}
+          />
         ) : (
-          <div class="gallery">
-            <div class="media" aria-hidden="true" />
-          </div>
+          <div class="media" aria-hidden="true" style="height: 20rem;" />
         )
       }
     </div>
+    <aside class="vehicle-board-panel">
+      {cls.tagline ? <p class="eyebrow">{cls.tagline}</p> : null}
+      <div>
+        <div class="muted">{t('fleet.brand')}</div>
+        <h1 class="display" style="font-size: clamp(2rem, 4vw, 3.5rem); color: var(--color-accent); margin:0;">
+          {cls.name}
+        </h1>
+      </div>
+      {
+        (cls.copy?.[0] as { children?: Array<{ text?: string }> } | undefined)?.children?.[0]?.text ? (
+          <p class="muted" style="margin:0">
+            {(cls.copy?.[0] as { children?: Array<{ text?: string }> }).children?.[0]?.text}
+          </p>
+        ) : null
+      }
+      <div class="vehicle-spec-row">
+        <div>
+          <div class="fleet-card-price-label">{t('vehicle.seats')}</div>
+          <div>{t('fleet.seats', { n: cls.maxPassengers })}</div>
+        </div>
+        <div>
+          <div class="fleet-card-price-label">{t('vehicle.luggage')}</div>
+          <div>{t('fleet.bags', { n: cls.maxLuggage })}</div>
+        </div>
+      </div>
+      <div class="row between">
+        <span class="muted">{t('vehicle.airport')}</span>
+        <span class="fleet-card-price-value">{transferLabel}</span>
+      </div>
+      <div class="row between">
+        <span class="muted">{t('vehicle.hourly', { hours: minHours })}</span>
+        <span class="fleet-card-price-value">{hourlyLabel}</span>
+      </div>
+      <p class="muted" style="margin:0; font-size: var(--text-sm);">{t('vehicle.priceNote')}</p>
+      <a class="btn btn-gold" href={primaryHref}>{t('vehicle.book', { name: cls.name })}</a>
+      <a class="btn btn-line" href={phoneHref}>{t('vehicle.call', { phone: settings.phone })}</a>
+    </aside>
   </section>
 
-  <section class="section">
-    <div class="wrap grid grid-2">
-      <div class="stack prose">
-        <h2>{t('site.vehicle.about')}</h2>
-        {
-          Array.isArray(copy) && copy.length > 0 ? (
-            <PortableText
-              value={copy}
-              components={{
-                mark: { link: PortableLink },
-              }}
-            />
-          ) : null
-        }
+  <section class="section" style="background: #0f1112; border-block: 1px solid var(--color-border);">
+    <div class="wrap band-split">
+      <div class="band-split-copy">
+        <p class="eyebrow">{t('vehicle.hospitality.eyebrow')}</p>
+        <h2 class="display" style="font-size: var(--text-2xl);">
+          {hospParts[0]}
+          <em>{hospAccent}</em>
+          {hospParts[1] ?? ''}
+        </h2>
       </div>
-      <div class="stack">
-        <h2>{t('site.vehicle.specs')}</h2>
-        <dl class="summary">
-          <div>
-            <dt>{t('booking.passengers')}</dt>
-            <dd>{cls.maxPassengers}</dd>
-          </div>
-          <div>
-            <dt>{t('booking.luggage')}</dt>
-            <dd>{cls.maxLuggage}</dd>
-          </div>
-          {(cls.specs ?? []).map((spec) => (
-            <div>
-              <dt>{spec.label}</dt>
-              <dd>{spec.value}</dd>
+      <div class="hospitality-grid" style="flex: 2 1 28rem;">
+        {
+          hospitality.map((h) => (
+            <div class="hospitality-item">
+              <strong>{h.title}</strong>
+              <span class="muted">{h.text}</span>
             </div>
-          ))}
-        </dl>
+          ))
+        }
       </div>
     </div>
   </section>
 
-  {
-    featuredWithPrice.length > 0 ? (
-      <section class="section" aria-labelledby="rp-h">
-        <div class="wrap stack">
-          <h2 id="rp-h">{t('site.vehicle.popularRoutes')}</h2>
-          <div
-            class="table-wrap"
-            role="region"
-            tabindex="0"
-            aria-label={t('site.vehicle.routePrices')}
-          >
-            <table class="price-table">
-              <thead>
-                <tr>
-                  <th scope="col">{t('site.vehicle.routeCol')}</th>
-                  <th scope="col" class="num">
-                    {t('site.vehicle.fromCol')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {featuredWithPrice.map(({ route, cents }) => (
-                  <tr>
-                    <td>
-                      <a href={`/routes/${route.slug}`}>{route.title}</a>
-                    </td>
-                    <td class="num">
-                      {show ? formatEuro(cents) : t('site.noOnlinePrice')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    ) : null
-  }
+  <section class="section">
+    <div class="wrap band-split">
+      <div class="band-split-copy">
+        <p class="eyebrow">{t('vehicle.vip.eyebrow')}</p>
+        <h2 class="display" style="font-size: var(--text-2xl);">
+          {vipParts[0]}
+          <em>{vipAccent}</em>
+          {vipParts[1] ?? ''}
+        </h2>
+        <p class="muted" style="margin:0; max-width: 34rem;">{t('vehicle.vip.text')}</p>
+      </div>
+      <div class="row">
+        <a class="btn btn-line" href="/vip-security">{t('vehicle.vip.about')}</a>
+        <a class="btn btn-gold" href={escortHref}>{t('vehicle.vip.book')}</a>
+      </div>
+    </div>
+  </section>
 </BaseLayout>

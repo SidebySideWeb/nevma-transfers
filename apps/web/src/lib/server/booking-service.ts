@@ -1,6 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { formatEuro, quoteHourly, quoteTransfer } from '../booking/pricing';
+import { expandExtraCodes, formatEuro, normaliseExtraChoices, quoteHourly, quoteTransfer } from '../booking/pricing';
 import { assertLeadTime, formatLocal, localToInstant, toIsoWithOffset } from '../booking/time';
 import { BookingError } from '../booking/types';
 import {
@@ -176,10 +176,23 @@ export async function bookingOptions() {
   }
 
   const extras = (
-    await db().query<{ code: string; name: string; price_cents: number }>(
-      `select code, name, price_cents from public.extras where active order by code`,
+    await db().query<{
+      code: string;
+      name: string;
+      price_cents: number;
+      applies_to: string[];
+      max_quantity: number;
+    }>(
+      `select code, name, price_cents, applies_to, max_quantity
+         from public.extras where active order by code`,
     )
-  ).rows.map((e) => ({ code: e.code, name: e.name, priceCents: e.price_cents }));
+  ).rows.map((e) => ({
+    code: e.code,
+    name: e.name,
+    priceCents: e.price_cents,
+    appliesTo: e.applies_to ?? ['transfer', 'hourly'],
+    maxQuantity: e.max_quantity ?? 1,
+  }));
 
   return {
     timezone: settings.timezone,
@@ -476,7 +489,7 @@ export async function createBooking(raw: unknown, visitorKey: string, ip?: strin
         body.luggage,
         body.flightNumber ?? null,
         body.notes ?? null,
-        body.extras,
+        expandExtraCodes(normaliseExtraChoices(body.extras)),
         body.customer.name,
         body.customer.email,
         body.customer.phone,

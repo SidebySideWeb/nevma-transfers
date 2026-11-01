@@ -51,12 +51,22 @@ export function StepDetails({
     onSubmit();
   };
 
-  const toggleExtra = (code: string, checked: boolean) => {
-    const next = checked
-      ? [...details.extras, code]
-      : details.extras.filter((c) => c !== code);
-    onChange({ extras: next });
+  const extraQty = (code: string) => details.extras.find((e) => e.code === code)?.quantity ?? 0;
+
+  const setExtraQty = (code: string, quantity: number) => {
+    const rest = details.extras.filter((e) => e.code !== code);
+    onChange({
+      extras: quantity > 0 ? [...rest, { code, quantity }] : rest,
+    });
   };
+
+  const toggleExtra = (code: string, checked: boolean) => {
+    setExtraQty(code, checked ? 1 : 0);
+  };
+
+  const offeredExtras = options.extras.filter((ex) =>
+    (ex.appliesTo ?? ['transfer', 'hourly']).includes(search.type),
+  );
 
   return (
     <>
@@ -191,14 +201,15 @@ export function StepDetails({
 
         <section className="card stack" aria-labelledby="ex-h">
           <h2 id="ex-h">{strings['booking.extras.title']}</h2>
-          {options.extras.map((ex) => {
+          {offeredExtras.map((ex) => {
             const isVip = ex.code === 'vip-security';
+            const maxQty = ex.maxQuantity ?? 1;
             if (isVip) {
               return (
                 <VipSwitch
                   key={ex.code}
                   id="extra-vip-security"
-                  checked={details.extras.includes(ex.code)}
+                  checked={extraQty(ex.code) > 0}
                   onChange={(checked) => toggleExtra(ex.code, checked)}
                   title={strings['booking.extras.vip'] ?? ex.name}
                   hint={strings['booking.extras.vip.hint']}
@@ -207,11 +218,41 @@ export function StepDetails({
               );
             }
             const label = ex.code === 'night-surcharge' ? strings['booking.extras.night'] : ex.name;
+            if (maxQty > 1) {
+              const qty = extraQty(ex.code);
+              return (
+                <div className="row" key={ex.code} style={{ alignItems: 'center', gap: '0.75rem' }}>
+                  <span>{label}</span>
+                  <span className="price">{formatEuro(ex.priceCents)}</span>
+                  <div className="row" style={{ alignItems: 'center', gap: '0.35rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-quiet btn-sm"
+                      aria-label={`Fewer ${label}`}
+                      disabled={qty <= 0 || busy}
+                      onClick={() => setExtraQty(ex.code, Math.max(0, qty - 1))}
+                    >
+                      −
+                    </button>
+                    <span aria-live="polite">{qty}</span>
+                    <button
+                      type="button"
+                      className="btn btn-quiet btn-sm"
+                      aria-label={`More ${label}`}
+                      disabled={qty >= maxQty || busy}
+                      onClick={() => setExtraQty(ex.code, Math.min(maxQty, qty + 1))}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            }
             return (
               <label className="check" key={ex.code}>
                 <input
                   type="checkbox"
-                  checked={details.extras.includes(ex.code)}
+                  checked={extraQty(ex.code) > 0}
                   onChange={(e) => toggleExtra(ex.code, e.target.checked)}
                 />
                 <span>{label}</span>

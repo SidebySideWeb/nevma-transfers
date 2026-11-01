@@ -1,5 +1,4 @@
 ---
-// No data calls - static error shell only.
 import '../styles/tokens.css';
 import '../styles/base.css';
 ---
@@ -10,7 +9,7 @@ import '../styles/base.css';
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    <title>Something went wrong - Elite Protection</title>
+    <title>Temporary problem - Elite Protection</title>
     <link
       rel="preload"
       href="/fonts/jost-latin-400-normal.woff2"
@@ -34,13 +33,17 @@ import '../styles/base.css';
         </a>
       </div>
     </header>
-    <main id="main" class="state-page">
-      <div class="state-card notice-danger">
-        <p class="eyebrow">Error</p>
-        <h1 class="display">Something went wrong</h1>
-        <p class="muted">Please try again in a moment.</p>
-        <a class="btn btn-gold" href="/">Back to home</a>
-      </div>
+    <main id="main">
+      <section class="notice-block notice-block--danger">
+        <div class="narrow notice-block-inner">
+          <p class="eyebrow">Error</p>
+          <h1 class="display notice-block-title">Temporary problem</h1>
+          <p class="notice-block-lead">Please try again in a moment, or call our office.</p>
+          <div class="notice-block-actions">
+            <a class="btn btn-gold" href="/">Back to home</a>
+          </div>
+        </div>
+      </section>
     </main>
   </body>
 </html>

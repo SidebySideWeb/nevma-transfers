@@ -360,7 +360,15 @@ export const server = {
     input: z.object({ rowsJson: z.string().min(2) }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      type Row = { id: string; name: string; priceEuros: string; active: string };
+      type Row = {
+        id: string;
+        name: string;
+        priceEuros: string;
+        active: string;
+        appliesTransfer?: string;
+        appliesHourly?: string;
+        maxQuantity?: string;
+      };
       let rows: Row[];
       try {
         rows = JSON.parse(input.rowsJson) as Row[];
@@ -375,12 +383,24 @@ export const server = {
         } catch {
           throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid extra price' });
         }
+        const applies_to: string[] = [];
+        if (row.appliesTransfer === 'true' || row.appliesTransfer === 'on') applies_to.push('transfer');
+        if (row.appliesHourly === 'true' || row.appliesHourly === 'on') applies_to.push('hourly');
+        if (applies_to.length === 0) {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'Each extra must apply to transfer and/or by the hour',
+          });
+        }
+        const max_quantity = Math.min(10, Math.max(1, Number(row.maxQuantity ?? 1) || 1));
         const { error } = await supabase
           .from('extras')
           .update({
             name: row.name,
             price_cents: priceCents,
             active: row.active === 'true' || row.active === 'on',
+            applies_to,
+            max_quantity,
           })
           .eq('id', row.id);
         if (error) throwDb(error);
@@ -396,6 +416,9 @@ export const server = {
       code: codeKey,
       name: z.string().trim().min(1),
       priceEuros: z.string().min(1),
+      appliesTransfer: z.string().optional(),
+      appliesHourly: z.string().optional(),
+      maxQuantity: z.coerce.number().int().min(1).max(10).optional(),
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
@@ -405,15 +428,78 @@ export const server = {
       } catch {
         throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid extra price' });
       }
+      const applies_to: string[] = [];
+      if (input.appliesTransfer === 'true' || input.appliesTransfer === 'on') applies_to.push('transfer');
+      if (input.appliesHourly === 'true' || input.appliesHourly === 'on') applies_to.push('hourly');
+      if (applies_to.length === 0) applies_to.push('transfer', 'hourly');
       const supabase = createSupabaseServerClient(ctx.cookies);
       const { error } = await supabase.from('extras').insert({
         code: input.code,
         name: input.name,
         price_cents: priceCents,
         active: true,
+        applies_to,
+        max_quantity: input.maxQuantity ?? 1,
       });
       if (error) throwDb(error, 'Lower-case letters, numbers and hyphens.');
       markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  clearDemo: defineAction({
+    accept: 'form',
+    // Single field so Confirmed can sit inside another form (formaction + name/value).
+    input: z.object({
+      clear: z
+        .string()
+        .regex(
+          /^(vehicle_classes|vehicles|zones|zone_prices|hourly_rates|extras|settings)\|.+$/,
+          'Invalid clear target',
+        ),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const pipe = input.clear.indexOf('|');
+      const table = input.clear.slice(0, pipe) as
+        | 'vehicle_classes'
+        | 'vehicles'
+        | 'zones'
+        | 'zone_prices'
+        | 'hourly_rates'
+        | 'extras'
+        | 'settings';
+      const id = input.clear.slice(pipe + 1);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      if (table === 'settings') {
+        const { error } = await supabase.from('settings').update({ is_demo: false }).eq('key', id);
+        if (error) throwDb(error);
+        return { ok: true };
+      }
+      if (table === 'hourly_rates') {
+        const { error } = await supabase
+          .from('hourly_rates')
+          .update({ is_demo: false })
+          .eq('class_id', id);
+        if (error) throwDb(error);
+        return { ok: true };
+      }
+      if (table === 'zone_prices') {
+        const [from_zone_id, to_zone_id, class_id] = id.split(':');
+        if (!from_zone_id || !to_zone_id || !class_id) {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid zone price id' });
+        }
+        const { error } = await supabase
+          .from('zone_prices')
+          .update({ is_demo: false })
+          .eq('from_zone_id', from_zone_id)
+          .eq('to_zone_id', to_zone_id)
+          .eq('class_id', class_id);
+        if (error) throwDb(error);
+        return { ok: true };
+      }
+      const { error } = await supabase.from(table).update({ is_demo: false }).eq('id', id);
+      if (error) throwDb(error);
       return { ok: true };
     },
   }),
@@ -510,6 +596,7 @@ export const server = {
       classId: z.string().uuid(),
       label: z.string().trim().min(1).max(64),
       note: z.string().trim().max(200).optional(),
+      plate: z.string().trim().max(32).optional(),
       status: vehicleStatus.default('active'),
     }),
     async handler(input, ctx) {
@@ -519,6 +606,7 @@ export const server = {
         class_id: input.classId,
         label: input.label,
         note: input.note || null,
+        plate: input.plate || null,
         status: input.status,
       });
       if (error) throwDb(error);
@@ -534,6 +622,7 @@ export const server = {
       classId: z.string().uuid(),
       label: z.string().trim().min(1).max(64),
       note: z.string().trim().max(200).optional(),
+      plate: z.string().trim().max(32).optional(),
       status: vehicleStatus,
     }),
     async handler(input, ctx) {
@@ -545,6 +634,7 @@ export const server = {
           class_id: input.classId,
           label: input.label,
           note: input.note || null,
+          plate: input.plate || null,
           status: input.status,
         })
         .eq('id', input.id);
@@ -614,6 +704,7 @@ export const server = {
     input: z.object({
       code: codeKey,
       name: z.string().trim().min(1),
+      kind: z.enum(['airport', 'city', 'port', 'area', 'other']).default('area'),
       sortOrder: z.coerce.number().int().optional(),
     }),
     async handler(input, ctx) {
@@ -622,6 +713,7 @@ export const server = {
       const { error } = await supabase.from('zones').insert({
         code: input.code,
         name: input.name,
+        kind: input.kind,
         sort_order: input.sortOrder ?? 100,
         active: true,
       });
@@ -637,6 +729,7 @@ export const server = {
       id: z.string().uuid(),
       code: codeKey.optional(),
       name: z.string().min(1),
+      kind: z.enum(['airport', 'city', 'port', 'area', 'other']).optional(),
       sortOrder: z.coerce.number().int(),
       active: z.string().optional(),
     }),
@@ -649,6 +742,7 @@ export const server = {
           name: input.name,
           sort_order: input.sortOrder,
           active: input.active === 'true' || input.active === 'on',
+          ...(input.kind ? { kind: input.kind } : {}),
           ...(input.code ? { code: input.code } : {}),
         })
         .eq('id', input.id);

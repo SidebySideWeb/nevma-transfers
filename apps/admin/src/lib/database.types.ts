@@ -2,7 +2,25 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type Database = {
   
-  "public": {
+  "graphql_public": {
+          Tables: {
+            [_ in never]: never
+          }
+          Views: {
+            [_ in never]: never
+          }
+          Functions: {
+            "graphql":
+{ Args: { "extensions"?: Json,"operationName"?: string,"query"?: string,"variables"?: Json }; Returns: Json
+                           }
+          }
+          Enums: {
+            [_ in never]: never
+          }
+          CompositeTypes: {
+            [_ in never]: never
+          }
+        },"public": {
           Tables: {
             "blocked_slots": {
                   Row: {
@@ -122,28 +140,28 @@ isOneToOne: false
                   ]
                 },"extras": {
                   Row: {
-                    "active": boolean,"code": string,"id": string,"name": string,"price_cents": number
+                    "active": boolean,"applies_to": (string)[],"code": string,"id": string,"is_demo": boolean,"max_quantity": number,"name": string,"price_cents": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"code": string,"id"?: string,"name": string,"price_cents": number
+                    "active"?: boolean,"applies_to"?: (string)[],"code": string,"id"?: string,"is_demo"?: boolean,"max_quantity"?: number,"name": string,"price_cents": number
                   }
                   Update: {
-                    "active"?: boolean,"code"?: string,"id"?: string,"name"?: string,"price_cents"?: number
+                    "active"?: boolean,"applies_to"?: (string)[],"code"?: string,"id"?: string,"is_demo"?: boolean,"max_quantity"?: number,"name"?: string,"price_cents"?: number
                   }
                   Relationships: [
                     
                   ]
                 },"hourly_rates": {
                   Row: {
-                    "class_id": string,"currency": string,"max_hours": number,"min_hours": number,"price_per_hour_cents": number
+                    "class_id": string,"currency": string,"is_demo": boolean,"max_hours": number,"min_hours": number,"price_per_hour_cents": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_id": string,"currency"?: string,"max_hours"?: number,"min_hours"?: number,"price_per_hour_cents": number
+                    "class_id": string,"currency"?: string,"is_demo"?: boolean,"max_hours"?: number,"min_hours"?: number,"price_per_hour_cents": number
                   }
                   Update: {
-                    "class_id"?: string,"currency"?: string,"max_hours"?: number,"min_hours"?: number,"price_per_hour_cents"?: number
+                    "class_id"?: string,"currency"?: string,"is_demo"?: boolean,"max_hours"?: number,"min_hours"?: number,"price_per_hour_cents"?: number
                   }
                   Relationships: [
                     {
@@ -256,28 +274,28 @@ isOneToOne: false
                   ]
                 },"vehicle_classes": {
                   Row: {
-                    "active": boolean,"buffer_minutes": number,"id": string,"key": string,"max_luggage": number,"max_passengers": number,"name": string,"sort_order": number
+                    "active": boolean,"buffer_minutes": number,"id": string,"is_demo": boolean,"key": string,"max_luggage": number,"max_passengers": number,"name": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"buffer_minutes"?: number,"id"?: string,"key": string,"max_luggage": number,"max_passengers": number,"name": string,"sort_order"?: number
+                    "active"?: boolean,"buffer_minutes"?: number,"id"?: string,"is_demo"?: boolean,"key": string,"max_luggage": number,"max_passengers": number,"name": string,"sort_order"?: number
                   }
                   Update: {
-                    "active"?: boolean,"buffer_minutes"?: number,"id"?: string,"key"?: string,"max_luggage"?: number,"max_passengers"?: number,"name"?: string,"sort_order"?: number
+                    "active"?: boolean,"buffer_minutes"?: number,"id"?: string,"is_demo"?: boolean,"key"?: string,"max_luggage"?: number,"max_passengers"?: number,"name"?: string,"sort_order"?: number
                   }
                   Relationships: [
                     
                   ]
                 },"vehicles": {
                   Row: {
-                    "class_id": string,"id": string,"label": string,"note": string | null,"status": string
+                    "class_id": string,"id": string,"is_demo": boolean,"label": string,"note": string | null,"plate": string | null,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_id": string,"id"?: string,"label": string,"note"?: string | null,"status"?: string
+                    "class_id": string,"id"?: string,"is_demo"?: boolean,"label": string,"note"?: string | null,"plate"?: string | null,"status"?: string
                   }
                   Update: {
-                    "class_id"?: string,"id"?: string,"label"?: string,"note"?: string | null,"status"?: string
+                    "class_id"?: string,"id"?: string,"is_demo"?: boolean,"label"?: string,"note"?: string | null,"plate"?: string | null,"status"?: string
                   }
                   Relationships: [
                     {
@@ -290,14 +308,14 @@ isOneToOne: false
                   ]
                 },"zone_prices": {
                   Row: {
-                    "class_id": string,"currency": string,"from_zone_id": string,"price_cents": number,"to_zone_id": string
+                    "class_id": string,"currency": string,"from_zone_id": string,"is_demo": boolean,"price_cents": number,"to_zone_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_id": string,"currency"?: string,"from_zone_id": string,"price_cents": number,"to_zone_id": string
+                    "class_id": string,"currency"?: string,"from_zone_id": string,"is_demo"?: boolean,"price_cents": number,"to_zone_id": string
                   }
                   Update: {
-                    "class_id"?: string,"currency"?: string,"from_zone_id"?: string,"price_cents"?: number,"to_zone_id"?: string
+                    "class_id"?: string,"currency"?: string,"from_zone_id"?: string,"is_demo"?: boolean,"price_cents"?: number,"to_zone_id"?: string
                   }
                   Relationships: [
                     {
@@ -316,14 +334,14 @@ isOneToOne: false
                   ]
                 },"zone_routes": {
                   Row: {
-                    "duration_minutes": number,"from_zone_id": string,"to_zone_id": string
+                    "duration_minutes": number,"from_zone_id": string,"is_demo": boolean,"to_zone_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "duration_minutes": number,"from_zone_id": string,"to_zone_id": string
+                    "duration_minutes": number,"from_zone_id": string,"is_demo"?: boolean,"to_zone_id": string
                   }
                   Update: {
-                    "duration_minutes"?: number,"from_zone_id"?: string,"to_zone_id"?: string
+                    "duration_minutes"?: number,"from_zone_id"?: string,"is_demo"?: boolean,"to_zone_id"?: string
                   }
                   Relationships: [
                     {
@@ -342,14 +360,14 @@ isOneToOne: false
                   ]
                 },"zones": {
                   Row: {
-                    "active": boolean,"code": string,"id": string,"name": string,"sort_order": number
+                    "active": boolean,"code": string,"id": string,"is_demo": boolean,"kind": string,"name": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"code": string,"id"?: string,"name": string,"sort_order"?: number
+                    "active"?: boolean,"code": string,"id"?: string,"is_demo"?: boolean,"kind"?: string,"name": string,"sort_order"?: number
                   }
                   Update: {
-                    "active"?: boolean,"code"?: string,"id"?: string,"name"?: string,"sort_order"?: number
+                    "active"?: boolean,"code"?: string,"id"?: string,"is_demo"?: boolean,"kind"?: string,"name"?: string,"sort_order"?: number
                   }
                   Relationships: [
                     
@@ -368,6 +386,14 @@ isOneToOne: false
                 },"customer_summaries": {
                   Row: {
                     "bookings_count": number | null,"company": string | null,"created_at": string,"email": string,"has_vip_security": boolean | null,"id": string,"last_pickup_at": string | null,"name": string,"notes": string | null,"paid_cents": number | null,"phone": string | null,"vat_number": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"demo_rows": {
+                  Row: {
+                    "n": number | null,"table_name": string | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -573,7 +599,11 @@ export type CompositeTypes<
   : never
 
 export const Constants = {
-  "public": {
+  "graphql_public": {
+          Enums: {
+            
+          }
+        },"public": {
           Enums: {
             "booking_status": ["pending", "confirmed", "assigned", "completed", "cancelled", "expired"],"booking_type": ["transfer", "hourly"],"invoice_status": ["not_required", "requested", "issued"],"payment_status": ["unpaid", "paid", "partially_refunded", "refunded", "failed"]
           }

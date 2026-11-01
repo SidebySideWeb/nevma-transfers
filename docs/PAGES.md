@@ -8,7 +8,7 @@ Visual reference: `design/screens/*.html` (open `design/index.html`). Every stri
 
 | Route | Rendering | Robots | Source | Screen |
 | --- | --- | --- | --- | --- |
-| `/` | prerendered | index | `page-home` sections in order (hero, richText, faq, ctaBand); "Book now" goes to `/book` | `design/screens/home.html` |
+| `/` | prerendered | index | V2 home board (hardcoded layout); Sanity supplies hero copy/image and optional FAQ; quick book → `/book` | `design/v2/pages/01-home.html` |
 | `/book` | prerendered shell + React island (`client:load`) | noindex | `/api/booking-options`, `/api/quote`, `/api/holds`, `/api/bookings` | search, vehicle-choice, details, review |
 | `/booking/confirmed` | on demand | noindex | Viva success URL; polls `/api/booking-status?s=` | `confirmed.html` |
 | `/booking/not-completed` | on demand | noindex | Viva failure URL; "try again" (`/api/bookings/pay`) or "choose another vehicle" | `not-completed.html` |
@@ -37,17 +37,19 @@ Back from step 3 to step 2 releases the hold (`DELETE /api/holds/:id`). On hold 
 
 Header navigation from kit 2: `nav.fleet` → `/fleet`, `nav.services` → `/services`, `nav.vipSecurity` → `/vip-security`, `nav.about` → `/about`, `nav.contact` → `/contact`, `nav.book` button → `/book` (hidden while `PUBLIC_BOOKING_OPEN=false`; then "Request a quote" → `/request-a-transfer`). Phone: a menu button (`nav.menu`) opens the same list. Footer adds the same links. Breadcrumbs (`site.breadcrumb.home`) on fleet, vehicle and route pages.
 
+Layouts are V2-hardcoded (board structure in Astro); Sanity supplies fields (hero, form blocks, FAQ items, vehicle/route docs), not section order.
+
 | Route | Rendering | Source | Structured data | Screen |
 | --- | --- | --- | --- | --- |
-| `/fleet` | prerendered | `page-fleet` sections; `vehicleClassList` renders one card per class: photo, name, tagline, capacity (`booking.vehicle.capacity`), `site.fromPrice` (lowest transfer price) and `site.perHour` (hourly rate), `site.viewVehicle` | `BreadcrumbList` | `fleet.html` |
-| `/fleet/[key]` | prerendered per active class with Sanity content | `vehicleClass`: gallery, description, specs, capacity, "From" prices for featured routes, Book now (`/book?class=<key>`), Request a quote | `Service` (`offers.lowPrice` when shown), `BreadcrumbList` | `vehicle.html` |
-| `/services` | prerendered | `page-services` sections (hero, featureGrid, steps, routeList) | — | `services.html` |
-| `/routes/[slug]` | prerendered per `route` whose zone codes exist in Postgres | `route`: photo, intro, `site.duration` (route duration), price table per class (`site.pricesForRoute`; `site.noOnlinePrice` + Request a quote when missing), body, FAQ, `site.bookRoute` → `/book?from=<code>&to=<code>` | `Service` with `offers` per class, `FAQPage`, `BreadcrumbList` | `route.html` |
-| `/vip-security` | prerendered | `page-vip-security` sections; `formBlock` → VIP security form with `id="enquiry"`; `contactDetails` | `Service` | `vip-security.html` |
-| `/about` | prerendered | `page-about` sections (imageText, ctaBand) | `Organization` | (components from `vip-security.html` and `home.html`) |
-| `/contact` | prerendered | `page-contact` sections: `contactDetails`, `formBlock` (contact form with topics) | `Organization` with `contactPoint` | `contact.html` |
-| `/request-a-transfer` | prerendered; query string prefill handled by a small script | `page-request-a-transfer` sections; transfer request form (`docs/FORMS.md`), zones and classes from the build-time catalog | — | `request-a-transfer.html` |
-| `/thank-you/[form]` | prerendered per form, `noindex` | `form.successTitle`, `form.successMessage`, links home and to `/book` | — | `thank-you.html` |
+| `/fleet` | prerendered | V2 fleet board: filters, cards, mosaic, compare table; classes from catalog ∩ Sanity; hero image from `page-fleet` when present | — | `design/v2/pages/02-fleet.html` |
+| `/fleet/[key]` | prerendered per active class with Sanity content | V2 vehicle board: switcher, gallery, specs/prices, hospitality, VIP band | `Service` (`offers.lowPrice` when shown), `BreadcrumbList` | `design/v2/pages/03-vehicle.html` |
+| `/services` | prerendered | V2 services board; featured route + class prices; FAQ from `page-services` | — | `design/v2/pages/04-services.html` |
+| `/routes/[slug]` | prerendered per `route` whose zone codes exist in Postgres | V2 services featured-route composition; price table; body; FAQ | `Service` with `offers` per class, `FAQPage`, `BreadcrumbList` | `design/v2/pages/04-services.html` |
+| `/vip-security` | on demand | V2 VIP board + remaining Sanity sections; `formBlock` → `#enquiry` | `Service` | `design/v2/pages/05-vip-security.html` |
+| `/about` | on demand | V2 about hero + Sanity body sections | `Organization` | `design/v2/pages/06-about.html` |
+| `/contact` | on demand | V2 contact hero + info cards + form from Sanity | `Organization` with `contactPoint` | `design/v2/pages/07-contact.html` |
+| `/request-a-transfer` | on demand; query string prefill | V2 request hero + transfer form (`docs/FORMS.md`) | — | `design/v2/pages/12-request-transfer.html` |
+| `/thank-you/[form]` | prerendered per form, `noindex` | V2 notice layout; `form.successTitle`, `form.successMessage` | — | `design/v2/pages/13-request-received.html` |
 
 `/book` (kit 1) accepts `?from=`, `?to=`, `?class=`, `?type=hourly` to prefill the search step (prompt 19 adds this).
 

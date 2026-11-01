@@ -22,7 +22,8 @@ export type DetailsState = {
   email: string;
   phone: string;
   notes: string;
-  extras: string[];
+  /** Selected extras with quantity (1 for toggles; steppers for maxQuantity > 1). */
+  extras: { code: string; quantity: number }[];
   needInvoice: boolean;
   invoiceCompany: string;
   invoiceVat: string;
@@ -67,7 +68,7 @@ export const initialDetails = (): DetailsState => ({
   email: '',
   phone: '',
   notes: '',
-  extras: [],
+  extras: [] as { code: string; quantity: number }[],
   needInvoice: false,
   invoiceCompany: '',
   invoiceVat: '',

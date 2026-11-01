@@ -81,16 +81,51 @@ async function fetchSanityRoutes(): Promise<SanityRoute[]> {
   }
 }
 
-/** Build the cross-check banner text (empty string when nothing to report). */
+const DEMO_LABEL: Record<string, string> = {
+  vehicle_classes: 'classes',
+  vehicles: 'vehicles',
+  zones: 'zones',
+  zone_routes: 'routes',
+  zone_prices: 'prices',
+  hourly_rates: 'hourly rates',
+  extras: 'extras',
+  settings: 'settings',
+};
+
+const DEMO_HREF: Record<string, string> = {
+  vehicle_classes: '/fleet',
+  vehicles: '/fleet',
+  zones: '/zones',
+  zone_routes: '/prices',
+  zone_prices: '/prices',
+  hourly_rates: '/hourly-rates',
+  extras: '/extras',
+  settings: '/settings',
+};
+
+const DEMO_LINK_ORDER = [
+  'vehicle_classes',
+  'vehicles',
+  'zones',
+  'zone_prices',
+  'zone_routes',
+  'hourly_rates',
+  'extras',
+  'settings',
+] as const;
+
+export type BannerResult = { text: string; href: string };
+
+/** Build the cross-check banner (empty text when nothing to report). */
 export async function buildBanner(
   supabase: SupabaseClient<Database>,
-): Promise<string> {
+): Promise<BannerResult> {
   const [
     { data: classes },
     { data: vehicles },
     { data: zonePrices },
     { data: hourlyRates },
-    { data: demoSettings },
+    { data: demoRows },
     { data: zones },
     { data: zoneRoutes },
     sanityClasses,
@@ -100,7 +135,7 @@ export async function buildBanner(
     supabase.from('vehicles').select('class_id, status'),
     supabase.from('zone_prices').select('class_id'),
     supabase.from('hourly_rates').select('class_id'),
-    supabase.from('settings').select('key').eq('is_demo', true),
+    supabase.from('demo_rows').select('table_name, n'),
     supabase.from('zones').select('id, code').eq('active', true),
     supabase.from('zone_routes').select('from_zone_id, to_zone_id'),
     fetchSanityClasses(),
@@ -132,6 +167,23 @@ export async function buildBanner(
   ]);
 
   const parts: string[] = [];
+  let href = '/settings';
+
+  const demoActive = (demoRows ?? []).filter((r) => (r.n ?? 0) > 0);
+  if (demoActive.length > 0) {
+    const bits = demoActive.map((r) => {
+      const label = DEMO_LABEL[r.table_name] ?? r.table_name;
+      return `${r.n} ${label}`;
+    });
+    parts.push(`${bits.join(', ')} still DEMO.`);
+    for (const key of DEMO_LINK_ORDER) {
+      if (demoActive.some((r) => r.table_name === key)) {
+        href = DEMO_HREF[key] ?? '/settings';
+        break;
+      }
+    }
+  }
+
   for (const key of activeClassKeys) {
     if (!sanityByKey.has(key)) {
       parts.push(`Vehicle class "${key}" exists in the database but has no Sanity content.`);
@@ -156,13 +208,6 @@ export async function buildBanner(
     if (line) parts.push(line);
   }
 
-  const demoKeys = (demoSettings ?? []).map((s) => s.key);
-  if (demoKeys.length > 0) {
-    parts.push(
-      `${demoKeys.length} settings ${demoKeys.length === 1 ? 'is' : 'are'} still DEMO (${demoKeys.join(', ')}).`,
-    );
-  }
-
   for (const route of sanityRoutes) {
     const slug = route.slug || 'unknown';
     const from = route.fromZone || '';
@@ -181,7 +226,7 @@ export async function buildBanner(
     }
   }
 
-  return parts.join(' ');
+  return { text: parts.join(' '), href };
 }
 
 /** Test helper. */

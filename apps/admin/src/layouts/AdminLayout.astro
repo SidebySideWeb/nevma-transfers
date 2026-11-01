@@ -34,10 +34,12 @@ const {
 } = Astro.props;
 
 const supabase = createSupabaseServerClient(Astro.cookies);
-const [bannerText, needsVehicle] = await Promise.all([
+const [banner, needsVehicle] = await Promise.all([
   buildBanner(supabase),
   countNeedsVehicle(supabase),
 ]);
+const bannerText = banner.text;
+const bannerHref = banner.href;
 
 const pricesChanged = hasPricesChanged(Astro.cookies);
 const cooldownMs = rebuildCooldownRemainingMs(Astro.cookies);
@@ -150,8 +152,8 @@ const groups = [
           bannerText && (
             <Banner tone="warning" tag="Checks">
               {bannerText}
-              <a class="btn btn-secondary btn-sm" slot="action" href="/settings">
-                Review settings
+              <a class="btn btn-secondary btn-sm" slot="action" href={bannerHref}>
+                Review
               </a>
             </Banner>
           )

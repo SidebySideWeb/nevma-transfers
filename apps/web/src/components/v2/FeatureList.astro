@@ -1,0 +1,41 @@
+---
+interface Props {
+  eyebrow?: string;
+  titleBefore?: string;
+  titleAccent?: string;
+  titleAfter?: string;
+  lead?: string;
+  items: Array<{ title: string; text: string; _key?: string }>;
+}
+
+const { eyebrow, titleBefore, titleAccent, titleAfter, lead, items } = Astro.props;
+const romans = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii'];
+const headingId = 'feature-list-h';
+---
+
+<section class="section feature-list-section" aria-labelledby={headingId}>
+  <div class="wrap">
+    <div class="feature-list-head">
+      {eyebrow ? <p class="eyebrow">{eyebrow}</p> : null}
+      <h2 id={headingId} class="display">
+        {titleBefore}<em>{titleAccent}</em>{titleAfter}
+      </h2>
+      {lead ? <p class="muted">{lead}</p> : null}
+    </div>
+    <ol class="feature-list">
+      {
+        items.map((item, i) => (
+          <li class="feature-list-item">
+            <span class="feature-list-num" aria-hidden="true">
+              {romans[i] ?? String(i + 1)}.
+            </span>
+            <div>
+              <h3 class="feature-list-title">{item.title}</h3>
+              <p class="muted">{item.text}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
