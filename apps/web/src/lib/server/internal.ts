@@ -132,33 +132,49 @@ export async function internalRefund(raw: unknown, staffUserId: string) {
     throw e;
   }
 
-  const txId = await originalTransactionId(booking.id);
-  if (!txId) {
-    await bookingDb().query(`update public.payments set status = 'failed' where id = $1::uuid`, [
-      refundRow.id,
-    ]);
-    throw new BookingError('payment_failed', {
-      stringKey: 'error.payment_failed',
-      message: 'no_transaction',
-    });
-  }
+  const { rows: payMethodRows } = await bookingDb().query<{ method: string }>(
+    `select method from public.payments
+      where booking_id = $1::uuid and kind = 'payment' and status = 'succeeded'
+      order by created_at asc limit 1`,
+    [booking.id],
+  );
+  const payMethod = payMethodRows[0]?.method ?? 'viva';
 
-  try {
-    await getPaymentProvider().refund({
-      transactionId: txId,
-      amountCents: body.amountCents,
-    });
-    await bookingDb().query(`update public.payments set status = 'succeeded' where id = $1::uuid`, [
-      refundRow.id,
-    ]);
-  } catch {
-    await bookingDb().query(`update public.payments set status = 'failed' where id = $1::uuid`, [
-      refundRow.id,
-    ]);
-    throw new BookingError('payment_failed', {
-      stringKey: 'error.payment_failed',
-      message: 'refund_failed',
-    });
+  if (payMethod !== 'viva') {
+    // Offline refund: no Viva call.
+    await bookingDb().query(
+      `update public.payments set status = 'succeeded', method = $1 where id = $2::uuid`,
+      [payMethod, refundRow.id],
+    );
+  } else {
+    const txId = await originalTransactionId(booking.id);
+    if (!txId) {
+      await bookingDb().query(`update public.payments set status = 'failed' where id = $1::uuid`, [
+        refundRow.id,
+      ]);
+      throw new BookingError('payment_failed', {
+        stringKey: 'error.payment_failed',
+        message: 'no_transaction',
+      });
+    }
+
+    try {
+      await getPaymentProvider().refund({
+        transactionId: txId,
+        amountCents: body.amountCents,
+      });
+      await bookingDb().query(`update public.payments set status = 'succeeded' where id = $1::uuid`, [
+        refundRow.id,
+      ]);
+    } catch {
+      await bookingDb().query(`update public.payments set status = 'failed' where id = $1::uuid`, [
+        refundRow.id,
+      ]);
+      throw new BookingError('payment_failed', {
+        stringKey: 'error.payment_failed',
+        message: 'refund_failed',
+      });
+    }
   }
 
   const { paid, refunded } = await paidAndRefunded(booking.id);

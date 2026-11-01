@@ -1,6 +1,13 @@
 import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'zod';
-import { callInternalCancel, callInternalRefund } from '../lib/internal';
+import { randomUUID } from 'node:crypto';
+import { searchCustomerRows } from '../lib/customer-search';
+import { callInternalBooking, callInternalCancel, callInternalPayment, callInternalRefund } from '../lib/internal';
+import {
+  classAvailabilityForTrip as tripClassAvailability,
+  freeVehiclesForClass as tripFreeVehicles,
+  TripError,
+} from '../lib/office-trip';
 import { eurosToCents, optionalEurosToCents } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { athensLocalToInstant } from '../lib/time';
@@ -11,6 +18,18 @@ function requireStaff(locals: App.Locals) {
   }
   return locals.staff;
 }
+
+const pickupLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+
+const tripInput = z.object({
+  pickupLocal,
+  type: z.enum(['transfer', 'hourly']),
+  fromZone: z.string().min(1),
+  toZone: z.string().optional(),
+  hours: z.number().int().positive().optional(),
+  passengers: z.number().int().positive(),
+  luggage: z.number().int().nonnegative(),
+});
 
 export const server = {
   assignVehicle: defineAction({
@@ -432,6 +451,171 @@ export const server = {
         .eq('key', input.key);
       if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
       return { ok: true };
+    },
+  }),
+
+  searchCustomers: defineAction({
+    accept: 'json',
+    input: z.object({ query: z.string().max(100) }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      try {
+        return await searchCustomerRows(supabase, staff, input.query);
+      } catch (e) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: (e as Error).message });
+      }
+    },
+  }),
+
+  classAvailabilityForTrip: defineAction({
+    accept: 'json',
+    input: tripInput,
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      try {
+        return await tripClassAvailability(supabase, input);
+      } catch (e) {
+        if (e instanceof TripError) throw new ActionError({ code: 'BAD_REQUEST', message: e.message });
+        throw e;
+      }
+    },
+  }),
+
+  freeVehiclesForClass: defineAction({
+    accept: 'json',
+    input: z.object({
+      classKey: z.string().min(1),
+      pickupLocal,
+      durationMinutes: z.number().int().positive(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      try {
+        return await tripFreeVehicles(supabase, input);
+      } catch (e) {
+        if (e instanceof TripError) throw new ActionError({ code: 'BAD_REQUEST', message: e.message });
+        throw e;
+      }
+    },
+  }),
+
+  createOfficeBooking: defineAction({
+    accept: 'json',
+    input: z.object({
+      idempotencyKey: z.uuid().optional(),
+      customer: z.object({
+        name: z.string().trim().min(1),
+        email: z.email(),
+        phone: z.string().trim().min(1),
+      }),
+      bookingType: z.enum(['transfer', 'hourly']),
+      classKey: z.string().min(1),
+      fromZone: z.string().min(1),
+      toZone: z.string().optional(),
+      hours: z.number().int().positive().optional(),
+      pickupLocal,
+      pickupAddress: z.string().trim().min(1),
+      dropoffAddress: z.string().trim().optional(),
+      flightNumber: z.string().trim().optional(),
+      passengers: z.number().int().positive(),
+      luggage: z.number().int().nonnegative(),
+      extras: z.array(z.string().min(1)).default([]),
+      vehicleId: z.uuid().optional(),
+      invoice: z
+        .object({
+          company: z.string().trim().min(1),
+          vat: z.string().trim().min(1),
+          taxOffice: z.string().trim().min(1),
+          address: z.string().trim().min(1),
+        })
+        .optional(),
+      notes: z.string().trim().optional(),
+      /** Euros typed by staff; converted here. The web app still prices the booking itself. */
+      priceOverrideEuros: z.string().trim().optional(),
+      priceOverrideReason: z.string().trim().optional(),
+      payment: z.enum(['link', 'offline_paid', 'offline_collect']),
+      offlineMethod: z.enum(['cash', 'bank_transfer', 'on_account']).optional(),
+      emailCustomer: z.boolean(),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      const { priceOverrideEuros, idempotencyKey, ...rest } = input;
+      let priceOverrideCents: number | undefined;
+      if (priceOverrideEuros) {
+        try {
+          priceOverrideCents = eurosToCents(priceOverrideEuros);
+        } catch {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid price' });
+        }
+        if (priceOverrideCents < 0) {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid price' });
+        }
+        if (!input.priceOverrideReason) {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Give a reason for the different price' });
+        }
+      }
+      const result = await callInternalBooking(
+        {
+          ...rest,
+          priceOverrideCents,
+          priceOverrideReason: priceOverrideCents == null ? undefined : input.priceOverrideReason,
+          idempotencyKey: idempotencyKey ?? randomUUID(),
+          staffUserId: staff.userId,
+        },
+        staff.userId,
+      );
+      if (!result.ok) {
+        return {
+          ok: false as const,
+          code: result.code ?? 'invalid_request',
+          message: result.message,
+          fields: result.fields ?? {},
+        };
+      }
+      const data = result.data as { reference: string; checkoutUrl?: string; vivaTimeoutCapped?: boolean };
+      return { ok: true as const, reference: data.reference, vivaTimeoutCapped: data.vivaTimeoutCapped };
+    },
+  }),
+
+  recordOfflinePayment: defineAction({
+    accept: 'form',
+    input: z.object({
+      reference: z.string().min(1),
+      method: z.enum(['cash', 'bank_transfer', 'on_account']),
+      amountEuros: z.string().optional(),
+      note: z.string().optional(),
+      idempotencyKey: z.uuid(),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      let amountCents: number | undefined;
+      if (input.amountEuros?.trim()) {
+        try {
+          amountCents = eurosToCents(input.amountEuros);
+        } catch {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid amount' });
+        }
+        if (amountCents <= 0) {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Amount must be positive' });
+        }
+      }
+      const result = await callInternalPayment(
+        {
+          reference: input.reference,
+          method: input.method,
+          note: input.note || undefined,
+          amountCents,
+          idempotencyKey: input.idempotencyKey,
+        },
+        staff.userId,
+      );
+      if (!result.ok) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
+      }
+      return result.data;
     },
   }),
 

@@ -11,6 +11,10 @@ import { parseTstzRange } from '../lib/range';
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const nowMs = Date.now();
+// Prefill from the fleet calendar: ?vehicle=<uuid>&from=YYYY-MM-DDTHH:mm (Athens local).
+const preVehicle = Astro.url.searchParams.get('vehicle') ?? '';
+const rawFrom = Astro.url.searchParams.get('from') ?? '';
+const preFrom = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(rawFrom) ? rawFrom : '';
 
 const { data: vehicles } = await supabase
   .from('vehicles')
@@ -46,15 +50,19 @@ const rows = (slots ?? []).map((s) => {
           name="vehicleId"
           required
           options={[
-            { value: '', label: 'Select…', selected: true },
-            ...(vehicles ?? []).map((v) => ({ value: v.id, label: v.label })),
+            { value: '', label: 'Select…', selected: !(vehicles ?? []).some((v) => v.id === preVehicle) },
+            ...(vehicles ?? []).map((v) => ({
+              value: v.id,
+              label: v.label,
+              selected: v.id === preVehicle,
+            })),
           ]}
         />
       </div>
       <div class="grid grid-2">
         <div class="field">
           <label for="fromLocal">From (Athens)</label>
-          <input class="input" id="fromLocal" name="fromLocal" type="datetime-local" required />
+          <input class="input" id="fromLocal" name="fromLocal" type="datetime-local" value={preFrom} required />
         </div>
         <div class="field">
           <label for="toLocal">To (Athens)</label>

@@ -163,6 +163,25 @@ export function enhanceSelect(sel: HTMLSelectElement, doc: Document = document):
   render();
 }
 
+/**
+ * Rebuild the brand dropdown after the native options changed (e.g. class list for a new time).
+ * ponytail: each rebuild adds one document click listener; fine for a handful of rebuilds per page.
+ */
+export function refreshSelect(sel: HTMLSelectElement, doc: Document = document): void {
+  const wrap = sel.closest('.ep-select');
+  if (wrap) {
+    const btn = wrap.querySelector<HTMLButtonElement>('.ep-select-btn');
+    const label = btn?.id ? doc.querySelector<HTMLLabelElement>(`label[for="${btn.id}"]`) : null;
+    if (label && sel.id) label.htmlFor = sel.id;
+    wrap.replaceWith(sel);
+    sel.classList.remove('ep-select-native');
+    sel.removeAttribute('tabindex');
+    sel.removeAttribute('aria-hidden');
+    delete sel.dataset.enhanced;
+  }
+  enhanceSelect(sel, doc);
+}
+
 export function enhanceAllSelects(root: ParentNode = document, doc: Document = document): void {
   root.querySelectorAll<HTMLSelectElement>('select.input').forEach((sel) => enhanceSelect(sel, doc));
 }

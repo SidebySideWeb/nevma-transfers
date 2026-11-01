@@ -3,6 +3,7 @@ import { bookingDb } from './db';
 
 export type AppSettings = {
   holdMinutes: number;
+  officeLinkHoldMinutes: number;
   minLeadMinutes: number;
   cancelWindowHours: number;
   maxActiveHoldsPerVisitor: number;
@@ -40,6 +41,10 @@ export async function getSettings(): Promise<AppSettings> {
 
   const value: AppSettings = {
     holdMinutes: asNumber(map.get('hold_minutes'), 'hold_minutes'),
+    officeLinkHoldMinutes: asNumber(
+      map.get('office_link_hold_minutes') ?? 240,
+      'office_link_hold_minutes',
+    ),
     minLeadMinutes: asNumber(map.get('min_lead_minutes'), 'min_lead_minutes'),
     cancelWindowHours: asNumber(map.get('cancel_window_hours'), 'cancel_window_hours'),
     maxActiveHoldsPerVisitor: asNumber(

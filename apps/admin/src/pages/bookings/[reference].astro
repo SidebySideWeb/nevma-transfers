@@ -9,6 +9,7 @@ import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
 import Select from '../../components/Select.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
+import Toast from '../../components/Toast.astro';
 import { confirmActionLabel } from '../../components/confirm-label';
 import { formatEuro } from '../../lib/money';
 import { parseTstzRange, rangesOverlap } from '../../lib/range';
@@ -57,8 +58,20 @@ let payments: {
   amount_cents: number;
   status: string;
   created_by: string | null;
+  method: string;
 }[] = [];
 let paid = 0;
+let offlinePaid = false;
+let addedBy = '';
+let canRecordOffline = false;
+const toast = Astro.url.searchParams.get('toast');
+const toastCapped = Astro.url.searchParams.get('capped') === '1';
+const METHOD_LABEL: Record<string, string> = {
+  viva: 'Viva',
+  cash: 'Cash',
+  bank_transfer: 'Bank transfer',
+  on_account: 'On account',
+};
 let refundable = 0;
 let classVehicles: { id: string; label: string; busy: boolean }[] = [];
 let fromName: string | undefined;
@@ -78,10 +91,21 @@ if (found && booking) {
 
   const paymentsRes = await supabase
     .from('payments')
-    .select('created_at, kind, amount_cents, status, created_by')
+    .select('created_at, kind, amount_cents, status, created_by, method')
     .eq('booking_id', booking.id)
     .order('created_at', { ascending: true });
   payments = paymentsRes.data ?? [];
+  offlinePaid = payments.some(
+    (p) => p.kind === 'payment' && p.status === 'succeeded' && p.method !== 'viva',
+  );
+  if (booking.source === 'office') {
+    const { data: creator } = booking.created_by
+      ? await supabase.from('staff').select('email').eq('user_id', booking.created_by).maybeSingle()
+      : { data: null };
+    addedBy = `Added by ${creator?.email || 'staff'}${
+      booking.payment_method ? ` · ${METHOD_LABEL[booking.payment_method] ?? booking.payment_method}` : ''
+    }`;
+  }
 
   paid = payments
     .filter((p) => p.kind === 'payment' && p.status === 'succeeded')
@@ -138,7 +162,14 @@ if (found && booking) {
   pageError =
     actionErr(Astro.getActionResult?.(actions.saveNotesInvoice)) ||
     actionErr(Astro.getActionResult?.(actions.refundBooking)) ||
+    actionErr(Astro.getActionResult?.(actions.recordOfflinePayment)) ||
     actionErr(Astro.getActionResult?.(actions.cancelBooking));
+
+  canRecordOffline =
+    booking.payment_status === 'unpaid' &&
+    !!booking.payment_method &&
+    booking.payment_method !== 'viva' &&
+    ['confirmed', 'assigned', 'completed'].includes(booking.status);
 
   refundConfirm = confirmActionLabel('Refund', refundable);
   cancelConfirm = confirmActionLabel(
@@ -171,9 +202,20 @@ if (found && booking) {
       >
         <div class="row" slot="actions">
           <StatusBadge status={booking.status} />
+          {booking.source === 'office' && <Flag kind="office" />}
           {booking.vip_security && <Flag kind="vip" />}
           {booking.booking_type === 'hourly' && <Flag kind="hourly" />}
         </div>
+
+        {
+          toast === 'created' && (
+            <Toast>
+              Booking {reference} created.
+              {toastCapped &&
+                " The payment link hold was shortened to Viva's maximum order time."}
+            </Toast>
+          )
+        }
 
         {pageError && (
           <Banner tone="danger" role="alert">
@@ -358,6 +400,15 @@ if (found && booking) {
                 <h2 id="p-h">Payment</h2>
               </div>
               <div class="panel-body stack-sm">
+                {addedBy && <p class="muted small" id="added-by">{addedBy}</p>}
+                {
+                  booking.price_override_reason && (
+                    <p class="muted small">
+                      Price differs from the list ({formatEuro(booking.list_price_cents ?? 0)}):{' '}
+                      {booking.price_override_reason}
+                    </p>
+                  )
+                }
                 <dl class="totals">
                   <div>
                     <dt>Vehicle</dt>
@@ -380,8 +431,19 @@ if (found && booking) {
                     <dt>Refundable</dt>
                     <dd>{formatEuro(refundable)}</dd>
                   </div>
+                  <div>
+                    <dt>Payment status</dt>
+                    <dd id="payment-status">{booking.payment_status}</dd>
+                  </div>
                 </dl>
                 <div class="row">
+                  {
+                    canRecordOffline && (
+                      <button class="btn" type="button" id="open-offline">
+                        Record offline payment…
+                      </button>
+                    )
+                  }
                   <button
                     class="btn btn-secondary"
                     type="button"
@@ -419,6 +481,7 @@ if (found && booking) {
                           Amount
                         </th>
                         <th scope="col">Status</th>
+                        <th scope="col">Method</th>
                         <th scope="col">By</th>
                       </tr>
                     </thead>
@@ -431,6 +494,7 @@ if (found && booking) {
                             {formatEuro(p.amount_cents)}
                           </td>
                           <td data-label="Status">{p.status}</td>
+                          <td data-label="Method">{METHOD_LABEL[p.method] ?? p.method}</td>
                           <td data-label="By">{p.created_by ? 'Staff' : 'Viva'}</td>
                         </tr>
                       ))}
@@ -472,7 +536,10 @@ if (found && booking) {
                 />
               </div>
               <p class="help" id="amt-help">
-                Up to {formatEuro(refundable)}.
+                Up to {formatEuro(refundable)}.{' '}
+                {offlinePaid
+                  ? 'This was paid offline: the refund is recorded here without Viva. Hand the money back yourself.'
+                  : 'Viva returns it to the same card in 3–5 working days.'}
               </p>
             </div>
             <div class="field">
@@ -490,6 +557,81 @@ if (found && booking) {
           </div>
         </form>
       </dialog>
+
+      {
+        canRecordOffline && (
+          <dialog class="dialog" id="offline-dialog" aria-labelledby="offline-h">
+            <form method="POST" action={actions.recordOfflinePayment} id="offline-form">
+              <div class="dialog-head">
+                <p class="eyebrow">
+                  {reference}
+                  {booking.source === 'office' ? ' · added by the office' : ''}
+                </p>
+                <h2 id="offline-h">Record an offline payment</h2>
+              </div>
+              <div class="dialog-body">
+                <dl class="restate">
+                  <dt>Customer</dt>
+                  <dd>{booking.customer_name}</dd>
+                  <dt>To collect</dt>
+                  <dd class="amount">{formatEuro(booking.price_cents)}</dd>
+                </dl>
+                <input type="hidden" name="reference" value={reference} />
+                <input type="hidden" name="idempotencyKey" id="offline-idem" value="" />
+                <div class="grid-fields">
+                  <div class="field">
+                    <label for="om">Method</label>
+                    <Select
+                      id="om"
+                      name="method"
+                      options={[
+                        { value: 'cash', label: 'Cash', selected: booking.payment_method === 'cash' },
+                        {
+                          value: 'bank_transfer',
+                          label: 'Bank transfer',
+                          selected: booking.payment_method === 'bank_transfer',
+                        },
+                        {
+                          value: 'on_account',
+                          label: 'On account (invoice)',
+                          selected: booking.payment_method === 'on_account',
+                        },
+                      ]}
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="oa">Amount</label>
+                    <div class="input-money">
+                      <input
+                        id="oa"
+                        class="input"
+                        name="amountEuros"
+                        inputmode="decimal"
+                        value={(booking.price_cents / 100).toFixed(2)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="on">Note (staff only)</label>
+                  <input id="on" class="input" name="note" />
+                </div>
+                <p class="help">
+                  No money moves through Viva. Refunds of offline payments are recorded the same way.
+                </p>
+              </div>
+              <div class="dialog-foot">
+                <button class="btn btn-quiet" type="button" id="close-offline">
+                  Back
+                </button>
+                <button class="btn" type="submit" id="confirm-offline">
+                  Record {formatEuro(booking.price_cents)}
+                </button>
+              </div>
+            </form>
+          </dialog>
+        )
+      }
 
       <dialog class="dialog" id="cancel-dialog" aria-labelledby="cancel-h">
         <form method="POST" action={actions.cancelBooking} id="cancel-form">
@@ -555,6 +697,20 @@ if (found && booking) {
           document.getElementById('cr')?.focus();
         });
         document.getElementById('close-cancel')?.addEventListener('click', () => cancelDlg?.close());
+
+        const offlineDlg = document.getElementById('offline-dialog') as HTMLDialogElement | null;
+        document.getElementById('open-offline')?.addEventListener('click', () => {
+          const el = document.getElementById('offline-idem') as HTMLInputElement | null;
+          if (el) el.value = crypto.randomUUID();
+          offlineDlg?.showModal();
+          document.querySelector<HTMLElement>('#offline-dialog .ep-select-btn')?.focus();
+        });
+        document.getElementById('close-offline')?.addEventListener('click', () => offlineDlg?.close());
+
+        // Toasts fade after 6 s (design: role="status", never for errors that need action).
+        document.querySelectorAll<HTMLElement>('.toast[role="status"]').forEach((t) => {
+          setTimeout(() => t.remove(), 6000);
+        });
       </script>
     </>
   )

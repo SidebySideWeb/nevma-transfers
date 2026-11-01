@@ -21,6 +21,7 @@ const to = q.get('to') || '';
 const type = q.get('type') || '';
 const vipOnly = q.get('vip') === '1';
 const invoice = q.get('invoice') || '';
+const source = q.get('source') === 'online' || q.get('source') === 'office' ? q.get('source')! : '';
 const needsVehicle = q.get('needs_vehicle') === '1';
 const page = Math.max(1, Number(q.get('page') || 1));
 const pageSize = 50;
@@ -30,7 +31,7 @@ let query = supabase
   .select(
     `
     reference, pickup_at, booking_type, duration_minutes, price_cents, status, payment_status,
-    vip_security, invoice_status, customer_name, vehicle_id,
+    vip_security, invoice_status, customer_name, vehicle_id, source,
     from_zone:zones!bookings_from_zone_id_fkey(name),
     to_zone:zones!bookings_to_zone_id_fkey(name),
     class:vehicle_classes!bookings_class_id_fkey(key),
@@ -55,6 +56,7 @@ if (vipOnly) query = query.eq('vip_security', true);
 if ((invoices as readonly string[]).includes(invoice)) {
   query = query.eq('invoice_status', invoice as (typeof invoices)[number]);
 }
+if (source === 'online' || source === 'office') query = query.eq('source', source);
 if (needsVehicle) {
   query = query.eq('status', 'confirmed').is('vehicle_id', null);
 }
@@ -116,6 +118,12 @@ if (type) {
   chips.push({
     label: type === 'hourly' ? 'Hourly' : 'Transfer',
     clear: new URLSearchParams([...q.entries()].filter(([k]) => k !== 'type')).toString(),
+  });
+}
+if (source) {
+  chips.push({
+    label: source === 'office' ? 'Office bookings' : 'Online bookings',
+    clear: new URLSearchParams([...q.entries()].filter(([k]) => k !== 'source')).toString(),
   });
 }
 if (invoice) {
@@ -214,6 +222,18 @@ function qs(overrides: Record<string, string | null>): string {
           { value: '', label: 'All types', selected: !type },
           { value: 'transfer', label: 'Transfer', selected: type === 'transfer' },
           { value: 'hourly', label: 'Hourly', selected: type === 'hourly' },
+        ]}
+      />
+    </div>
+    <div class="field">
+      <label for="so">Source</label>
+      <Select
+        id="so"
+        name="source"
+        options={[
+          { value: '', label: 'All', selected: !source },
+          { value: 'online', label: 'Online', selected: source === 'online' },
+          { value: 'office', label: 'Office', selected: source === 'office' },
         ]}
       />
     </div>
@@ -334,10 +354,11 @@ function qs(overrides: Record<string, string | null>): string {
                     <td
                       data-label="Flags"
                       data-hide-phone={
-                        !(b.vip_security || b.invoice_status === 'requested' || b.invoice_status === 'issued') ||
+                        !(b.source === 'office' || b.vip_security || b.invoice_status === 'requested' || b.invoice_status === 'issued') ||
                         undefined
                       }
                     >
+                      {b.source === 'office' && <Flag kind="office" />}{' '}
                       {b.vip_security && <Flag kind="vip" />}{' '}
                       {(b.invoice_status === 'requested' || b.invoice_status === 'issued') && (
                         <Flag kind="invoice" />

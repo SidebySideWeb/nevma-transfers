@@ -1,0 +1,439 @@
+---
+export const prerender = false;
+
+import { Temporal } from '@js-temporal/polyfill';
+import AdminLayout from '../layouts/AdminLayout.astro';
+import Select from '../components/Select.astro';
+import { athensTime } from '../lib/athens-day';
+import { dayBar, parseItems, type BarView } from '../lib/calendar-items';
+import {
+  athensDateKey,
+  athensLocalMs,
+  barPosition,
+  dayGrid,
+  DAY_PX,
+  hourLabel,
+  HOUR_PX,
+  minutesSinceMidnight,
+  packLanes,
+  shiftDate,
+  weekDays,
+} from '../lib/calendar-position';
+import { rangeLiteral } from '../lib/office-trip';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const q = Astro.url.searchParams;
+
+const view = q.get('view') === 'week' ? 'week' : 'day';
+const nowDate = new Date();
+const today = athensDateKey(nowDate);
+const dateParam = q.get('date') ?? '';
+const date = /^\d{4}-\d{2}-\d{2}$/.test(dateParam) && !Number.isNaN(Date.parse(dateParam)) ? dateParam : today;
+const classKey = q.get('class') ?? '';
+
+const days = view === 'week' ? weekDays(date) : [date];
+const grids = days.map(dayGrid);
+const rangeStart = grids[0]!.start;
+const rangeEnd = grids[grids.length - 1]!.end;
+
+const [classesRes, vehiclesRes, itemsRes] = await Promise.all([
+  supabase
+    .from('vehicle_classes')
+    .select('id, key, name, sort_order')
+    .eq('active', true)
+    .order('sort_order')
+    .order('name'),
+  supabase.from('vehicles').select('id, label, class_id').eq('status', 'active').order('label'),
+  supabase.from('calendar_items').select('*').filter('range', 'ov', rangeLiteral(rangeStart, rangeEnd)),
+]);
+if (itemsRes.error) {
+  console.error(JSON.stringify({ level: 'error', code: 'calendar_items', message: itemsRes.error.message }));
+}
+const allClasses = classesRes.data ?? [];
+const classes = classKey ? allClasses.filter((c) => c.key === classKey) : allClasses;
+const vehicles = vehiclesRes.data ?? [];
+const items = parseItems(itemsRes.data ?? []);
+
+// Free vehicles per hour (day) or lowest per day (week), from the database function.
+const freeByClass = new Map<string, number[]>();
+await Promise.all(
+  classes.map(async (c) => {
+    const perDay = await Promise.all(
+      days.map(async (d) => {
+        const { data } = await supabase.rpc('class_free_by_hour', { p_class_id: c.id, p_day: d });
+        return (data ?? []).map((r) => r.free);
+      }),
+    );
+    freeByClass.set(c.id, view === 'week' ? perDay.map((f) => (f.length ? Math.min(...f) : 0)) : perDay[0]!);
+  }),
+);
+
+// ---------- labels and links ----------
+const plain = (k: string) => Temporal.PlainDate.from(k);
+const longDate = (k: string) => {
+  const d = plain(k);
+  return `${d.toLocaleString('en-GB', { weekday: 'long' })} ${d.day} ${d.toLocaleString('en-GB', { month: 'long' })} ${d.year}`;
+};
+const shortDay = (k: string) => {
+  const d = plain(k);
+  return `${d.toLocaleString('en-GB', { weekday: 'short' })} ${d.day} ${d.toLocaleString('en-GB', { month: 'short' })}`;
+};
+const monthName = (k: string) => plain(k).toLocaleString('en-GB', { month: 'long' });
+const dateLabel =
+  view === 'day'
+    ? longDate(date)
+    : `${plain(days[0]!).day} ${monthName(days[0]!)}${plain(days[0]!).year !== plain(days[6]!).year ? ` ${plain(days[0]!).year}` : ''} – ${plain(days[6]!).day} ${monthName(days[6]!)} ${plain(days[6]!).year}`;
+
+function href(over: Record<string, string | null>): string {
+  const p = new URLSearchParams();
+  const base: Record<string, string> = { view, date, ...(classKey ? { class: classKey } : {}) };
+  for (const [k, v] of Object.entries({ ...base, ...over })) if (v) p.set(k, v);
+  return `/calendar?${p}`;
+}
+const step = view === 'week' ? 7 : 1;
+const unit = view === 'week' ? 'week' : 'day';
+const thisDate = view === 'week' ? weekDays(today)[0]! : today;
+const isCurrent = view === 'week' ? weekDays(date)[0] === weekDays(today)[0] : date === today;
+
+// ---------- day view model ----------
+type Track = {
+  key: string;
+  label: string;
+  sub?: string;
+  vehicleId?: string;
+  lane?: boolean;
+  bars: BarView[];
+  buffers: { left: number; width: number }[];
+  busy: [number, number][];
+};
+
+const grid = grids[0]!;
+const dayTracks = new Map<string, Track[]>();
+for (const c of classes) {
+  const cvehicles = vehicles.filter((v) => v.class_id === c.id);
+  const citems = items.filter((i) => i.classId === c.id);
+  const tracks: Track[] = cvehicles.map((v) => {
+    const t: Track = { key: v.id, label: v.label, vehicleId: v.id, bars: [], buffers: [], busy: [] };
+    for (const it of citems.filter((i) => i.vehicleId === v.id)) {
+      t.busy.push([it.rangeStartMs, it.rangeEndMs]);
+      const b = view === 'day' ? dayBar(grid, it) : null;
+      if (b) {
+        t.bars.push(b.bar);
+        t.buffers.push(...b.buffers);
+      }
+    }
+    return t;
+  });
+  const loose = citems.filter((i) => !i.vehicleId);
+  const lanes = packLanes(loose.filter((i) => i.kind !== 'block'));
+  lanes.forEach((lane, n) => {
+    const t: Track = {
+      key: `${c.id}-lane-${n}`,
+      label: n === 0 ? 'Needs a vehicle' : '',
+      sub: n === 0 ? `${loose.filter((i) => i.kind === 'booking').length} bookings` : undefined,
+      lane: true,
+      bars: [],
+      buffers: [],
+      busy: [],
+    };
+    for (const it of lane) {
+      const b = view === 'day' ? dayBar(grid, it) : null;
+      if (b) {
+        t.bars.push(b.bar);
+        t.buffers.push(...b.buffers);
+      }
+    }
+    tracks.push(t);
+  });
+  dayTracks.set(c.id, tracks);
+}
+
+// ---------- week view model ----------
+type WeekTrack = {
+  key: string;
+  label: string;
+  sub?: string;
+  bars: { left: number; width: number; cls: string }[];
+  counts: { day: number; text: string }[];
+  summary: string;
+};
+const weekTracks = new Map<string, WeekTrack[]>();
+if (view === 'week') {
+  const build = (label: string, sub: string | undefined, key: string, subset: typeof items): WeekTrack => {
+    const bars: WeekTrack['bars'] = [];
+    const counts: WeekTrack['counts'] = [];
+    const parts: string[] = [];
+    grids.forEach((g, di) => {
+      let bookings = 0;
+      let blocked = false;
+      for (const it of subset) {
+        if (it.kind === 'hold') continue;
+        const pos = barPosition(g, new Date(it.startMs), new Date(it.endMs), DAY_PX / g.hours);
+        if (!pos) continue;
+        bars.push({
+          left: di * DAY_PX + pos.left,
+          width: Math.max(pos.width, 3),
+          cls: it.kind === 'block' ? 'block' : !it.vehicleId ? 'unassigned' : '',
+        });
+        if (it.kind === 'block') blocked = true;
+        else bookings += 1;
+      }
+      const text = [
+        bookings ? (label === 'Needs a vehicle' ? `${bookings}` : `${bookings} booking${bookings === 1 ? '' : 's'}`) : '',
+        blocked ? 'blocked' : '',
+      ]
+        .filter(Boolean)
+        .join(', ');
+      if (text) {
+        counts.push({ day: di, text });
+        parts.push(`${shortDay(days[di]!)}: ${text}`);
+      }
+    });
+    return { key, label, sub, bars, counts, summary: `${label}: ${parts.join('; ') || 'nothing booked'}` };
+  };
+  for (const c of classes) {
+    const citems = items.filter((i) => i.classId === c.id);
+    const tracks = vehicles
+      .filter((v) => v.class_id === c.id)
+      .map((v) => build(v.label, undefined, v.id, citems.filter((i) => i.vehicleId === v.id)));
+    const loose = citems.filter((i) => !i.vehicleId && i.kind === 'booking');
+    if (loose.length) {
+      tracks.push(build('Needs a vehicle', `${loose.length} this week`, `${c.id}-lane`, loose));
+    }
+    weekTracks.set(c.id, tracks);
+  }
+}
+
+// ---------- now line, scroll, default time ----------
+const showNow = view === 'day' && date === today;
+const nowMin = minutesSinceMidnight(grid, nowDate);
+const nowLeft = (nowMin / 60) * HOUR_PX;
+const scrollLeft = view === 'day' ? (minutesSinceMidnight(grid, new Date(athensLocalMs(date, '06:00'))) / 60) * HOUR_PX : 0;
+const quarter = 15 * 60_000;
+const defaultMs = showNow
+  ? Math.min(Math.ceil(nowDate.getTime() / quarter) * quarter, grid.end.getTime() - quarter)
+  : athensLocalMs(date, '09:00');
+const freeClass = (free: number, total: number) => (free === 0 ? 'full' : free === 1 && total > 1 ? 'tight' : '');
+const nowTime = athensTime(nowDate);
+const regionLabel =
+  view === 'day'
+    ? `Fleet calendar, ${longDate(date)}, scroll sideways for more hours`
+    : `Fleet calendar, week of ${plain(days[0]!).day} ${monthName(days[0]!)}`;
+---
+
+<AdminLayout title="Fleet calendar" current="calendar" staffEmail={staff.email}>
+  <div class="row" slot="actions">
+    {view === 'day' && <a class="btn btn-secondary" href="/blocked-slots">Block a vehicle</a>}
+    <a class="btn" href="/bookings/new">New booking</a>
+  </div>
+
+  <form class="cal-toolbar" method="get" aria-label="Calendar controls">
+    <input type="hidden" name="view" value={view} />
+    <input type="hidden" name="date" value={date} />
+    <div class="row">
+      <a class="btn btn-secondary btn-sm" href={href({ date: shiftDate(date, -step) })} aria-label={`Previous ${unit}`}>‹</a>
+      <a
+        class="btn btn-secondary btn-sm"
+        href={href({ date: thisDate })}
+        aria-current={isCurrent ? 'date' : undefined}>{view === 'week' ? 'This week' : 'Today'}</a
+      >
+      <a class="btn btn-secondary btn-sm" href={href({ date: shiftDate(date, step) })} aria-label={`Next ${unit}`}>›</a>
+      <p class="cal-date" id="cal-date">{dateLabel}</p>
+    </div>
+    <div class="row">
+      <div class="field" style="min-width:180px">
+        <label for="cal-cls" class="sr-only">Vehicle class</label>
+        <Select
+          id="cal-cls"
+          name="class"
+          class="input input-sm"
+          autoSubmit
+          options={[
+            { value: '', label: 'All classes', selected: !classKey },
+            ...allClasses.map((c) => {
+              const n = vehicles.filter((v) => v.class_id === c.id).length;
+              return {
+                value: c.key,
+                label: c.name,
+                meta: `${n} vehicle${n === 1 ? '' : 's'}`,
+                selected: c.key === classKey,
+              };
+            }),
+          ]}
+        />
+      </div>
+      <nav class="seg" aria-label="View">
+        <a href={href({ view: 'day' })} aria-current={view === 'day' ? 'page' : undefined}>Day</a>
+        <a href={href({ view: 'week' })} aria-current={view === 'week' ? 'page' : undefined}>Week</a>
+      </nav>
+      <noscript><button class="btn btn-secondary btn-sm" type="submit">Apply</button></noscript>
+    </div>
+  </form>
+
+  {
+    view === 'day' && (
+      <ul class="cal-legend" aria-label="Legend">
+        <li><i style="background:var(--color-surface-2);border-left:3px solid var(--color-accent);border:1px solid var(--color-accent-deep)"></i>Booking on a vehicle</li>
+        <li><i style="border-left:3px solid var(--color-warning);background:var(--color-surface-2)"></i>Needs a vehicle</li>
+        <li><i style="background:repeating-linear-gradient(135deg, rgb(207 164 95 / .3) 0 3px, transparent 3px 7px)"></i>Buffer before and after</li>
+        <li><i style="border:1px dashed var(--color-muted)"></i>Held while paying</li>
+        <li><i style="background:repeating-linear-gradient(135deg, rgb(169 163 149 / .4) 0 4px, transparent 4px 9px)"></i>Blocked</li>
+        <li><i style="background:var(--color-danger);width:2px"></i>Now</li>
+      </ul>
+    )
+  }
+
+  {
+    classes.length === 0 ? (
+      <p class="muted">No active vehicle classes.</p>
+    ) : (
+      <div
+        class="cal-scroll"
+        id="cal-scroll"
+        role="region"
+        tabindex="0"
+        aria-label={regionLabel}
+        data-scroll-left={scrollLeft}
+        data-view={view}
+        data-day-px={DAY_PX}
+        data-dates={days.join(',')}
+        data-default-ms={defaultMs}
+      >
+        {view === 'day' ? (
+          <div class="cal" style={`--hours:${grid.hours}`}>
+            <div class="cal-corner">Vehicle</div>
+            <div class="cal-hours" aria-hidden="true">
+              {grid.hourStarts.map((_, i) => <span>{hourLabel(grid, i)}</span>)}
+            </div>
+            {classes.map((c) => {
+              const tracks = dayTracks.get(c.id) ?? [];
+              const total = vehicles.filter((v) => v.class_id === c.id).length;
+              const free = freeByClass.get(c.id) ?? [];
+              return (
+                <>
+                  <div class="cal-class">
+                    <div class="cal-label">
+                      <strong>{c.name}</strong>
+                      <span class="sub">{total} vehicle{total === 1 ? '' : 's'} · free per hour</span>
+                    </div>
+                    <div class="cal-free">
+                      {grid.hourStarts.map((_, i) => (
+                        <span
+                          class={freeClass(free[i] ?? total, total)}
+                          title={`${hourLabel(grid, i)} · ${free[i] ?? '?'} free`}>{free[i] ?? '–'}</span>
+                      ))}
+                    </div>
+                  </div>
+                  {tracks.map((t) => (
+                    <>
+                      <div class="cal-label">
+                        {t.label && (t.lane ? <strong style="font-weight:500">{t.label}</strong> : <a href="/fleet">{t.label}</a>)}
+                        {t.sub && <span class="sub">{t.sub}</span>}
+                      </div>
+                      <div
+                        class:list={['cal-track', { 'is-off': t.lane }]}
+                        data-vehicle={t.vehicleId}
+                        data-label={t.label}
+                        data-day-start={grid.start.getTime()}
+                        data-busy={JSON.stringify(t.busy)}
+                      >
+                        {t.vehicleId && (
+                          <a
+                            class="cal-empty"
+                            href={`/bookings/new?vehicle=${t.vehicleId}`}
+                            aria-label={`New booking or block on ${t.label}`}></a>
+                        )}
+                        {t.buffers.map((b) => (
+                          <span class="bar-buffer" style={`left:${b.left}px;width:${b.width}px`} aria-hidden="true"></span>
+                        ))}
+                        {t.bars.map((b) =>
+                          b.tag === 'a' ? (
+                            <a class={b.cls} href={b.href} style={`left:${b.left}px;width:${b.width}px`} aria-label={b.name} title={b.name}>
+                              <b>{b.code}</b>{b.sub && <> <small>{b.sub}</small></>}
+                            </a>
+                          ) : (
+                            <span class={b.cls} role="img" style={`left:${b.left}px;width:${b.width}px`} aria-label={b.name} title={b.name}>
+                              <b>{b.code}</b>
+                            </span>
+                          ),
+                        )}
+                      </div>
+                    </>
+                  ))}
+                </>
+              );
+            })}
+            {showNow && <span class="cal-now" style={`left:${nowLeft}px`} data-time={nowTime} aria-hidden="true"></span>}
+          </div>
+        ) : (
+          <div class="cal week">
+            <div class="cal-corner">Vehicle</div>
+            <div class="cal-days" style={`display:grid;grid-template-columns:repeat(7,var(--day))`}>
+              {days.map((d) => (
+                <a
+                  class="cal-dayhead"
+                  href={href({ view: 'day', date: d })}
+                  aria-current={d === today ? 'date' : undefined}>{shortDay(d)}</a
+                >
+              ))}
+            </div>
+            {classes.map((c) => {
+              const total = vehicles.filter((v) => v.class_id === c.id).length;
+              const free = freeByClass.get(c.id) ?? [];
+              return (
+                <>
+                  <div class="cal-class">
+                    <div class="cal-label">
+                      <strong>{c.name}</strong>
+                      <span class="sub">lowest free per day</span>
+                    </div>
+                    <div class="cal-free">
+                      {days.map((d, i) => (
+                        <span
+                          class={freeClass(free[i] ?? total, total)}
+                          title={`${shortDay(d)}: lowest free ${free[i] ?? '?'}`}>{free[i] ?? '–'}</span>
+                      ))}
+                    </div>
+                  </div>
+                  {(weekTracks.get(c.id) ?? []).map((t) => (
+                    <>
+                      <div class="cal-label">
+                        {t.label === 'Needs a vehicle' ? <strong style="font-weight:500">{t.label}</strong> : <a href="/fleet">{t.label}</a>}
+                        {t.sub && <span class="sub">{t.sub}</span>}
+                      </div>
+                      <div class="cal-track" role="img" aria-label={t.summary} data-week-track>
+                        {t.bars.map((b) => (
+                          <span class={`wk-bar ${b.cls}`} style={`left:${b.left}px;width:${b.width}px`} aria-hidden="true"></span>
+                        ))}
+                        {t.counts.map((n) => (
+                          <span class="wk-count" style={`right:${(6 - n.day) * DAY_PX + 8}px`}>{n.text}</span>
+                        ))}
+                      </div>
+                    </>
+                  ))}
+                </>
+              );
+            })}
+          </div>
+        )}
+        {
+          view === 'day' && (
+            <div class="cal-pop" id="cal-pop" role="dialog" aria-label="Empty time" hidden>
+              <p id="cal-pop-text"></p>
+              <div class="row">
+                <a class="btn btn-sm" id="cal-pop-new" href="/bookings/new">New booking</a>
+                <a class="btn btn-secondary btn-sm" id="cal-pop-block" href="/blocked-slots">Block</a>
+              </div>
+            </div>
+          )
+        }
+      </div>
+    )
+  }
+
+  <script>
+    import '../scripts/calendar';
+  </script>
+</AdminLayout>

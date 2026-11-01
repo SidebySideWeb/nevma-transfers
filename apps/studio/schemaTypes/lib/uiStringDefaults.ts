@@ -110,6 +110,14 @@ export const uiStringDefaults = [
   { area: 'emails', key: 'email.lateRefund.body', value: 'Your payment arrived after the vehicle hold ended and the vehicle was no longer free, so we refunded it in full.' },
   { area: 'emails', key: 'email.office.new.subject', value: 'New booking {reference}' },
   { area: 'emails', key: 'email.office.cancelled.subject', value: 'Booking cancelled {reference}' },
+  { area: 'emails', key: 'email.paymentLink.subject', value: 'Complete your booking {reference}' },
+  {
+    area: 'emails',
+    key: 'email.paymentLink.body',
+    value:
+      'Please complete your booking {reference} for {pickupAt}. The vehicle is held for you until {holdEnds}.',
+  },
+  { area: 'emails', key: 'email.paymentLink.button', value: 'Pay securely' },
 ] as const satisfies readonly UiStringDefault[];
 
 export type UiStringKey = (typeof uiStringDefaults)[number]['key'];

@@ -9,6 +9,7 @@ import {
   confirmationEmail,
   lateRefundEmail,
   officeNewEmail,
+  paymentLinkEmail,
   reminderEmail,
   type ExtraLine,
 } from './email-templates';
@@ -107,7 +108,12 @@ async function company() {
   };
 }
 
-export async function sendConfirmationEmails(reference: string, cancelToken: string): Promise<void> {
+export async function sendConfirmationEmails(
+  reference: string,
+  cancelToken: string,
+  opts: { notifyOffice?: boolean } = {},
+): Promise<void> {
+  const notifyOffice = opts.notifyOffice !== false;
   const booking = await loadBooking(reference);
   if (!booking) return;
   const extras = await loadExtras(booking.id);
@@ -147,6 +153,8 @@ export async function sendConfirmationEmails(reference: string, cancelToken: str
     reference,
   });
 
+  if (!notifyOffice) return;
+
   const office = officeNewEmail({
     ...base,
     customerName: booking.customer_name,
@@ -166,6 +174,33 @@ export async function sendConfirmationEmails(reference: string, cancelToken: str
     html: office.html,
     text: office.text,
     tag: 'office_new',
+    reference,
+  });
+}
+
+export async function sendPaymentLinkEmail(
+  reference: string,
+  checkoutUrl: string,
+  holdEndsIso: string,
+): Promise<void> {
+  const booking = await loadBooking(reference);
+  if (!booking) return;
+  const co = await company();
+  const parts = paymentLinkEmail({
+    reference,
+    pickupAtLocal: pickupLocalAthens(booking.pickup_at),
+    holdEndsLocal: holdEndsIso,
+    checkoutUrl,
+    companyName: co.companyName,
+    companyPhone: co.companyPhone,
+    companyEmail: co.companyEmail,
+  });
+  await sendEmail({
+    to: booking.customer_email,
+    subject: parts.subject,
+    html: parts.html,
+    text: parts.text,
+    tag: 'payment_link',
     reference,
   });
 }

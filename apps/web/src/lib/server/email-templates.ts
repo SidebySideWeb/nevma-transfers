@@ -283,6 +283,45 @@ export function cancelledOfficeEmail(input: CancelledInput): EmailParts {
   };
 }
 
+export type PaymentLinkInput = {
+  reference: string;
+  pickupAtLocal: string;
+  holdEndsLocal: string;
+  checkoutUrl: string;
+  companyName: string;
+  companyPhone: string;
+  companyEmail: string;
+};
+
+export function paymentLinkEmail(input: PaymentLinkInput): EmailParts {
+  const subject = t('email.paymentLink.subject', { reference: input.reference });
+  const body = t('email.paymentLink.body', {
+    reference: input.reference,
+    pickupAt: `${input.pickupAtLocal} (Athens)`,
+    holdEnds: input.holdEndsLocal,
+  });
+  const button = t('email.paymentLink.button');
+  const text = [body, '', `${button}: ${input.checkoutUrl}`, '', companyFooter(input)].join('\n');
+  const htmlBody = `
+    <p style="margin:0 0 16px;">${escapeHtml(body)}</p>
+    <p style="margin:0;">
+      <a href="${escapeHtml(input.checkoutUrl)}"
+         style="display:inline-block;padding:12px 20px;background:${th.accent};color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
+        ${escapeHtml(button)}
+      </a>
+    </p>
+  `;
+  return {
+    subject,
+    text,
+    html: wrapHtml(subject, htmlBody, {
+      name: input.companyName,
+      phone: input.companyPhone,
+      email: input.companyEmail,
+    }),
+  };
+}
+
 export function lateRefundEmail(input: LateRefundInput): EmailParts {
   const subject = t('email.lateRefund.subject', { reference: input.reference });
   const body = t('email.lateRefund.body');

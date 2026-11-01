@@ -16,6 +16,7 @@ import { fireOnCancelled } from './hooks';
 import { getPaymentProvider } from './payments';
 import { assertRateLimit, RATE } from './rate-limit';
 import { getSettings } from './settings';
+import { quoteTrip, zoneByCode, routeDuration } from './trip-quote';
 import { verifyTurnstile } from './turnstile';
 
 export type SanityVehicleClass = {
@@ -46,35 +47,6 @@ export async function requireTurnstile(token: string | undefined, ip?: string): 
 
 function db(): BookingDb {
   return bookingDb();
-}
-
-async function zoneByCode(code: string): Promise<{ id: string; code: string; name: string }> {
-  const { rows } = await db().query<{ id: string; code: string; name: string }>(
-    `select id, code, name from public.zones where code = $1 and active`,
-    [code],
-  );
-  if (!rows[0]) {
-    throw new BookingError('invalid_request', {
-      stringKey: 'error.invalid_request',
-      message: `unknown zone ${code}`,
-      field: code.includes('from') ? 'fromZone' : 'toZone',
-    });
-  }
-  return rows[0];
-}
-
-async function routeDuration(fromId: string, toId: string): Promise<number> {
-  const { rows } = await db().query<{ duration_minutes: number }>(
-    `select duration_minutes from public.zone_routes where from_zone_id = $1 and to_zone_id = $2`,
-    [fromId, toId],
-  );
-  if (!rows[0]) {
-    throw new BookingError('invalid_request', {
-      stringKey: 'error.invalid_request',
-      message: 'unknown route',
-    });
-  }
-  return rows[0].duration_minutes;
 }
 
 // ---------------------------------------------------------------------------
@@ -340,79 +312,15 @@ export async function createHold(raw: unknown, visitorKey: string, ip?: string) 
   const pickup = localToInstant(body.pickupLocal, settings.timezone);
   assertLeadTime(pickup, new Date(), settings.minLeadMinutes);
 
-  const from = await zoneByCode(body.fromZone);
-  let toId: string | null = null;
-  let durationMinutes: number;
-  let hours: number | null = null;
-  let baseCents: number;
-
-  const classRow = (
-    await db().query<{
-      id: string;
-      key: string;
-      max_passengers: number;
-      max_luggage: number;
-      buffer_minutes: number;
-      rate_cents: number | null;
-      min_hours: number | null;
-      max_hours: number | null;
-    }>(
-      `select c.id, c.key, c.max_passengers, c.max_luggage, c.buffer_minutes,
-              h.price_per_hour_cents as rate_cents, h.min_hours, h.max_hours
-         from public.vehicle_classes c
-         left join public.hourly_rates h on h.class_id = c.id
-        where c.key = $1 and c.active`,
-      [body.classKey],
-    )
-  ).rows[0];
-  if (!classRow) {
-    throw new BookingError('invalid_request', {
-      stringKey: 'error.invalid_request',
-      message: 'unknown class',
-      field: 'classKey',
-    });
-  }
-  if (classRow.max_passengers < body.passengers || classRow.max_luggage < body.luggage) {
-    throw new BookingError('invalid_request', {
-      stringKey: 'error.invalid_request',
-      message: 'class too small',
-      field: 'classKey',
-    });
-  }
-
-  if (body.type === 'transfer') {
-    if (body.fromZone === body.toZone) {
-      throw new BookingError('invalid_request', {
-        stringKey: 'error.invalid_request',
-        message: 'from and to must differ',
-        field: 'toZone',
-      });
-    }
-    const to = await zoneByCode(body.toZone);
-    toId = to.id;
-    durationMinutes = await routeDuration(from.id, to.id);
-    const { rows: prices } = await db().query<{ price_cents: number }>(
-      `select price_cents from public.zone_prices
-        where from_zone_id = $1 and to_zone_id = $2 and class_id = $3`,
-      [from.id, to.id, classRow.id],
-    );
-    if (!prices[0]) {
-      throw new BookingError('no_price', { stringKey: 'error.no_price', message: 'no_price' });
-    }
-    baseCents = prices[0].price_cents;
-  } else {
-    hours = body.hours;
-    durationMinutes = body.hours * 60;
-    if (classRow.rate_cents == null || classRow.min_hours == null || classRow.max_hours == null) {
-      throw new BookingError('no_price', { stringKey: 'error.no_price', message: 'no_price' });
-    }
-    baseCents = quoteHourly({
-      rateCents: classRow.rate_cents,
-      minHours: classRow.min_hours,
-      maxHours: classRow.max_hours,
-      hours: body.hours,
-    });
-  }
+  const trip = await quoteTrip({
+    type: body.type,
+    classKey: body.classKey,
+    fromZone: body.fromZone,
+    toZone: body.type === 'transfer' ? body.toZone : undefined,
+    hours: body.type === 'hourly' ? body.hours : undefined,
+    passengers: body.passengers,
+    luggage: body.luggage,
+  });
 
   let hold: {
     id: string;
@@ -427,12 +335,12 @@ export async function createHold(raw: unknown, visitorKey: string, ip?: string) 
       [
         body.classKey,
         pickup.toISOString(),
-        durationMinutes,
+        trip.durationMinutes,
         visitorKey,
         body.type,
-        from.id,
-        toId,
-        hours,
+        trip.fromId,
+        trip.toId,
+        trip.hours,
       ],
     );
     hold = rows[0]!;
@@ -444,7 +352,7 @@ export async function createHold(raw: unknown, visitorKey: string, ip?: string) 
     holdId: hold.id,
     expiresAt: toIsoWithOffset(new Date(hold.expires_at), settings.timezone),
     classKey: body.classKey,
-    baseCents,
+    baseCents: trip.baseCents,
   };
 }
 

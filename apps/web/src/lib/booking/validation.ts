@@ -100,26 +100,26 @@ export const CancelRequest = z
 const MONEY_KEYS = new Set(['price', 'amount', 'total']);
 
 /** Reject any body that tries to send money fields to the server. */
-export function rejectMoneyFields(body: unknown): void {
-  walk(body);
+export function rejectMoneyFields(body: unknown, allowKeys: readonly string[] = []): void {
+  walk(body, new Set(allowKeys));
 }
 
-function walk(value: unknown): void {
+function walk(value: unknown, allow: Set<string>): void {
   if (value === null || value === undefined) return;
   if (Array.isArray(value)) {
-    for (const item of value) walk(item);
+    for (const item of value) walk(item, allow);
     return;
   }
   if (typeof value !== 'object') return;
 
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (MONEY_KEYS.has(key) || key.endsWith('Cents')) {
+    if (!allow.has(key) && (MONEY_KEYS.has(key) || key.endsWith('Cents'))) {
       throw new BookingError('invalid_request', {
         stringKey: 'error.invalid_request',
         message: `money field not allowed: ${key}`,
         field: key,
       });
     }
-    walk(child);
+    walk(child, allow);
   }
 }

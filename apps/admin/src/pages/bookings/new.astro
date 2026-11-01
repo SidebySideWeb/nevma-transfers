@@ -1,0 +1,389 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Flag from '../../components/Flag.astro';
+import Select from '../../components/Select.astro';
+import { formatEuro } from '../../lib/money';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const q = Astro.url.searchParams;
+
+const [zonesRes, classesRes, extrasRes, holdRes] = await Promise.all([
+  supabase.from('zones').select('code, name').eq('active', true).order('sort_order').order('name'),
+  supabase
+    .from('vehicle_classes')
+    .select('key, name')
+    .eq('active', true)
+    .order('sort_order')
+    .order('name'),
+  supabase
+    .from('extras')
+    .select('code, name, price_cents')
+    .eq('active', true)
+    .order('price_cents', { ascending: false }),
+  supabase.from('settings').select('value').eq('key', 'office_link_hold_minutes').maybeSingle(),
+]);
+const zones = zonesRes.data ?? [];
+const classes = classesRes.data ?? [];
+const extras = extrasRes.data ?? [];
+const holdMinutes = Number(holdRes.data?.value ?? 240);
+const holdText =
+  holdMinutes % 60 === 0
+    ? `${holdMinutes / 60} hour${holdMinutes === 60 ? '' : 's'}`
+    : `${holdMinutes} minutes`;
+
+// Prefill from the fleet calendar: ?vehicle=<uuid>&at=YYYY-MM-DDTHH:mm (Athens local).
+const at = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(q.get('at') ?? '') ? q.get('at')! : '';
+const vehicleParam = q.get('vehicle') ?? '';
+let prefillVehicle: { id: string; classKey: string } | null = null;
+if (/^[0-9a-f-]{36}$/i.test(vehicleParam)) {
+  const { data: v } = await supabase
+    .from('vehicles')
+    .select('id, vehicle_classes!inner(key)')
+    .eq('id', vehicleParam)
+    .maybeSingle();
+  const key = (v?.vehicle_classes as { key?: string } | null)?.key;
+  if (v && key) prefillVehicle = { id: v.id, classKey: key };
+}
+
+const pageData = {
+  vehicleId: prefillVehicle?.id ?? '',
+  holdText,
+  extras: extras.map((e) => ({ code: e.code, name: e.name, priceCents: e.price_cents })),
+};
+---
+
+<AdminLayout
+  title="New booking"
+  current="bookings"
+  staffEmail={staff.email}
+  crumbs={[{ href: '/bookings', label: 'Bookings' }, { label: 'New' }]}
+>
+  <form
+    class="cols cols-main"
+    style="align-items:start"
+    id="nb-form"
+    aria-label="New booking"
+    novalidate
+  >
+    <div class="stack">
+      <div class="banner banner-danger" role="alert" id="nb-error" hidden>
+        <p id="nb-error-text"></p>
+      </div>
+
+      <section class="panel" aria-labelledby="nb-c">
+        <div class="panel-head">
+          <h2 id="nb-c">Customer</h2>
+          <span class="muted small">Search or type a new customer</span>
+        </div>
+        <div class="panel-body stack-sm">
+          <div class="field lookup">
+            <label for="nb-find">Find a customer</label>
+            <input
+              id="nb-find"
+              class="input"
+              type="search"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="nb-find-list"
+              autocomplete="off"
+              placeholder="Name, e-mail or phone"
+            />
+            <ul class="lookup-list" id="nb-find-list" role="listbox" aria-label="Matching customers" hidden>
+            </ul>
+            <p class="sr-only" id="nb-find-status" role="status" aria-live="polite"></p>
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="nb-name">Name</label>
+              <input id="nb-name" class="input" autocomplete="off" aria-describedby="nb-name-err" />
+              <p class="error-text" id="nb-name-err" hidden></p>
+            </div>
+            <div class="field">
+              <label for="nb-mail">E-mail</label>
+              <input id="nb-mail" class="input" type="email" autocomplete="off" aria-describedby="nb-mail-err" />
+              <p class="error-text" id="nb-mail-err" hidden></p>
+            </div>
+            <div class="field">
+              <label for="nb-tel">Phone</label>
+              <input id="nb-tel" class="input" type="tel" autocomplete="off" aria-describedby="nb-tel-err" />
+              <p class="error-text" id="nb-tel-err" hidden></p>
+            </div>
+          </div>
+          <details id="nb-inv">
+            <summary>Invoice details (optional)</summary>
+            <div class="grid-fields" style="margin-top:.75rem">
+              <div class="field">
+                <label for="nb-inv-company">Company</label>
+                <input id="nb-inv-company" class="input" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="nb-inv-vat">VAT number</label>
+                <input id="nb-inv-vat" class="input" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="nb-inv-tax">Tax office</label>
+                <input id="nb-inv-tax" class="input" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="nb-inv-addr">Address</label>
+                <input id="nb-inv-addr" class="input" autocomplete="off" aria-describedby="nb-inv-addr-err" />
+                <p class="error-text" id="nb-inv-addr-err" hidden></p>
+              </div>
+            </div>
+          </details>
+          <p class="help">
+            Picking a customer fills name, e-mail, phone and their last invoice details. Every booking is
+            linked to the customer by e-mail.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="nb-t">
+        <div class="panel-head">
+          <h2 id="nb-t">Trip</h2>
+          <fieldset class="seg" style="border:0;padding:0;margin:0">
+            <legend class="sr-only">Booking type</legend>
+            <input type="radio" name="nb-type" id="nb-tr" value="transfer" checked />
+            <label for="nb-tr">Transfer</label>
+            <input type="radio" name="nb-type" id="nb-hr" value="hourly" />
+            <label for="nb-hr">Hourly</label>
+          </fieldset>
+        </div>
+        <div class="panel-body stack-sm">
+          <div class="grid-fields">
+            <div class="field">
+              <label for="nb-from">From zone</label>
+              <Select
+                id="nb-from"
+                aria-describedby="nb-from-err"
+                options={[
+                  { value: '', label: 'Choose a zone', selected: true },
+                  ...zones.map((z) => ({ value: z.code, label: z.name })),
+                ]}
+              />
+              <p class="error-text" id="nb-from-err" hidden></p>
+            </div>
+            <div class="field" id="nb-to-field">
+              <label for="nb-to">To zone</label>
+              <Select
+                id="nb-to"
+                aria-describedby="nb-to-err"
+                options={[
+                  { value: '', label: 'Choose a zone', selected: true },
+                  ...zones.map((z) => ({ value: z.code, label: z.name })),
+                ]}
+              />
+              <p class="error-text" id="nb-to-err" hidden></p>
+            </div>
+            <div class="field" id="nb-hours-field" hidden>
+              <label for="nb-hours">Hours</label>
+              <input
+                id="nb-hours"
+                class="input"
+                type="number"
+                min="1"
+                step="1"
+                value="3"
+                aria-describedby="nb-hours-err"
+              />
+              <p class="error-text" id="nb-hours-err" hidden></p>
+            </div>
+            <div class="field">
+              <label for="nb-date">Pick-up date</label>
+              <input
+                id="nb-date"
+                class="input"
+                type="date"
+                value={at.slice(0, 10)}
+                aria-describedby="nb-date-err"
+              />
+              <p class="error-text" id="nb-date-err" hidden></p>
+            </div>
+            <div class="field">
+              <label for="nb-time">Pick-up time (Athens)</label>
+              <input
+                id="nb-time"
+                class="input"
+                type="time"
+                value={at.slice(11, 16)}
+                aria-describedby="nb-time-err"
+              />
+              <p class="error-text" id="nb-time-err" hidden></p>
+            </div>
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="nb-pa">Pick-up address</label>
+              <input id="nb-pa" class="input" aria-describedby="nb-pa-err" />
+              <p class="error-text" id="nb-pa-err" hidden></p>
+            </div>
+            <div class="field" id="nb-da-field">
+              <label for="nb-da">Drop-off address</label>
+              <input id="nb-da" class="input" />
+            </div>
+            <div class="field">
+              <label for="nb-fl">Flight (optional)</label>
+              <input id="nb-fl" class="input" />
+            </div>
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="nb-px">Passengers</label>
+              <input id="nb-px" class="input" type="number" min="1" value="2" />
+            </div>
+            <div class="field">
+              <label for="nb-lg">Suitcases</label>
+              <input id="nb-lg" class="input" type="number" min="0" value="2" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="nb-v">
+        <div class="panel-head"><h2 id="nb-v">Vehicle and extras</h2></div>
+        <div class="panel-body stack-sm">
+          <div class="grid-fields">
+            <div class="field">
+              <label for="nb-cls">Class</label>
+              <Select
+                id="nb-cls"
+                aria-describedby="nb-cls-help nb-cls-err"
+                options={[
+                  { value: '', label: 'Choose a class', selected: !prefillVehicle },
+                  ...classes.map((c) => ({
+                    value: c.key,
+                    label: c.name,
+                    selected: prefillVehicle?.classKey === c.key,
+                  })),
+                ]}
+              />
+              <p class="help" id="nb-cls-help">
+                Fill in the trip and time to see free vehicles and the list price.
+              </p>
+              <p class="error-text" id="nb-cls-err" hidden></p>
+            </div>
+            <div class="field">
+              <label for="nb-veh">Vehicle (optional)</label>
+              <Select
+                id="nb-veh"
+                aria-describedby="nb-veh-err"
+                options={[{ value: '', label: 'Assign later', selected: true }]}
+              />
+              <p class="error-text" id="nb-veh-err" hidden></p>
+            </div>
+          </div>
+          {
+            extras.map((e) => (
+              <label class="check">
+                <input type="checkbox" name="nb-extra" value={e.code} />
+                {e.name} <span class="muted">+ {formatEuro(e.price_cents)}</span>
+              </label>
+            ))
+          }
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="nb-p">
+        <div class="panel-head"><h2 id="nb-p">Payment</h2></div>
+        <div class="panel-body stack-sm">
+          <fieldset class="choices">
+            <legend class="sr-only">How the customer pays</legend>
+            <label class="choice">
+              <input type="radio" name="nb-pay" value="link" checked />
+              <strong>Send a Viva payment link</strong>
+              <span>
+                Vehicle held for {holdText}. Confirmed and e-mailed when paid; released if not.
+              </span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="nb-pay" value="offline_paid" />
+              <strong>Paid offline</strong>
+              <span>Cash, bank transfer or on account. Confirmed now.</span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="nb-pay" value="offline_collect" />
+              <strong>To collect offline</strong>
+              <span>Confirmed now; record the payment later on the booking.</span>
+            </label>
+          </fieldset>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="nb-meth">Offline method</label>
+              <Select
+                id="nb-meth"
+                disabled
+                options={[
+                  { value: 'cash', label: 'Cash', selected: true },
+                  { value: 'bank_transfer', label: 'Bank transfer' },
+                  { value: 'on_account', label: 'On account (invoice)' },
+                ]}
+              />
+            </div>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="nb-email" checked /> E-mail the customer (payment link or confirmation)
+          </label>
+          <div class="field">
+            <label for="nb-notes">Notes for the office (not sent)</label>
+            <textarea id="nb-notes" class="input" style="min-height:64px"></textarea>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="sticky-aside stack" aria-label="Summary">
+      <section class="panel" aria-labelledby="nb-s">
+        <div class="panel-head">
+          <h2 id="nb-s">Summary</h2>
+          <Flag kind="office" />
+        </div>
+        <div class="panel-body stack-sm">
+          <dl class="totals" id="nb-totals" aria-live="polite">
+            <div class="grand"><dt>Price list total</dt><dd>—</dd></div>
+          </dl>
+          <label class="switch">
+            <input type="checkbox" id="nb-ovr" /> Use a different price
+          </label>
+          <div id="nb-ovr-fields" class="stack-sm" hidden>
+            <div class="grid-fields">
+              <div class="field">
+                <label for="nb-ov">Price to charge</label>
+                <div class="input-money">
+                  <input id="nb-ov" class="input" inputmode="decimal" aria-describedby="nb-ov-err" />
+                </div>
+                <p class="error-text" id="nb-ov-err" hidden></p>
+              </div>
+            </div>
+            <div class="field">
+              <label for="nb-why">Reason (required, kept on the booking)</label>
+              <input id="nb-why" class="input" aria-required="true" aria-describedby="nb-why-err" />
+              <p class="error-text" id="nb-why-err" hidden></p>
+            </div>
+          </div>
+          <div class="price-line">
+            <span class="muted">Customer pays</span>
+            <span id="nb-pays">—</span>
+          </div>
+          <button class="btn" type="submit" id="nb-submit" style="width:100%">
+            Create and send payment link
+          </button>
+          <p class="help">
+            The server rechecks the price and the free vehicles when you press the button. The final price
+            includes VAT.
+          </p>
+        </div>
+      </section>
+    </aside>
+  </form>
+
+  <script type="application/json" id="nb-data" set:html={JSON.stringify(pageData)} />
+
+  <script>
+    import '../../scripts/new-booking';
+  </script>
+</AdminLayout>
