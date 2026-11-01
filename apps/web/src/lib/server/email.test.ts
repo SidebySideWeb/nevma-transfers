@@ -72,7 +72,7 @@ describe('emails (prompt 08)', () => {
 
       Invoice requested.
 
-      To cancel, use this link: https://example.com/booking/cancel/tok_demo_only
+      To see, manage or cancel your booking, use this secure link: https://example.com/booking/cancel/tok_demo_only
       You can cancel online until 24 hours before pick-up.
 
       TEM Protection · +30 210 000 0000 (DEMO) · hello@example.com"

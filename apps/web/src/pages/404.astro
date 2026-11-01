@@ -7,11 +7,12 @@ const body = tDefault('error.invalid_request');
 ---
 
 <BaseLayout title={title} description={body} robots="noindex">
-  <section class="section">
-    <div class="narrow stack">
-      <h1>{title}</h1>
+  <section class="state-page">
+    <div class="state-card notice-danger">
+      <p class="eyebrow">404</p>
+      <h1 class="display" tabindex="-1">{title}</h1>
       <p class="muted">{body}</p>
-      <a class="btn" href="/">Back to home</a>
+      <a class="btn btn-gold" href="/">Back to home</a>
     </div>
   </section>
 </BaseLayout>

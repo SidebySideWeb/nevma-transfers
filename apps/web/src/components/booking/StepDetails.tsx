@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react';
+import { InvoiceBlock, Notice, VipSwitch } from '../ui';
 import { formatEuro } from './format';
 import { HoldTimer } from './HoldTimer';
 import type {
@@ -69,7 +70,7 @@ export function StepDetails({
       />
 
       {(formError || errorKeys.length > 0) && (
-        <div className="notice notice-danger" role="alert" tabIndex={-1} id="error-summary">
+        <Notice tone="danger" role="alert" tabIndex={-1} id="error-summary">
           <p>
             <strong>{strings['booking.errors.summary']}</strong>
           </p>
@@ -81,7 +82,7 @@ export function StepDetails({
               </li>
             ))}
           </ul>
-        </div>
+        </Notice>
       )}
 
       <form className="stack" onSubmit={handleSubmit} noValidate>
@@ -192,95 +193,81 @@ export function StepDetails({
           <h2 id="ex-h">{strings['booking.extras.title']}</h2>
           {options.extras.map((ex) => {
             const isVip = ex.code === 'vip-security';
-            const label = isVip
-              ? strings['booking.extras.vip']
-              : ex.code === 'night-surcharge'
-                ? strings['booking.extras.night']
-                : ex.name;
+            if (isVip) {
+              return (
+                <VipSwitch
+                  key={ex.code}
+                  id="extra-vip-security"
+                  checked={details.extras.includes(ex.code)}
+                  onChange={(checked) => toggleExtra(ex.code, checked)}
+                  title={strings['booking.extras.vip'] ?? ex.name}
+                  hint={strings['booking.extras.vip.hint']}
+                  price={formatEuro(ex.priceCents)}
+                />
+              );
+            }
+            const label = ex.code === 'night-surcharge' ? strings['booking.extras.night'] : ex.name;
             return (
               <label className="check" key={ex.code}>
                 <input
                   type="checkbox"
                   checked={details.extras.includes(ex.code)}
-                  aria-describedby={isVip ? 'vip-hint' : undefined}
                   onChange={(e) => toggleExtra(ex.code, e.target.checked)}
                 />
-                <span>
-                  {isVip ? (
-                    <>
-                      <strong>{label}</strong>
-                      <br />
-                      <span className="muted" id="vip-hint">
-                        {strings['booking.extras.vip.hint']}
-                      </span>
-                    </>
-                  ) : (
-                    label
-                  )}
-                </span>
+                <span>{label}</span>
                 <span className="price">{formatEuro(ex.priceCents)}</span>
               </label>
             );
           })}
         </section>
 
-        <section className="card stack" aria-labelledby="inv-h">
-          <h2 id="inv-h" className="sr-only">
-            Invoice
-          </h2>
-          <label className="check">
+        <InvoiceBlock
+          id="need-invoice"
+          checked={details.needInvoice}
+          onChange={(needInvoice) => onChange({ needInvoice })}
+          toggleLabel={strings['booking.invoice.toggle'] ?? ''}
+        >
+          <div className="field">
+            <label htmlFor="co">{strings['booking.invoice.company']}</label>
             <input
-              type="checkbox"
-              checked={details.needInvoice}
-              onChange={(e) => onChange({ needInvoice: e.target.checked })}
+              id="co"
+              className="input"
+              value={details.invoiceCompany}
+              onChange={(e) => onChange({ invoiceCompany: e.target.value })}
+              required
             />
-            <span>{strings['booking.invoice.toggle']}</span>
-          </label>
-          {details.needInvoice && (
-            <div className="grid grid-2">
-              <div className="field">
-                <label htmlFor="co">{strings['booking.invoice.company']}</label>
-                <input
-                  id="co"
-                  className="input"
-                  value={details.invoiceCompany}
-                  onChange={(e) => onChange({ invoiceCompany: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="vat">{strings['booking.invoice.vat']}</label>
-                <input
-                  id="vat"
-                  className="input"
-                  value={details.invoiceVat}
-                  onChange={(e) => onChange({ invoiceVat: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="tax">{strings['booking.invoice.taxOffice']}</label>
-                <input
-                  id="tax"
-                  className="input"
-                  value={details.invoiceTaxOffice}
-                  onChange={(e) => onChange({ invoiceTaxOffice: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="ad">{strings['booking.invoice.address']}</label>
-                <input
-                  id="ad"
-                  className="input"
-                  value={details.invoiceAddress}
-                  onChange={(e) => onChange({ invoiceAddress: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-          )}
-        </section>
+          </div>
+          <div className="field">
+            <label htmlFor="vat">{strings['booking.invoice.vat']}</label>
+            <input
+              id="vat"
+              className="input"
+              value={details.invoiceVat}
+              onChange={(e) => onChange({ invoiceVat: e.target.value })}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="tax">{strings['booking.invoice.taxOffice']}</label>
+            <input
+              id="tax"
+              className="input"
+              value={details.invoiceTaxOffice}
+              onChange={(e) => onChange({ invoiceTaxOffice: e.target.value })}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="ad">{strings['booking.invoice.address']}</label>
+            <input
+              id="ad"
+              className="input"
+              value={details.invoiceAddress}
+              onChange={(e) => onChange({ invoiceAddress: e.target.value })}
+              required
+            />
+          </div>
+        </InvoiceBlock>
 
         <label className="check" id="field-consent">
           <input
@@ -294,10 +281,10 @@ export function StepDetails({
         </label>
 
         <div className="row between">
-          <button type="button" className="btn btn-ghost" onClick={onBack} disabled={busy}>
+          <button type="button" className="btn btn-line" onClick={onBack} disabled={busy}>
             {strings['booking.back']}
           </button>
-          <button className="btn" type="submit" disabled={busy}>
+          <button className="btn btn-gold" type="submit" disabled={busy}>
             {busy ? strings['booking.loading'] : strings['booking.continue']}
           </button>
         </div>

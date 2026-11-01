@@ -34,9 +34,9 @@ const loading = t('booking.loading');
   description={body}
   robots="noindex,nofollow"
 >
-  <section class="section">
+  <section class="state-page">
     <div
-      class="narrow"
+      class="state-card"
       id="not-completed-root"
       data-mode={view.kind}
       data-reference={view.kind === 'live' ? view.reference : ''}
@@ -46,8 +46,9 @@ const loading = t('booking.loading');
       {
         view.kind === 'live' ? (
           <>
-            <div id="live-panel" class="card stack notice-danger">
-              <h1 tabindex="-1">{pageTitle}</h1>
+            <div id="live-panel" class="stack notice-danger">
+              <p class="eyebrow">Payment</p>
+              <h1 class="display" tabindex="-1">{pageTitle}</h1>
               <p>{body}</p>
               <p class="timer" role="status" aria-live="polite">
                 <span id="hold-remain">
@@ -56,30 +57,31 @@ const loading = t('booking.loading');
               </p>
               <p id="not-completed-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
               <div class="row">
-                <button type="button" class="btn" id="try-again" data-loading={loading}>
+                <button type="button" class="btn btn-gold" id="try-again" data-loading={loading}>
                   {tryAgain}
                 </button>
-                <a class="btn btn-ghost" href="/book#vehicle" id="choose-vehicle">
+                <a class="btn btn-line" href="/book#vehicle" id="choose-vehicle">
                   {chooseVehicle}
                 </a>
               </div>
             </div>
-            <div id="handoff" class="card center stack" role="status" aria-live="polite" hidden>
+            <div id="handoff" class="center stack" role="status" aria-live="polite" hidden>
               <div class="row" style="justify-content: center">
                 <div class="spinner" aria-hidden="true" />
               </div>
-              <h1 id="handoff-title" tabindex="-1">{handoffTitle}</h1>
+              <h1 class="display" id="handoff-title" tabindex="-1">{handoffTitle}</h1>
               <p class="muted">{handoffBody}</p>
               <p>
-                <a class="btn" id="handoff-link" href="#">{handoffFallback}</a>
+                <a class="btn btn-gold" id="handoff-link" href="#">{handoffFallback}</a>
               </p>
             </div>
           </>
         ) : (
-          <div class="card stack notice-danger">
-            <h1 tabindex="-1">{pageTitle}</h1>
+          <div class="stack notice-danger">
+            <p class="eyebrow">Hold</p>
+            <h1 class="display" tabindex="-1">{pageTitle}</h1>
             <p>{expired}</p>
-            <a class="btn" href="/book">{startAgain}</a>
+            <a class="btn btn-gold" href="/book">{startAgain}</a>
           </div>
         )
       }

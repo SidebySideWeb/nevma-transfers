@@ -1,3 +1,4 @@
+import { Notice, VehicleCard } from '../ui';
 import { formatEuro } from './format';
 import type { BookingStrings, ContactInfo, OptionsData, QuoteData, SearchState } from './types';
 
@@ -41,14 +42,14 @@ export function StepVehicle({
     <>
       <h1 tabIndex={-1}>{strings['booking.vehicle.title']}</h1>
       {holdExpiredMessage && (
-        <p className="notice notice-danger" role="status">
+        <Notice tone="danger" role="status">
           {strings['booking.hold.expired']}
-        </p>
+        </Notice>
       )}
       {formError && (
-        <p className="notice notice-danger" role="alert">
+        <Notice tone="danger" role="alert">
           {formError}
-        </p>
+        </Notice>
       )}
       <p className="muted">
         {summary} · {quote.pickupAt} (Athens) · {search.passengers} passengers ·{' '}
@@ -58,7 +59,7 @@ export function StepVehicle({
       </p>
 
       {showContact ? (
-        <div className="notice">
+        <Notice>
           <p>{strings['booking.contactUs']}</p>
           <div className="row">
             <a className="btn btn-ghost" href={`tel:${contact.phone.replace(/\s/g, '')}`}>
@@ -68,7 +69,7 @@ export function StepVehicle({
               {contact.email}
             </a>
           </div>
-        </div>
+        </Notice>
       ) : (
         <div className="stack">
           {quote.options.map((opt) => {
@@ -80,64 +81,41 @@ export function StepVehicle({
                 ? strings['error.no_price']
                 : strings['error.unavailable'];
             return (
-              <article
+              <VehicleCard
                 key={opt.classKey}
-                className="card vehicle"
-                aria-disabled={unavailable || undefined}
-              >
-                <div
-                  className="photo"
-                  role="img"
-                  aria-label={meta?.photo?.alt ?? name}
-                  style={
-                    meta?.photo?.url
-                      ? {
-                          backgroundImage: `url(${meta.photo.url})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }
-                      : undefined
-                  }
-                >
-                  {!meta?.photo?.url && 'photo'}
-                </div>
-                <div className="stack">
-                  <div>
-                    <h2>{name}</h2>
-                    <p className="muted">
-                      {[
-                        meta?.tagline,
-                        meta
-                          ? strings['booking.vehicle.capacity']
-                              ?.replace('{passengers}', String(meta.maxPassengers))
-                              .replace('{luggage}', String(meta.maxLuggage))
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </p>
-                  </div>
-                  <div className="meta">
-                    {opt.baseCents != null ? (
-                      <span className="price">{formatEuro(opt.baseCents)}</span>
-                    ) : (
-                      <span className="badge badge-warning">{strings['error.no_price']}</span>
-                    )}
-                    {unavailable ? (
-                      <span className="muted">{reason}</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={busy}
-                        onClick={() => onSelect(opt.classKey)}
-                      >
-                        {busy ? strings['booking.loading'] : strings['booking.vehicle.select']}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </article>
+                name={name}
+                kind={meta?.tagline || undefined}
+                detail={
+                  meta
+                    ? strings['booking.vehicle.capacity']
+                        ?.replace('{passengers}', String(meta.maxPassengers))
+                        .replace('{luggage}', String(meta.maxLuggage))
+                    : undefined
+                }
+                photoUrl={meta?.photo?.url}
+                photoAlt={meta?.photo?.alt ?? name}
+                disabled={unavailable}
+                price={
+                  opt.baseCents != null ? (
+                    formatEuro(opt.baseCents)
+                  ) : (
+                    <span className="badge badge-warning">{strings['error.no_price']}</span>
+                  )
+                }
+                status={unavailable ? <span className="muted">{reason}</span> : undefined}
+                action={
+                  unavailable ? undefined : (
+                    <button
+                      type="button"
+                      className="btn btn-gold"
+                      disabled={busy}
+                      onClick={() => onSelect(opt.classKey)}
+                    >
+                      {busy ? strings['booking.loading'] : strings['booking.vehicle.select']}
+                    </button>
+                  )
+                }
+              />
             );
           })}
         </div>

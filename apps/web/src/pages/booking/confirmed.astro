@@ -24,9 +24,9 @@ const homeLabel = t('booking.confirmed.home');
   description={waiting}
   robots="noindex,nofollow"
 >
-  <section class="section">
+  <section class="state-page">
     <div
-      class="narrow stack"
+      class="state-card stack"
       id="confirmed-root"
       data-order-code={orderCode}
       data-body-template={bodyTemplate}
@@ -40,22 +40,23 @@ const homeLabel = t('booking.confirmed.home');
 
       <section
         id="confirmed-ok"
-        class="card stack notice-success"
+        class="stack notice-success"
         aria-labelledby="confirmed-title"
         hidden
       >
-        <h1 id="confirmed-title" tabindex="-1">{title}</h1>
+        <p class="eyebrow">Confirmed</p>
+        <h1 class="display" id="confirmed-title" tabindex="-1">{title}</h1>
         <p id="confirmed-body"></p>
-        <a class="btn btn-ghost" href="/">{homeLabel}</a>
+        <a class="btn btn-gold" href="/">{homeLabel}</a>
       </section>
 
-      <div id="confirmed-timeout" class="notice" role="status" hidden>
-        <h1 id="confirmed-timeout-title" tabindex="-1">{title}</h1>
+      <div id="confirmed-timeout" class="stack" role="status" hidden>
+        <h1 class="display" id="confirmed-timeout-title" tabindex="-1">{title}</h1>
         <p>{timeoutMsg}</p>
         <p>
           <a href={`tel:${settings.phone.replace(/\s/g, '')}`}>{settings.phone}</a>
         </p>
-        <a class="btn btn-ghost" href="/">{homeLabel}</a>
+        <a class="btn btn-line" href="/">{homeLabel}</a>
       </div>
     </div>
   </section>

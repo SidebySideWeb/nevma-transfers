@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react';
+import { Notice, Stepper, TripTypeSwitch, ZoneSelect } from '../ui';
 import type { BookingStrings, OptionsData, SearchState } from './types';
 
 type Props = {
@@ -39,12 +40,13 @@ export function StepSearch({
   };
 
   const errorKeys = Object.keys(errors);
+  const zones = options.zones.map((z) => ({ value: z.code, label: z.name }));
 
   return (
     <>
       <h1 tabIndex={-1}>{strings['booking.search.title']}</h1>
       {(formError || errorKeys.length > 0) && (
-        <div className="notice notice-danger" role="alert" tabIndex={-1} id="error-summary">
+        <Notice tone="danger" role="alert" tabIndex={-1} id="error-summary">
           <p>
             <strong>{strings['booking.errors.summary']}</strong>
           </p>
@@ -56,101 +58,66 @@ export function StepSearch({
               </li>
             ))}
           </ul>
-        </div>
+        </Notice>
       )}
       <form className="card stack" onSubmit={handleSubmit} noValidate>
-        <fieldset className="field">
-          <legend className="sr-only">Booking type</legend>
-          <div className="segmented" role="radiogroup" aria-label="Booking type">
-            <label>
-              <input
-                type="radio"
-                name="type"
-                value="transfer"
-                checked={search.type === 'transfer'}
-                onChange={() => onChange({ type: 'transfer' })}
-                aria-label={strings['booking.toggle.transfer']}
-              />
-              <span aria-hidden="true">{strings['booking.toggle.transfer']}</span>
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="type"
-                value="hourly"
-                checked={search.type === 'hourly'}
-                onChange={() => onChange({ type: 'hourly' })}
-                aria-label={strings['booking.toggle.hourly']}
-              />
-              <span aria-hidden="true">{strings['booking.toggle.hourly']}</span>
-            </label>
-          </div>
-        </fieldset>
+        <TripTypeSwitch
+          value={search.type}
+          onChange={(type) => onChange({ type })}
+          transferLabel={strings['booking.toggle.transfer'] ?? ''}
+          hourlyLabel={strings['booking.toggle.hourly'] ?? ''}
+          groupLabel="Booking type"
+        />
 
         <div className="grid grid-2">
-          <div className="field" id="field-fromZone">
-            <label htmlFor="from">{strings['booking.pickup.zone']}</label>
-            <select
+          <div id="field-fromZone">
+            <ZoneSelect
               id="from"
-              className="input"
+              name="fromZone"
+              label={strings['booking.pickup.zone'] ?? ''}
+              options={zones}
               value={search.fromZone}
-              aria-invalid={Boolean(errors.fromZone)}
-              aria-describedby={errors.fromZone ? 'from-err' : undefined}
-              onChange={(e) => onChange({ fromZone: e.target.value })}
-            >
-              {options.zones.map((z) => (
-                <option key={z.code} value={z.code}>
-                  {z.name}
-                </option>
-              ))}
-            </select>
-            {errors.fromZone && (
-              <span className="error" id="from-err">
-                {errors.fromZone}
-              </span>
-            )}
+              onChange={(fromZone) => onChange({ fromZone })}
+              error={errors.fromZone}
+              swapWith={
+                search.type === 'transfer'
+                  ? {
+                      otherValue: search.toZone,
+                      onSwap: () => onChange({ fromZone: search.toZone, toZone: search.fromZone }),
+                    }
+                  : undefined
+              }
+            />
           </div>
 
           {search.type === 'transfer' ? (
-            <div className="field" id="field-toZone">
-              <label htmlFor="to">{strings['booking.dropoff.zone']}</label>
-              <select
+            <div id="field-toZone">
+              <ZoneSelect
                 id="to"
-                className="input"
+                name="toZone"
+                label={strings['booking.dropoff.zone'] ?? ''}
+                options={zones}
                 value={search.toZone}
-                aria-invalid={Boolean(errors.toZone)}
-                onChange={(e) => onChange({ toZone: e.target.value })}
-              >
-                {options.zones.map((z) => (
-                  <option key={z.code} value={z.code}>
-                    {z.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(toZone) => onChange({ toZone })}
+                error={errors.toZone}
+              />
             </div>
           ) : (
-            <div className="field" id="field-hours">
-              <label htmlFor="hours">{strings['booking.hours.label']}</label>
-              <select
+            <div id="field-hours">
+              <Stepper
                 id="hours"
-                className="input"
+                label={strings['booking.hours.label'] ?? ''}
                 value={search.hours}
-                aria-describedby="hours-hint"
-                onChange={(e) => onChange({ hours: Number(e.target.value) })}
-              >
-                {Array.from({ length: hourBounds.max - hourBounds.min + 1 }, (_, i) => hourBounds.min + i).map(
-                  (h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ),
-                )}
-              </select>
-              <span className="hint" id="hours-hint">
+                min={hourBounds.min}
+                max={hourBounds.max}
+                onChange={(hours) => onChange({ hours })}
+                error={errors.hours}
+              />
+              <p className="hint" id="hours-hint">
                 {strings['booking.hours.hint']
                   ?.replace('{min}', String(hourBounds.min))
                   .replace('{max}', String(hourBounds.max))}
-              </span>
+              </p>
             </div>
           )}
 
@@ -176,6 +143,8 @@ export function StepSearch({
             )}
           </div>
 
+          {/* ponytail: plain number inputs, not Steppers. A Stepper clamps to a max, but over-capacity
+              requests must reach the server (it answers no_price/unavailable, see e2e). */}
           <div className="grid grid-2">
             <div className="field">
               <label htmlFor="pax">{strings['booking.passengers']}</label>
@@ -202,7 +171,7 @@ export function StepSearch({
           </div>
         </div>
 
-        <button className="btn btn-block" type="submit" disabled={busy}>
+        <button className="btn btn-gold btn-block" type="submit" disabled={busy}>
           {busy ? strings['booking.loading'] : strings['booking.search.submit']}
         </button>
       </form>

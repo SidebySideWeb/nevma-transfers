@@ -33,5 +33,11 @@ const seo = resolveSeo({
 ---
 
 <BaseLayout seo={seo}>
-  <Sections sections={page.sections} />
+  <section class="legal-page">
+    <div class="narrow">
+      <p class="eyebrow">Legal</p>
+      <h1 class="display">{page.title}</h1>
+      <Sections sections={page.sections} />
+    </div>
+  </section>
 </BaseLayout>

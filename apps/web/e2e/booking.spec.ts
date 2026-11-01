@@ -86,7 +86,8 @@ test('hourly booking for 4 hours', async ({ page }) => {
   await expect(page.getByRole('radio', { name: /By the hour/i })).toBeChecked({ timeout: 5_000 });
   await expect(page.locator('#to')).toHaveCount(0);
   await page.locator('#from').selectOption('demo-centre');
-  await page.locator('#hours').selectOption('4');
+  await page.getByRole('button', { name: /Increase Number of hours/i }).click(); // 3 -> 4
+  await expect(page.locator('#hours')).toHaveValue('4');
   // Farther out than AC-01 transfers so holds do not collide (hourly needs a long window).
   await page.locator('#date').fill(futureLocal(36));
   await page.getByRole('button', { name: /See vehicles/i }).click();

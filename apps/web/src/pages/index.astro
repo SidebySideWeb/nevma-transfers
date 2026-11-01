@@ -2,15 +2,13 @@
 export const prerender = true;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Sections from '../components/sections/Sections.astro';
+import HomeQuickBook from '../components/home/HomeQuickBook';
 import { getSiteSettings } from '../lib/sanity/content';
 import { getPageBySlug } from '../lib/sanity/pages';
-import {
-  faqPageJsonLd,
-  organizationJsonLd,
-  resolveSeo,
-  type FaqItem,
-} from '../lib/seo';
+import { createSanityClient, sanityConfigured } from '../lib/sanity/client';
+import { VEHICLE_CLASSES_QUERY } from '../lib/sanity/queries';
+import { organizationJsonLd, resolveSeo, faqPageJsonLd, type FaqItem } from '../lib/seo';
+import { t } from '../lib/strings';
 
 const settings = await getSiteSettings();
 const page = await getPageBySlug('home');
@@ -18,6 +16,42 @@ const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://
   /\/$/,
   '',
 );
+
+const hero = page.sections.find((s) => s._type === 'hero');
+const heroHeading = hero && hero._type === 'hero' ? hero.heading : 'Discreet luxury, door to door.';
+const heroSub =
+  hero && hero._type === 'hero'
+    ? hero.subheading
+    : 'Chauffeured Mercedes-Benz transfers across Athens, with optional close-protection escorts.';
+const heroImage =
+  hero && hero._type === 'hero' ? hero.image?.asset?.url : undefined;
+
+let fleet: Array<{
+  key: string;
+  name: string;
+  tagline?: string | null;
+  photoUrl?: string | null;
+  photoAlt?: string | null;
+}> = [];
+if (sanityConfigured()) {
+  try {
+    const client = createSanityClient();
+    const rows = await client.fetch(VEHICLE_CLASSES_QUERY);
+    fleet = (rows ?? [])
+      .filter((r): r is NonNullable<typeof r> & { key: string; name: string } =>
+        Boolean(r?.key && r?.name),
+      )
+      .map((r) => ({
+        key: r.key,
+        name: r.name,
+        tagline: r.tagline,
+        photoUrl: r.photos?.[0]?.asset?.url ?? null,
+        photoAlt: r.photos?.[0]?.alt ?? r.name,
+      }));
+  } catch {
+    fleet = [];
+  }
+}
 
 const seo = resolveSeo({
   pageTitle: page.title,
@@ -32,11 +66,176 @@ const faqItems: FaqItem[] = page.sections
   .flatMap((s) => (s._type === 'faq' ? s.items : []));
 
 const jsonLd: unknown[] = [organizationJsonLd(settings, siteUrl)];
-if (faqItems.length > 0) {
-  jsonLd.push(faqPageJsonLd(faqItems));
-}
+if (faqItems.length > 0) jsonLd.push(faqPageJsonLd(faqItems));
+
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const accentFleet = t('home.fleet.accent');
+const fleetTitleParts = t('home.fleet.title', { accent: accentFleet }).split(accentFleet);
+const ctaAccent = t('home.cta.accent');
+const ctaTitleParts = t('home.cta.title', { accent: ctaAccent }).split(ctaAccent);
+const divAccent = t('home.divisions.accent');
+const divTitleParts = t('home.divisions.title', { accent: divAccent }).split(divAccent);
 ---
 
 <BaseLayout seo={seo} jsonLd={jsonLd}>
-  <Sections sections={page.sections} />
+  <section
+    class="home-hero"
+    style={heroImage ? `--hero-image: url(${heroImage})` : undefined}
+  >
+    <div class="wrap home-hero-inner">
+      <p class="eyebrow">{t('home.eyebrow')}</p>
+      <h1 class="display home-hero-title">
+        {
+          heroHeading.includes(',') ? (
+            <>
+              {heroHeading.split(',')[0]},
+              <br />
+              <em>{heroHeading.split(',').slice(1).join(',').trim()}</em>
+            </>
+          ) : (
+            heroHeading
+          )
+        }
+      </h1>
+      {heroSub ? <p class="home-hero-lead">{heroSub}</p> : null}
+      <div class="home-hero-actions">
+        <a class="btn btn-gold" href="/book">{t('home.cta.book')} <span aria-hidden="true">→</span></a>
+        <a class="btn btn-line" href="/fleet">{t('home.cta.fleet')}</a>
+      </div>
+      <HomeQuickBook
+        client:load
+        transferLabel={t('booking.toggle.transfer')}
+        hourlyLabel={t('booking.toggle.hourly')}
+        fromLabel={t('booking.pickup.zone')}
+        toLabel={t('booking.dropoff.zone')}
+        hoursLabel={t('booking.hours.label')}
+        dateLabel={t('booking.pickup.datetime')}
+        timeLabel={t('booking.pickup.datetime')}
+        passengersLabel={t('booking.passengers')}
+        submitLabel={t('home.quick.submit')}
+        swapLabel={t('booking.swap')}
+        note={t('home.quick.note')}
+      />
+    </div>
+  </section>
+
+  <section class="home-trust" aria-label="Promises">
+    <div class="wrap home-trust-grid">
+      {
+        [
+          ['home.trust.247.title', 'home.trust.247.text', '24'],
+          ['home.trust.fixed.title', 'home.trust.fixed.text', '€'],
+          ['home.trust.pay.title', 'home.trust.pay.text', '✓'],
+          ['home.trust.privacy.title', 'home.trust.privacy.text', '§'],
+        ].map(([titleKey, textKey, icon]) => (
+          <div class="home-trust-item">
+            <span class="home-trust-icon" aria-hidden="true">
+              {icon}
+            </span>
+            <div>
+              <div class="home-trust-title">{t(titleKey as 'home.trust.247.title')}</div>
+              <div class="muted">{t(textKey as 'home.trust.247.text')}</div>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="home-section-head">
+        <div>
+          <p class="eyebrow">{t('home.divisions.eyebrow')}</p>
+          <h2 class="display">
+            {divTitleParts[0]}
+            <em>{divAccent}</em>
+            {divTitleParts[1] ?? ''}
+          </h2>
+        </div>
+        <p class="muted">{t('home.divisions.lead')}</p>
+      </div>
+      <div class="home-divisions">
+        <a class="home-division card-zoom" href="/fleet">
+          <div class="home-division-media media-fleet" aria-hidden="true"></div>
+          <div class="home-division-body">
+            <p class="eyebrow">{t('home.transfer.eyebrow')}</p>
+            <h3 class="display">{t('home.transfer.title')}</h3>
+            <p class="muted">{t('home.transfer.text')}</p>
+            <span class="link-arrow">{t('home.transfer.link')} →</span>
+          </div>
+        </a>
+        <a class="home-division card-zoom" href="/vip-security">
+          <div class="home-division-media media-security" aria-hidden="true"></div>
+          <div class="home-division-body">
+            <p class="eyebrow">{t('home.security.eyebrow')}</p>
+            <h3 class="display">{t('home.security.title')}</h3>
+            <p class="muted">{t('home.security.text')}</p>
+            <span class="link-arrow">{t('home.security.link')} →</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  {
+    fleet.length > 0 && (
+      <section class="section home-fleet">
+        <div class="wrap home-fleet-grid">
+          <div class="home-fleet-copy">
+            <p class="eyebrow">{t('home.fleet.eyebrow')}</p>
+            <h2 class="display">
+              {fleetTitleParts[0]}
+              <em>{accentFleet}</em>
+              {fleetTitleParts[1] ?? ''}
+            </h2>
+            <p class="muted">{t('home.fleet.lead')}</p>
+            <ul class="home-fleet-tabs" role="list">
+              {fleet.map((v) => (
+                <li>
+                  <a href={`/fleet/${v.key}`}>{v.name}</a>
+                </li>
+              ))}
+            </ul>
+            <a class="link-arrow" href="/fleet">
+              {t('home.fleet.compare')} →
+            </a>
+          </div>
+          <div class="home-fleet-panel">
+            {fleet[0]?.photoUrl ? (
+              <img src={fleet[0].photoUrl} alt={fleet[0].photoAlt || fleet[0].name} loading="lazy" />
+            ) : (
+              <div class="media" aria-hidden="true" />
+            )}
+            <div class="home-fleet-panel-body">
+              <p class="eyebrow">Mercedes-Benz</p>
+              <h3 class="display accent">{fleet[0]?.name}</h3>
+              {fleet[0]?.tagline ? <p class="muted">{fleet[0].tagline}</p> : null}
+              <a class="btn btn-gold" href="/book">
+                {t('home.cta.book')}
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="home-cta">
+    <div class="wrap home-cta-inner">
+      <div>
+        <p class="eyebrow">{t('home.cta.eyebrow')}</p>
+        <h2 class="display">
+          {ctaTitleParts[0]}
+          <em>{ctaAccent}</em>
+          {ctaTitleParts[1] ?? ''}
+        </h2>
+        <p class="muted">{t('home.cta.lead')}</p>
+      </div>
+      <div class="home-hero-actions">
+        <a class="btn btn-gold" href="/book">{t('home.cta.book')}</a>
+        <a class="btn btn-line" href={phoneHref}>{settings.phone}</a>
+      </div>
+    </div>
+  </section>
 </BaseLayout>

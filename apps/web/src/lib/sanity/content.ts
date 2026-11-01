@@ -7,11 +7,13 @@ export type SiteSettings = {
   companyName: string;
   tagline?: string;
   phone: string;
+  mobilePhone?: string;
   email: string;
   bookingNotificationEmail: string;
   address?: string;
   openingHours?: string;
   timezone?: string;
+  showFromPrices?: boolean | null;
   defaultSeo?: {
     title?: string;
     description?: string;
@@ -23,15 +25,17 @@ export type SiteSettings = {
 };
 
 const FALLBACK_SETTINGS: SiteSettings = {
-  companyName: 'TEM Protection',
-  phone: '+30 210 000 0000 (DEMO)',
-  email: 'hello@example.com',
+  companyName: 'Elite Protection',
+  phone: '+30 210 970 6967',
+  mobilePhone: '+30 698 181 0410',
+  email: 'info@eliteprotection.gr',
   bookingNotificationEmail: 'office@example.com',
   address: 'DEMO address, Athens, Greece',
   openingHours: 'DEMO: every day, 24 hours',
   timezone: 'Europe/Athens',
+  showFromPrices: true,
   defaultSeo: {
-    title: 'TEM Protection (DEMO)',
+    title: 'Elite Protection (DEMO)',
     description: 'DEMO description: premium transfers and VIP security in Athens. Book online.',
   },
 };

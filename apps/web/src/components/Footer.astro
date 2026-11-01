@@ -1,5 +1,6 @@
 ---
 import type { SiteSettings } from '../lib/sanity/content';
+import { t } from '../lib/strings';
 
 interface Props {
   settings: SiteSettings;
@@ -7,39 +8,52 @@ interface Props {
 
 const { settings } = Astro.props;
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const mobile = settings.mobilePhone;
+const mobileHref = mobile ? `tel:${mobile.replace(/[^\d+]/g, '')}` : null;
+const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
-  <div class="wrap">
-    <div>
-      <strong>{settings.companyName}</strong>
-      {settings.address && (
-        <>
-          <br />
-          {settings.address}
-        </>
-      )}
-      {settings.openingHours && (
-        <>
-          <br />
-          {settings.openingHours}
-        </>
-      )}
+  <div class="wrap site-footer-grid">
+    <div class="site-footer-brand">
+      <img src="/logo-white.png" alt="Elite Protection" width="180" height="64" />
+      {
+        settings.tagline ? (
+          <p class="muted">{settings.tagline}</p>
+        ) : (
+          <p class="muted">VIP Transfer and VIP Security in Athens.</p>
+        )
+      }
     </div>
-    <div>
+    <div class="site-footer-col">
+      <div class="eyebrow">{t('site.footer.transfers')}</div>
+      <a href="/fleet">{t('nav.fleet')}</a>
+      <a href="/services">{t('nav.services')}</a>
+      <a href="/book">{t('nav.book')}</a>
+      <a href="/booking/find">Find my booking</a>
+    </div>
+    <div class="site-footer-col">
+      <div class="eyebrow">{t('site.footer.company')}</div>
+      <a href="/vip-security">{t('nav.vipSecurity')}</a>
+      <a href="/about">{t('nav.about')}</a>
+      <a href="/contact">{t('nav.contact')}</a>
+    </div>
+    <div class="site-footer-col site-footer-contact">
+      <div class="eyebrow">{t('site.footer.247')}</div>
       <a href={phoneHref}>{settings.phone}</a>
-      <br />
-      <a href={`mailto:${settings.email}`}>{settings.email}</a>
+      {mobile && mobileHref ? <a href={mobileHref}>{mobile}</a> : null}
+      <a class="accent" href={`mailto:${settings.email}`}>{settings.email}</a>
+    </div>
+  </div>
+  <div class="wrap site-footer-bar">
+    <div>
+      © {year} {settings.companyName} · {t('site.pricesIncludeVat')}
     </div>
     <nav aria-label="Legal">
-      <a href="/privacy">Privacy</a>
-      {' · '}
-      <a href="/cookies">Cookies</a>
-      {' · '}
       <a href="/terms">Terms</a>
-      {' · '}
+      <a href="/privacy">Privacy</a>
+      <a href="/cookies">Cookies</a>
       <a href="/cancellation">Cancellation</a>
-      {' · '}
       <button type="button" class="btn-text">Cookie settings</button>
     </nav>
   </div>

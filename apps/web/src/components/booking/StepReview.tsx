@@ -1,3 +1,4 @@
+import { Notice } from '../ui';
 import { formatEuro } from './format';
 import { HoldTimer } from './HoldTimer';
 import type { BookingData, BookingStrings } from './types';
@@ -32,11 +33,11 @@ export function StepReview({
         onExpired={onHoldExpired}
       />
       {formError && (
-        <p className="notice notice-danger" role="alert">
+        <Notice tone="danger" role="alert">
           {formError}
-        </p>
+        </Notice>
       )}
-      <section className="card stack">
+      <section className="card stack pay-card">
         <p className="eyebrow">Booking {booking.reference}</p>
         <dl className="summary">
           {booking.lines.map((line) => (
@@ -50,7 +51,7 @@ export function StepReview({
           <span>{strings['booking.total']}</span>
           <span>{formatEuro(booking.totalCents)}</span>
         </p>
-        <button className="btn btn-block" type="button" disabled={busy} onClick={onPay}>
+        <button className="btn btn-gold btn-block" type="button" disabled={busy} onClick={onPay}>
           {busy ? strings['booking.loading'] : strings['booking.pay']}
         </button>
       </section>

@@ -15,6 +15,7 @@ export default tseslint.config(
       'packages/db/**',
       'design/**',
       'seed/**',
+      '**/sanity.types.ts',
     ],
   },
   eslint.configs.recommended,
