@@ -8,108 +8,216 @@ import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
-const { data: classes } = await supabase
-  .from('vehicle_classes')
-  .select('id, key, max_passengers, max_luggage, buffer_minutes, active, sort_order')
-  .order('sort_order');
-const { data: vehicles } = await supabase
-  .from('vehicles')
-  .select('id, label, status, class_id, vehicle_classes(key)')
-  .order('label');
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const pageError =
+  actionErr(Astro.getActionResult?.(actions.addClass)) ||
+  actionErr(Astro.getActionResult?.(actions.addVehicle)) ||
+  actionErr(Astro.getActionResult?.(actions.updateVehicle)) ||
+  actionErr(Astro.getActionResult?.(actions.deleteVehicle)) ||
+  actionErr(Astro.getActionResult?.(actions.deleteClass));
+
+const [{ data: classes }, { data: vehicles }, { data: bookings }, sanityKeys] = await Promise.all([
+  supabase
+    .from('vehicle_classes')
+    .select('id, key, name, max_passengers, max_luggage, buffer_minutes, active, sort_order')
+    .order('sort_order'),
+  supabase.from('vehicles').select('id, label, status, note, class_id').order('label'),
+  supabase
+    .from('bookings')
+    .select('id, vehicle_id, class_id, pickup_at, reference, status')
+    .in('status', ['confirmed', 'assigned', 'pending'])
+    .gt('pickup_at', new Date().toISOString())
+    .order('pickup_at'),
+  (async () => {
+    try {
+      const projectId = import.meta.env.SANITY_PROJECT_ID;
+      const dataset = import.meta.env.SANITY_DATASET;
+      const token = import.meta.env.SANITY_READ_TOKEN;
+      if (!projectId || !dataset) return new Set<string>();
+      const { createClient } = await import('@sanity/client');
+      const client = createClient({
+        projectId,
+        dataset,
+        apiVersion: '2025-01-01',
+        useCdn: false,
+        token: token || undefined,
+      });
+      const rows = await client.fetch<{ key: string }[]>('*[_type == "vehicleClass"]{key}');
+      return new Set((rows ?? []).map((r) => r.key).filter(Boolean));
+    } catch {
+      return new Set<string>();
+    }
+  })(),
+]);
+
+const classById = new Map((classes ?? []).map((c) => [c.id, c]));
+const vehicleCount = new Map<string, number>();
+for (const v of vehicles ?? []) {
+  vehicleCount.set(v.class_id, (vehicleCount.get(v.class_id) ?? 0) + 1);
+}
+
+const bookedVehicleIds = new Set(
+  (bookings ?? []).map((b) => b.vehicle_id).filter((id): id is string => Boolean(id)),
+);
+const nextByVehicle = new Map<string, { pickup_at: string; reference: string }>();
+for (const b of bookings ?? []) {
+  if (!b.vehicle_id || nextByVehicle.has(b.vehicle_id)) continue;
+  nextByVehicle.set(b.vehicle_id, { pickup_at: b.pickup_at, reference: b.reference });
+}
+
+const waitingByClass = new Map<string, number>();
+for (const b of bookings ?? []) {
+  if (b.vehicle_id || !['confirmed', 'assigned'].includes(b.status)) continue;
+  waitingByClass.set(b.class_id, (waitingByClass.get(b.class_id) ?? 0) + 1);
+}
+
+function statusBadge(status: string) {
+  if (status === 'active') return { cls: 's-confirmed', label: 'Active' };
+  if (status === 'maintenance') return { cls: 's-pending', label: 'In service' };
+  return { cls: 's-completed', label: 'Retired' };
+}
+
+function fmtNext(iso: string) {
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Athens',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
 ---
 
 <AdminLayout title="Fleet" current="fleet" staffEmail={staff.email}>
-  <section class="stack" aria-labelledby="c-h">
-    <h2 id="c-h">Vehicle classes</h2>
-    {
-      (classes ?? []).map((c) => (
-        <form method="POST" action={actions.saveFleet} class="panel stack">
-          <input type="hidden" name="kind" value="class" />
-          <input
-            type="hidden"
-            name="payloadJson"
-            value={JSON.stringify({
-              id: c.id,
-              maxPassengers: String(c.max_passengers),
-              maxLuggage: String(c.max_luggage),
-              bufferMinutes: String(c.buffer_minutes),
-              active: String(c.active),
-              sortOrder: String(c.sort_order),
-            })}
-            class="payload"
-          />
-          <h3>{c.key}</h3>
-          <div class="grid grid-2">
-            <div class="field">
-              <label for={`mp-${c.id}`}>Max passengers</label>
-              <input class="input mp" id={`mp-${c.id}`} value={c.max_passengers} />
-            </div>
-            <div class="field">
-              <label for={`ml-${c.id}`}>Max luggage</label>
-              <input class="input ml" id={`ml-${c.id}`} value={c.max_luggage} />
-            </div>
-            <div class="field">
-              <label for={`buf-${c.id}`}>Buffer minutes</label>
-              <input class="input buf" id={`buf-${c.id}`} value={c.buffer_minutes} />
-            </div>
-            <label class="check">
-              <input type="checkbox" class="act" checked={c.active} /> Active
-            </label>
-          </div>
-          <button class="btn btn-quiet" type="submit">Save class</button>
-        </form>
-      ))
-    }
+  {
+    pageError && (
+      <div class="banner banner-danger" role="alert">
+        <p>{pageError}</p>
+      </div>
+    )
+  }
+
+  <section class="panel" aria-labelledby="h-cls">
+    <div class="panel-head">
+      <h2 id="h-cls">Vehicle classes</h2>
+      <button class="btn btn-secondary btn-sm" type="button" data-open="add-class">Add class</button>
+    </div>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Vehicle classes table" style="border:0">
+      <table class="table table-cards">
+        <thead>
+          <tr>
+            <th scope="col">Class</th>
+            <th scope="col">Key</th>
+            <th scope="col" class="num">Passengers</th>
+            <th scope="col" class="num">Suitcases</th>
+            <th scope="col" class="num">Buffer</th>
+            <th scope="col" class="num">Vehicles</th>
+            <th scope="col">Online</th>
+            <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            (classes ?? []).map((c) => {
+              const noSanity = !sanityKeys.has(c.key);
+              return (
+                <tr class={c.active ? undefined : 'is-muted'}>
+                  <td class="card-title" data-label="Class">
+                    {c.name}
+                    {noSanity && <span class="badge s-pending">No Sanity page</span>}
+                  </td>
+                  <td data-label="Key" class="mono">
+                    {c.key}
+                  </td>
+                  <td class="num" data-label="Passengers">
+                    {c.max_passengers}
+                  </td>
+                  <td class="num" data-label="Suitcases">
+                    {c.max_luggage}
+                  </td>
+                  <td class="num" data-label="Buffer">
+                    {c.buffer_minutes} min
+                  </td>
+                  <td class="num" data-label="Vehicles">
+                    {vehicleCount.get(c.id) ?? 0}
+                  </td>
+                  <td data-label="Online">
+                    <span class={`badge ${c.active ? 's-confirmed' : 's-completed'}`}>
+                      {c.active ? 'On' : 'Off'}
+                    </span>
+                  </td>
+                  <td class="actions" data-label="">
+                    <a class="btn btn-quiet btn-sm" href={`/fleet/${c.key}`}>
+                      Edit<span class="sr-only"> {c.name}</span>
+                    </a>
+                  </td>
+                </tr>
+              );
+            })
+          }
+        </tbody>
+      </table>
+    </div>
   </section>
 
-  <section class="stack" aria-labelledby="v-h">
-    <h2 id="v-h">Vehicles</h2>
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
+  <section class="panel" aria-labelledby="h-veh" style="margin-top:1.25rem">
+    <div class="panel-head">
+      <h2 id="h-veh">Vehicles</h2>
+      <button class="btn btn-secondary btn-sm" type="button" data-open="add-vehicle">Add vehicle</button>
+    </div>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Vehicles table" style="border:0">
       <table class="table table-cards">
         <thead>
           <tr>
             <th scope="col">Label</th>
             <th scope="col">Class</th>
+            <th scope="col">Model (staff only)</th>
             <th scope="col">Status</th>
-            <th scope="col">Save</th>
+            <th scope="col">Next booking</th>
           </tr>
         </thead>
         <tbody>
           {
             (vehicles ?? []).map((v) => {
-              const ck = (v.vehicle_classes as { key?: string } | null)?.key ?? '-';
+              const cls = classById.get(v.class_id);
+              const badge = statusBadge(v.status);
+              const next = nextByVehicle.get(v.id);
               return (
                 <tr>
-                  <td colspan="4">
-                    <form method="POST" action={actions.saveFleet} class="row" style="align-items:end;gap:var(--space-2)">
-                      <input type="hidden" name="kind" value="vehicle" />
-                      <input type="hidden" name="payloadJson" class="payload" value="" />
-                      <input type="hidden" class="vid" value={v.id} />
-                      <div class="field">
-                        <label for={`vl-${v.id}`}>Label</label>
-                        <input class="input label" id={`vl-${v.id}`} value={v.label} />
-                      </div>
-                      <div class="field">
-                        <label for={`vc-${v.id}`}>Class</label>
-                        <input class="input" id={`vc-${v.id}`} value={ck} disabled />
-                      </div>
-                      <div class="field">
-                        <label for={`vs-${v.id}`}>Status</label>
-                        <Select
-                          id={`vs-${v.id}`}
-                          class="input status"
-                          options={[
-                            { value: 'active', label: 'active', selected: v.status === 'active' },
-                            {
-                              value: 'inactive',
-                              label: 'inactive',
-                              selected: v.status === 'inactive',
-                            },
-                          ]}
-                        />
-                      </div>
-                      <button class="btn btn-quiet" type="submit">Save</button>
-                    </form>
+                  <td class="card-title" data-label="Label">
+                    <button
+                      class="btn btn-quiet btn-sm"
+                      type="button"
+                      data-edit-vehicle={JSON.stringify({
+                        id: v.id,
+                        label: v.label,
+                        classId: v.class_id,
+                        note: v.note ?? '',
+                        status: v.status,
+                        used: bookedVehicleIds.has(v.id),
+                      })}
+                    >
+                      {v.label}
+                    </button>
+                  </td>
+                  <td data-label="Class">{cls?.name ?? '—'}</td>
+                  <td data-label="Model">{v.note || '—'}</td>
+                  <td data-label="Status">
+                    <span class={`badge ${badge.cls}`}>{badge.label}</span>
+                  </td>
+                  <td data-label="Next">
+                    {next ? `${fmtNext(next.pickup_at)} · ${next.reference}` : '—'}
                   </td>
                 </tr>
               );
@@ -121,27 +229,237 @@ const { data: vehicles } = await supabase
   </section>
 </AdminLayout>
 
-<script>
-  document.querySelectorAll('form').forEach((form) => {
-    form.addEventListener('submit', () => {
-      const kind = (form.querySelector('input[name="kind"]') as HTMLInputElement)?.value;
-      const payload = form.querySelector('.payload') as HTMLInputElement;
-      if (kind === 'class') {
-        payload.value = JSON.stringify({
-          id: JSON.parse(payload.value).id,
-          maxPassengers: (form.querySelector('.mp') as HTMLInputElement).value,
-          maxLuggage: (form.querySelector('.ml') as HTMLInputElement).value,
-          bufferMinutes: (form.querySelector('.buf') as HTMLInputElement).value,
-          active: String((form.querySelector('.act') as HTMLInputElement).checked),
-          sortOrder: '0',
-        });
-      } else if (kind === 'vehicle') {
-        payload.value = JSON.stringify({
-          id: (form.querySelector('.vid') as HTMLInputElement).value,
-          label: (form.querySelector('.label') as HTMLInputElement).value,
-          status: (form.querySelector('.status') as HTMLSelectElement).value,
-        });
-      }
+<dialog class="dialog" id="add-class" aria-labelledby="d-ac">
+  <form method="POST" action={actions.addClass}>
+    <div class="dialog-head">
+      <p class="eyebrow">Fleet</p>
+      <h2 id="d-ac">Add a vehicle class</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <div class="grid-fields">
+        <div class="field">
+          <label for="ac-name">Internal name</label>
+          <input id="ac-name" class="input" name="name" required />
+        </div>
+        <div class="field">
+          <label for="ac-key">Key</label>
+          <input
+            id="ac-key"
+            class="input mono"
+            name="key"
+            required
+            pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+            aria-describedby="ac-key-help"
+          />
+          <p class="help" id="ac-key-help">Lower-case letters, numbers and hyphens. Use the same key in Sanity.</p>
+        </div>
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="ac-pax">Max passengers</label>
+          <input id="ac-pax" class="input" name="maxPassengers" type="number" min="1" max="50" value="3" required />
+        </div>
+        <div class="field">
+          <label for="ac-lug">Max suitcases</label>
+          <input id="ac-lug" class="input" name="maxLuggage" type="number" min="0" max="100" value="2" required />
+        </div>
+        <div class="field">
+          <label for="ac-buf">Buffer (minutes)</label>
+          <input id="ac-buf" class="input" name="bufferMinutes" type="number" min="0" max="240" value="30" required />
+        </div>
+      </div>
+      <p class="help">The class starts offline. Next: add vehicles, prices and the Sanity page, then switch it online.</p>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="add-class">Back</button>
+      <button class="btn" type="submit">Add class</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="add-vehicle" aria-labelledby="d-av">
+  <form method="POST" action={actions.addVehicle}>
+    <div class="dialog-head">
+      <p class="eyebrow">Fleet</p>
+      <h2 id="d-av">Add a vehicle</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <div class="grid-fields">
+        <div class="field">
+          <label for="av-cls">Class</label>
+          <Select
+            id="av-cls"
+            name="classId"
+            required
+            options={(classes ?? []).map((c) => ({
+              value: c.id,
+              label: c.name,
+              meta: c.active ? undefined : 'offline',
+            }))}
+          />
+        </div>
+        <div class="field">
+          <label for="av-lab">Label</label>
+          <input id="av-lab" class="input" name="label" required aria-describedby="av-lab-help" />
+          <p class="help" id="av-lab-help">Unique. Shown to staff and on the calendar.</p>
+        </div>
+      </div>
+      <div class="field">
+        <label for="av-mod">Model, colour, plate (staff only)</label>
+        <input id="av-mod" class="input" name="note" />
+      </div>
+      <input type="hidden" name="status" value="active" />
+      <div id="av-waiting" class="banner banner-info" role="status" hidden>
+        <p></p>
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="add-vehicle">Back</button>
+      <button class="btn" type="submit">Add vehicle</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="edit-vehicle" aria-labelledby="d-ev">
+  <form method="POST" action={actions.updateVehicle} id="edit-vehicle-form">
+    <input type="hidden" name="id" id="ev-id" />
+    <div class="dialog-head">
+      <p class="eyebrow" id="ev-eyebrow">Vehicle</p>
+      <h2 id="d-ev">Edit vehicle</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <div id="ev-error" class="banner banner-danger" role="alert" hidden>
+        <p></p>
+        <a class="btn btn-secondary btn-sm" href="/calendar">Open calendar</a>
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="ev-lab">Label</label>
+          <input id="ev-lab" class="input" name="label" required />
+        </div>
+        <div class="field">
+          <label for="ev-cls">Class</label>
+          <Select
+            id="ev-cls"
+            name="classId"
+            required
+            options={(classes ?? []).map((c) => ({ value: c.id, label: c.name }))}
+          />
+        </div>
+        <div class="field">
+          <label for="ev-st">Status</label>
+          <Select
+            id="ev-st"
+            name="status"
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'maintenance', label: 'Maintenance', meta: 'out for a while' },
+              { value: 'retired', label: 'Retired', meta: 'left the fleet' },
+            ]}
+          />
+        </div>
+      </div>
+      <div class="field">
+        <label for="ev-mod">Model, colour, plate (staff only)</label>
+        <input id="ev-mod" class="input" name="note" />
+      </div>
+      <p class="help">For a few hours off use Block a vehicle instead; it keeps the vehicle active.</p>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="edit-vehicle">Back</button>
+      <button
+        class="btn btn-danger-solid"
+        type="submit"
+        formaction={actions.deleteVehicle}
+        id="ev-delete"
+        hidden
+      >
+        Delete
+      </button>
+      <button class="btn" type="submit">Save vehicle</button>
+    </div>
+  </form>
+</dialog>
+
+<script
+  type="application/json"
+  id="fleet-page-data"
+  set:html={JSON.stringify({
+    waitingByClass: Object.fromEntries(waitingByClass),
+    pageError,
+  })}
+/>
+<script is:inline>
+  const pageData = JSON.parse(document.getElementById('fleet-page-data').textContent || '{}');
+
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-open');
+      const dlg = id ? document.getElementById(id) : null;
+      if (dlg && 'showModal' in dlg) dlg.showModal();
     });
   });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-close');
+      const dlg = id ? document.getElementById(id) : null;
+      if (dlg && 'close' in dlg) dlg.close();
+    });
+  });
+
+  const waiting = pageData.waitingByClass || {};
+  const avCls = document.getElementById('av-cls');
+  const avWaiting = document.getElementById('av-waiting');
+  function refreshWaiting() {
+    if (!avCls || !avWaiting) return;
+    const n = waiting[avCls.value] || 0;
+    if (n > 0) {
+      avWaiting.hidden = false;
+      const p = avWaiting.querySelector('p');
+      if (p) {
+        p.innerHTML =
+          '<strong>' +
+          n +
+          ' booking' +
+          (n === 1 ? '' : 's') +
+          '</strong> in this class ' +
+          (n === 1 ? 'is' : 'are') +
+          ' waiting for a vehicle. Assign them from the calendar after saving.';
+      }
+    } else {
+      avWaiting.hidden = true;
+    }
+  }
+  avCls?.addEventListener('change', refreshWaiting);
+
+  document.querySelectorAll('[data-edit-vehicle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const raw = btn.getAttribute('data-edit-vehicle');
+      if (!raw) return;
+      const v = JSON.parse(raw);
+      document.getElementById('ev-id').value = v.id;
+      document.getElementById('ev-lab').value = v.label;
+      document.getElementById('ev-mod').value = v.note;
+      const cls = document.getElementById('ev-cls');
+      cls.value = v.classId;
+      cls.dispatchEvent(new Event('change', { bubbles: true }));
+      const st = document.getElementById('ev-st');
+      st.value = v.status;
+      st.dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('ev-eyebrow').textContent = v.label;
+      document.getElementById('ev-delete').hidden = v.used;
+      document.getElementById('ev-error').hidden = true;
+      document.getElementById('edit-vehicle').showModal();
+    });
+  });
+
+  if (pageData.pageError && /future booking/i.test(String(pageData.pageError))) {
+    const err = document.getElementById('ev-error');
+    if (err) {
+      err.hidden = false;
+      const p = err.querySelector('p');
+      if (p) p.textContent = String(pageData.pageError);
+      document.getElementById('edit-vehicle')?.showModal();
+    }
+  }
 </script>

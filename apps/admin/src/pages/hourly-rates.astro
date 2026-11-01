@@ -8,15 +8,29 @@ import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(Astro.getActionResult?.(actions.saveHourlyRates));
+
 const { data: classes } = await supabase
   .from('vehicle_classes')
-  .select('id, key, hourly_rates(price_per_hour_cents, min_hours, max_hours)')
-  .eq('active', true)
+  .select('id, key, active, hourly_rates(price_per_hour_cents, min_hours, max_hours)')
   .order('sort_order');
 ---
 
 <AdminLayout title="Hourly rates" current="hourly-rates" staffEmail={staff.email}>
-  <form method="POST" action={actions.saveHourlyRates} class="stack">
+  {
+    pageError && (
+      <div class="banner banner-danger" role="alert">
+        <p>{pageError}</p>
+      </div>
+    )
+  }
+  <form method="POST" action={actions.saveHourlyRates} class="stack" id="hourly-rates-form">
     <input type="hidden" name="rowsJson" id="rowsJson" value="[]" />
     <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
       <table class="table table-cards">
@@ -34,7 +48,10 @@ const { data: classes } = await supabase
               const rate = Array.isArray(c.hourly_rates) ? c.hourly_rates[0] : c.hourly_rates;
               return (
                 <tr data-class-id={c.id}>
-                  <th scope="row">{c.key}</th>
+                  <th scope="row">
+                    {c.key}
+                    {!c.active && <span class="badge s-completed">Off</span>}
+                  </th>
                   <td class="num">
                     <input
                       class="input rate"
@@ -59,17 +76,17 @@ const { data: classes } = await supabase
   </form>
 </AdminLayout>
 
-<script>
-  document.querySelector('form')?.addEventListener('submit', () => {
-    const rows: { classId: string; rateEuros: string; minHours: string; maxHours: string }[] = [];
-    document.querySelectorAll<HTMLTableRowElement>('tbody tr[data-class-id]').forEach((tr) => {
+<script is:inline>
+  document.getElementById('hourly-rates-form')?.addEventListener('submit', () => {
+    const rows = [];
+    document.querySelectorAll('tbody tr[data-class-id]').forEach((tr) => {
       rows.push({
-        classId: tr.dataset.classId!,
-        rateEuros: (tr.querySelector('.rate') as HTMLInputElement).value,
-        minHours: String((tr.querySelector('.min') as HTMLInputElement).value),
-        maxHours: String((tr.querySelector('.max') as HTMLInputElement).value),
+        classId: tr.getAttribute('data-class-id'),
+        rateEuros: tr.querySelector('.rate').value,
+        minHours: String(tr.querySelector('.min').value),
+        maxHours: String(tr.querySelector('.max').value),
       });
     });
-    (document.getElementById('rowsJson') as HTMLInputElement).value = JSON.stringify(rows);
+    document.getElementById('rowsJson').value = JSON.stringify(rows);
   });
 </script>

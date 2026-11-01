@@ -7,35 +7,171 @@ import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
-const { data: zones } = await supabase.from('zones').select('*').order('sort_order');
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const pageError =
+  actionErr(Astro.getActionResult?.(actions.addZone)) ||
+  actionErr(Astro.getActionResult?.(actions.saveZone)) ||
+  actionErr(Astro.getActionResult?.(actions.deleteZone));
+
+const [{ data: zones }, { data: routes }, { data: bookings }] = await Promise.all([
+  supabase.from('zones').select('*').order('sort_order'),
+  supabase.from('zone_routes').select('from_zone_id, to_zone_id'),
+  supabase.from('bookings').select('from_zone_id, to_zone_id'),
+]);
+
+const usedIds = new Set<string>();
+for (const r of routes ?? []) {
+  usedIds.add(r.from_zone_id);
+  usedIds.add(r.to_zone_id);
+}
+for (const b of bookings ?? []) {
+  usedIds.add(b.from_zone_id);
+  if (b.to_zone_id) usedIds.add(b.to_zone_id);
+}
+const bookedIds = new Set<string>();
+for (const b of bookings ?? []) {
+  bookedIds.add(b.from_zone_id);
+  if (b.to_zone_id) bookedIds.add(b.to_zone_id);
+}
 ---
 
 <AdminLayout title="Zones" current="zones" staffEmail={staff.email}>
-  <div class="stack">
-    {
-      (zones ?? []).map((z) => (
-        <form method="POST" action={actions.saveZone} class="panel stack zone-form">
-          <input type="hidden" name="id" value={z.id} />
-          <div class="grid grid-2">
-            <div class="field">
-              <label for={`zc-${z.id}`}>Code</label>
-              <input class="input" id={`zc-${z.id}`} value={z.code} disabled />
-            </div>
-            <div class="field">
-              <label for={`zn-${z.id}`}>Name</label>
-              <input class="input" id={`zn-${z.id}`} name="name" value={z.name} required />
-            </div>
-            <div class="field">
-              <label for={`zo-${z.id}`}>Sort order</label>
-              <input class="input" id={`zo-${z.id}`} name="sortOrder" value={z.sort_order} />
-            </div>
-            <label class="check">
-              <input type="checkbox" name="active" value="true" checked={z.active} /> Active
-            </label>
-          </div>
-          <button class="btn btn-quiet" type="submit">Save zone</button>
-        </form>
-      ))
-    }
+  {
+    pageError && (
+      <div class="banner banner-danger" role="alert">
+        <p>{pageError}</p>
+      </div>
+    )
+  }
+
+  <div class="page-head" style="padding:0 0 1rem;display:flex;justify-content:flex-end">
+    <button class="btn btn-secondary" type="button" data-open="add-zone">Add zone</button>
+  </div>
+
+  <div class="table-wrap" role="region" tabindex="0" aria-labelledby="z-cap">
+    <table class="table table-cards">
+      <caption id="z-cap" class="sr-only">Zones</caption>
+      <thead>
+        <tr>
+          <th scope="col">Order</th>
+          <th scope="col">Zone</th>
+          <th scope="col">Code</th>
+          <th scope="col">Online</th>
+          <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          (zones ?? []).map((z) => {
+            const codeFixed = usedIds.has(z.id);
+            const canDelete = !bookedIds.has(z.id);
+            return (
+              <tr>
+                <td colspan="5">
+                  <form method="POST" action={actions.saveZone} class="row" style="align-items:end;gap:var(--space-2);flex-wrap:wrap">
+                    <input type="hidden" name="id" value={z.id} />
+                    <div class="field">
+                      <label for={`zo-${z.id}`}>Order</label>
+                      <input class="input" id={`zo-${z.id}`} name="sortOrder" type="number" value={z.sort_order} style="width:5rem" />
+                    </div>
+                    <div class="field" style="flex:1;min-width:10rem">
+                      <label for={`zn-${z.id}`}>Zone</label>
+                      <input class="input" id={`zn-${z.id}`} name="name" value={z.name} required />
+                    </div>
+                    <div class="field">
+                      <label for={`zc-${z.id}`}>Code</label>
+                      {
+                        codeFixed ? (
+                          <input class="input mono" id={`zc-${z.id}`} value={z.code} readonly aria-describedby={`zc-help-${z.id}`} />
+                        ) : (
+                          <input
+                            class="input mono"
+                            id={`zc-${z.id}`}
+                            name="code"
+                            value={z.code}
+                            required
+                            pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+                          />
+                        )
+                      }
+                      {codeFixed && (
+                        <p class="help" id={`zc-help-${z.id}`}>
+                          Fixed once used by a route or booking.
+                        </p>
+                      )}
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" name="active" value="true" checked={z.active} />
+                      <span class="sr-only">Online</span>
+                    </label>
+                    <button class="btn btn-quiet btn-sm" type="submit">Save</button>
+                    {
+                      canDelete ? (
+                        <button class="btn btn-danger-solid btn-sm" type="submit" formaction={actions.deleteZone}>
+                          Delete
+                        </button>
+                      ) : (
+                        <span class="muted small">Switch off instead of delete</span>
+                      )
+                    }
+                  </form>
+                </td>
+              </tr>
+            );
+          })
+        }
+      </tbody>
+    </table>
   </div>
 </AdminLayout>
+
+<dialog class="dialog" id="add-zone" aria-labelledby="d-az">
+  <form method="POST" action={actions.addZone}>
+    <div class="dialog-head">
+      <p class="eyebrow">Zones</p>
+      <h2 id="d-az">Add a zone</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <div class="grid-fields">
+        <div class="field">
+          <label for="az-name">Name</label>
+          <input id="az-name" class="input" name="name" required />
+        </div>
+        <div class="field">
+          <label for="az-code">Code</label>
+          <input
+            id="az-code"
+            class="input mono"
+            name="code"
+            required
+            pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+          />
+        </div>
+      </div>
+      <p class="help">Then add its routes and durations on Zone prices; a zone without routes is not offered to customers.</p>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="add-zone">Back</button>
+      <button class="btn" type="submit">Add zone</button>
+    </div>
+  </form>
+</dialog>
+
+<script is:inline>
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.getElementById(btn.getAttribute('data-open'))?.showModal();
+    });
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.getElementById(btn.getAttribute('data-close'))?.close();
+    });
+  });
+</script>

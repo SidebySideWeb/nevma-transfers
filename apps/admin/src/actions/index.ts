@@ -9,6 +9,7 @@ import {
   TripError,
 } from '../lib/office-trip';
 import { callWebsiteDeployHook } from '../lib/deploy-hook';
+import { mapDbError } from '../lib/db-errors';
 import { eurosToCents, optionalEurosToCents } from '../lib/money';
 import {
   clearPricesChanged,
@@ -25,6 +26,16 @@ function requireStaff(locals: App.Locals) {
   }
   return locals.staff;
 }
+
+function throwDb(error: { code?: string; message?: string; details?: string | null } | null, fieldText?: string): never {
+  throw new ActionError({ code: 'BAD_REQUEST', message: mapDbError(error, fieldText) });
+}
+
+const codeKey = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Lower-case letters, numbers and hyphens.');
+const vehicleStatus = z.enum(['active', 'maintenance', 'retired']);
 
 const pickupLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
 
@@ -316,12 +327,13 @@ export const server = {
       }
       const supabase = createSupabaseServerClient(ctx.cookies);
       for (const row of rows) {
-        let rateCents: number;
+        let rateCents: number | null;
         try {
-          rateCents = eurosToCents(row.rateEuros);
+          rateCents = optionalEurosToCents(row.rateEuros);
         } catch {
           throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid hourly rate' });
         }
+        if (rateCents === null) continue; // leave unset classes alone
         const minHours = Number(row.minHours);
         const maxHours = Number(row.maxHours);
         if (!Number.isInteger(minHours) || !Number.isInteger(maxHours) || minHours < 1 || maxHours < minHours) {
@@ -336,7 +348,7 @@ export const server = {
           },
           { onConflict: 'class_id' },
         );
-        if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+        if (error) throwDb(error);
       }
       markPricesChanged(ctx.cookies);
       return { ok: true };
@@ -371,13 +383,191 @@ export const server = {
             active: row.active === 'true' || row.active === 'on',
           })
           .eq('id', row.id);
-        if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+        if (error) throwDb(error);
       }
       markPricesChanged(ctx.cookies);
       return { ok: true };
     },
   }),
 
+  addExtra: defineAction({
+    accept: 'form',
+    input: z.object({
+      code: codeKey,
+      name: z.string().trim().min(1),
+      priceEuros: z.string().min(1),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      let priceCents: number;
+      try {
+        priceCents = eurosToCents(input.priceEuros);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid extra price' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('extras').insert({
+        code: input.code,
+        name: input.name,
+        price_cents: priceCents,
+        active: true,
+      });
+      if (error) throwDb(error, 'Lower-case letters, numbers and hyphens.');
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  deleteExtra: defineAction({
+    accept: 'form',
+    input: z.object({ id: z.string().uuid() }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('extras').delete().eq('id', input.id);
+      if (error) throwDb(error);
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  addClass: defineAction({
+    accept: 'form',
+    input: z.object({
+      key: codeKey,
+      name: z.string().trim().min(1),
+      maxPassengers: z.coerce.number().int().min(1).max(50),
+      maxLuggage: z.coerce.number().int().min(0).max(100),
+      bufferMinutes: z.coerce.number().int().min(0).max(240),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('vehicle_classes').insert({
+        key: input.key,
+        name: input.name,
+        max_passengers: input.maxPassengers,
+        max_luggage: input.maxLuggage,
+        buffer_minutes: input.bufferMinutes,
+        active: false,
+        sort_order: 100,
+      });
+      if (error) throwDb(error, 'Lower-case letters, numbers and hyphens.');
+      markPricesChanged(ctx.cookies);
+      return { ok: true, key: input.key };
+    },
+  }),
+
+  updateClass: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid(),
+      key: codeKey.optional(),
+      name: z.string().trim().min(1),
+      maxPassengers: z.coerce.number().int().min(1).max(50),
+      maxLuggage: z.coerce.number().int().min(0).max(100),
+      bufferMinutes: z.coerce.number().int().min(0).max(240),
+      sortOrder: z.coerce.number().int(),
+      active: z.string().optional(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase
+        .from('vehicle_classes')
+        .update({
+          name: input.name,
+          max_passengers: input.maxPassengers,
+          max_luggage: input.maxLuggage,
+          buffer_minutes: input.bufferMinutes,
+          sort_order: input.sortOrder,
+          active: input.active === 'true' || input.active === 'on',
+          ...(input.key ? { key: input.key } : {}),
+        })
+        .eq('id', input.id);
+      if (error) throwDb(error, 'Lower-case letters, numbers and hyphens.');
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  deleteClass: defineAction({
+    accept: 'form',
+    input: z.object({ id: z.string().uuid() }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('vehicle_classes').delete().eq('id', input.id);
+      if (error) throwDb(error);
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  addVehicle: defineAction({
+    accept: 'form',
+    input: z.object({
+      classId: z.string().uuid(),
+      label: z.string().trim().min(1).max(64),
+      note: z.string().trim().max(200).optional(),
+      status: vehicleStatus.default('active'),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('vehicles').insert({
+        class_id: input.classId,
+        label: input.label,
+        note: input.note || null,
+        status: input.status,
+      });
+      if (error) throwDb(error);
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  updateVehicle: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid(),
+      classId: z.string().uuid(),
+      label: z.string().trim().min(1).max(64),
+      note: z.string().trim().max(200).optional(),
+      status: vehicleStatus,
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase
+        .from('vehicles')
+        .update({
+          class_id: input.classId,
+          label: input.label,
+          note: input.note || null,
+          status: input.status,
+        })
+        .eq('id', input.id);
+      if (error) throwDb(error);
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  deleteVehicle: defineAction({
+    accept: 'form',
+    input: z.object({ id: z.string().uuid() }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('vehicles').delete().eq('id', input.id);
+      if (error) throwDb(error);
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  /** @deprecated Prefer addClass / updateClass / addVehicle / updateVehicle. */
   saveFleet: defineAction({
     accept: 'form',
     input: z.object({
@@ -401,17 +591,41 @@ export const server = {
             sort_order: Number(payload.sortOrder ?? 0),
           })
           .eq('id', id);
-        if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+        if (error) throwDb(error);
       } else {
+        const status = vehicleStatus.safeParse(payload.status);
         const { error } = await supabase
           .from('vehicles')
           .update({
             label: payload.label ?? '',
-            status: (payload.status as 'active' | 'inactive') || 'inactive',
+            status: status.success ? status.data : 'active',
+            note: payload.note || null,
           })
           .eq('id', id);
-        if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+        if (error) throwDb(error);
       }
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  addZone: defineAction({
+    accept: 'form',
+    input: z.object({
+      code: codeKey,
+      name: z.string().trim().min(1),
+      sortOrder: z.coerce.number().int().optional(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('zones').insert({
+        code: input.code,
+        name: input.name,
+        sort_order: input.sortOrder ?? 100,
+        active: true,
+      });
+      if (error) throwDb(error, 'Lower-case letters, numbers and hyphens.');
       markPricesChanged(ctx.cookies);
       return { ok: true };
     },
@@ -421,6 +635,7 @@ export const server = {
     accept: 'form',
     input: z.object({
       id: z.string().uuid(),
+      code: codeKey.optional(),
       name: z.string().min(1),
       sortOrder: z.coerce.number().int(),
       active: z.string().optional(),
@@ -434,9 +649,23 @@ export const server = {
           name: input.name,
           sort_order: input.sortOrder,
           active: input.active === 'true' || input.active === 'on',
+          ...(input.code ? { code: input.code } : {}),
         })
         .eq('id', input.id);
-      if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+      if (error) throwDb(error, 'Lower-case letters, numbers and hyphens.');
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  deleteZone: defineAction({
+    accept: 'form',
+    input: z.object({ id: z.string().uuid() }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('zones').delete().eq('id', input.id);
+      if (error) throwDb(error);
       markPricesChanged(ctx.cookies);
       return { ok: true };
     },

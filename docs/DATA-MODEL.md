@@ -18,7 +18,7 @@ Conventions: money in integer cents (`int`, `check >= 0`), currency `char(3)` de
 | Table | Columns (key ones) | Rules |
 | --- | --- | --- |
 | `vehicle_classes` | `id`, `key` (unique, joins Sanity), `name` (internal), `max_passengers`, `max_luggage`, `buffer_minutes` (default 30, 0–240), `sort_order`, `active` | |
-| `vehicles` | `id`, `class_id`, `label`, `status` (`active`, `maintenance`, `retired`) | only `active` vehicles count for availability |
+| `vehicles` | `id`, `class_id`, `label`, `status` (`active`, `maintenance`, `retired`), `note` (staff-only model/colour/plate) | only `active` vehicles count for availability |
 | `zones` | `id`, `code` (unique), `name`, `sort_order`, `active` | |
 | `zone_routes` | `from_zone_id`, `to_zone_id`, `duration_minutes` | directed (A→B and B→A are two rows); `from <> to` |
 | `zone_prices` | `from_zone_id`, `to_zone_id`, `class_id`, `price_cents`, `currency` | needs a route; no row = no online price (`no_price`) |
@@ -128,4 +128,4 @@ Rules: `docs/OFFICE-BOOKINGS.md`.
 
 ## 0012 — Setup guards (1 Nov 2026)
 
-Rules: `docs/FLEET-SETUP.md`. Triggers on `vehicle_classes`, `vehicles`, `zones`, `extras`: keys and codes fixed once used (`in_use`), no delete of anything with history (switch off or retire), no status or class change for a vehicle with future bookings (`has_future_bookings`), built-in extras `vip-security` and `night-surcharge` kept; unique vehicle labels (`vehicles_label_key`).
+Rules: `docs/FLEET-SETUP.md`. Adds `vehicles.note` (staff-only). Triggers on `vehicle_classes`, `vehicles`, `zones`, `extras`: keys and codes fixed once used (`in_use`), no delete of anything with history (switch off or retire), no status or class change for a vehicle with future bookings (`has_future_bookings`), built-in extras `vip-security` and `night-surcharge` kept; unique vehicle labels (`vehicles_label_key`).

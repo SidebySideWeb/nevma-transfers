@@ -6,68 +6,188 @@ import AdminLayout from '../layouts/AdminLayout.astro';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 
+const BUILTIN = new Set(['vip-security', 'night-surcharge']);
+
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
-const { data: extras } = await supabase.from('extras').select('*').order('code');
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const pageError =
+  actionErr(Astro.getActionResult?.(actions.saveExtras)) ||
+  actionErr(Astro.getActionResult?.(actions.addExtra)) ||
+  actionErr(Astro.getActionResult?.(actions.deleteExtra));
+
+const [{ data: extras }, { data: usedExtras }] = await Promise.all([
+  supabase.from('extras').select('*').order('code'),
+  supabase.from('booking_extras').select('extra_id'),
+]);
+const usedIds = new Set((usedExtras ?? []).map((r) => r.extra_id));
 ---
 
 <AdminLayout title="Extras" current="extras" staffEmail={staff.email}>
+  {
+    pageError && (
+      <div class="banner banner-danger" role="alert">
+        <p>{pageError}</p>
+      </div>
+    )
+  }
+
+  <div class="page-head" style="padding:0 0 1rem;display:flex;justify-content:flex-end">
+    <button class="btn btn-secondary" type="button" data-open="add-extra">Add extra</button>
+  </div>
+
   <form method="POST" action={actions.saveExtras} class="stack">
     <input type="hidden" name="rowsJson" id="rowsJson" value="[]" />
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
+    <div class="table-wrap" role="region" tabindex="0" aria-labelledby="ex-cap">
       <table class="table table-cards">
+        <caption id="ex-cap" class="sr-only">Extras</caption>
         <thead>
           <tr>
+            <th scope="col">Extra</th>
             <th scope="col">Code</th>
-            <th scope="col">Name</th>
             <th scope="col" class="num">Price (€)</th>
-            <th scope="col">Active</th>
+            <th scope="col">Online</th>
+            <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
           {
-            (extras ?? []).map((e) => (
-              <tr data-id={e.id}>
-                <td>{e.code}</td>
-                <td>
-                  <input class="input name" aria-label={`${e.code} name`} value={e.name} />
-                </td>
-                <td class="num">
-                  <input
-                    class="input price"
-                    aria-label={`${e.code} price`}
-                    value={centsToEuroInput(e.price_cents)}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="checkbox"
-                    class="active"
-                    checked={e.active}
-                    aria-label={`${e.code} active`}
-                  />
-                </td>
-              </tr>
-            ))
+            (extras ?? []).map((e) => {
+              const builtin = BUILTIN.has(e.code);
+              const canDelete = !builtin && !usedIds.has(e.id);
+              return (
+                <tr data-id={e.id} class={builtin ? 'is-flag' : undefined}>
+                  <td class="card-title" data-label="Extra">
+                    <input class="input name" aria-label={`${e.code} name`} value={e.name} />
+                    {builtin && <span class="badge plain">Built in</span>}
+                  </td>
+                  <td data-label="Code" class="mono">
+                    {e.code}
+                  </td>
+                  <td class="num" data-label="Price">
+                    <div class="input-money">
+                      <input
+                        class="input price"
+                        aria-label={`${e.code} price`}
+                        value={centsToEuroInput(e.price_cents)}
+                        inputmode="decimal"
+                      />
+                    </div>
+                  </td>
+                  <td data-label="Online">
+                    <label class="switch">
+                      <input
+                        type="checkbox"
+                        class="active"
+                        checked={e.active}
+                        aria-label={`${e.code} online`}
+                      />
+                    </label>
+                  </td>
+                  <td class="actions" data-label="">
+                    {
+                      canDelete ? (
+                        <button
+                          class="btn btn-danger-solid btn-sm"
+                          type="submit"
+                          formaction={actions.deleteExtra}
+                          name="id"
+                          value={e.id}
+                          formnovalidate
+                        >
+                          Delete
+                        </button>
+                      ) : builtin ? (
+                        <span class="muted small">Built in</span>
+                      ) : (
+                        <span class="muted small">In use</span>
+                      )
+                    }
+                  </td>
+                </tr>
+              );
+            })
           }
         </tbody>
       </table>
     </div>
-    <button class="btn" type="submit">Save extras</button>
+    <div class="row" style="margin-top:1rem;justify-content:flex-end">
+      <button class="btn" type="submit">Save extras</button>
+    </div>
   </form>
 </AdminLayout>
 
-<script>
-  document.querySelector('form')?.addEventListener('submit', () => {
-    const rows: { id: string; name: string; priceEuros: string; active: string }[] = [];
-    document.querySelectorAll<HTMLTableRowElement>('tbody tr[data-id]').forEach((tr) => {
+<dialog class="dialog" id="add-extra" aria-labelledby="d-ax">
+  <form method="POST" action={actions.addExtra}>
+    <div class="dialog-head">
+      <p class="eyebrow">Extras</p>
+      <h2 id="d-ax">Add an extra</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <div class="grid-fields">
+        <div class="field">
+          <label for="ax-name">Name</label>
+          <input id="ax-name" class="input" name="name" required />
+        </div>
+        <div class="field">
+          <label for="ax-code">Code</label>
+          <input
+            id="ax-code"
+            class="input mono"
+            name="code"
+            required
+            pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+          />
+        </div>
+      </div>
+      <div class="field">
+        <label for="ax-pr">Price</label>
+        <div class="input-money">
+          <input id="ax-pr" class="input" name="priceEuros" value="0.00" inputmode="decimal" required />
+        </div>
+      </div>
+      <p class="help">
+        The customer-facing text comes from Sanity (UI strings). VIP security and Night surcharge are built in: they can
+        be priced and switched off, not deleted.
+      </p>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="add-extra">Back</button>
+      <button class="btn" type="submit">Add extra</button>
+    </div>
+  </form>
+</dialog>
+
+<script is:inline>
+  document.querySelector('form')?.addEventListener('submit', (ev) => {
+    const submitter = ev.submitter;
+    if (submitter && submitter.getAttribute('formaction')) return;
+    const rows = [];
+    document.querySelectorAll('tbody tr[data-id]').forEach((tr) => {
       rows.push({
-        id: tr.dataset.id!,
-        name: (tr.querySelector('.name') as HTMLInputElement).value,
-        priceEuros: (tr.querySelector('.price') as HTMLInputElement).value,
-        active: (tr.querySelector('.active') as HTMLInputElement).checked ? 'true' : 'false',
+        id: tr.getAttribute('data-id'),
+        name: tr.querySelector('.name').value,
+        priceEuros: tr.querySelector('.price').value,
+        active: tr.querySelector('.active').checked ? 'true' : 'false',
       });
     });
-    (document.getElementById('rowsJson') as HTMLInputElement).value = JSON.stringify(rows);
+    document.getElementById('rowsJson').value = JSON.stringify(rows);
+  });
+
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.getElementById(btn.getAttribute('data-open'))?.showModal();
+    });
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.getElementById(btn.getAttribute('data-close'))?.close();
+    });
   });
 </script>

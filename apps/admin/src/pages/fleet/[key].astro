@@ -1,0 +1,575 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Select from '../../components/Select.astro';
+import { formatEuro } from '../../lib/money';
+import { readinessChecklist } from '../../lib/readiness';
+import {
+  fetchSanityClass,
+  studioCreateClassUrl,
+  studioEditClassUrl,
+} from '../../lib/sanity-class';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const staff = Astro.locals.staff!;
+const key = Astro.params.key ?? '';
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const pageError =
+  actionErr(Astro.getActionResult?.(actions.updateClass)) ||
+  actionErr(Astro.getActionResult?.(actions.deleteClass)) ||
+  actionErr(Astro.getActionResult?.(actions.addVehicle)) ||
+  actionErr(Astro.getActionResult?.(actions.updateVehicle)) ||
+  actionErr(Astro.getActionResult?.(actions.deleteVehicle));
+
+const { data: cls } = await supabase
+  .from('vehicle_classes')
+  .select('*')
+  .eq('key', key)
+  .maybeSingle();
+
+if (!cls) {
+  return Astro.redirect('/fleet');
+}
+
+const [
+  { data: vehicles },
+  { data: zonePrices },
+  { data: hourly },
+  { count: routeCount },
+  { data: bookingRows },
+  { count: bookingCount },
+  { data: allClasses },
+  sanity,
+] = await Promise.all([
+  supabase.from('vehicles').select('id, label, status, note, class_id').eq('class_id', cls.id).order('label'),
+  supabase.from('zone_prices').select('class_id').eq('class_id', cls.id),
+  supabase
+    .from('hourly_rates')
+    .select('price_per_hour_cents, min_hours, max_hours')
+    .eq('class_id', cls.id)
+    .maybeSingle(),
+  supabase.from('zone_routes').select('*', { count: 'exact', head: true }),
+  supabase
+    .from('bookings')
+    .select('vehicle_id, status')
+    .eq('class_id', cls.id)
+    .in('status', ['confirmed', 'assigned'])
+    .gt('pickup_at', new Date().toISOString()),
+  supabase
+    .from('bookings')
+    .select('*', { count: 'exact', head: true })
+    .eq('class_id', cls.id),
+  supabase.from('vehicle_classes').select('id, key, name, active').order('sort_order'),
+  fetchSanityClass(key),
+]);
+
+const priceCount = zonePrices?.length ?? 0;
+const keyInUse =
+  (vehicles?.length ?? 0) > 0 ||
+  priceCount > 0 ||
+  !!hourly ||
+  (bookingCount ?? 0) > 0;
+
+const futureByVehicle = new Map<string, number>();
+for (const b of bookingRows ?? []) {
+  if (!b.vehicle_id) continue;
+  futureByVehicle.set(b.vehicle_id, (futureByVehicle.get(b.vehicle_id) ?? 0) + 1);
+}
+
+const bookedVehicleIds = new Set(
+  (bookingRows ?? []).map((b) => b.vehicle_id).filter((id): id is string => Boolean(id)),
+);
+
+const hasActiveVehicle = (vehicles ?? []).some((v) => v.status === 'active');
+const hasPriceOrRate = priceCount > 0 || !!hourly;
+const hasSanityPhotos = (sanity?.photos ?? 0) > 0;
+const checklist = readinessChecklist({
+  hasActiveVehicle,
+  hasPriceOrRate,
+  hasSanityPhotos,
+  online: cls.active,
+});
+
+const studioUrl = sanity
+  ? studioEditClassUrl(sanity._id)
+  : studioCreateClassUrl(key);
+
+function statusBadge(status: string) {
+  if (status === 'active') return { cls: 's-confirmed', label: 'Active' };
+  if (status === 'maintenance') return { cls: 's-pending', label: 'In service' };
+  return { cls: 's-completed', label: 'Retired' };
+}
+
+const usageBits = [
+  `${vehicles?.length ?? 0} vehicle${(vehicles?.length ?? 0) === 1 ? '' : 's'}`,
+  `${priceCount} price${priceCount === 1 ? '' : 's'}`,
+  `${bookingCount ?? 0} booking${(bookingCount ?? 0) === 1 ? '' : 's'}`,
+];
+---
+
+<AdminLayout
+  title={cls.name}
+  htmlTitle={`${cls.name} - Elite Protection Admin`}
+  current="fleet"
+  staffEmail={staff.email}
+  crumbs={[{ href: '/fleet', label: 'Fleet' }, { label: 'Class' }]}
+>
+  {
+    pageError && (
+      <div class="banner banner-danger" role="alert">
+        <p>{pageError}</p>
+      </div>
+    )
+  }
+
+  <div class="row" style="margin:-.5rem 0 1.25rem;gap:.5rem;flex-wrap:wrap;align-items:center">
+    <span class={`badge ${cls.active ? 's-confirmed' : 's-completed'}`}>
+      {cls.active ? 'Online' : 'Offline'}
+    </span>
+    <span class={`badge ${sanity ? 's-confirmed' : 's-pending'}`}>
+      {sanity ? 'Sanity page found' : 'No Sanity page'}
+    </span>
+    {
+      keyInUse && (
+        <span class="muted small">
+          Key <span class="mono">{cls.key}</span> · in use by {usageBits.join(', ')}, so it cannot change
+        </span>
+      )
+    }
+  </div>
+
+  <div class="cols cols-main" style="align-items:start">
+    <div class="stack">
+      <section class="panel" aria-labelledby="fc-d">
+        <div class="panel-head">
+          <h2 id="fc-d">Booking details</h2>
+          <span class="muted small">Used for availability and the booking form</span>
+        </div>
+        <form method="POST" action={actions.updateClass} class="panel-body stack-sm">
+          <input type="hidden" name="id" value={cls.id} />
+          <div class="grid-fields">
+            <div class="field">
+              <label for="fc-name">Internal name</label>
+              <input id="fc-name" class="input" name="name" value={cls.name} required />
+            </div>
+            <div class="field">
+              <label for="fc-key">Key</label>
+              {
+                keyInUse ? (
+                  <input
+                    id="fc-key"
+                    class="input mono"
+                    value={cls.key}
+                    readonly
+                    aria-describedby="fc-key-help"
+                  />
+                ) : (
+                  <input
+                    id="fc-key"
+                    class="input mono"
+                    name="key"
+                    value={cls.key}
+                    required
+                    pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
+                    aria-describedby="fc-key-help"
+                  />
+                )
+              }
+              <p class="help" id="fc-key-help">
+                Links this class to its Sanity page. {keyInUse ? 'Fixed once used.' : 'May change until used.'}
+              </p>
+            </div>
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="fc-pax">Max passengers</label>
+              <input
+                id="fc-pax"
+                class="input"
+                name="maxPassengers"
+                type="number"
+                min="1"
+                max="50"
+                value={cls.max_passengers}
+                required
+              />
+            </div>
+            <div class="field">
+              <label for="fc-lug">Max suitcases</label>
+              <input
+                id="fc-lug"
+                class="input"
+                name="maxLuggage"
+                type="number"
+                min="0"
+                max="100"
+                value={cls.max_luggage}
+                required
+              />
+            </div>
+            <div class="field">
+              <label for="fc-buf">Buffer (minutes)</label>
+              <input
+                id="fc-buf"
+                class="input"
+                name="bufferMinutes"
+                type="number"
+                min="0"
+                max="240"
+                step="5"
+                value={cls.buffer_minutes}
+                required
+                aria-describedby="fc-buf-help"
+              />
+              <p class="help" id="fc-buf-help">Before and after each trip; new bookings only.</p>
+            </div>
+            <div class="field">
+              <label for="fc-ord">Order on the website</label>
+              <input id="fc-ord" class="input" name="sortOrder" type="number" value={cls.sort_order} required />
+            </div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" name="active" value="true" checked={cls.active} />
+            Online (customers can book this class)
+          </label>
+          <div class="row" style="gap:.5rem;flex-wrap:wrap">
+            <button class="btn" type="submit">Save class</button>
+            {
+              !keyInUse && (
+                <button class="btn btn-danger-solid" type="submit" formaction={actions.deleteClass}>
+                  Delete class
+                </button>
+              )
+            }
+            {
+              keyInUse && !cls.active && (
+                <span class="muted small">Has history — kept offline instead of deleted.</span>
+              )
+            }
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="fc-v">
+        <div class="panel-head">
+          <h2 id="fc-v">Vehicles in this class</h2>
+          <button class="btn btn-secondary btn-sm" type="button" data-open="add-vehicle">Add vehicle</button>
+        </div>
+        <div class="table-wrap" role="region" tabindex="0" aria-label={`Vehicles in ${cls.name}`} style="border:0">
+          <table class="table table-cards">
+            <thead>
+              <tr>
+                <th scope="col">Label</th>
+                <th scope="col">Model (staff only)</th>
+                <th scope="col">Status</th>
+                <th scope="col">Future bookings</th>
+                <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                (vehicles ?? []).map((v) => {
+                  const badge = statusBadge(v.status);
+                  const future = futureByVehicle.get(v.id) ?? 0;
+                  return (
+                    <tr>
+                      <td class="card-title" data-label="Label">
+                        {v.label}
+                      </td>
+                      <td data-label="Model">{v.note || '—'}</td>
+                      <td data-label="Status">
+                        <span class={`badge ${badge.cls}`}>{badge.label}</span>
+                      </td>
+                      <td data-label="Future">{future}</td>
+                      <td class="actions" data-label="">
+                        <button
+                          class="btn btn-quiet btn-sm"
+                          type="button"
+                          data-edit-vehicle={JSON.stringify({
+                            id: v.id,
+                            label: v.label,
+                            classId: v.class_id,
+                            note: v.note ?? '',
+                            status: v.status,
+                            used: bookedVehicleIds.has(v.id) || future > 0,
+                            future,
+                          })}
+                        >
+                          Edit<span class="sr-only"> {v.label}</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="fc-s">
+        <div class="panel-head">
+          <h2 id="fc-s">Website content</h2>
+          <span class={`badge ${sanity ? 's-confirmed' : 's-pending'}`}>
+            {sanity ? 'Found' : 'Missing'}
+          </span>
+        </div>
+        <div class="panel-body stack-sm">
+          <p class="small muted" style="margin:0">
+            Name, photos, description and features are edited in Sanity, in the Vehicle class document with key{' '}
+            <span class="mono">{cls.key}</span>.
+          </p>
+          {
+            sanity ? (
+              <dl class="facts">
+                <dt>Public name</dt>
+                <dd>{sanity.name || '—'}</dd>
+                <dt>Photos</dt>
+                <dd>{sanity.photos}</dd>
+                <dt>Last edited</dt>
+                <dd>
+                  {sanity._updatedAt
+                    ? new Intl.DateTimeFormat('en-GB', {
+                        timeZone: 'Europe/Athens',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }).format(new Date(sanity._updatedAt))
+                    : '—'}
+                </dd>
+              </dl>
+            ) : (
+              <p class="small" style="margin:0">No Sanity document for this key yet.</p>
+            )
+          }
+          {
+            studioUrl ? (
+              <a class="btn btn-secondary" href={studioUrl} target="_blank" rel="noreferrer">
+                Open in Sanity Studio
+              </a>
+            ) : (
+              <p class="help">Set PUBLIC_SANITY_STUDIO_URL to link to the Studio.</p>
+            )
+          }
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="fc-p">
+        <div class="panel-head"><h2 id="fc-p">Prices</h2></div>
+        <div class="panel-body stack-sm">
+          <dl class="facts">
+            <dt>Zone prices</dt>
+            <dd>
+              {priceCount} of {routeCount ?? 0} routes
+            </dd>
+            <dt>Hourly</dt>
+            <dd>
+              {
+                hourly
+                  ? `${formatEuro(hourly.price_per_hour_cents)} per hour, ${hourly.min_hours}–${hourly.max_hours} h`
+                  : 'Not set'
+              }
+            </dd>
+          </dl>
+          <div class="row" style="gap:.5rem;flex-wrap:wrap">
+            <a class="btn btn-secondary btn-sm" href={`/prices?class=${cls.id}`}>Zone prices</a>
+            <a class="btn btn-secondary btn-sm" href="/hourly-rates">Hourly rate</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="fc-r">
+        <div class="panel-head"><h2 id="fc-r">Ready for customers?</h2></div>
+        <div class="panel-body">
+          <ol class="timeline">
+            {
+              checklist.map((item) => (
+                <li class={item.done ? 'done' : cls.active ? 'miss' : undefined} data-ready={item.id}>
+                  {item.label}
+                </li>
+              ))
+            }
+          </ol>
+        </div>
+      </section>
+    </div>
+  </div>
+</AdminLayout>
+
+<dialog class="dialog" id="add-vehicle" aria-labelledby="d-av">
+  <form method="POST" action={actions.addVehicle}>
+    <div class="dialog-head">
+      <p class="eyebrow">Fleet</p>
+      <h2 id="d-av">Add a vehicle</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <input type="hidden" name="classId" value={cls.id} />
+      <div class="field">
+        <label for="av-lab">Label</label>
+        <input id="av-lab" class="input" name="label" required />
+      </div>
+      <div class="field">
+        <label for="av-mod">Model, colour, plate (staff only)</label>
+        <input id="av-mod" class="input" name="note" />
+      </div>
+      <input type="hidden" name="status" value="active" />
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="add-vehicle">Back</button>
+      <button class="btn" type="submit">Add vehicle</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="edit-vehicle" aria-labelledby="d-ev">
+  <form method="POST" action={actions.updateVehicle}>
+    <input type="hidden" name="id" id="ev-id" />
+    <div class="dialog-head">
+      <p class="eyebrow" id="ev-eyebrow">Vehicle</p>
+      <h2 id="d-ev">Edit vehicle</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <div id="ev-error" class="banner banner-danger" role="alert" hidden>
+        <p></p>
+        <a class="btn btn-secondary btn-sm" href="/calendar">Open calendar</a>
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="ev-lab">Label</label>
+          <input id="ev-lab" class="input" name="label" required />
+        </div>
+        <div class="field">
+          <label for="ev-cls">Class</label>
+          <Select
+            id="ev-cls"
+            name="classId"
+            required
+            options={(allClasses ?? []).map((c) => ({
+              value: c.id,
+              label: c.name,
+              selected: c.id === cls.id,
+            }))}
+          />
+        </div>
+        <div class="field">
+          <label for="ev-st">Status</label>
+          <Select
+            id="ev-st"
+            name="status"
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'maintenance', label: 'Maintenance', meta: 'out for a while' },
+              { value: 'retired', label: 'Retired', meta: 'left the fleet' },
+            ]}
+          />
+        </div>
+      </div>
+      <div class="field">
+        <label for="ev-mod">Model, colour, plate (staff only)</label>
+        <input id="ev-mod" class="input" name="note" />
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="edit-vehicle">Back</button>
+      <button
+        class="btn btn-danger-solid"
+        type="submit"
+        formaction={actions.deleteVehicle}
+        id="ev-delete"
+        hidden
+      >
+        Delete
+      </button>
+      <button class="btn" type="submit" id="ev-save">Save vehicle</button>
+      <button class="btn btn-secondary" type="submit" id="ev-retire" name="status" value="retired" hidden>
+        Retire
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<style>
+  .timeline li.miss {
+    color: var(--color-danger);
+  }
+  .timeline li.miss::after {
+    border-color: var(--color-danger);
+  }
+</style>
+
+<script type="application/json" id="fleet-class-data" set:html={JSON.stringify({ pageError })} />
+<script is:inline>
+  const pageData = JSON.parse(document.getElementById('fleet-class-data').textContent || '{}');
+
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-open');
+      document.getElementById(id)?.showModal();
+    });
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-close');
+      document.getElementById(id)?.close();
+    });
+  });
+
+  document.querySelectorAll('[data-edit-vehicle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const v = JSON.parse(btn.getAttribute('data-edit-vehicle'));
+      document.getElementById('ev-id').value = v.id;
+      document.getElementById('ev-lab').value = v.label;
+      document.getElementById('ev-mod').value = v.note;
+      const cls = document.getElementById('ev-cls');
+      cls.value = v.classId;
+      cls.dispatchEvent(new Event('change', { bubbles: true }));
+      const st = document.getElementById('ev-st');
+      st.value = v.status;
+      st.dispatchEvent(new Event('change', { bubbles: true }));
+      document.getElementById('ev-eyebrow').textContent = v.label;
+      document.getElementById('ev-delete').hidden = v.used;
+      const err = document.getElementById('ev-error');
+      if (v.future > 0) {
+        err.hidden = false;
+        const p = err.querySelector('p');
+        if (p) {
+          p.textContent =
+            v.label +
+            ' has ' +
+            v.future +
+            ' future booking(s); move them to another vehicle before setting it to maintenance or retired.';
+        }
+      } else {
+        err.hidden = true;
+      }
+      document.getElementById('edit-vehicle').showModal();
+    });
+  });
+
+  if (pageData.pageError && /future booking|in_use|retired/i.test(String(pageData.pageError))) {
+    const err = document.getElementById('ev-error');
+    if (err) {
+      err.hidden = false;
+      const p = err.querySelector('p');
+      if (p) p.textContent = String(pageData.pageError);
+      const retire = document.getElementById('ev-retire');
+      if (retire && /retired/i.test(String(pageData.pageError))) {
+        retire.hidden = false;
+        const del = document.getElementById('ev-delete');
+        if (del) del.hidden = true;
+      }
+      document.getElementById('edit-vehicle')?.showModal();
+    }
+  }
+</script>

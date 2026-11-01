@@ -1,19 +1,27 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
+import { readinessBannerLine } from './readiness';
 
-type SanityClass = { key: string };
+type SanityClass = { key: string; photos?: number };
 type SanityRoute = { title?: string; slug?: string; fromZone?: string; toZone?: string };
 
-let sanityClassCache: { keys: string[]; expiresAt: number } | null = null;
+let sanityClassCache: { rows: SanityClass[]; expiresAt: number } | null = null;
 let sanityRouteCache: { routes: SanityRoute[]; expiresAt: number } | null = null;
 const CACHE_MS = 5 * 60 * 1000;
 
 let routesOverride: SanityRoute[] | null = null;
+let classesOverride: SanityClass[] | null = null;
 
 /** Test hook: inject Sanity routes without calling the Content Lake. */
 export function setSanityRoutesForBanner(routes: SanityRoute[] | null): void {
   routesOverride = routes;
   sanityRouteCache = null;
+}
+
+/** Test hook: inject Sanity class rows (with photo counts) for readiness. */
+export function setSanityClassesForBanner(rows: SanityClass[] | null): void {
+  classesOverride = rows;
+  sanityClassCache = null;
 }
 
 async function sanityClient() {
@@ -31,20 +39,23 @@ async function sanityClient() {
   });
 }
 
-async function fetchSanityClassKeys(): Promise<string[]> {
-  if (sanityClassCache && Date.now() < sanityClassCache.expiresAt) return sanityClassCache.keys;
+async function fetchSanityClasses(): Promise<SanityClass[]> {
+  if (classesOverride) return classesOverride;
+  if (sanityClassCache && Date.now() < sanityClassCache.expiresAt) return sanityClassCache.rows;
   try {
     const client = await sanityClient();
     if (!client) {
-      sanityClassCache = { keys: [], expiresAt: Date.now() + CACHE_MS };
+      sanityClassCache = { rows: [], expiresAt: Date.now() + CACHE_MS };
       return [];
     }
-    const rows = await client.fetch<SanityClass[]>('*[_type == "vehicleClass"]{key}');
-    const keys = (rows ?? []).map((r) => r.key).filter(Boolean);
-    sanityClassCache = { keys, expiresAt: Date.now() + CACHE_MS };
-    return keys;
+    const rows = await client.fetch<SanityClass[]>(
+      '*[_type == "vehicleClass"]{key, "photos": count(gallery)}',
+    );
+    const cleaned = (rows ?? []).filter((r) => r.key);
+    sanityClassCache = { rows: cleaned, expiresAt: Date.now() + CACHE_MS };
+    return cleaned;
   } catch {
-    sanityClassCache = { keys: [], expiresAt: Date.now() + CACHE_MS };
+    sanityClassCache = { rows: [], expiresAt: Date.now() + CACHE_MS };
     return [];
   }
 }
@@ -74,19 +85,32 @@ async function fetchSanityRoutes(): Promise<SanityRoute[]> {
 export async function buildBanner(
   supabase: SupabaseClient<Database>,
 ): Promise<string> {
-  const [{ data: classes }, { data: demoSettings }, { data: zones }, { data: zoneRoutes }, sanityKeys, sanityRoutes] =
-    await Promise.all([
-      supabase.from('vehicle_classes').select('key').eq('active', true),
-      supabase.from('settings').select('key').eq('is_demo', true),
-      supabase.from('zones').select('id, code').eq('active', true),
-      supabase.from('zone_routes').select('from_zone_id, to_zone_id'),
-      fetchSanityClassKeys(),
-      fetchSanityRoutes(),
-    ]);
+  const [
+    { data: classes },
+    { data: vehicles },
+    { data: zonePrices },
+    { data: hourlyRates },
+    { data: demoSettings },
+    { data: zones },
+    { data: zoneRoutes },
+    sanityClasses,
+    sanityRoutes,
+  ] = await Promise.all([
+    supabase.from('vehicle_classes').select('id, key, active'),
+    supabase.from('vehicles').select('class_id, status'),
+    supabase.from('zone_prices').select('class_id'),
+    supabase.from('hourly_rates').select('class_id'),
+    supabase.from('settings').select('key').eq('is_demo', true),
+    supabase.from('zones').select('id, code').eq('active', true),
+    supabase.from('zone_routes').select('from_zone_id, to_zone_id'),
+    fetchSanityClasses(),
+    fetchSanityRoutes(),
+  ]);
 
-  const pgKeys = (classes ?? []).map((c) => c.key);
-  const sanitySet = new Set(sanityKeys);
-  const pgSet = new Set(pgKeys);
+  const sanityByKey = new Map(sanityClasses.map((r) => [r.key, r]));
+  const sanityKeys = sanityClasses.map((r) => r.key);
+  const activeClassKeys = (classes ?? []).filter((c) => c.active).map((c) => c.key);
+  const pgSet = new Set((classes ?? []).map((c) => c.key));
   const zoneCodes = new Set((zones ?? []).map((z) => z.code));
   const idToCode = new Map((zones ?? []).map((z) => [z.id, z.code]));
   const routePairs = new Set(
@@ -99,9 +123,17 @@ export async function buildBanner(
       .filter((x): x is string => Boolean(x)),
   );
 
+  const activeVehicleClassIds = new Set(
+    (vehicles ?? []).filter((v) => v.status === 'active').map((v) => v.class_id),
+  );
+  const pricedClassIds = new Set([
+    ...(zonePrices ?? []).map((p) => p.class_id),
+    ...(hourlyRates ?? []).map((r) => r.class_id),
+  ]);
+
   const parts: string[] = [];
-  for (const key of pgKeys) {
-    if (!sanitySet.has(key)) {
+  for (const key of activeClassKeys) {
+    if (!sanityByKey.has(key)) {
       parts.push(`Vehicle class "${key}" exists in the database but has no Sanity content.`);
     }
   }
@@ -110,6 +142,20 @@ export async function buildBanner(
       parts.push(`Sanity vehicle class "${key}" has no matching Postgres row.`);
     }
   }
+
+  for (const cls of classes ?? []) {
+    if (!cls.active) continue;
+    const sanity = sanityByKey.get(cls.key);
+    const line = readinessBannerLine({
+      key: cls.key,
+      hasActiveVehicle: activeVehicleClassIds.has(cls.id),
+      hasPriceOrRate: pricedClassIds.has(cls.id),
+      hasSanityPhotos: (sanity?.photos ?? 0) > 0,
+      online: true,
+    });
+    if (line) parts.push(line);
+  }
+
   const demoKeys = (demoSettings ?? []).map((s) => s.key);
   if (demoKeys.length > 0) {
     parts.push(

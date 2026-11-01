@@ -264,14 +264,14 @@ isOneToOne: false
                   ]
                 },"vehicles": {
                   Row: {
-                    "class_id": string,"id": string,"label": string,"status": string
+                    "class_id": string,"id": string,"label": string,"note": string | null,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_id": string,"id"?: string,"label": string,"status"?: string
+                    "class_id": string,"id"?: string,"label": string,"note"?: string | null,"status"?: string
                   }
                   Update: {
-                    "class_id"?: string,"id"?: string,"label"?: string,"status"?: string
+                    "class_id"?: string,"id"?: string,"label"?: string,"note"?: string | null,"status"?: string
                   }
                   Relationships: [
                     {
