@@ -11,26 +11,27 @@ const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 const mobile = settings.mobilePhone;
 const mobileHref = mobile ? `tel:${mobile.replace(/[^\d+]/g, '')}` : null;
 const year = new Date().getFullYear();
+const nav = [
+  { href: '/fleet', label: t('nav.fleet') },
+  { href: '/services', label: t('nav.services') },
+  { href: '/vip-security', label: t('nav.vipSecurity') },
+  { href: '/about', label: t('nav.about') },
+  { href: '/contact', label: t('nav.contact') },
+];
 ---
 
 <footer class="site-footer">
   <div class="wrap site-footer-grid">
     <div class="site-footer-brand">
-      <img src="/logo-white.png" alt="Elite Protection" width="180" height="64" />
-      {
-        settings.tagline ? (
-          <p class="muted">{settings.tagline}</p>
-        ) : (
-          <p class="muted">VIP Transfer and VIP Security in Athens.</p>
-        )
-      }
+      <img src="/logo-white.png" alt="" width="180" height="64" />
+      {settings.tagline ? <p class="muted">{settings.tagline}</p> : null}
     </div>
     <div class="site-footer-col">
       <div class="eyebrow">{t('site.footer.transfers')}</div>
       <a href="/fleet">{t('nav.fleet')}</a>
       <a href="/services">{t('nav.services')}</a>
       <a href="/book">{t('nav.book')}</a>
-      <a href="/booking/find">Find my booking</a>
+      <a href="/booking/find">{t('lookup.title')}</a>
     </div>
     <div class="site-footer-col">
       <div class="eyebrow">{t('site.footer.company')}</div>
@@ -46,15 +47,20 @@ const year = new Date().getFullYear();
     </div>
   </div>
   <div class="wrap site-footer-bar">
-    <div>
-      © {year} {settings.companyName} · {t('site.pricesIncludeVat')}
-    </div>
-    <nav aria-label="Legal">
-      <a href="/terms">Terms</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/cookies">Cookies</a>
-      <a href="/cancellation">Cancellation</a>
-      <button type="button" class="btn-text">Cookie settings</button>
+    <nav aria-label={t('site.nav.footer')}>
+      {
+        nav.map((item) => (
+          <a href={item.href}>{item.label}</a>
+        ))
+      }
+    </nav>
+    <div>{`© ${year} ${settings.companyName} · ${t('site.pricesIncludeVat')}`}</div>
+    <nav aria-label={t('site.nav.legal')}>
+      <a href="/terms">{t('site.legal.terms')}</a>
+      <a href="/privacy">{t('site.legal.privacy')}</a>
+      <a href="/cookies">{t('site.legal.cookies')}</a>
+      <a href="/cancellation">{t('site.legal.cancellation')}</a>
+      <button type="button" class="btn-text">{t('site.cookieSettings')}</button>
     </nav>
   </div>
 </footer>

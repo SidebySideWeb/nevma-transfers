@@ -1,7 +1,10 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { t } from '../../lib/strings';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import KitchenSinkDemos from '../../components/dev/KitchenSinkDemos';
+import Sections from '../../components/sections/Sections.astro';
+import type { PageSection } from '../../lib/sanity/pages';
+import { t } from '../../lib/strings';
 
 export function getStaticPaths() {
   if (!import.meta.env.DEV) return [];
@@ -12,9 +15,80 @@ const { page } = Astro.params;
 if (page !== 'kitchen-sink') {
   return new Response(null, { status: 404 });
 }
+
+const kit2Sections: PageSection[] = [
+  {
+    _type: 'featureGrid',
+    heading: 'DEMO Features',
+    intro: 'DEMO feature grid intro',
+    items: [
+      { title: 'DEMO Airport transfers', text: 'DEMO Fixed prices.', link: '/routes/athens-airport-to-city-centre' },
+      { title: 'DEMO By the hour', text: 'DEMO From 3 hours.', link: '/book' },
+      { title: 'DEMO VIP security', text: 'DEMO Protection on request.', link: '/vip-security' },
+    ],
+  },
+  {
+    _type: 'imageText',
+    heading: 'DEMO Image and text',
+    body: [
+      {
+        _type: 'block',
+        _key: 'ks1',
+        style: 'normal',
+        markDefs: [],
+        children: [
+          {
+            _type: 'span',
+            _key: 'ks1s',
+            text: 'DEMO Side-by-side image and copy with a quote CTA.',
+            marks: [],
+          },
+        ],
+      },
+    ],
+    imageSide: 'left',
+    ctaLabel: t('site.requestQuote'),
+    ctaTarget: 'quote',
+  },
+  {
+    _type: 'steps',
+    heading: 'DEMO How it works',
+    items: [
+      { title: 'DEMO Choose your trip', text: 'DEMO Areas, date and time.' },
+      { title: 'DEMO Pick a vehicle', text: 'DEMO Fixed price before you pay.' },
+      { title: 'DEMO Pay securely', text: 'DEMO Confirmation by email.' },
+    ],
+  },
+  {
+    _type: 'vehicleClassList',
+    heading: 'DEMO Choose your vehicle',
+    intro: 'DEMO From prices at build time.',
+  },
+  {
+    _type: 'routeList',
+    heading: 'DEMO Popular routes',
+    intro: 'DEMO Featured publishable routes.',
+    routes: [],
+  },
+  {
+    _type: 'contactDetails',
+    heading: 'DEMO Get in touch',
+    showHours: true,
+  },
+  {
+    _type: 'formBlock',
+    heading: 'DEMO Contact form',
+    form: {
+      key: 'contact',
+      title: 'Contact us',
+      intro: 'DEMO Form fields arrive in prompt 22.',
+    },
+  },
+];
 ---
 
 <BaseLayout title="Kitchen sink (DEV)" robots="noindex">
+  <Breadcrumbs items={[{ label: 'Kitchen sink' }]} />
   <section class="section">
     <div class="wrap stack">
       <p class="eyebrow">DEV only</p>
@@ -86,4 +160,6 @@ if (page !== 'kitchen-sink') {
       </div>
     </div>
   </section>
+
+  <Sections sections={kit2Sections} />
 </BaseLayout>

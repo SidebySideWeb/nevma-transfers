@@ -61,4 +61,22 @@ export default tseslint.config(
       ],
     },
   },
+  // AC-34: no hard-coded user-facing copy in kit 2 chrome / sections.
+  {
+    files: [
+      'apps/web/src/components/sections/**/*.{astro,tsx,jsx}',
+      'apps/web/src/components/Header.astro',
+      'apps/web/src/components/Footer.astro',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'JSXText[value=/\\S/]',
+          message:
+            'AC-34: no hard-coded copy in sections/Header/Footer — use t() or CMS props (empty strings and class names are fine).',
+        },
+      ],
+    },
+  },
 );

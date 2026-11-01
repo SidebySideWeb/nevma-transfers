@@ -99,13 +99,45 @@ export function faqPageJsonLd(items: FaqItem[]) {
 
 export function ctaHref(target?: string | null, url?: string | null): string {
   if (target === 'book') return '/book';
+  if (target === 'quote') return '/request-a-transfer';
   if (target === 'url' && url) return url;
   return '/book';
 }
 
 /** Section `_type` values supported by `Sections.astro`. */
-export const SECTION_TYPES = ['hero', 'richText', 'ctaBand', 'faq'] as const;
+export const SECTION_TYPES = [
+  'hero',
+  'richText',
+  'ctaBand',
+  'faq',
+  'featureGrid',
+  'imageText',
+  'steps',
+  'vehicleClassList',
+  'routeList',
+  'contactDetails',
+  'formBlock',
+] as const;
 export type SectionType = (typeof SECTION_TYPES)[number];
+
+export function breadcrumbJsonLd(
+  items: { name: string; item?: string }[],
+  siteUrl: string,
+) {
+  const base = siteUrl.replace(/\/$/, '');
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((entry, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: entry.name,
+      ...(entry.item
+        ? { item: entry.item.startsWith('http') ? entry.item : `${base}${entry.item}` }
+        : {}),
+    })),
+  };
+}
 
 export function sectionTypesInOrder(
   sections: Array<{ _type?: string } | null | undefined>,

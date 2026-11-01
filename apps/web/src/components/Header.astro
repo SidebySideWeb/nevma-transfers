@@ -11,6 +11,13 @@ const { settings } = Astro.props;
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 const bookingOpen = isBookingOpen();
 const path = Astro.url.pathname;
+
+function isActive(match: string): boolean {
+  if (match === '/fleet') return path === '/fleet' || path.startsWith('/fleet/');
+  if (match === '/services') return path === '/services' || path.startsWith('/routes/');
+  return path === match || path.startsWith(`${match}/`);
+}
+
 const nav = [
   { href: '/fleet', label: t('nav.fleet'), match: '/fleet' },
   { href: '/services', label: t('nav.services'), match: '/services' },
@@ -18,19 +25,23 @@ const nav = [
   { href: '/about', label: t('nav.about'), match: '/about' },
   { href: '/contact', label: t('nav.contact'), match: '/contact' },
 ];
+
+const primaryCta = bookingOpen
+  ? { href: '/book', label: t('nav.book') }
+  : { href: '/request-a-transfer', label: t('site.requestQuote') };
 ---
 
 <header class="site-header">
   <div class="wrap site-header-inner">
     <a class="logo" href="/" aria-label={`${settings.companyName} home`}>
-      <img src="/logo-white.png" alt="Elite Protection" width="160" height="52" />
+      <img src="/logo-white.png" alt="" width="160" height="52" />
     </a>
-    <nav class="main-nav" aria-label="Main">
+    <nav class="main-nav" aria-label={t('site.nav.main')}>
       <ul>
         {
           nav.map((item) => (
             <li>
-              <a href={item.href} aria-current={path.startsWith(item.match) ? 'page' : undefined}>
+              <a href={item.href} aria-current={isActive(item.match) ? 'page' : undefined}>
                 {item.label}
               </a>
             </li>
@@ -40,26 +51,22 @@ const nav = [
     </nav>
     <div class="header-actions">
       <a class="header-phone hide-m" href={phoneHref}>{settings.phone}</a>
-      {bookingOpen ? (
-        <a class="btn btn-gold hide-m" href="/book">{t('nav.book')}</a>
-      ) : null}
+      <a class="btn btn-gold hide-m" href={primaryCta.href}>{primaryCta.label}</a>
       <details class="mobile-menu">
-        <summary aria-label={t('nav.menu')}>☰</summary>
+        <summary>{t('nav.menu')}</summary>
         <ul>
           {
             nav.map((item) => (
               <li>
-                <a href={item.href} aria-current={path.startsWith(item.match) ? 'page' : undefined}>
+                <a href={item.href} aria-current={isActive(item.match) ? 'page' : undefined}>
                   {item.label}
                 </a>
               </li>
             ))
           }
-          {bookingOpen ? (
-            <li>
-              <a class="btn btn-gold" href="/book">{t('nav.book')}</a>
-            </li>
-          ) : null}
+          <li>
+            <a class="btn btn-gold" href={primaryCta.href}>{primaryCta.label}</a>
+          </li>
         </ul>
       </details>
     </div>
@@ -70,11 +77,10 @@ const nav = [
   const menu = document.querySelector<HTMLDetailsElement>('.mobile-menu');
   if (menu) {
     const summary = menu.querySelector('summary');
-    menu.addEventListener('toggle', () => {
-      if (menu.open) {
-        const first = menu.querySelector<HTMLElement>('ul a');
-        first?.focus();
-      } else {
+    menu.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('a') && menu.open) {
+        menu.open = false;
         summary?.focus();
       }
     });

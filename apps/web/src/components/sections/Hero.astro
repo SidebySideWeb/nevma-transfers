@@ -47,7 +47,11 @@ const headingId = 'hero-h';
           />
         </div>
       ) : (
-        <div class="hero-media" role="img" aria-label={image?.alt || 'Hero'} />
+        image?.alt ? (
+          <div class="hero-media" role="img" aria-label={image.alt} />
+        ) : (
+          <div class="hero-media" aria-hidden="true" />
+        )
       )
     }
   </div>

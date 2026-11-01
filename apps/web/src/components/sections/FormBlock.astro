@@ -1,0 +1,22 @@
+---
+interface Props {
+  heading?: string;
+  form?: {
+    key?: string;
+    title?: string;
+    intro?: string | null;
+  } | null;
+}
+
+const { heading, form } = Astro.props;
+const title = heading || form?.title || '';
+const intro = form?.intro || '';
+const headingId = title ? 'form-block-h' : undefined;
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class="wrap narrow stack card">
+    {title ? <h2 id={headingId}>{title}</h2> : null}
+    {intro ? <p class="muted">{intro}</p> : null}
+  </div>
+</section>

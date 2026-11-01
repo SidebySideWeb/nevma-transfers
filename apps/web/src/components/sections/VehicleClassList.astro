@@ -1,0 +1,75 @@
+---
+import { priceLabel } from '../../lib/content/price-label';
+import { getPublishableClasses } from '../../lib/content/vehicles';
+import { getSiteSettings } from '../../lib/sanity/content';
+import {
+  fromPriceForClass,
+  getCatalog,
+  hourlyFromForClass,
+} from '../../lib/server/catalog';
+import { t } from '../../lib/strings';
+
+interface Props {
+  heading?: string;
+  intro?: string;
+}
+
+const { heading, intro } = Astro.props;
+const settings = await getSiteSettings();
+const show = settings.showFromPrices !== false;
+let classes: Awaited<ReturnType<typeof getPublishableClasses>> = [];
+let cat: Awaited<ReturnType<typeof getCatalog>> | null = null;
+try {
+  [classes, cat] = await Promise.all([getPublishableClasses(), getCatalog()]);
+} catch {
+  classes = [];
+  cat = null;
+}
+const headingId = heading ? 'vehicle-class-list-h' : undefined;
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class="wrap stack">
+    {heading ? <h2 id={headingId}>{heading}</h2> : null}
+    {intro ? <p class="muted">{intro}</p> : null}
+    <div class="grid grid-3">
+      {
+        classes.map((cls) => {
+          const transfer = priceLabel(cat ? fromPriceForClass(cat, cls.key) : null, { show });
+          const hourly = priceLabel(cat ? hourlyFromForClass(cat, cls.key) : null, {
+            show,
+            perHour: true,
+          });
+          const photo = cls.photos?.[0];
+          const capacity = t('booking.vehicle.capacity', {
+            passengers: cls.maxPassengers,
+            luggage: cls.maxLuggage,
+          });
+          const meta = cls.tagline ? `${cls.tagline} · ${capacity}` : capacity;
+          return (
+            <article class="card stack">
+              {photo?.url ? (
+                <div class="media">
+                  <img src={photo.url} alt={photo.alt || cls.name} loading="lazy" decoding="async" />
+                </div>
+              ) : (
+                <div class="media" role="img" aria-label={cls.name} />
+              )}
+              <div>
+                <h3>{cls.name}</h3>
+                <p class="muted">{meta}</p>
+              </div>
+              <p class="from-price">
+                {transfer.text}
+                <small>{hourly.text}</small>
+              </p>
+              <a class="btn btn-ghost" href={`/fleet/${cls.key}`}>
+                {t('site.viewVehicle')}
+              </a>
+            </article>
+          );
+        })
+      }
+    </div>
+  </div>
+</section>

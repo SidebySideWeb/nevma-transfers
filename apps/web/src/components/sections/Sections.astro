@@ -1,9 +1,16 @@
 ---
 import type { PageSection } from '../../lib/sanity/pages';
+import ContactDetails from './ContactDetails.astro';
 import CtaBand from './CtaBand.astro';
 import Faq from './Faq.astro';
+import FeatureGrid from './FeatureGrid.astro';
+import FormBlock from './FormBlock.astro';
 import Hero from './Hero.astro';
+import ImageText from './ImageText.astro';
 import RichText from './RichText.astro';
+import RouteList from './RouteList.astro';
+import Steps from './Steps.astro';
+import VehicleClassList from './VehicleClassList.astro';
 
 interface Props {
   sections: PageSection[];
@@ -40,6 +47,34 @@ const { sections } = Astro.props;
         );
       case 'faq':
         return <Faq heading={section.heading} items={section.items} />;
+      case 'featureGrid':
+        return (
+          <FeatureGrid heading={section.heading} intro={section.intro} items={section.items} />
+        );
+      case 'imageText':
+        return (
+          <ImageText
+            heading={section.heading}
+            body={section.body}
+            image={section.image}
+            imageSide={section.imageSide}
+            ctaLabel={section.ctaLabel}
+            ctaTarget={section.ctaTarget}
+            ctaUrl={section.ctaUrl}
+          />
+        );
+      case 'steps':
+        return <Steps heading={section.heading} items={section.items} />;
+      case 'vehicleClassList':
+        return <VehicleClassList heading={section.heading} intro={section.intro} />;
+      case 'routeList':
+        return (
+          <RouteList heading={section.heading} intro={section.intro} routes={section.routes} />
+        );
+      case 'contactDetails':
+        return <ContactDetails heading={section.heading} showHours={section.showHours} />;
+      case 'formBlock':
+        return <FormBlock heading={section.heading} form={section.form} />;
       default:
         return null;
     }

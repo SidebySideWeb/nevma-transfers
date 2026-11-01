@@ -175,6 +175,16 @@ Site settings · UI strings · Pages · Routes · Vehicle classes · **Forms and
 | site | `site.noOnlinePrice` | Price on request |
 | site | `site.requestQuote` | Request a quote |
 | site | `site.hours` | Opening hours |
+| site | `site.office` | Office |
+| site | `site.legal.terms` | Terms |
+| site | `site.legal.privacy` | Privacy |
+| site | `site.legal.cookies` | Cookies |
+| site | `site.legal.cancellation` | Cancellation |
+| site | `site.cookieSettings` | Cookie settings |
+| site | `site.nav.main` | Main |
+| site | `site.nav.footer` | Footer |
+| site | `site.nav.legal` | Legal |
+| site | `site.nav.breadcrumb` | Breadcrumb |
 | forms | `form.name` | Full name |
 | forms | `form.email` | Email |
 | forms | `form.phone` | Phone |

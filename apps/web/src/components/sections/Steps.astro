@@ -1,0 +1,25 @@
+---
+interface Props {
+  heading?: string;
+  items: Array<{ title: string; text?: string; _key?: string }>;
+}
+
+const { heading, items } = Astro.props;
+const headingId = heading ? 'steps-h' : undefined;
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class="wrap stack">
+    {heading ? <h2 id={headingId}>{heading}</h2> : null}
+    <ol class="steps-list">
+      {
+        items.map((item) => (
+          <li>
+            <h3>{item.title}</h3>
+            {item.text ? <p class="muted">{item.text}</p> : null}
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

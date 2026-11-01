@@ -1,0 +1,28 @@
+---
+interface Props {
+  heading?: string;
+  intro?: string;
+  items: Array<{ title: string; text: string; link?: string; _key?: string }>;
+}
+
+const { heading, intro, items } = Astro.props;
+const headingId = heading ? 'feature-grid-h' : undefined;
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class="wrap stack">
+    {heading ? <h2 id={headingId}>{heading}</h2> : null}
+    {intro ? <p class="muted">{intro}</p> : null}
+    <div class="feature-grid">
+      {
+        items.map((item) => (
+          <article class="feature stack">
+            <h3>{item.title}</h3>
+            <p class="muted">{item.text}</p>
+            {item.link ? <a href={item.link}>{item.title}</a> : null}
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>

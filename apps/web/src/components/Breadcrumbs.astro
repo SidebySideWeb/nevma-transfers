@@ -1,0 +1,38 @@
+---
+import { breadcrumbJsonLd } from '../lib/seo';
+import { t } from '../lib/strings';
+
+export type Crumb = { label: string; href?: string };
+
+interface Props {
+  items: Crumb[];
+  siteUrl?: string;
+}
+
+const { items, siteUrl = import.meta.env.PUBLIC_SITE_URL || 'https://example.com' } = Astro.props;
+const crumbs: Crumb[] = [{ label: t('site.breadcrumb.home'), href: '/' }, ...items];
+const jsonLd = breadcrumbJsonLd(
+  crumbs.map((c) => ({ name: c.label, item: c.href })),
+  siteUrl,
+);
+---
+
+<nav class="breadcrumbs wrap" aria-label={t('site.nav.breadcrumb')}>
+  <ol>
+    {
+      crumbs.map((crumb, index) => {
+        const last = index === crumbs.length - 1;
+        return (
+          <li aria-current={last ? 'page' : undefined}>
+            {last || !crumb.href ? (
+              <span>{crumb.label}</span>
+            ) : (
+              <a href={crumb.href}>{crumb.label}</a>
+            )}
+          </li>
+        );
+      })
+    }
+  </ol>
+</nav>
+<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />

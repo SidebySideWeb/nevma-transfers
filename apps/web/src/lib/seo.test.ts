@@ -93,8 +93,9 @@ describe('sectionTypesInOrder / ctaHref', () => {
     expect(sectionTypesInOrder(sections)).toEqual(['hero', 'richText', 'faq', 'ctaBand']);
   });
 
-  it('maps ctaTarget book to /book', () => {
+  it('maps ctaTarget book/quote/url', () => {
     expect(ctaHref('book')).toBe('/book');
+    expect(ctaHref('quote')).toBe('/request-a-transfer');
     expect(ctaHref('url', 'https://example.com')).toBe('https://example.com');
   });
 });

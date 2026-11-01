@@ -1,0 +1,50 @@
+---
+import { getSiteSettings } from '../../lib/sanity/content';
+import { t } from '../../lib/strings';
+
+interface Props {
+  heading?: string;
+  showHours?: boolean | null;
+}
+
+const { heading, showHours } = Astro.props;
+const settings = await getSiteSettings();
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const headingId = heading ? 'contact-details-h' : undefined;
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class="wrap stack">
+    {heading ? <h2 id={headingId}>{heading}</h2> : null}
+    <dl class="contact-list">
+      <div>
+        <dt>{t('form.phone')}</dt>
+        <dd>
+          <a href={phoneHref}>{settings.phone}</a>
+        </dd>
+      </div>
+      <div>
+        <dt>{t('form.email')}</dt>
+        <dd>
+          <a href={`mailto:${settings.email}`}>{settings.email}</a>
+        </dd>
+      </div>
+      {
+        settings.address ? (
+          <div>
+            <dt>{t('site.office')}</dt>
+            <dd>{settings.address}</dd>
+          </div>
+        ) : null
+      }
+      {
+        showHours && settings.openingHours ? (
+          <div>
+            <dt>{t('site.hours')}</dt>
+            <dd>{settings.openingHours}</dd>
+          </div>
+        ) : null
+      }
+    </dl>
+  </div>
+</section>

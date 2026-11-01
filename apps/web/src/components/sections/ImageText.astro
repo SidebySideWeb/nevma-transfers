@@ -1,0 +1,68 @@
+---
+import { PortableText } from 'astro-portabletext';
+import { ctaHref } from '../../lib/seo';
+import { responsiveImage, type SanityImage } from '../../lib/sanity/image';
+import PortableLink from './PortableLink.astro';
+
+interface Props {
+  heading: string;
+  body: Record<string, unknown>[];
+  image?: SanityImage;
+  imageSide?: 'left' | 'right';
+  ctaLabel?: string;
+  ctaTarget?: 'book' | 'quote' | 'url' | string;
+  ctaUrl?: string;
+}
+
+const { heading, body, image, imageSide = 'right', ctaLabel, ctaTarget, ctaUrl } = Astro.props;
+const href = ctaHref(ctaTarget, ctaUrl);
+const img = responsiveImage(image ?? null, { fallbackWidth: 1200, fallbackHeight: 900 });
+const portableValue = body as Parameters<typeof PortableText>[0]['value'];
+const headingId = 'image-text-h';
+const sideClass = imageSide === 'left' ? 'image-left' : 'image-right';
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class={`wrap image-text ${sideClass}`}>
+    <div class="stack prose">
+      <h2 id={headingId}>{heading}</h2>
+      <PortableText
+        value={portableValue}
+        components={{
+          mark: {
+            link: PortableLink,
+          },
+        }}
+      />
+      {
+        ctaLabel ? (
+          <div class="row">
+            <a class="btn btn-gold" href={href}>
+              {ctaLabel}
+            </a>
+          </div>
+        ) : null
+      }
+    </div>
+    {
+      img ? (
+        <div class="media">
+          <img
+            src={img.src}
+            srcset={img.srcset}
+            sizes="(min-width: 900px) 40vw, 100vw"
+            width={img.width}
+            height={img.height}
+            alt={img.alt}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      ) : image?.alt ? (
+        <div class="media" role="img" aria-label={image.alt} />
+      ) : (
+        <div class="media" aria-hidden="true" />
+      )
+    }
+  </div>
+</section>

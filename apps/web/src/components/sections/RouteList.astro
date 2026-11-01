@@ -1,0 +1,68 @@
+---
+import { priceLabel } from '../../lib/content/price-label';
+import { getPublishableRoutes, type PublishableRoute } from '../../lib/content/routes';
+import { getSiteSettings } from '../../lib/sanity/content';
+import { getCatalog, lowestRoutePrice } from '../../lib/server/catalog';
+import { t } from '../../lib/strings';
+
+interface Props {
+  heading?: string;
+  intro?: string;
+  routes?: Array<{
+    title: string;
+    slug: string;
+    fromZone: string;
+    toZone: string;
+    featured?: boolean | null;
+    sortOrder?: number | null;
+  }> | null;
+}
+
+const { heading, intro, routes: referenced } = Astro.props;
+const settings = await getSiteSettings();
+const show = settings.showFromPrices !== false;
+let publishable: PublishableRoute[] = [];
+let cat: Awaited<ReturnType<typeof getCatalog>> | null = null;
+try {
+  [publishable, cat] = await Promise.all([getPublishableRoutes(), getCatalog()]);
+} catch {
+  publishable = [];
+  cat = null;
+}
+const bySlug = new Map(publishable.map((r) => [r.slug, r]));
+
+let list: PublishableRoute[] = [];
+if (referenced && referenced.length > 0) {
+  for (const ref of referenced) {
+    const hit = bySlug.get(ref.slug);
+    if (hit) list.push(hit);
+  }
+} else {
+  list = publishable.filter((r) => r.featured);
+}
+
+const headingId = heading ? 'route-list-h' : undefined;
+---
+
+<section class="section" aria-labelledby={headingId}>
+  <div class="wrap stack">
+    {heading ? <h2 id={headingId}>{heading}</h2> : null}
+    {intro ? <p class="muted">{intro}</p> : null}
+    <div class="grid grid-3">
+      {
+        list.map((route) => {
+          const lowest = cat ? lowestRoutePrice(cat, route.fromZone, route.toZone) : null;
+          const price = priceLabel(lowest, { show });
+          const duration = t('site.duration', { minutes: route.durationMinutes });
+          return (
+            <a class="card stack" href={`/routes/${route.slug}`}>
+              <strong>{route.title}</strong>
+              <span class="muted">{duration}</span>
+              <span class="from-price">{price.text}</span>
+            </a>
+          );
+        })
+      }
+    </div>
+  </div>
+</section>

@@ -8,9 +8,9 @@ const { heading, items } = Astro.props;
 const headingId = 'faq-h';
 ---
 
-<section class="section" id="faq" aria-labelledby={headingId}>
+<section class="section" id="faq" aria-labelledby={heading ? headingId : undefined}>
   <div class="narrow stack">
-    <h2 id={headingId}>{heading || 'Questions'}</h2>
+    {heading ? <h2 id={headingId}>{heading}</h2> : null}
     {
       items.map((item) => (
         <details class="card faq-item">

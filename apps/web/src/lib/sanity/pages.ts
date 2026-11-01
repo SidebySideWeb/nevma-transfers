@@ -10,7 +10,7 @@ export type PageSection =
       heading: string;
       subheading?: string;
       ctaLabel?: string;
-      ctaTarget?: 'book' | 'url';
+      ctaTarget?: 'book' | 'quote' | 'url';
       ctaUrl?: string;
       image?: SanityImage;
     }
@@ -26,7 +26,7 @@ export type PageSection =
       heading: string;
       text?: string;
       ctaLabel: string;
-      ctaTarget?: 'book' | 'url';
+      ctaTarget?: 'book' | 'quote' | 'url';
       ctaUrl?: string;
     }
   | {
@@ -34,10 +34,75 @@ export type PageSection =
       _key?: string;
       heading?: string;
       items: Array<{ question: string; answer: string; _key?: string }>;
+    }
+  | {
+      _type: 'featureGrid';
+      _key?: string;
+      heading?: string;
+      intro?: string;
+      items: Array<{ title: string; text: string; link?: string; _key?: string }>;
+    }
+  | {
+      _type: 'imageText';
+      _key?: string;
+      heading: string;
+      body: Record<string, unknown>[];
+      image?: SanityImage;
+      imageSide?: 'left' | 'right';
+      ctaLabel?: string;
+      ctaTarget?: 'book' | 'quote' | 'url';
+      ctaUrl?: string;
+    }
+  | {
+      _type: 'steps';
+      _key?: string;
+      heading?: string;
+      items: Array<{ title: string; text?: string; _key?: string }>;
+    }
+  | {
+      _type: 'vehicleClassList';
+      _key?: string;
+      heading?: string;
+      intro?: string;
+    }
+  | {
+      _type: 'routeList';
+      _key?: string;
+      heading?: string;
+      intro?: string;
+      routes?: Array<{
+        title: string;
+        slug: string;
+        fromZone: string;
+        toZone: string;
+        featured?: boolean | null;
+        sortOrder?: number | null;
+      }> | null;
+    }
+  | {
+      _type: 'contactDetails';
+      _key?: string;
+      heading?: string;
+      showHours?: boolean | null;
+    }
+  | {
+      _type: 'formBlock';
+      _key?: string;
+      heading?: string;
+      form?: {
+        key?: string;
+        title?: string;
+        intro?: string | null;
+        recipientEmail?: string;
+        topics?: unknown;
+        submitLabel?: string | null;
+        successTitle?: string | null;
+        successMessage?: string | null;
+      } | null;
     };
 
 export type CmsPage = {
-  kind: 'home' | 'legal';
+  kind: 'home' | 'legal' | 'standard';
   title: string;
   slug: string;
   sections: PageSection[];
@@ -69,7 +134,11 @@ export async function getPageBySlug(slug: string): Promise<CmsPage> {
   try {
     const client = createSanityClient();
     const doc = await client.fetch(PAGE_BY_SLUG_QUERY, { slug });
-    if (!doc?.title || !doc?.slug || (doc.kind !== 'home' && doc.kind !== 'legal')) {
+    if (
+      !doc?.title ||
+      !doc?.slug ||
+      (doc.kind !== 'home' && doc.kind !== 'legal' && doc.kind !== 'standard')
+    ) {
       return demoOrThrow(slug, 'document not published or not found');
     }
     const seo = doc.seo
