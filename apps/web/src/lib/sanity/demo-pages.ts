@@ -250,4 +250,145 @@ export const DEMO_PAGES: Record<string, CmsPage> = {
       },
     ],
   },
+  'vip-security': {
+    kind: 'standard',
+    title: 'VIP security',
+    slug: 'vip-security',
+    seo: { title: 'VIP security (DEMO)', description: 'DEMO VIP security description.' },
+    sections: [
+      {
+        _type: 'hero',
+        heading: 'DEMO Close protection, quietly done.',
+        subheading: 'DEMO Protection for people, premises and property.',
+        ctaLabel: 'Send an enquiry',
+        ctaTarget: 'url',
+        ctaUrl: '#enquiry',
+      },
+      {
+        _type: 'imageText',
+        heading: 'DEMO What is included',
+        body: [
+          {
+            _type: 'block',
+            _key: 'b1',
+            style: 'normal',
+            markDefs: [],
+            children: [
+              {
+                _type: 'span',
+                _key: 's1',
+                text: 'DEMO inclusions and legal wording from the client.',
+                marks: [],
+              },
+            ],
+          },
+        ],
+        imageSide: 'right',
+      },
+      {
+        _type: 'formBlock',
+        form: {
+          key: 'vip-security',
+          title: 'DEMO VIP security enquiry',
+          intro: 'DEMO form intro.',
+        },
+      },
+      {
+        _type: 'contactDetails',
+        heading: 'DEMO Security desk',
+        showHours: true,
+      },
+    ],
+  },
+  about: {
+    kind: 'standard',
+    title: 'About',
+    slug: 'about',
+    seo: { title: 'About (DEMO)', description: 'DEMO about description.' },
+    sections: [
+      {
+        _type: 'imageText',
+        heading: 'DEMO Two divisions, one company.',
+        body: [
+          {
+            _type: 'block',
+            _key: 'b1',
+            style: 'normal',
+            markDefs: [],
+            children: [
+              {
+                _type: 'span',
+                _key: 's1',
+                text: 'DEMO About Elite Protection in Athens.',
+                marks: [],
+              },
+            ],
+          },
+        ],
+        imageSide: 'left',
+      },
+      {
+        _type: 'ctaBand',
+        heading: 'DEMO Travel with us',
+        ctaLabel: 'Book now',
+        ctaTarget: 'book',
+      },
+    ],
+  },
+  contact: {
+    kind: 'standard',
+    title: 'Contact',
+    slug: 'contact',
+    seo: { title: 'Contact (DEMO)', description: 'DEMO contact description.' },
+    sections: [
+      {
+        _type: 'contactDetails',
+        heading: 'DEMO Get in touch',
+        showHours: true,
+      },
+      {
+        _type: 'formBlock',
+        form: { key: 'contact', title: 'DEMO Contact us', intro: 'DEMO contact form intro.' },
+      },
+    ],
+  },
+  'request-a-transfer': {
+    kind: 'standard',
+    title: 'Request a transfer',
+    slug: 'request-a-transfer',
+    seo: {
+      title: 'Request a transfer (DEMO)',
+      description: 'DEMO request a transfer description.',
+    },
+    sections: [
+      {
+        _type: 'richText',
+        heading: 'DEMO Request a quote',
+        body: [
+          {
+            _type: 'block',
+            _key: 'b1',
+            style: 'normal',
+            markDefs: [],
+            children: [
+              {
+                _type: 'span',
+                _key: 's1',
+                text: 'DEMO For trips we cannot price online.',
+                marks: [],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        _type: 'formBlock',
+        form: {
+          key: 'transfer-request',
+          title: 'DEMO Transfer request',
+          intro: 'DEMO request form intro.',
+        },
+      },
+    ],
+  },
 };

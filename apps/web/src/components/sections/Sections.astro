@@ -14,9 +14,11 @@ import VehicleClassList from './VehicleClassList.astro';
 
 interface Props {
   sections: PageSection[];
+  /** When set, the formBlock section root uses this id (VIP `#enquiry`). */
+  formBlockId?: string;
 }
 
-const { sections } = Astro.props;
+const { sections, formBlockId } = Astro.props;
 ---
 
 {
@@ -74,7 +76,9 @@ const { sections } = Astro.props;
       case 'contactDetails':
         return <ContactDetails heading={section.heading} showHours={section.showHours} />;
       case 'formBlock':
-        return <FormBlock heading={section.heading} form={section.form} />;
+        return (
+          <FormBlock heading={section.heading} form={section.form} id={formBlockId} />
+        );
       default:
         return null;
     }

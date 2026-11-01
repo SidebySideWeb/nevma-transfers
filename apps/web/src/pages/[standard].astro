@@ -1,0 +1,84 @@
+---
+export const prerender = true;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Sections from '../components/sections/Sections.astro';
+import { getSiteSettings } from '../lib/sanity/content';
+import {
+  getPageBySlug,
+  LEGAL_SLUGS,
+  STANDARD_SLUGS,
+  type CmsPage,
+  type StandardSlug,
+} from '../lib/sanity/pages';
+import { organizationJsonLd, resolveSeo, serviceJsonLd } from '../lib/seo';
+
+export async function getStaticPaths() {
+  const paths: { params: { standard: StandardSlug }; props: { page: CmsPage } }[] = [];
+  for (const slug of STANDARD_SLUGS) {
+    if ((LEGAL_SLUGS as readonly string[]).includes(slug)) {
+      throw new Error(`Standard slug "${slug}" collides with a legal page slug`);
+    }
+    let page: CmsPage;
+    try {
+      page = await getPageBySlug(slug);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new Error(
+        `Missing standard page "${slug}" (expected Sanity document page-${slug}). ${msg}`,
+      );
+    }
+    paths.push({ params: { standard: slug }, props: { page } });
+  }
+  return paths;
+}
+
+interface Props {
+  page: CmsPage;
+}
+
+const standard = Astro.params.standard as StandardSlug;
+if (!(STANDARD_SLUGS as readonly string[]).includes(standard)) {
+  throw new Error(
+    `Unknown standard slug "${standard}". Expected one of: ${STANDARD_SLUGS.join(', ')}.`,
+  );
+}
+
+const { page } = Astro.props;
+const settings = await getSiteSettings();
+const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
+  /\/$/,
+  '',
+);
+
+const seo = resolveSeo({
+  pageTitle: page.title,
+  pageSeo: page.seo ?? null,
+  settings,
+  pathname: `/${standard}`,
+  siteUrl,
+});
+
+const jsonLd: unknown[] = [];
+if (standard === 'vip-security') {
+  jsonLd.push(
+    serviceJsonLd({
+      name: page.title,
+      description: seo.description || undefined,
+      url: `${siteUrl}/vip-security`,
+      providerName: settings.companyName,
+      showPrice: false,
+    }),
+  );
+} else if (standard === 'about') {
+  jsonLd.push(organizationJsonLd(settings, siteUrl));
+} else if (standard === 'contact') {
+  jsonLd.push(organizationJsonLd(settings, siteUrl, { contactPoint: true }));
+}
+
+const formBlockId = standard === 'vip-security' ? 'enquiry' : undefined;
+---
+
+<BaseLayout seo={seo} jsonLd={jsonLd}>
+  <Sections sections={page.sections} formBlockId={formBlockId} />
+</BaseLayout>

@@ -166,3 +166,19 @@ export async function getPageBySlug(slug: string): Promise<CmsPage> {
 
 export const LEGAL_SLUGS = ['privacy', 'cookies', 'terms', 'cancellation'] as const;
 export type LegalSlug = (typeof LEGAL_SLUGS)[number];
+
+/** Standard CMS pages with no dedicated Astro route (fleet/services keep theirs). */
+export const STANDARD_SLUGS = [
+  'vip-security',
+  'about',
+  'contact',
+  'request-a-transfer',
+] as const;
+export type StandardSlug = (typeof STANDARD_SLUGS)[number];
+
+const legalSet = new Set<string>(LEGAL_SLUGS);
+for (const slug of STANDARD_SLUGS) {
+  if (legalSet.has(slug)) {
+    throw new Error(`Slug "${slug}" is in both LEGAL_SLUGS and STANDARD_SLUGS`);
+  }
+}

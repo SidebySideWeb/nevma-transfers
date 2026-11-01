@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getPublishableRoutes } from '../lib/content/routes';
 import { getPublishableClasses } from '../lib/content/vehicles';
-import { LEGAL_SLUGS } from '../lib/sanity/pages';
+import { LEGAL_SLUGS, STANDARD_SLUGS } from '../lib/sanity/pages';
 
 export const prerender = true;
 
@@ -17,6 +17,7 @@ export const GET: APIRoute = async ({ site }) => {
     ...classes.map((c) => `/fleet/${c.key}`),
     '/services',
     ...routes.map((r) => `/routes/${r.slug}`),
+    ...STANDARD_SLUGS.map((s) => `/${s}`),
     ...LEGAL_SLUGS.map((s) => `/${s}`),
   ];
   const body = `<?xml version="1.0" encoding="UTF-8"?>

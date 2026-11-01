@@ -61,7 +61,11 @@ export function resolveSeo(opts: {
 
 export type FaqItem = { question: string; answer: string };
 
-export function organizationJsonLd(settings: SiteSettings, siteUrl: string) {
+export function organizationJsonLd(
+  settings: SiteSettings,
+  siteUrl: string,
+  opts?: { contactPoint?: boolean },
+) {
   const url = siteUrl.replace(/\/$/, '');
   return {
     '@context': 'https://schema.org',
@@ -76,6 +80,17 @@ export function organizationJsonLd(settings: SiteSettings, siteUrl: string) {
           address: {
             '@type': 'PostalAddress',
             streetAddress: settings.address,
+          },
+        }
+      : {}),
+    ...(opts?.contactPoint
+      ? {
+          contactPoint: {
+            '@type': 'ContactPoint',
+            ...(settings.phone ? { telephone: settings.phone } : {}),
+            ...(settings.email ? { email: settings.email } : {}),
+            contactType: 'customer service',
+            availableLanguage: 'English',
           },
         }
       : {}),

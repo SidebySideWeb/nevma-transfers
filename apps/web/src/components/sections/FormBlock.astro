@@ -6,17 +6,34 @@ interface Props {
     title?: string;
     intro?: string | null;
   } | null;
+  id?: string;
 }
 
-const { heading, form } = Astro.props;
+const { heading, form, id } = Astro.props;
 const title = heading || form?.title || '';
 const intro = form?.intro || '';
 const headingId = title ? 'form-block-h' : undefined;
 ---
 
-<section class="section" aria-labelledby={headingId}>
+<section class="section" id={id} aria-labelledby={headingId}>
   <div class="wrap narrow stack card">
-    {title ? <h2 id={headingId}>{title}</h2> : null}
+    {title ? <h2 id={headingId} tabindex="-1">{title}</h2> : null}
     {intro ? <p class="muted">{intro}</p> : null}
   </div>
 </section>
+
+{
+  id === 'enquiry' ? (
+    <script is:inline>
+      (function () {
+        function focusEnquiryHeading() {
+          if (location.hash !== '#enquiry') return;
+          const h = document.getElementById('form-block-h');
+          if (h) h.focus({ preventScroll: true });
+        }
+        focusEnquiryHeading();
+        window.addEventListener('hashchange', focusEnquiryHeading);
+      })();
+    </script>
+  ) : null
+}
