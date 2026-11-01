@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import type { SanityClient } from '@sanity/client';
 import { createSanityClient, sanityConfigured } from './client';
 import {
   FORM_BY_KEY_QUERY,
@@ -15,7 +16,11 @@ import { uiStringDefaults } from '@studio-strings';
 const runLive = sanityConfigured();
 
 describe.skipIf(!runLive)('Sanity queries (live dataset)', () => {
-  const client = createSanityClient();
+  // Create only in beforeAll: describe.skipIf still runs this body during collect.
+  let client: SanityClient;
+  beforeAll(() => {
+    client = createSanityClient();
+  });
 
   it('settings has a phone, booking notification email and showFromPrices', async () => {
     const settings = await client.fetch(SITE_SETTINGS_QUERY);
