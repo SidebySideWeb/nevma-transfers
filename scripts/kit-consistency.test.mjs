@@ -28,7 +28,13 @@ test('every file path referenced in prompts, rules and AGENTS.md exists (or is b
   const sources = [...prompts.map((f) => `prompts/${f}`), 'AGENTS.md', ...readdirSync(join(root, '.cursor/rules')).map((f) => `.cursor/rules/${f}`)];
   const refs = new Set();
   for (const s of sources) for (const m of read(s).matchAll(/`((?:docs|design|packages\/db|seed|scripts|prompts|\.cursor\/rules)\/[\w./-]+\.(?:md|css|html|sql|mjs|mdc|ndjson|gz))`/g)) refs.add(m[1]);
-  const builtLater = ['docs/QA-REPORT.md', 'scripts/check-live-demo.mjs'];
+  const builtLater = [
+    'docs/QA-REPORT.md',
+    'scripts/check-live-demo.mjs',
+    // Prompt 29 (fleet setup) — not yet applied in this kit 2 QA cut.
+    'packages/db/migrations/0012_setup_guards.sql',
+    'packages/db/tests/setup.test.mjs',
+  ];
   for (const r of refs) if (!builtLater.includes(r)) assert.ok(existsSync(join(root, r)), `missing ${r}`);
 });
 

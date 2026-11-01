@@ -90,6 +90,12 @@ Functions:
 
 `pg_cron` job `tem-expire-holds` runs `expire_holds()` every minute. Reminder emails are sent by Vercel Cron (`/api/cron/reminders`), not by the database.
 
+## Rate limits (0007)
+
+| Table | Columns | Rules |
+| --- | --- | --- |
+| `rate_limits` | `key`, `window_start`, `count` | fixed-window counters for API/forms; RLS on, no public policies; written via `hit_rate_limit(key, window_seconds, max) → boolean` |
+
 ## Acceptance coverage in `packages/db/tests`
 
 AC-02 overlap, AC-03 type rules, AC-04 hold expiry, AC-05 last-vehicle race and hold limit, AC-07 duplicate transaction and idempotency key, AC-08 refund limit, AC-09 VIP flag, AC-10 RLS and staff rights, AC-14 DST range, plus the DEMO seed checks.
