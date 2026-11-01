@@ -78,6 +78,17 @@ async function loadSanityClasses(): Promise<SanityVehicleClass[]> {
   }
 }
 
+/** Shared with kit 2 publishable fleet (prompt 16). */
+export async function loadSanityVehicleClasses(): Promise<SanityVehicleClass[]> {
+  return loadSanityClasses();
+}
+
+export function warnMissingSanityClass(key: string): void {
+  if (missingSanityLogged.has(key)) return;
+  missingSanityLogged.add(key);
+  console.error(JSON.stringify({ level: 'warn', code: 'missing_sanity_class', key }));
+}
+
 export async function bookingOptions() {
   const settings = await getSettings();
   const classesContent = await loadSanityClasses();
@@ -108,10 +119,7 @@ export async function bookingOptions() {
   const classes = [];
   for (const row of classRows) {
     const content = byKey.get(row.key);
-    if (!content && !missingSanityLogged.has(row.key)) {
-      missingSanityLogged.add(row.key);
-      console.error(JSON.stringify({ level: 'warn', code: 'missing_sanity_class', key: row.key }));
-    }
+    if (!content) warnMissingSanityClass(row.key);
     // Fall back to the Postgres key so booking still works when Sanity is empty/offline.
     const name = content?.name ?? row.key;
     const photo = content?.photos?.[0];
