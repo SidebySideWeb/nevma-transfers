@@ -201,4 +201,53 @@ export const DEMO_PAGES: Record<string, CmsPage> = {
       },
     ],
   },
+  services: {
+    kind: 'standard',
+    title: 'Services',
+    slug: 'services',
+    seo: { title: 'Services (DEMO)', description: 'DEMO services description.' },
+    sections: [
+      {
+        _type: 'hero',
+        heading: 'DEMO Our services',
+        subheading: 'DEMO Transfers, hourly hire and VIP security.',
+        ctaLabel: 'Book now',
+        ctaTarget: 'book',
+      },
+      {
+        _type: 'featureGrid',
+        heading: 'DEMO What we do',
+        items: [
+          {
+            title: 'DEMO Airport transfers',
+            text: 'DEMO Fixed prices to and from the airport.',
+            link: '/routes/athens-airport-to-piraeus-port',
+          },
+          {
+            title: 'DEMO By the hour',
+            text: 'DEMO A vehicle and driver for as long as you need.',
+            link: '/book?type=hourly',
+          },
+          {
+            title: 'DEMO VIP security',
+            text: 'DEMO Add protection to any booking.',
+            link: '/vip-security',
+          },
+        ],
+      },
+      {
+        _type: 'steps',
+        heading: 'DEMO How it works',
+        items: [
+          { title: 'DEMO Choose your trip', text: 'DEMO Areas, date and time.' },
+          { title: 'DEMO Pick a vehicle', text: 'DEMO Fixed price shown before you pay.' },
+          { title: 'DEMO Pay securely', text: 'DEMO Confirmation by email.' },
+        ],
+      },
+      {
+        _type: 'routeList',
+        heading: 'DEMO Popular routes',
+      },
+    ],
+  },
 };

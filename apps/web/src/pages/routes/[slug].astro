@@ -1,0 +1,264 @@
+---
+export const prerender = true;
+
+import { PortableText } from 'astro-portabletext';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import PortableLink from '../../components/sections/PortableLink.astro';
+import { priceLabel } from '../../lib/content/price-label';
+import { getPublishableRoutes } from '../../lib/content/routes';
+import { getPublishableClasses } from '../../lib/content/vehicles';
+import { isBookingOpen } from '../../lib/booking-open';
+import { formatEuro } from '../../lib/booking/pricing';
+import { getSiteSettings } from '../../lib/sanity/content';
+import { responsiveImage, type SanityImage } from '../../lib/sanity/image';
+import { fromPriceForRoute, getCatalog } from '../../lib/server/catalog';
+import { faqPageJsonLd, resolveSeo, serviceJsonLd } from '../../lib/seo';
+import { t } from '../../lib/strings';
+
+export async function getStaticPaths() {
+  let routes: Awaited<ReturnType<typeof getPublishableRoutes>> = [];
+  try {
+    routes = await getPublishableRoutes();
+  } catch (e) {
+    console.warn(
+      '[routes] getPublishableRoutes failed during getStaticPaths:',
+      e instanceof Error ? e.message : e,
+    );
+  }
+  if (!routes.length) {
+    console.warn('[routes] no publishable routes — /routes/[slug] paths empty');
+  }
+  return routes.map((route) => ({
+    params: { slug: route.slug },
+    props: { route },
+  }));
+}
+
+interface Props {
+  route: Awaited<ReturnType<typeof getPublishableRoutes>>[number];
+}
+
+const { route } = Astro.props;
+const settings = await getSiteSettings();
+const [cat, classes] = await Promise.all([
+  getCatalog(),
+  getPublishableClasses().catch(() => []),
+]);
+const show = settings.showFromPrices !== false;
+const bookingOpen = isBookingOpen();
+const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
+  /\/$/,
+  '',
+);
+
+const classByKey = new Map(classes.map((c) => [c.key, c]));
+const priceRows = fromPriceForRoute(cat, route.fromZone, route.toZone).map((row) => {
+  const cls = classByKey.get(row.classKey);
+  return {
+    key: row.classKey,
+    name: cls?.name ?? row.classKey,
+    maxPassengers: cls?.maxPassengers ?? 0,
+    maxLuggage: cls?.maxLuggage ?? 0,
+    cents: row.cents,
+  };
+});
+
+const pricedCents = priceRows
+  .map((r) => r.cents)
+  .filter((c): c is number => c != null);
+
+const photo = responsiveImage((route.photo ?? null) as SanityImage, {
+  fallbackWidth: 1600,
+  fallbackHeight: 1000,
+});
+
+const seoDoc = (route.seo ?? null) as {
+  title?: string | null;
+  description?: string | null;
+  noindex?: boolean | null;
+  image?: SanityImage;
+} | null;
+
+const defaultTitle = `${route.title} transfer · ${settings.companyName}`;
+const pageSeo = {
+  title: seoDoc?.title || defaultTitle,
+  description: seoDoc?.description || route.intro || undefined,
+  noindex: seoDoc?.noindex ?? undefined,
+  image: seoDoc?.image,
+};
+
+const seo = resolveSeo({
+  pageTitle: route.title,
+  pageSeo,
+  settings,
+  pathname: `/routes/${route.slug}`,
+  siteUrl,
+});
+if (!seoDoc?.title) seo.title = defaultTitle;
+
+const faqItems = (route.faq ?? [])
+  .filter((f): f is { question: string; answer: string } => Boolean(f?.question && f?.answer))
+  .map((f) => ({ question: f.question, answer: f.answer }));
+
+const jsonLd = [
+  serviceJsonLd({
+    name: route.title,
+    description: pageSeo.description ?? undefined,
+    url: `${siteUrl}/routes/${route.slug}`,
+    providerName: settings.companyName,
+    offerPricesCents: pricedCents,
+    showPrice: show,
+  }),
+  ...(faqItems.length ? [faqPageJsonLd(faqItems)] : []),
+];
+
+const body = (route.body ?? []) as Parameters<typeof PortableText>[0]['value'];
+const bookHref = `/book?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}`;
+const duration = t('site.duration', { minutes: route.durationMinutes });
+---
+
+<BaseLayout seo={seo} jsonLd={jsonLd}>
+  <Breadcrumbs
+    items={[
+      { label: t('nav.services'), href: '/services' },
+      { label: route.title },
+    ]}
+    siteUrl={siteUrl}
+  />
+
+  <section class="section">
+    <div class="wrap image-text">
+      <div class="stack">
+        <h1 class="display">{route.title}</h1>
+        {route.intro ? <p class="muted">{route.intro}</p> : null}
+        <ul class="facts">
+          <li>{duration}</li>
+        </ul>
+        {
+          bookingOpen ? (
+            <a class="btn btn-gold" href={bookHref}>
+              {t('site.bookRoute')}
+            </a>
+          ) : (
+            <a
+              class="btn btn-gold"
+              href={`/request-a-transfer?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}`}
+            >
+              {t('site.requestQuote')}
+            </a>
+          )
+        }
+      </div>
+      {
+        photo ? (
+          <div class="media">
+            <img
+              src={photo.src}
+              srcset={photo.srcset}
+              sizes="(min-width: 900px) 50vw, 100vw"
+              width={photo.width}
+              height={photo.height}
+              alt={photo.alt}
+              fetchpriority="high"
+              loading="eager"
+              decoding="async"
+            />
+          </div>
+        ) : (
+          <div class="media" aria-hidden="true" />
+        )
+      }
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="prices-h">
+    <div class="wrap stack">
+      <h2 id="prices-h">{t('site.pricesForRoute')}</h2>
+      <div
+        class="table-wrap"
+        role="region"
+        tabindex="0"
+        aria-label={t('site.pricesForRoute')}
+      >
+        <table class="price-table">
+          <thead>
+            <tr>
+              <th scope="col">Vehicle</th>
+              <th scope="col">Capacity</th>
+              <th scope="col" class="num">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              priceRows.map((row) => {
+                const capacity = t('booking.vehicle.capacity', {
+                  passengers: row.maxPassengers,
+                  luggage: row.maxLuggage,
+                });
+                const priced = show && row.cents != null;
+                const quoteHref = `/request-a-transfer?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}&class=${encodeURIComponent(row.key)}`;
+                return (
+                  <tr data-class={row.key}>
+                    <th scope="row">{row.name}</th>
+                    <td>{capacity}</td>
+                    <td class="num">
+                      {
+                        priced ? (
+                          formatEuro(row.cents as number)
+                        ) : (
+                          <>
+                            {priceLabel(null, { show: true }).text}
+                            {' · '}
+                            <a href={quoteHref}>{t('site.requestQuote')}</a>
+                          </>
+                        )
+                      }
+                    </td>
+                  </tr>
+                );
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  {
+    (body && body.length > 0) || faqItems.length > 0 ? (
+      <section class="section">
+        <div class="narrow stack">
+          {
+            body && body.length > 0 ? (
+              <div class="stack prose">
+                <h2>About this trip</h2>
+                <PortableText
+                  value={body}
+                  components={{
+                    mark: { link: PortableLink },
+                  }}
+                />
+              </div>
+            ) : null
+          }
+          {
+            faqItems.length > 0 ? (
+              <div class="stack">
+                <h2>Questions</h2>
+                {faqItems.map((item) => (
+                  <details class="card faq-item">
+                    <summary>
+                      <strong>{item.question}</strong>
+                    </summary>
+                    <p class="muted">{item.answer}</p>
+                  </details>
+                ))}
+              </div>
+            ) : null
+          }
+        </div>
+      </section>
+    ) : null
+  }
+</BaseLayout>

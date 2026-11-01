@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Notice, VehicleCard } from '../ui';
 import { formatEuro } from './format';
 import type { BookingStrings, ContactInfo, OptionsData, QuoteData, SearchState } from './types';
@@ -11,9 +12,19 @@ type Props = {
   busy: boolean;
   holdExpiredMessage: boolean;
   formError: string | null;
+  preferredClassKey?: string | null;
   onSelect: (classKey: string) => void;
   onChangeSearch: () => void;
 };
+
+function requestQuoteHref(search: SearchState, classKey?: string): string {
+  const q = new URLSearchParams();
+  if (search.fromZone) q.set('from', search.fromZone);
+  if (search.type === 'transfer' && search.toZone) q.set('to', search.toZone);
+  if (classKey) q.set('class', classKey);
+  const qs = q.toString();
+  return qs ? `/request-a-transfer?${qs}` : '/request-a-transfer';
+}
 
 export function StepVehicle({
   strings,
@@ -24,6 +35,7 @@ export function StepVehicle({
   busy,
   holdExpiredMessage,
   formError,
+  preferredClassKey,
   onSelect,
   onChangeSearch,
 }: Props) {
@@ -37,6 +49,12 @@ export function StepVehicle({
 
   const priced = quote.options.filter((o) => o.baseCents != null);
   const showContact = priced.length === 0;
+  const preferredRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!preferredClassKey) return;
+    preferredRef.current?.focus();
+  }, [preferredClassKey, quote.options]);
 
   return (
     <>
@@ -68,6 +86,9 @@ export function StepVehicle({
             <a className="btn btn-ghost" href={`mailto:${contact.email}`}>
               {contact.email}
             </a>
+            <a className="btn btn-gold" href={requestQuoteHref(search)}>
+              {strings['site.requestQuote'] ?? 'Request a quote'}
+            </a>
           </div>
         </Notice>
       ) : (
@@ -80,6 +101,7 @@ export function StepVehicle({
               opt.reason === 'no_price'
                 ? strings['error.no_price']
                 : strings['error.unavailable'];
+            const preferred = preferredClassKey === opt.classKey;
             return (
               <VehicleCard
                 key={opt.classKey}
@@ -102,13 +124,29 @@ export function StepVehicle({
                     <span className="badge badge-warning">{strings['error.no_price']}</span>
                   )
                 }
-                status={unavailable ? <span className="muted">{reason}</span> : undefined}
+                status={
+                  unavailable ? (
+                    <span className="muted">
+                      {reason}
+                      {opt.reason === 'no_price' ? (
+                        <>
+                          {' · '}
+                          <a href={requestQuoteHref(search, opt.classKey)}>
+                            {strings['site.requestQuote'] ?? 'Request a quote'}
+                          </a>
+                        </>
+                      ) : null}
+                    </span>
+                  ) : undefined
+                }
                 action={
                   unavailable ? undefined : (
                     <button
                       type="button"
                       className="btn btn-gold"
                       disabled={busy}
+                      ref={preferred ? preferredRef : undefined}
+                      aria-current={preferred ? 'true' : undefined}
                       onClick={() => onSelect(opt.classKey)}
                     >
                       {busy ? strings['booking.loading'] : strings['booking.vehicle.select']}

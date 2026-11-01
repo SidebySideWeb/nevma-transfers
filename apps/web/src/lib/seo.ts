@@ -145,16 +145,24 @@ export function serviceJsonLd(opts: {
   url: string;
   providerName: string;
   lowPriceCents?: number | null;
+  /** Exact prices (one Offer each). Used on route pages. */
+  offerPricesCents?: number[];
   showPrice: boolean;
 }) {
-  const offers =
-    opts.showPrice && opts.lowPriceCents != null
-      ? {
-          '@type': 'Offer',
-          priceCurrency: 'EUR',
-          lowPrice: (opts.lowPriceCents / 100).toFixed(2),
-        }
-      : undefined;
+  let offers: Record<string, unknown> | Record<string, unknown>[] | undefined;
+  if (opts.showPrice && opts.offerPricesCents && opts.offerPricesCents.length > 0) {
+    offers = opts.offerPricesCents.map((cents) => ({
+      '@type': 'Offer',
+      priceCurrency: 'EUR',
+      price: (cents / 100).toFixed(2),
+    }));
+  } else if (opts.showPrice && opts.lowPriceCents != null) {
+    offers = {
+      '@type': 'Offer',
+      priceCurrency: 'EUR',
+      lowPrice: (opts.lowPriceCents / 100).toFixed(2),
+    };
+  }
   return {
     '@context': 'https://schema.org',
     '@type': 'Service',

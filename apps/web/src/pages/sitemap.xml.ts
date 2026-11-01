@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { getPublishableRoutes } from '../lib/content/routes';
 import { getPublishableClasses } from '../lib/content/vehicles';
 import { LEGAL_SLUGS } from '../lib/sanity/pages';
 
@@ -6,11 +7,16 @@ export const prerender = true;
 
 export const GET: APIRoute = async ({ site }) => {
   const base = (site?.href || 'http://localhost:4321').replace(/\/$/, '');
-  const classes = await getPublishableClasses().catch(() => []);
+  const [classes, routes] = await Promise.all([
+    getPublishableClasses().catch(() => []),
+    getPublishableRoutes().catch(() => []),
+  ]);
   const urls = [
     '/',
     '/fleet',
     ...classes.map((c) => `/fleet/${c.key}`),
+    '/services',
+    ...routes.map((r) => `/routes/${r.slug}`),
     ...LEGAL_SLUGS.map((s) => `/${s}`),
   ];
   const body = `<?xml version="1.0" encoding="UTF-8"?>

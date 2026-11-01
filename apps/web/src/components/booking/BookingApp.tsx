@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { StepIndicator, SummaryCard } from '../ui';
+import { parseBookingPrefill, quoteRequestBody } from '../../lib/booking/prefill';
 import { BookingApiError, bookingApi } from './api';
 import { formatEuro } from './format';
 import { Handoff } from './Handoff';
@@ -40,6 +41,7 @@ function focusErrorSummary() {
 
 export default function BookingApp({ strings, turnstileSiteKey, contact }: BookingAppProps) {
   const [state, dispatch] = useReducer(bookingReducer, undefined, createInitialState);
+  const [preferredClassKey, setPreferredClassKey] = useState<string | null>(null);
   const syncHash = useRef(true);
 
   useEffect(() => {
@@ -50,19 +52,11 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
         if (cancelled) return;
         dispatch({ type: 'OPTIONS', options: data });
         const q = new URLSearchParams(window.location.search);
-        const patch: Partial<import('./types').SearchState> = {};
-        const type = q.get('type');
-        if (type === 'transfer' || type === 'hourly') patch.type = type;
-        if (q.get('from')) patch.fromZone = q.get('from')!;
-        if (q.get('to')) patch.toZone = q.get('to')!;
-        const hours = Number(q.get('hours'));
-        if (Number.isFinite(hours) && hours > 0) patch.hours = hours;
-        const passengers = Number(q.get('passengers'));
-        if (Number.isFinite(passengers) && passengers > 0) patch.passengers = passengers;
-        const date = q.get('date');
-        const time = q.get('time');
-        if (date && time) patch.pickupLocal = `${date}T${time}`;
-        if (Object.keys(patch).length) dispatch({ type: 'SET_SEARCH', patch });
+        const prefill = parseBookingPrefill(q, data);
+        if (Object.keys(prefill.search).length) {
+          dispatch({ type: 'SET_SEARCH', patch: prefill.search });
+        }
+        if (prefill.classKey) setPreferredClassKey(prefill.classKey);
       } catch {
         if (!cancelled) {
           dispatch({
@@ -124,24 +118,7 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
     dispatch({ type: 'BUSY', busy: true });
     dispatch({ type: 'CLEAR_ERRORS' });
     try {
-      const body =
-        state.search.type === 'transfer'
-          ? {
-              type: 'transfer' as const,
-              fromZone: state.search.fromZone,
-              toZone: state.search.toZone,
-              pickupLocal: state.search.pickupLocal,
-              passengers: state.search.passengers,
-              luggage: state.search.luggage,
-            }
-          : {
-              type: 'hourly' as const,
-              fromZone: state.search.fromZone,
-              hours: state.search.hours,
-              pickupLocal: state.search.pickupLocal,
-              passengers: state.search.passengers,
-              luggage: state.search.luggage,
-            };
+      const body = quoteRequestBody(state.search);
       const { data } = await bookingApi.quote(body);
       dispatch({ type: 'QUOTE_OK', quote: data });
     } catch (e) {
@@ -370,6 +347,7 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
               busy={state.busy}
               holdExpiredMessage={state.holdExpiredMessage}
               formError={state.formError}
+              preferredClassKey={preferredClassKey}
               onSelect={selectVehicle}
               onChangeSearch={() => {
                 dispatch({ type: 'CLEAR_HOLD_EXPIRED' });
