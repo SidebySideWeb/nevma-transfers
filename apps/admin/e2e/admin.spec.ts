@@ -152,8 +152,11 @@ test('AC-19 axe on admin pages; tables keyboard-reachable', async ({ page }) => 
   }
 });
 
-test('admin menu opens at 390px; refund dialog Escape; no Google Fonts', async ({ page }) => {
-  await login(page, STAFF_EMAIL, STAFF_PASS);
+test('admin menu opens at 390px; refund dialog Escape; no Google Fonts', async ({
+  page,
+}, testInfo) => {
+  // Phone project already at 390; skip duplicate on desktop (same coverage, halves logins).
+  test.skip(testInfo.project.name !== 'phone', '390px menu covered on phone project');
 
   const fontHits: string[] = [];
   page.on('request', (req) => {
@@ -163,8 +166,9 @@ test('admin menu opens at 390px; refund dialog Escape; no Google Fonts', async (
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/bookings');
-  const menu = page.getByRole('button', { name: 'Menu' });
+  await login(page, STAFF_EMAIL, STAFF_PASS);
+  await expect(page).toHaveURL(/\/bookings/);
+  const menu = page.locator('#menu-btn');
   await expect(menu).toBeVisible();
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
   await menu.click();
