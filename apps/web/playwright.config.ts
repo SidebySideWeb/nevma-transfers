@@ -31,7 +31,7 @@ export default defineConfig({
       TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA',
       PUBLIC_SITE_URL: baseURL,
       PUBLIC_ADMIN_URL: 'http://127.0.0.1:4322',
-      BOOKING_OPEN: 'true',
+      PUBLIC_BOOKING_OPEN: 'true',
     },
   },
 

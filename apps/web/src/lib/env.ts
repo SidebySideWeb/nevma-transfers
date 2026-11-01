@@ -5,6 +5,7 @@ export const webPublicEnvSchema = z.object({
   PUBLIC_SITE_URL: z.url(),
   PUBLIC_ADMIN_URL: z.url(),
   PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1),
+  PUBLIC_BOOKING_OPEN: z.enum(['true', 'false']),
 });
 
 /** Full server env for apps/web (ARCHITECTURE.md §6). */
@@ -25,8 +26,6 @@ export const webServerEnvSchema = webPublicEnvSchema.extend({
   TURNSTILE_SECRET_KEY: z.string().min(1),
   ADMIN_TO_WEB_SIGNING_SECRET: z.string().min(1),
   CRON_SECRET: z.string().min(1),
-  /** Server-only; toggle on Vercel without rebuild. Default closed when unset. */
-  BOOKING_OPEN: z.enum(['true', 'false']).default('false'),
 });
 
 export type WebPublicEnv = z.infer<typeof webPublicEnvSchema>;
@@ -37,6 +36,7 @@ function rawPublic(): Record<string, string | undefined> {
     PUBLIC_SITE_URL: import.meta.env.PUBLIC_SITE_URL,
     PUBLIC_ADMIN_URL: import.meta.env.PUBLIC_ADMIN_URL,
     PUBLIC_TURNSTILE_SITE_KEY: import.meta.env.PUBLIC_TURNSTILE_SITE_KEY,
+    PUBLIC_BOOKING_OPEN: import.meta.env.PUBLIC_BOOKING_OPEN,
   };
 }
 
@@ -59,7 +59,6 @@ function rawServer(): Record<string, string | undefined> {
     TURNSTILE_SECRET_KEY: import.meta.env.TURNSTILE_SECRET_KEY,
     ADMIN_TO_WEB_SIGNING_SECRET: import.meta.env.ADMIN_TO_WEB_SIGNING_SECRET,
     CRON_SECRET: import.meta.env.CRON_SECRET,
-    BOOKING_OPEN: import.meta.env.BOOKING_OPEN ?? process.env.BOOKING_OPEN,
   };
 }
 

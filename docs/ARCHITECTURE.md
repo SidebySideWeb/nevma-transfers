@@ -104,7 +104,7 @@ Every variable is listed in `.env.example`. Where each is used:
 | `ADMIN_TO_WEB_SIGNING_SECRET` | server | server | | same value in both |
 | `CRON_SECRET` | server | | | Vercel sends it as a Bearer token |
 | `PUBLIC_SITE_URL`, `PUBLIC_ADMIN_URL` | yes | yes | | |
-| `BOOKING_OPEN` | server | | | `true`/`false`; server-only so Production can toggle without rebuild. Default closed. |
+| `PUBLIC_BOOKING_OPEN` | yes | | | `false` until the Viva live account is approved (prompt 13) |
 
 ## 7. Accounts (owned by the client; vendor fees are billed to them)
 

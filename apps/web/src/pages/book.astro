@@ -1,6 +1,5 @@
 ---
-// SSR so BOOKING_OPEN can change on Vercel without a rebuild.
-export const prerender = false;
+export const prerender = true;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BookingApp from '../components/booking/BookingApp';
