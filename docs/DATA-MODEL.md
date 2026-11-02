@@ -133,3 +133,11 @@ Rules: `docs/FLEET-SETUP.md`. Adds `vehicles.note` (staff-only). Triggers on `ve
 ## 0013 — Customer list (1 Nov 2026)
 
 `customer_summaries` view (security invoker, staff only through RLS): one row per customer with `bookings_count`, `last_pickup_at`, `has_vip_security`, `paid_cents` (succeeded payments minus succeeded refunds).
+
+## 0014–0015 — Fleet feed fields (1 Nov 2026)
+
+`docs/FLEET-FEED.md`. Adds `is_demo` on reference tables, `extras.applies_to` (`text[]` of `transfer` / `hourly`) and `extras.max_quantity`. `create_booking_from_hold` counts duplicate extra codes as quantity and rejects extras outside `applies_to` or above `max_quantity`.
+
+## 0016 — `booking_type` vs `applies_to` cast (2 Nov 2026)
+
+`create_booking_from_hold` compares `h.booking_type::text` to `extras.applies_to` (`text[]`). Without the cast Postgres raises `operator does not exist: booking_type = text`.
