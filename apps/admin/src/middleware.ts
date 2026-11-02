@@ -9,6 +9,14 @@ const DRIVER_WELCOME = '/driver-welcome';
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
 
+  // Driver API uses Bearer tokens; never staff cookies or redirects.
+  if (pathname.startsWith('/api/driver/v1')) {
+    const response = await next();
+    response.headers.set('X-Robots-Tag', 'noindex');
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  }
+
   if (pathname === DRIVER_WELCOME && driversEnabled()) {
     const supabase = createSupabaseServerClient(context.cookies);
     const {

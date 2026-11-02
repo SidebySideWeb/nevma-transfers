@@ -110,6 +110,9 @@ Every variable is listed in `.env.example`. Where each is used:
 | `PUBLIC_SANITY_STUDIO_URL` | | yes | | fleet class page: Open in Sanity Studio (falls back to `PUBLIC_STUDIO_URL`) |
 | `TEM_WEB_DEPLOY_HOOK_URL` | | server only | | kit 2: admin triggers a site rebuild after price changes (debounced 2 min) |
 | `FEATURE_DRIVERS` | server | server | | drivers / dispatch module (`docs/DRIVERS.md`); default `false` — Today/Drivers nav and those routes 404 until set `true` |
+| `DRIVER_APP_ORIGIN` | | server | | CORS allow-list for `/api/driver/v1` (exact origin); empty = no CORS headers |
+| `DRIVER_EARNINGS_VISIBLE` | | server | | `true` to expose `GET /api/driver/v1/earnings`; default `false` |
+| `DRIVER_APP_URL` | | server | | public URL of the drivers’ web app (links / future deep links) |
 
 ## 10. Kit 2 additions (content site)
 

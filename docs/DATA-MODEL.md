@@ -94,7 +94,7 @@ Functions:
 
 | Table | Columns | Rules |
 | --- | --- | --- |
-| `rate_limits` | `key`, `window_start`, `count` | fixed-window counters for API/forms; RLS on, no public policies; written via `hit_rate_limit(key, window_seconds, max) → boolean` |
+| `rate_limits` | `key`, `window_start`, `count` | fixed-window counters for API/forms; RLS on, no public policies; written via `hit_rate_limit(key, window_seconds, max) → boolean` (security definer from `0020`, so drivers can rate-limit their own API calls) |
 
 ## Acceptance coverage in `packages/db/tests`
 
@@ -153,3 +153,7 @@ Rules: `docs/FLEET-SETUP.md` ("Automatic vehicle"). `bookings.vehicle_auto_assig
 ## 0019 — Drivers and dispatch module (1 Nov 2026)
 
 Rules: `docs/DRIVERS.md`. Tables `drivers`, `driver_shifts`, `booking_events`, `driver_pay_plans`, `driver_pay_rates`, `driver_pay_adjustments`, `driver_statements`, `driver_statement_lines`; `bookings.driver_id`, `bookings.trip_status`, constraint `bookings_no_driver_overlap`; views `fleet_now`, `drivers_now`; functions `current_driver_id`, `set_trip_status`, `driver_me`, `driver_vehicles`, `driver_start_shift`, `driver_end_shift`, `driver_jobs`, `driver_earnings`, `driver_statement_build`, `driver_statement_approve`, `driver_statement_mark_paid`, `report_driver_pay`, `report_vehicle_usage`, `report_bookings_per_day`. (Kit migration number was 0015; this repo uses 0019.)
+
+## 0020 — `hit_rate_limit` security definer (2 Nov 2026)
+
+Makes `hit_rate_limit` `security definer` so the Driver API (`/api/driver/v1`) can enforce 60 req/min per driver with the driver's own session. Authenticated may execute; table `rate_limits` stays closed to direct access.

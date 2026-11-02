@@ -16,6 +16,12 @@ export const adminServerEnvSchema = adminPublicEnvSchema.extend({
   ADMIN_TO_WEB_SIGNING_SECRET: z.string().min(1),
   /** Drivers / dispatch module. Default off. */
   FEATURE_DRIVERS: z.enum(['true', 'false']).default('false'),
+  /** Origin of the drivers’ web app (CORS). Empty = no CORS reflection. */
+  DRIVER_APP_ORIGIN: z.string().optional().default(''),
+  /** When true, GET /api/driver/v1/earnings is allowed. Default false. */
+  DRIVER_EARNINGS_VISIBLE: z.enum(['true', 'false']).default('false'),
+  /** Public URL of the drivers’ app (links / future deep links). Optional. */
+  DRIVER_APP_URL: z.string().optional().default(''),
 });
 
 export type AdminPublicEnv = z.infer<typeof adminPublicEnvSchema>;
@@ -38,6 +44,10 @@ function rawServer(): Record<string, string | undefined> {
     SANITY_READ_TOKEN: import.meta.env.SANITY_READ_TOKEN,
     ADMIN_TO_WEB_SIGNING_SECRET: import.meta.env.ADMIN_TO_WEB_SIGNING_SECRET,
     FEATURE_DRIVERS: import.meta.env.FEATURE_DRIVERS ?? process.env.FEATURE_DRIVERS,
+    DRIVER_APP_ORIGIN: import.meta.env.DRIVER_APP_ORIGIN ?? process.env.DRIVER_APP_ORIGIN,
+    DRIVER_EARNINGS_VISIBLE:
+      import.meta.env.DRIVER_EARNINGS_VISIBLE ?? process.env.DRIVER_EARNINGS_VISIBLE,
+    DRIVER_APP_URL: import.meta.env.DRIVER_APP_URL ?? process.env.DRIVER_APP_URL,
   };
 }
 

@@ -19,10 +19,13 @@
     "@sanity/client": "^7.28.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.76.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "astro": "^7.4.4",
     "exceljs": "^4.4.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "yaml": "^2.9.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
