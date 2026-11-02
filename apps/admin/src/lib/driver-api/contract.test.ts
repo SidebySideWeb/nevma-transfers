@@ -1,6 +1,7 @@
 /**
  * DR-10 / DR-11 — Driver API v1 contract tests against local Supabase.
  * Requires: supabase start, migration 0019+0020 applied, FEATURE_DRIVERS.
+ * Skipped when Auth is unreachable (CI check job has no Supabase stack).
  */
 import { createClient } from '@supabase/supabase-js';
 import { execSync } from 'node:child_process';
@@ -29,6 +30,20 @@ const SERVICE =
 const EMAIL_A = 'api-driver-a@tem.local';
 const EMAIL_B = 'api-driver-b@tem.local';
 const PASS = 'DriverApiPass123!';
+
+async function supabaseAuthUp(): Promise<boolean> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 1500);
+    const res = await fetch(`${URL}/auth/v1/health`, { signal: ctrl.signal });
+    clearTimeout(t);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+const supabaseUp = await supabaseAuthUp();
 
 process.env.FEATURE_DRIVERS = 'true';
 process.env.DRIVER_APP_ORIGIN = 'http://localhost:5173';
@@ -91,83 +106,83 @@ let vehicleId = '';
 let refA = '';
 let driverAId = '';
 
-beforeAll(async () => {
-  const { data: existing } = await admin.from('drivers').select('id, user_id').in('email', [EMAIL_A, EMAIL_B]);
-  for (const d of existing ?? []) {
-    execSync(
-      `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -c "delete from booking_events where booking_id in (select id from bookings where driver_id = '${d.id}'); delete from bookings where driver_id = '${d.id}'; delete from driver_shifts where driver_id = '${d.id}'; delete from drivers where id = '${d.id}';"`,
-      { stdio: 'pipe' },
-    );
-    if (d.user_id) await admin.auth.admin.deleteUser(d.user_id);
-  }
+describe.skipIf(!supabaseUp)('DR-10 driver API contract', () => {
+  beforeAll(async () => {
+    const { data: existing } = await admin.from('drivers').select('id, user_id').in('email', [EMAIL_A, EMAIL_B]);
+    for (const d of existing ?? []) {
+      execSync(
+        `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -c "delete from booking_events where booking_id in (select id from bookings where driver_id = '${d.id}'); delete from bookings where driver_id = '${d.id}'; delete from driver_shifts where driver_id = '${d.id}'; delete from drivers where id = '${d.id}';"`,
+        { stdio: 'pipe' },
+      );
+      if (d.user_id) await admin.auth.admin.deleteUser(d.user_id);
+    }
 
-  for (const email of [EMAIL_A, EMAIL_B]) {
-    const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-    const old = listed.data.users.find((u) => (u.email || '').toLowerCase() === email);
-    if (old) await admin.auth.admin.deleteUser(old.id);
-    const created = await admin.auth.admin.createUser({
-      email,
-      password: PASS,
-      email_confirm: true,
-    });
-    expect(created.error).toBeNull();
-  }
+    for (const email of [EMAIL_A, EMAIL_B]) {
+      const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const old = listed.data.users.find((u) => (u.email || '').toLowerCase() === email);
+      if (old) await admin.auth.admin.deleteUser(old.id);
+      const created = await admin.auth.admin.createUser({
+        email,
+        password: PASS,
+        email_confirm: true,
+      });
+      expect(created.error).toBeNull();
+    }
 
-  const users = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const userA = users.data.users.find((u) => (u.email || '').toLowerCase() === EMAIL_A)!;
-  const userB = users.data.users.find((u) => (u.email || '').toLowerCase() === EMAIL_B)!;
+    const users = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const userA = users.data.users.find((u) => (u.email || '').toLowerCase() === EMAIL_A)!;
+    const userB = users.data.users.find((u) => (u.email || '').toLowerCase() === EMAIL_B)!;
 
-  const { data: dA, error: dAErr } = await admin
-    .from('drivers')
-    .insert({
-      full_name: 'API Driver A',
-      email: EMAIL_A,
-      phone: '+306900009801',
+    const { data: dA, error: dAErr } = await admin
+      .from('drivers')
+      .insert({
+        full_name: 'API Driver A',
+        email: EMAIL_A,
+        phone: '+306900009801',
+        employment: 'employee',
+        active: true,
+        user_id: userA.id,
+      })
+      .select('id')
+      .single();
+    expect(dAErr).toBeNull();
+    driverAId = dA!.id;
+    await admin.from('drivers').insert({
+      full_name: 'API Driver B',
+      email: EMAIL_B,
+      phone: '+306900009802',
       employment: 'employee',
       active: true,
-      user_id: userA.id,
-    })
-    .select('id')
-    .single();
-  expect(dAErr).toBeNull();
-  driverAId = dA!.id;
-  await admin.from('drivers').insert({
-    full_name: 'API Driver B',
-    email: EMAIL_B,
-    phone: '+306900009802',
-    employment: 'employee',
-    active: true,
-    user_id: userB.id,
-  });
+      user_id: userB.id,
+    });
 
-  const { data: veh } = await admin
-    .from('vehicles')
-    .select('id, class_id')
-    .eq('label', 'DEMO E-CLASS-1')
-    .single();
-  vehicleId = veh!.id;
+    const { data: veh } = await admin
+      .from('vehicles')
+      .select('id, class_id')
+      .eq('label', 'DEMO E-CLASS-1')
+      .single();
+    vehicleId = veh!.id;
 
-  // Booking 48h out so customer phone is null (DR-11); blocked_range via SQL helper.
-  execSync(
-    `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -c "insert into public.bookings (booking_type, class_id, from_zone_id, to_zone_id, vehicle_id, driver_id, pickup_address, dropoff_address, pickup_at, duration_minutes, blocked_range, passengers, luggage, customer_name, customer_email, customer_phone, base_price_cents, price_cents, status, payment_status, trip_status) select 'transfer', c.id, za.id, zb.id, v.id, '${driverAId}'::uuid, 'Arrivals API', 'Hotel API', now() + interval '48 hours', 45, public.blocked_range_for(now() + interval '48 hours', 45, c.buffer_minutes), 2, 1, 'API Customer', 'api-customer@example.com', '+306900009899', 18000, 18000, 'assigned', 'paid', 'scheduled' from public.vehicle_classes c join public.zones za on za.code = 'demo-airport' join public.zones zb on zb.code = 'demo-centre' join public.vehicles v on v.label = 'DEMO E-CLASS-1' where c.key = 'demo-e-class';"`,
-    { stdio: 'pipe' },
-  );
-  refA = execSync(
-    `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -tA -c "select reference from public.bookings where driver_id = '${driverAId}' order by created_at desc limit 1"`,
-    { encoding: 'utf8' },
-  ).trim();
-  expect(refA).toMatch(/^ELP-/);
+    // Booking 48h out so customer phone is null (DR-11); blocked_range via SQL helper.
+    execSync(
+      `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -c "insert into public.bookings (booking_type, class_id, from_zone_id, to_zone_id, vehicle_id, driver_id, pickup_address, dropoff_address, pickup_at, duration_minutes, blocked_range, passengers, luggage, customer_name, customer_email, customer_phone, base_price_cents, price_cents, status, payment_status, trip_status) select 'transfer', c.id, za.id, zb.id, v.id, '${driverAId}'::uuid, 'Arrivals API', 'Hotel API', now() + interval '48 hours', 45, public.blocked_range_for(now() + interval '48 hours', 45, c.buffer_minutes), 2, 1, 'API Customer', 'api-customer@example.com', '+306900009899', 18000, 18000, 'assigned', 'paid', 'scheduled' from public.vehicle_classes c join public.zones za on za.code = 'demo-airport' join public.zones zb on zb.code = 'demo-centre' join public.vehicles v on v.label = 'DEMO E-CLASS-1' where c.key = 'demo-e-class';"`,
+      { stdio: 'pipe' },
+    );
+    refA = execSync(
+      `psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -tA -c "select reference from public.bookings where driver_id = '${driverAId}' order by created_at desc limit 1"`,
+      { encoding: 'utf8' },
+    ).trim();
+    expect(refA).toMatch(/^ELP-/);
 
-  const anon = createClient(URL, ANON, { auth: { persistSession: false } });
-  const signA = await anon.auth.signInWithPassword({ email: EMAIL_A, password: PASS });
-  const signB = await anon.auth.signInWithPassword({ email: EMAIL_B, password: PASS });
-  expect(signA.error).toBeNull();
-  expect(signB.error).toBeNull();
-  tokenA = signA.data.session!.access_token;
-  tokenB = signB.data.session!.access_token;
-}, 120_000);
+    const anon = createClient(URL, ANON, { auth: { persistSession: false } });
+    const signA = await anon.auth.signInWithPassword({ email: EMAIL_A, password: PASS });
+    const signB = await anon.auth.signInWithPassword({ email: EMAIL_B, password: PASS });
+    expect(signA.error).toBeNull();
+    expect(signB.error).toBeNull();
+    tokenA = signA.data.session!.access_token;
+    tokenB = signB.data.session!.access_token;
+  }, 120_000);
 
-describe('DR-10 driver API contract', () => {
   it('401 unauthorized for missing or expired token', async () => {
     const missing = await handleMe(ctx(new Request('http://127.0.0.1:4322/api/driver/v1/me')));
     expect(missing.status).toBe(401);
