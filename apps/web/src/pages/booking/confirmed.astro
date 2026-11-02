@@ -80,14 +80,13 @@ const arrowRoute = (label: string) =>
         </>
       ) : (
         <>
+          {/* Redirect alone is not payment — only show "confirmed" after the Viva webhook. */}
           <StatusHero
             heroClass="s96765"
             eyebrow={t('booking.confirmed.eyebrow')}
-            titleHtml={tAccent('booking.confirmed.title')}
-            lead={waiting}
+            titleHtml={waiting}
             pathname="/booking/confirmed"
           />
-          {/* Waiting copy lives in the hero lead; this block only keeps the home CTA until timeout. */}
           <section data-block="appBody" class="sc16b1" id="confirmed-waiting" role="status" aria-live="polite">
             <div class="s8e90e">
               <div class="s4ba17">
