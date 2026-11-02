@@ -20,6 +20,7 @@ export type CalItem = {
   vip: boolean;
   source: string | null;
   reason: string | null;
+  vehicleAutoAssigned: boolean;
 };
 
 type Row = {
@@ -36,6 +37,7 @@ type Row = {
   vip_security: boolean | null;
   source: string | null;
   reason: string | null;
+  vehicle_auto_assigned?: boolean | null;
 };
 
 export function parseItems(rows: Row[]): CalItem[] {
@@ -59,6 +61,7 @@ export function parseItems(rows: Row[]): CalItem[] {
       vip: Boolean(r.vip_security),
       source: r.source,
       reason: r.reason,
+      vehicleAutoAssigned: Boolean(r.vehicle_auto_assigned),
     });
   }
   return out;
@@ -95,6 +98,7 @@ export function describe(it: CalItem): { code: string; sub: string; name: string
   const tags: string[] = [];
   if (it.source === 'office') tags.push('Office');
   if (it.vip) tags.push('VIP security');
+  if (it.vehicleAutoAssigned) tags.push('Auto');
   if (it.bookingType === 'hourly') {
     tags.push(`Hourly ${Math.round((it.endMs - it.startMs) / 3_600_000)} h`);
   }

@@ -64,6 +64,7 @@ Round trips, distance pricing, maps and address search are out of scope.
 - `pending`: created from an active hold in one transaction; `hold_expires_at` = the hold's `expires_at`; the hold becomes `converted`.
 - `confirmed`: **only** after the Viva webhook event is verified against Viva's API (AC-06). The browser redirect never confirms.
 - `assigned` / `completed`: set by the office in the admin (database allows only these staff transitions).
+- Vehicle: set by the office, or automatically when the booking becomes `confirmed` and its class has exactly one active vehicle that is free (0018, `docs/FLEET-SETUP.md`). The status stays `confirmed` until the office marks it `assigned`.
 - `cancelled`: by the customer link or by the office through `/api/internal/cancel`; never by a direct database edit.
 - `expired`: unpaid pending booking whose hold ended (by `expire_holds()`).
 

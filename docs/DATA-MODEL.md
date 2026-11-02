@@ -145,3 +145,7 @@ Rules: `docs/FLEET-SETUP.md`. Adds `vehicles.note` (staff-only). Triggers on `ve
 ## 0017 — Booking reference `ELP-` (2 Nov 2026)
 
 `generate_booking_reference()` returns `ELP-` + 6 unambiguous characters. The `bookings.reference` check accepts `ELP-`, `EP-` and `TEM-` so older rows remain valid.
+
+## 0018 — Automatic vehicle when a class has one vehicle (2 Nov 2026)
+
+Rules: `docs/FLEET-SETUP.md` ("Automatic vehicle"). `bookings.vehicle_auto_assigned` (true when the rule set the vehicle; cleared when staff change the vehicle). Setting `auto_assign_single_vehicle` (default `true`). `single_free_vehicle(class, range, booking)` returns the class's only `active` vehicle when it is free for the range (no blocked slot, no other pending/confirmed/assigned booking), else null. Trigger `bookings_auto_assign` (before insert or update of status, vehicle_id): when a booking becomes `confirmed` (insert, or from `pending`/`expired`) without a vehicle, it sets that vehicle; the status stays `confirmed`. `auto_assign_backfill(class default null) → int` (staff or server; run once by the migration) assigns waiting future confirmed bookings. Tests: `packages/db/tests/auto-assign.test.mjs`.

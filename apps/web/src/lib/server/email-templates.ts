@@ -39,6 +39,9 @@ export type OfficeNewInput = ConfirmationInput & {
   invoiceTaxOffice?: string | null;
   invoiceAddress?: string | null;
   adminUrl: string;
+  /** Set when the DB single-vehicle rule assigned the vehicle. */
+  vehicleLabel?: string | null;
+  vehicleAutoAssigned?: boolean;
 };
 
 export type ReminderInput = {
@@ -252,10 +255,15 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
 export function officeNewEmail(input: OfficeNewInput): EmailParts {
   const subject = t('email.office.new.subject', { reference: input.reference });
   const vipLine = input.vipSecurity ? 'VIP SECURITY' : '';
+  const autoVehicleLine =
+    input.vehicleAutoAssigned && input.vehicleLabel
+      ? `Vehicle: ${input.vehicleLabel} (automatic)`
+      : '';
   const text = [
     subject,
     vipLine,
     tripLines(input),
+    autoVehicleLine,
     '',
     `Customer: ${input.customerName}`,
     `Email: ${input.customerEmail}`,
@@ -276,6 +284,11 @@ export function officeNewEmail(input: OfficeNewInput): EmailParts {
   const htmlBody = `
     ${vipLine ? `<p style="margin:0 0 12px;font-weight:700;color:${th.accent};letter-spacing:0.06em;">${vipLine}</p>` : ''}
     <p style="margin:0 0 8px;white-space:pre-line;">${escapeHtml(tripLines(input))}</p>
+    ${
+      autoVehicleLine
+        ? `<p style="margin:0 0 8px;"><strong>Vehicle:</strong> ${escapeHtml(input.vehicleLabel!)} (automatic)</p>`
+        : ''
+    }
     <p style="margin:12px 0 4px;"><strong>Customer:</strong> ${escapeHtml(input.customerName)}</p>
     <p style="margin:0 0 4px;"><strong>Email:</strong> ${escapeHtml(input.customerEmail)}</p>
     <p style="margin:0 0 4px;"><strong>Phone:</strong> ${escapeHtml(input.customerPhone)}</p>

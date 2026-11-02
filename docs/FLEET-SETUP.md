@@ -34,3 +34,15 @@ Customers book a **class**, never a specific vehicle; vehicles exist for capacit
 6. Switching a class or zone off hides it from new bookings only; existing bookings are kept.
 7. A new class starts offline. Order of work: add class → add vehicles → prices / hourly rate → Sanity page with photos → switch online → (kit 2) **Update the website** so fleet pages show it.
 8. Every change writes through the signed-in staff session (RLS 0005); no service role in the admin.
+
+## Automatic vehicle (decided 2 Nov 2026, migration 0018)
+
+When a class has **exactly one active vehicle**, every booking of that class gets that vehicle as soon as it is confirmed (Viva payment verified, late payment accepted, or an office booking saved as confirmed). Nothing to do in the admin.
+
+- Only `active` vehicles count: one active + one in maintenance is a one-vehicle class.
+- The vehicle must be free at that time (no blocked slot, no other booking on it). If not, the booking is saved without a vehicle and shows in the class's "Unassigned" lane as before.
+- The booking stays **Confirmed**. The office still moves it to **Assigned** when the chauffeur is confirmed, so the customer's "Chauffeur assigned" step and emails do not change.
+- The admin shows **Auto** next to the vehicle. Staff can change or remove it like any assignment; the rule never puts it back, and the Auto mark goes away.
+- Classes with 0 or 2+ active vehicles are never touched. When a class gets a second vehicle, existing automatic assignments stay.
+- When a class goes down to one vehicle, the class page offers **Assign now** for its waiting future bookings (`auto_assign_backfill`).
+- Switch: Settings → "Assign the vehicle automatically when a class has one vehicle" (`settings.auto_assign_single_vehicle`).

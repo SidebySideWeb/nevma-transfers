@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import AutoBadge from '../../components/AutoBadge.astro';
 import Banner from '../../components/Banner.astro';
 import DataTable from '../../components/DataTable.astro';
 import EmptyState from '../../components/EmptyState.astro';
@@ -277,7 +278,10 @@ if (found && booking) {
                 >
                   <input type="hidden" name="reference" value={reference} />
                   <div class="field">
-                    <label for="veh">Vehicle</label>
+                    <label for="veh">
+                      Vehicle{' '}
+                      <AutoBadge show={Boolean(booking.vehicle_auto_assigned && booking.vehicle_id)} />
+                    </label>
                     <Select
                       id="veh"
                       name="vehicleId"

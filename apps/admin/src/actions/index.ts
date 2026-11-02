@@ -1008,6 +1008,41 @@ export const server = {
     },
   }),
 
+  autoAssignBackfill: defineAction({
+    accept: 'form',
+    input: z.object({
+      classId: z.string().uuid(),
+      classKey: z.string().min(1),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { data: assigned, error } = await supabase.rpc('auto_assign_backfill', {
+        p_class_id: input.classId,
+      });
+      if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+      const { data: active } = await supabase
+        .from('vehicles')
+        .select('label')
+        .eq('class_id', input.classId)
+        .eq('status', 'active');
+      const label = active?.length === 1 ? active[0]!.label : 'the vehicle';
+      const { count: left } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('class_id', input.classId)
+        .eq('status', 'confirmed')
+        .is('vehicle_id', null)
+        .gt('pickup_at', new Date().toISOString());
+      return {
+        assigned: Number(assigned ?? 0),
+        left: left ?? 0,
+        label,
+        classKey: input.classKey,
+      };
+    },
+  }),
+
   /** AC-10: deliberately reject attempts to patch price_cents from the admin. */
   forgePriceCents: defineAction({
     accept: 'json',

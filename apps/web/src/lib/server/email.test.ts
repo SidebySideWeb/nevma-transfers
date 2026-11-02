@@ -112,6 +112,20 @@ describe('emails (prompt 08)', () => {
     expect(office.text).toContain('VIP SECURITY');
     expect(office.text).toContain('a@example.com');
     expect(office.subject).toContain('TEM-ABCDEF');
+    expect(office.text).not.toContain('(automatic)');
+
+    const officeAuto = officeNewEmail({
+      ...baseConfirm,
+      customerName: 'A Customer',
+      customerEmail: 'a@example.com',
+      customerPhone: '+30 6900000000',
+      adminUrl: 'https://admin.example.com/bookings/TEM-ABCDEF',
+      vehicleLabel: 'SEDAN-1',
+      vehicleAutoAssigned: true,
+    });
+    expect(officeAuto.text).toContain('Vehicle: SEDAN-1 (automatic)');
+    expect(officeAuto.html).toContain('(automatic)');
+    expect(confirmationEmail(baseConfirm).text).not.toContain('(automatic)');
 
     const rem = reminderEmail({
       reference: 'TEM-ABCDEF',

@@ -41,6 +41,8 @@ type BookingRow = {
   class_name: string;
   from_zone: string;
   to_zone: string | null;
+  vehicle_label: string | null;
+  vehicle_auto_assigned: boolean;
 };
 
 function pickupLocalAthens(pickup: Date): string {
@@ -62,11 +64,13 @@ async function loadBooking(reference: string): Promise<BookingRow | null> {
             b.base_price_cents, b.price_cents, b.vat_rate_bp, b.vat_cents,
             b.vip_security, b.invoice_status, b.customer_name, b.customer_email, b.customer_phone,
             b.notes, b.flight_number, b.invoice_company, b.invoice_vat, b.invoice_tax_office,
-            b.invoice_address, c.name as class_name, zf.name as from_zone, zt.name as to_zone
+            b.invoice_address, c.name as class_name, zf.name as from_zone, zt.name as to_zone,
+            v.label as vehicle_label, b.vehicle_auto_assigned
        from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
        join public.zones zf on zf.id = b.from_zone_id
        left join public.zones zt on zt.id = b.to_zone_id
+       left join public.vehicles v on v.id = b.vehicle_id
       where b.reference = $1`,
     [reference],
   );
@@ -179,6 +183,8 @@ export async function sendConfirmationEmails(
     invoiceTaxOffice: booking.invoice_tax_office,
     invoiceAddress: booking.invoice_address,
     adminUrl: adminUrl(reference),
+    vehicleLabel: booking.vehicle_label,
+    vehicleAutoAssigned: booking.vehicle_auto_assigned,
   });
   await sendEmail({
     to: co.officeTo,

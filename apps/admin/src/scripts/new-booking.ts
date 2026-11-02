@@ -312,6 +312,18 @@ function scheduleAvailability() {
   availTimer = setTimeout(loadAvailability, 250);
 }
 
+let soloActiveCount = 0;
+
+function updateSoloVehicleHint() {
+  const hint = $('nb-veh-auto');
+  const sel = $<HTMLSelectElement>('nb-veh');
+  const show = soloActiveCount === 1 && !sel.value;
+  hint.hidden = !show;
+  hint.textContent = show
+    ? 'The vehicle is assigned automatically (only one in this class)'
+    : '';
+}
+
 async function loadVehicles() {
   const mine = ++vehSeq;
   const sel = $<HTMLSelectElement>('nb-veh');
@@ -335,6 +347,8 @@ async function loadVehicles() {
   if (vehicles.length) wantVehicle = '';
   refreshSelect(sel);
   setError('nb-veh', null);
+  soloActiveCount = vehicles.length;
+  updateSoloVehicleHint();
 }
 
 // ---------- summary, price override, submit label ----------
@@ -438,6 +452,7 @@ $('nb-cls').addEventListener('change', () => {
   renderSummary();
   void loadVehicles();
 });
+$('nb-veh').addEventListener('change', updateSoloVehicleHint);
 form.querySelectorAll('input[name="nb-extra"], #nb-ovr, #nb-ov').forEach((el) => {
   el.addEventListener('input', renderSummary);
   el.addEventListener('change', renderSummary);

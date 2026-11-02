@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import AutoBadge from '../../components/AutoBadge.astro';
 import Banner from '../../components/Banner.astro';
 import DataTable from '../../components/DataTable.astro';
 import EmptyState from '../../components/EmptyState.astro';
@@ -39,7 +40,7 @@ const invoices = ['not_required', 'requested', 'issued'] as const;
 
 const selectCols = `
     reference, pickup_at, booking_type, duration_minutes, price_cents, status, payment_status,
-    vip_security, invoice_status, customer_name, vehicle_id, source,
+    vip_security, invoice_status, customer_name, vehicle_id, vehicle_auto_assigned, source,
     from_zone:zones!bookings_from_zone_id_fkey(name),
     to_zone:zones!bookings_to_zone_id_fkey(name),
     class:vehicle_classes!bookings_class_id_fkey(key),
@@ -85,6 +86,7 @@ type BookingRow = {
   invoice_status: string;
   customer_name: string;
   vehicle_id: string | null;
+  vehicle_auto_assigned: boolean;
   source: string | null;
   from_zone: { name?: string } | null;
   to_zone: { name?: string } | null;
@@ -347,7 +349,10 @@ function qs(overrides: Record<string, string | null>): string {
                       {showAssign ? (
                         <a href={`/bookings/${b.reference}#assign`}>Assign</a>
                       ) : (
-                        vehicleLabel ?? '-'
+                        <>
+                          {vehicleLabel ?? '-'}{' '}
+                          <AutoBadge show={Boolean(b.vehicle_auto_assigned && vehicleLabel)} />
+                        </>
                       )}
                     </td>
                     <td data-label="Customer">{b.customer_name}</td>

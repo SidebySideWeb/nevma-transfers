@@ -304,9 +304,10 @@ const pageData = {
               <label for="nb-veh">Vehicle (optional)</label>
               <Select
                 id="nb-veh"
-                aria-describedby="nb-veh-err"
+                aria-describedby="nb-veh-err nb-veh-auto"
                 options={[{ value: '', label: 'Assign later', selected: true }]}
               />
+              <p class="help" id="nb-veh-auto" hidden></p>
               <p class="error-text" id="nb-veh-err" hidden></p>
             </div>
           </div>

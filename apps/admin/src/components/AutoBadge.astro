@@ -1,0 +1,17 @@
+---
+import { AUTO_ASSIGN_LABEL } from './auto-badge';
+
+interface Props {
+  show: boolean;
+}
+
+const { show } = Astro.props;
+---
+
+{
+  show ? (
+    <span class="badge plain" title={AUTO_ASSIGN_LABEL} aria-label={AUTO_ASSIGN_LABEL}>
+      Auto
+    </span>
+  ) : null
+}
