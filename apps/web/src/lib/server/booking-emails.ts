@@ -66,26 +66,52 @@ function pickupLocalAthens(pickup: Date): string {
   return `${weekday} ${day} ${month} ${year}, ${hour}:${minute}`;
 }
 
-async function loadBooking(reference: string): Promise<BookingRow | null> {
-  const { rows } = await bookingDb().query<BookingRow>(
-    `select b.id, b.reference, b.booking_type, b.pickup_at, b.hours, b.passengers,
+const BOOKING_SELECT_CORE = `select b.id, b.reference, b.booking_type, b.pickup_at, b.hours, b.passengers,
             b.base_price_cents, b.price_cents, b.vat_rate_bp, b.vat_cents,
             b.vip_security, b.invoice_status, b.customer_name, b.customer_email, b.customer_phone,
             b.notes, b.flight_number, b.invoice_company, b.invoice_vat, b.invoice_tax_office,
             b.invoice_address, c.name as class_name, zf.name as from_zone, zt.name as to_zone,
             v.label as vehicle_label, b.vehicle_auto_assigned,
-            b.pickup_address, b.dropoff_address,
-            b.pickup_place_id, b.pickup_lat, b.pickup_lng,
-            b.dropoff_place_id, b.dropoff_lat, b.dropoff_lng
-       from public.bookings b
+            b.pickup_address, b.dropoff_address`;
+
+const BOOKING_FROM = ` from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
        join public.zones zf on zf.id = b.from_zone_id
        left join public.zones zt on zt.id = b.to_zone_id
        left join public.vehicles v on v.id = b.vehicle_id
-      where b.reference = $1`,
-    [reference],
-  );
-  return rows[0] ?? null;
+      where b.reference = $1`;
+
+async function loadBooking(reference: string): Promise<BookingRow | null> {
+  try {
+    const { rows } = await bookingDb().query<BookingRow>(
+      `${BOOKING_SELECT_CORE},
+            b.pickup_place_id, b.pickup_lat, b.pickup_lng,
+            b.dropoff_place_id, b.dropoff_lat, b.dropoff_lng
+       ${BOOKING_FROM}`,
+      [reference],
+    );
+    return rows[0] ?? null;
+  } catch (e) {
+    // Migration 0021 not applied yet — still send confirmation; Maps links use address text.
+    const detail = e instanceof Error ? e.message : '';
+    if (!/pickup_place_id|dropoff_place_id/i.test(detail)) throw e;
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        code: 'booking_email_places_unavailable',
+        reference,
+        detail: detail.slice(0, 120),
+      }),
+    );
+    const { rows } = await bookingDb().query<BookingRow>(
+      `${BOOKING_SELECT_CORE},
+            null::text as pickup_place_id, null::float8 as pickup_lat, null::float8 as pickup_lng,
+            null::text as dropoff_place_id, null::float8 as dropoff_lat, null::float8 as dropoff_lng
+       ${BOOKING_FROM}`,
+      [reference],
+    );
+    return rows[0] ?? null;
+  }
 }
 
 async function loadExtras(bookingId: string): Promise<ExtraLine[]> {

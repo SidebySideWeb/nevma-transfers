@@ -59,8 +59,9 @@ export async function fireOnConfirmed(reference: string, cancelToken: string): P
   confirmedCalls.push(reference);
   try {
     await onConfirmed(reference, cancelToken);
-  } catch {
-    console.error(JSON.stringify({ level: 'error', code: 'on_confirmed_failed', reference }));
+  } catch (e) {
+    const detail = e instanceof Error ? e.message.slice(0, 180) : 'unknown';
+    console.error(JSON.stringify({ level: 'error', code: 'on_confirmed_failed', reference, detail }));
   }
 }
 
