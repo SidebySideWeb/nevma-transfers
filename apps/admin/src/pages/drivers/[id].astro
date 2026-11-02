@@ -6,6 +6,10 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import Banner from '../../components/Banner.astro';
 import Select from '../../components/Select.astro';
 import { driversNotFound } from '../../lib/drivers';
+import { formatEuro } from '../../lib/money';
+import { bpToPercentInput } from '../../lib/pay-convert';
+import { formatPeriodRange, formatSignedEuro, kindLabel, statementStatusBadge } from '../../lib/pay-format';
+import { athensTodayKey, athensYesterdayKey } from '../../lib/report-period';
 import { tripStatusClass, tripStatusWord } from '../../lib/trip-status';
 import { createSupabaseServerClient } from '../../lib/supabase';
 import { formatAthens, formatAthensShort } from '../../lib/time';
@@ -23,13 +27,26 @@ function actionErr(result: { error?: { message?: string } | Error } | undefined)
   return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
 }
 
+const built = Astro.getActionResult?.(actions.buildDriverStatement);
+if (built?.data && typeof built.data === 'object' && 'id' in built.data) {
+  const d = built.data as { id: string; driverId: string };
+  return Astro.redirect(`/drivers/${d.driverId}/statements/${d.id}`);
+}
+
 const pageError =
   actionErr(Astro.getActionResult?.(actions.updateDriver)) ||
   actionErr(Astro.getActionResult?.(actions.inviteDriver)) ||
-  actionErr(Astro.getActionResult?.(actions.saveDriverShift));
+  actionErr(Astro.getActionResult?.(actions.saveDriverShift)) ||
+  actionErr(Astro.getActionResult?.(actions.changeDriverPayPlan)) ||
+  actionErr(Astro.getActionResult?.(actions.saveDriverPayRate)) ||
+  actionErr(Astro.getActionResult?.(actions.deleteDriverPayRate)) ||
+  actionErr(Astro.getActionResult?.(actions.addDriverAdjustment)) ||
+  actionErr(built);
 
 const saved = Astro.getActionResult?.(actions.updateDriver)?.data?.ok === true;
 const invited = Astro.getActionResult?.(actions.inviteDriver)?.data;
+const planSaved = Astro.getActionResult?.(actions.changeDriverPayPlan)?.data?.ok === true;
+const adjSaved = Astro.getActionResult?.(actions.addDriverAdjustment)?.data?.ok === true;
 
 const { data: driver } = await supabase.from('drivers').select('*').eq('id', id).maybeSingle();
 if (!driver) return new Response(null, { status: 404 });
@@ -38,8 +55,25 @@ const nowIso = new Date().toISOString();
 const upcomingFrom = nowIso;
 const pastFrom = new Date(Date.now() - 14 * 86400_000).toISOString();
 const shiftFrom = new Date(Date.now() - 30 * 86400_000).toISOString();
+const today = athensTodayKey();
+const adjFrom = (() => {
+  const d = new Date(`${today}T12:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() - 3);
+  return d.toISOString().slice(0, 10);
+})();
+const yesterday = athensYesterdayKey();
 
-const [{ data: jobs }, { data: shifts }, { data: vehicles }, { data: nowRow }] = await Promise.all([
+const [
+  { data: jobs },
+  { data: shifts },
+  { data: vehicles },
+  { data: nowRow },
+  { data: plans },
+  { data: adjustments },
+  { data: statements },
+  { data: classes },
+  { data: zones },
+] = await Promise.all([
   supabase
     .from('bookings')
     .select(
@@ -57,7 +91,68 @@ const [{ data: jobs }, { data: shifts }, { data: vehicles }, { data: nowRow }] =
     .order('started_at', { ascending: false }),
   supabase.from('vehicles').select('id, label, status').neq('status', 'retired').order('label'),
   supabase.from('drivers_now').select('*').eq('driver_id', id).maybeSingle(),
+  supabase
+    .from('driver_pay_plans')
+    .select('*')
+    .eq('driver_id', id)
+    .order('valid_from', { ascending: false }),
+  supabase
+    .from('driver_pay_adjustments')
+    .select('id, on_date, kind, amount_cents, note, booking_id, booking:bookings!driver_pay_adjustments_booking_id_fkey(reference)')
+    .eq('driver_id', id)
+    .gte('on_date', adjFrom)
+    .order('on_date', { ascending: false }),
+  supabase
+    .from('driver_statements')
+    .select('id, period_from, period_to, status, total_cents, payment_reference')
+    .eq('driver_id', id)
+    .order('period_from', { ascending: false }),
+  supabase.from('vehicle_classes').select('id, name, key').order('sort_order'),
+  supabase.from('zones').select('id, name').eq('active', true).order('name'),
 ]);
+
+const currentPlan =
+  (plans ?? []).find((p) => p.valid_from <= today && (p.valid_to == null || p.valid_to >= today)) ??
+  (plans ?? []).find((p) => p.valid_to == null) ??
+  null;
+
+const { data: rates } = currentPlan
+  ? await supabase
+      .from('driver_pay_rates')
+      .select(
+        'id, amount_cents, class_id, from_zone_id, to_zone_id, class:vehicle_classes(name), from_zone:zones!driver_pay_rates_from_zone_id_fkey(name), to_zone:zones!driver_pay_rates_to_zone_id_fkey(name)',
+      )
+      .eq('plan_id', currentPlan.id)
+  : { data: [] as never[] };
+
+function rateLabel(r: {
+  amount_cents: number;
+  class: { name?: string } | null;
+  from_zone: { name?: string } | null;
+  to_zone: { name?: string } | null;
+}): string {
+  const parts: string[] = [];
+  const cls = r.class?.name;
+  if (cls) parts.push(cls);
+  const from = r.from_zone?.name;
+  const to = r.to_zone?.name;
+  if (from && to) parts.push(`${from} ↔ ${to}`);
+  else if (!cls) parts.push('Any route');
+  else parts.push('any route');
+  return `${parts.join(', ')} ${formatEuro(r.amount_cents)}`;
+}
+
+const rateRows = (rates ?? []).map((r) => ({
+  id: r.id,
+  label: rateLabel({
+    amount_cents: r.amount_cents,
+    class: r.class as { name?: string } | null,
+    from_zone: r.from_zone as { name?: string } | null,
+    to_zone: r.to_zone as { name?: string } | null,
+  }),
+}));
+const overridesSummary = rateRows.map((r) => r.label).join(' · ');
+const defaultValidFrom = yesterday;
 
 const upcoming = (jobs ?? []).filter((j) => j.pickup_at >= upcomingFrom || ['confirmed', 'assigned'].includes(j.status));
 const recent = (jobs ?? []).filter((j) => j.pickup_at < upcomingFrom);
@@ -97,6 +192,8 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
   {pageError && <Banner tone="danger" role="alert">{pageError}</Banner>}
   {saved && <Banner tone="info" role="status">Driver saved.</Banner>}
   {invited && <Banner tone="info" role="status">Invitation sent.</Banner>}
+  {planSaved && <Banner tone="info" role="status">Pay plan saved.</Banner>}
+  {adjSaved && <Banner tone="info" role="status">Adjustment added.</Banner>}
 
   <div class="row" style="margin:-.5rem 0 1.25rem;gap:.5rem;flex-wrap:wrap;align-items:center">
     <span class={`badge ${driver.active ? 's-confirmed' : 's-completed'}`}>
@@ -205,16 +302,257 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
       </section>
 
       <section class="panel" aria-labelledby="d-p">
-        <div class="panel-head"><h2 id="d-p">Pay plan</h2></div>
-        <div class="panel-body"><p class="muted">Pay plans arrive in the next drivers kit step.</p></div>
+        <div class="panel-head">
+          <h2 id="d-p">Pay plan</h2>
+          {
+            currentPlan && (
+              <span class="muted small">
+                From {currentPlan.valid_from}
+                {currentPlan.valid_to ? ` · to ${currentPlan.valid_to}` : ' · no end date'}
+              </span>
+            )
+          }
+          <button class="btn btn-secondary btn-sm" type="button" data-open="plan-dialog">Change plan</button>
+        </div>
+        <div class="panel-body">
+          {
+            currentPlan ? (
+              <>
+                <dl class="plan-grid">
+                  <div class={`plan-item${currentPlan.monthly_salary_cents ? '' : ' off'}`}>
+                    <dt>Monthly salary</dt>
+                    <dd>{currentPlan.monthly_salary_cents ? formatEuro(currentPlan.monthly_salary_cents) : 'Not used'}</dd>
+                  </div>
+                  <div class={`plan-item${currentPlan.daily_rate_cents ? '' : ' off'}`}>
+                    <dt>Daily rate</dt>
+                    <dd>{currentPlan.daily_rate_cents ? formatEuro(currentPlan.daily_rate_cents) : 'Not used'}</dd>
+                  </div>
+                  <div class={`plan-item${currentPlan.hourly_rate_cents ? '' : ' off'}`}>
+                    <dt>Hourly</dt>
+                    <dd>
+                      {currentPlan.hourly_rate_cents ? (
+                        <>
+                          {formatEuro(currentPlan.hourly_rate_cents)}{' '}
+                          <small class="muted" style="font:400 .8125rem var(--font-text)">
+                            {currentPlan.hourly_basis === 'hourly_bookings' ? 'per hourly hire' : 'per shift hour'}
+                          </small>
+                        </>
+                      ) : (
+                        'Not used'
+                      )}
+                    </dd>
+                  </div>
+                  <div class={`plan-item${currentPlan.percent_bp ? '' : ' off'}`}>
+                    <dt>Percentage</dt>
+                    <dd>
+                      {currentPlan.percent_bp ? (
+                        <>
+                          {bpToPercentInput(currentPlan.percent_bp)}%{' '}
+                          <small class="muted" style="font:400 .8125rem var(--font-text)">
+                            of {currentPlan.percent_base === 'net' ? 'price before VAT' : 'final price'}
+                          </small>
+                        </>
+                      ) : (
+                        'Not used'
+                      )}
+                    </dd>
+                  </div>
+                  <div class={`plan-item${currentPlan.per_transfer_cents || rateRows.length ? '' : ' off'}`}>
+                    <dt>Per transfer</dt>
+                    <dd>
+                      {currentPlan.per_transfer_cents || rateRows.length ? (
+                        <>
+                          {currentPlan.per_transfer_cents ? formatEuro(currentPlan.per_transfer_cents) : '—'}
+                          {rateRows.length > 0 && (
+                            <small class="muted" style="font:400 .8125rem var(--font-text)">
+                              {' '}
+                              + {rateRows.length} override{rateRows.length === 1 ? '' : 's'}
+                            </small>
+                          )}
+                        </>
+                      ) : (
+                        'Not used'
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+                {rateRows.length > 0 && <p class="help" style="margin-top:.75rem">Overrides: {overridesSummary}</p>}
+                <form method="POST" action={actions.saveDriverPayRate} class="stack-sm" style="margin-top:1rem">
+                  <input type="hidden" name="planId" value={currentPlan.id} />
+                  <input type="hidden" name="driverId" value={id} />
+                  <p class="help" style="margin:0">Add an override (class and/or route).</p>
+                  <div class="grid-fields">
+                    <div class="field">
+                      <label for="or-c">Class</label>
+                      <Select
+                        id="or-c"
+                        name="classId"
+                        options={[
+                          { value: '', label: 'Any class' },
+                          ...(classes ?? []).map((c) => ({ value: c.id, label: c.name })),
+                        ]}
+                      />
+                    </div>
+                    <div class="field">
+                      <label for="or-a">Amount</label>
+                      <div class="input-money">
+                        <input id="or-a" class="input" name="amountEuros" required inputmode="decimal" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="grid-fields">
+                    <div class="field">
+                      <label for="or-f">From zone</label>
+                      <Select
+                        id="or-f"
+                        name="fromZoneId"
+                        options={[
+                          { value: '', label: '—' },
+                          ...(zones ?? []).map((z) => ({ value: z.id, label: z.name })),
+                        ]}
+                      />
+                    </div>
+                    <div class="field">
+                      <label for="or-t">To zone</label>
+                      <Select
+                        id="or-t"
+                        name="toZoneId"
+                        options={[
+                          { value: '', label: '—' },
+                          ...(zones ?? []).map((z) => ({ value: z.id, label: z.name })),
+                        ]}
+                      />
+                    </div>
+                  </div>
+                  <button class="btn btn-secondary btn-sm" type="submit">Add override</button>
+                </form>
+                {
+                  rateRows.length > 0 && (
+                    <ul class="stack-sm" style="list-style:none;padding:0;margin:1rem 0 0">
+                      {rateRows.map((r) => (
+                        <li class="row between" style="gap:.5rem;align-items:center">
+                          <span class="small">{r.label}</span>
+                          <form method="POST" action={actions.deleteDriverPayRate}>
+                            <input type="hidden" name="id" value={r.id} />
+                            <input type="hidden" name="driverId" value={id} />
+                            <button class="btn btn-quiet btn-sm" type="submit">Remove</button>
+                          </form>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                }
+              </>
+            ) : (
+              <p class="muted" style="margin:0">No pay plan yet. Set one to start calculating earnings.</p>
+            )
+          }
+          {
+            (plans ?? []).length > 0 && (
+              <div style="margin-top:1.25rem">
+                <h3 class="sr-only">Plan history</h3>
+                <p class="muted small" style="margin:0 0 .5rem">Plan history</p>
+                <ul class="stack-sm" style="list-style:none;padding:0;margin:0">
+                  {(plans ?? []).map((p) => (
+                    <li class="small">
+                      {p.valid_from}
+                      {p.valid_to ? ` → ${p.valid_to}` : ' → open'}
+                      {p.id === currentPlan?.id ? ' (current)' : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          }
+        </div>
       </section>
+
       <section class="panel" aria-labelledby="d-a">
-        <div class="panel-head"><h2 id="d-a">Adjustments</h2></div>
-        <div class="panel-body"><p class="muted">Adjustments arrive in the next drivers kit step.</p></div>
+        <div class="panel-head">
+          <h2 id="d-a">Adjustments</h2>
+          <button class="btn btn-secondary btn-sm" type="button" data-open="adjustment-dialog">Add</button>
+        </div>
+        <div class="table-wrap" role="region" tabindex="0" aria-label={`Adjustments of ${driver.full_name}`} style="border:0">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Kind</th>
+                <th scope="col">Note</th>
+                <th scope="col" class="num">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                (adjustments ?? []).length === 0 ? (
+                  <tr>
+                    <td colspan="4" class="muted">No adjustments in the last 3 months.</td>
+                  </tr>
+                ) : (
+                  (adjustments ?? []).map((a) => {
+                    const bookingRef = (a.booking as { reference?: string } | null)?.reference;
+                    return (
+                      <tr>
+                        <td>{a.on_date}</td>
+                        <td>{kindLabel(a.kind)}</td>
+                        <td>
+                          {a.note}
+                          {bookingRef ? `, ${bookingRef}` : ''}
+                        </td>
+                        <td class="num">{formatSignedEuro(a.amount_cents)}</td>
+                      </tr>
+                    );
+                  })
+                )
+              }
+            </tbody>
+          </table>
+        </div>
       </section>
-      <section class="panel" aria-labelledby="d-st">
-        <div class="panel-head"><h2 id="d-st">Statements</h2></div>
-        <div class="panel-body"><p class="muted">Statements arrive in the next drivers kit step.</p></div>
+
+      <section class="panel" id="statements" aria-labelledby="d-st">
+        <div class="panel-head">
+          <h2 id="d-st">Statements</h2>
+          <button class="btn btn-sm" type="button" data-open="statement-dialog">New statement</button>
+        </div>
+        <div class="table-wrap" role="region" tabindex="0" aria-label={`Statements of ${driver.full_name}`} style="border:0">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">Period</th>
+                <th scope="col" class="num">Total</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                (statements ?? []).length === 0 ? (
+                  <tr>
+                    <td colspan="3" class="muted">No statements yet.</td>
+                  </tr>
+                ) : (
+                  (statements ?? []).map((s) => {
+                    const badge = statementStatusBadge(s.status);
+                    return (
+                      <tr>
+                        <td>
+                          <a href={`/drivers/${id}/statements/${s.id}`}>
+                            {formatPeriodRange(s.period_from, s.period_to)}
+                          </a>
+                        </td>
+                        <td class="num">{formatEuro(s.total_cents)}</td>
+                        <td>
+                          <span class={`badge ${badge.cls}`}>{badge.text}</span>
+                          {s.payment_reference ? <span class="small muted"> {s.payment_reference}</span> : null}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )
+              }
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
 
@@ -349,10 +687,173 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
   </form>
 </dialog>
 
+<dialog class="dialog" id="plan-dialog" aria-labelledby="dd-p">
+  <form method="POST" action={actions.changeDriverPayPlan}>
+    <input type="hidden" name="driverId" value={driver.id} />
+    <div class="dialog-head">
+      <p class="eyebrow">{driver.full_name}</p>
+      <h2 id="dd-p">Change pay plan</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <p class="help">The current plan ends the day before the new start. Leave an amount at 0 to not use it.</p>
+      <div class="field">
+        <label for="pp-from">Valid from</label>
+        <input id="pp-from" class="input" type="date" name="validFrom" required value={defaultValidFrom} />
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="pp-s">Monthly salary</label>
+          <div class="input-money"><input id="pp-s" class="input" name="monthlySalaryEuros" value="0.00" inputmode="decimal" /></div>
+        </div>
+        <div class="field">
+          <label for="pp-d">Daily rate</label>
+          <div class="input-money"><input id="pp-d" class="input" name="dailyRateEuros" value="0.00" inputmode="decimal" /></div>
+        </div>
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="pp-h">Hourly rate</label>
+          <div class="input-money"><input id="pp-h" class="input" name="hourlyRateEuros" value="0.00" inputmode="decimal" /></div>
+        </div>
+        <div class="field">
+          <label for="pp-hb">Hours counted</label>
+          <Select
+            id="pp-hb"
+            name="hourlyBasis"
+            options={[
+              { value: 'shift', label: 'Shift hours', selected: true },
+              { value: 'hourly_bookings', label: 'Hourly hires only' },
+            ]}
+          />
+        </div>
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="pp-pc">Percentage of booking</label>
+          <input id="pp-pc" class="input" name="percent" value="0" inputmode="decimal" />
+        </div>
+        <div class="field">
+          <label for="pp-pb">Of the</label>
+          <Select
+            id="pp-pb"
+            name="percentBase"
+            options={[
+              { value: 'final', label: 'Final price', selected: true },
+              { value: 'net', label: 'Price before VAT' },
+            ]}
+          />
+        </div>
+      </div>
+      <div class="field">
+        <label for="pp-t">Fixed per transfer (default)</label>
+        <div class="input-money"><input id="pp-t" class="input" name="perTransferEuros" value="0.00" inputmode="decimal" /></div>
+      </div>
+      <p class="help">Overrides per class or route are edited on the plan after saving.</p>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="plan-dialog">Back</button>
+      <button class="btn" type="submit">Save plan</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="adjustment-dialog" aria-labelledby="dd-j">
+  <form method="POST" action={actions.addDriverAdjustment}>
+    <input type="hidden" name="driverId" value={driver.id} />
+    <div class="dialog-head">
+      <p class="eyebrow">{driver.full_name}</p>
+      <h2 id="dd-j">Add an adjustment</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <div class="grid-fields">
+        <div class="field">
+          <label for="aj-k">Kind</label>
+          <Select
+            id="aj-k"
+            name="kind"
+            options={[
+              { value: 'tip', label: 'Tip', selected: true },
+              { value: 'waiting', label: 'Waiting time' },
+              { value: 'expense', label: 'Expense' },
+              { value: 'bonus', label: 'Bonus' },
+              { value: 'deduction', label: 'Deduction' },
+              { value: 'advance', label: 'Advance' },
+            ]}
+          />
+        </div>
+        <div class="field">
+          <label for="aj-d">Date</label>
+          <input id="aj-d" class="input" type="date" name="onDate" required value={yesterday} />
+        </div>
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="aj-a">Amount</label>
+          <div class="input-money"><input id="aj-a" class="input" name="amountEuros" required inputmode="decimal" /></div>
+        </div>
+        <div class="field">
+          <label for="aj-b">Booking (optional)</label>
+          <input id="aj-b" class="input mono" name="bookingReference" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="aj-n">Note</label>
+        <input id="aj-n" class="input" name="note" required />
+      </div>
+      <p class="help">Deductions and advances are taken off the total. Enter the amount as a positive number.</p>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="adjustment-dialog">Back</button>
+      <button class="btn" type="submit">Add adjustment</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="statement-dialog" aria-labelledby="dd-st">
+  <form method="POST" action={actions.buildDriverStatement}>
+    <input type="hidden" name="driverId" value={driver.id} />
+    <div class="dialog-head">
+      <p class="eyebrow">{driver.full_name}</p>
+      <h2 id="dd-st">New statement</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <fieldset class="seg" style="border:0;padding:0;margin:0">
+        <legend class="sr-only">Period</legend>
+        <input type="radio" name="periodKind" id="st-w" value="week" />
+        <label for="st-w">Week</label>
+        <input type="radio" name="periodKind" id="st-m" value="month" checked />
+        <label for="st-m">Month</label>
+        <input type="radio" name="periodKind" id="st-q" value="quarter" />
+        <label for="st-q">3 months</label>
+        <input type="radio" name="periodKind" id="st-c" value="custom" />
+        <label for="st-c">Custom</label>
+      </fieldset>
+      <p class="help">Presets end yesterday ({yesterday}).</p>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="st-from">From</label>
+          <input id="st-from" class="input" type="date" name="from" />
+        </div>
+        <div class="field">
+          <label for="st-to">To</label>
+          <input id="st-to" class="input" type="date" name="to" />
+        </div>
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="statement-dialog">Back</button>
+      <button class="btn" type="submit">Build statement</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
   const openShift = location.hash === '#shift-dialog' || new URLSearchParams(location.search).has('shift');
   const dlg = document.getElementById('shift-dialog');
   if (openShift && dlg instanceof HTMLDialogElement) dlg.showModal();
+  if (location.hash === '#statements') {
+    document.getElementById('statements')?.scrollIntoView();
+  }
   document.querySelectorAll('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-open');

@@ -1,0 +1,272 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { driversNotFound } from '../../lib/drivers';
+import { formatEuro } from '../../lib/money';
+import { formatPeriodRange, statementStatusBadge } from '../../lib/pay-format';
+import type { BookingsDayRow, DriverPayRow, VehicleUsageRow } from '../../lib/report-export';
+import { resolvePeriod, type PeriodKind } from '../../lib/report-period';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const denied = driversNotFound();
+if (denied) return denied;
+
+const staff = Astro.locals.staff!;
+const params = Astro.url.searchParams;
+const tab = (params.get('tab') ?? 'pay') as 'pay' | 'vehicles' | 'bookings';
+const periodKind = (params.get('period') ?? 'month') as PeriodKind;
+const customFrom = params.get('from');
+const customTo = params.get('to');
+
+let from = '';
+let to = '';
+let periodError: string | null = null;
+try {
+  ({ from, to } = resolvePeriod(periodKind, customFrom, customTo));
+} catch {
+  periodError = 'Check the custom dates.';
+  ({ from, to } = resolvePeriod('month', null, null));
+}
+
+const supabase = createSupabaseServerClient(Astro.cookies);
+const q = new URLSearchParams({ period: periodKind, from, to, tab });
+const exportBase = `period=${periodKind}&from=${from}&to=${to}&tab=${tab}`;
+
+const [{ data: payRows }, { data: vehicleRows }, { data: dayRows }, { data: statements }] =
+  await Promise.all([
+    tab === 'pay'
+      ? supabase.rpc('report_driver_pay', { p_from: from, p_to: to })
+      : Promise.resolve({ data: null }),
+    tab === 'vehicles'
+      ? supabase.rpc('report_vehicle_usage', { p_from: from, p_to: to })
+      : Promise.resolve({ data: null }),
+    tab === 'bookings'
+      ? supabase.rpc('report_bookings_per_day', { p_from: from, p_to: to })
+      : Promise.resolve({ data: null }),
+    tab === 'pay'
+      ? supabase
+          .from('driver_statements')
+          .select('id, driver_id, period_from, period_to, status')
+          .eq('period_from', from)
+          .eq('period_to', to)
+      : Promise.resolve({ data: null }),
+  ]);
+
+const stmtByDriver = new Map((statements ?? []).map((s) => [s.driver_id, s]));
+const pay = (payRows ?? []) as DriverPayRow[];
+const vehicles = (vehicleRows ?? []) as VehicleUsageRow[];
+const days = (dayRows ?? []) as BookingsDayRow[];
+
+const payTotals = {
+  jobs: pay.reduce((s, r) => s + r.jobs, 0),
+  days: pay.reduce((s, r) => s + r.days_worked, 0),
+  hours: pay.reduce((s, r) => s + Number(r.shift_hours), 0),
+  cents: pay.reduce((s, r) => s + r.total_cents, 0),
+};
+const vehTotals = {
+  jobs: vehicles.reduce((s, r) => s + r.jobs, 0),
+  booked: vehicles.reduce((s, r) => s + Number(r.booked_hours), 0),
+  days: vehicles.reduce((s, r) => s + r.shift_days, 0),
+  hours: vehicles.reduce((s, r) => s + Number(r.shift_hours), 0),
+};
+const dayTotals = {
+  completed: days.reduce((s, r) => s + r.completed, 0),
+  noShow: days.reduce((s, r) => s + r.no_show, 0),
+  cancelled: days.reduce((s, r) => s + r.cancelled, 0),
+  revenue: days.reduce((s, r) => s + r.revenue_cents, 0),
+  online: days.reduce((s, r) => s + r.online, 0),
+  office: days.reduce((s, r) => s + r.office, 0),
+};
+
+const periodLabel = formatPeriodRange(from, to);
+---
+
+<AdminLayout
+  title="Reports"
+  htmlTitle="Reports - Elite Protection Admin"
+  current="reports"
+  staffEmail={staff.email}
+>
+  {
+    periodError && (
+      <p class="error-text" role="alert">
+        {periodError}
+      </p>
+    )
+  }
+
+  <form class="filters" aria-label="Period" method="get">
+    <input type="hidden" name="tab" value={tab} />
+    <fieldset class="seg" style="border:0;padding:0;margin:0;align-self:end">
+      <legend class="sr-only">Period</legend>
+      <input type="radio" name="period" id="p-w" value="week" checked={periodKind === 'week' || undefined} />
+      <label for="p-w">Week</label>
+      <input type="radio" name="period" id="p-m" value="month" checked={periodKind === 'month' || undefined} />
+      <label for="p-m">Month</label>
+      <input type="radio" name="period" id="p-q" value="quarter" checked={periodKind === 'quarter' || undefined} />
+      <label for="p-q">3 months</label>
+      <input type="radio" name="period" id="p-c" value="custom" checked={periodKind === 'custom' || undefined} />
+      <label for="p-c">Custom</label>
+    </fieldset>
+    <div class="field">
+      <label for="r-from">From</label>
+      <input id="r-from" class="input" type="date" name="from" value={from} />
+    </div>
+    <div class="field">
+      <label for="r-to">To</label>
+      <input id="r-to" class="input" type="date" name="to" value={to} />
+    </div>
+    <div class="actions"><button class="btn btn-sm" type="submit">Show</button></div>
+  </form>
+
+  <nav class="tabs" aria-label="Report">
+    <a href={`/reports?${new URLSearchParams({ ...Object.fromEntries(q), tab: 'pay' })}`} aria-current={tab === 'pay' ? 'page' : undefined}>Driver pay</a>
+    <a href={`/reports?${new URLSearchParams({ ...Object.fromEntries(q), tab: 'vehicles' })}`} aria-current={tab === 'vehicles' ? 'page' : undefined}>Vehicles</a>
+    <a href={`/reports?${new URLSearchParams({ ...Object.fromEntries(q), tab: 'bookings' })}`} aria-current={tab === 'bookings' ? 'page' : undefined}>Bookings per day</a>
+  </nav>
+
+  <div class="row between" style="margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+    <span class="muted small">{periodLabel} · Athens dates · completed bookings and closed shifts</span>
+    <div class="row" style="gap:.5rem">
+      <a class="btn btn-secondary btn-sm" href={`/reports/export.csv?${exportBase}`}>Export CSV</a>
+      <a class="btn btn-secondary btn-sm" href={`/reports/export.xlsx?${exportBase}`}>Export Excel</a>
+    </div>
+  </div>
+
+  {
+    tab === 'pay' && (
+      <div class="table-wrap" role="region" tabindex="0" aria-labelledby="rp-cap">
+        <table class="table table-cards">
+          <caption id="rp-cap" class="sr-only">Driver pay, {periodLabel}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Driver</th>
+              <th scope="col" class="num">Jobs</th>
+              <th scope="col" class="num">Days</th>
+              <th scope="col" class="num">Shift hours</th>
+              <th scope="col" class="num">Owed</th>
+              <th scope="col">Statement</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pay.map((r) => {
+              const st = stmtByDriver.get(r.driver_id);
+              const badge = statementStatusBadge(r.statement_status ?? st?.status);
+              return (
+                <tr>
+                  <td class="card-title" data-label="Driver">
+                    <a href={`/drivers/${r.driver_id}`}>{r.full_name}</a>
+                  </td>
+                  <td class="num" data-label="Jobs">{r.jobs}</td>
+                  <td class="num" data-label="Days">{r.days_worked}</td>
+                  <td class="num" data-label="Shift hours">{Number(r.shift_hours).toFixed(2)}</td>
+                  <td class="num" data-label="Owed">{formatEuro(r.total_cents)}</td>
+                  <td data-label="Statement">
+                    {st ? (
+                      <a href={`/drivers/${r.driver_id}/statements/${st.id}`}>
+                        <span class={`badge ${badge.cls}`}>{badge.text}</span>
+                      </a>
+                    ) : (
+                      <a href={`/drivers/${r.driver_id}#statements`}>Create</a>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            <tr class="sum-row">
+              <td class="card-title" data-label="">Total</td>
+              <td class="num" data-label="Jobs">{payTotals.jobs}</td>
+              <td class="num" data-label="Days">{payTotals.days}</td>
+              <td class="num" data-label="Shift hours">{payTotals.hours.toFixed(2)}</td>
+              <td class="num" data-label="Owed">{formatEuro(payTotals.cents)}</td>
+              <td data-label=""></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  {
+    tab === 'vehicles' && (
+      <div class="table-wrap" role="region" tabindex="0" aria-labelledby="rv-cap">
+        <table class="table table-cards">
+          <caption id="rv-cap" class="sr-only">Vehicles, {periodLabel}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Vehicle</th>
+              <th scope="col">Class</th>
+              <th scope="col" class="num">Jobs</th>
+              <th scope="col" class="num">Booked hours</th>
+              <th scope="col" class="num">Shift days</th>
+              <th scope="col" class="num">Shift hours</th>
+            </tr>
+          </thead>
+          <tbody>
+            {vehicles.map((r) => (
+              <tr>
+                <td class="card-title" data-label="Vehicle">{r.label}</td>
+                <td data-label="Class">{r.class_name}</td>
+                <td class="num" data-label="Jobs">{r.jobs}</td>
+                <td class="num" data-label="Booked hours">{Number(r.booked_hours).toFixed(2)}</td>
+                <td class="num" data-label="Shift days">{r.shift_days}</td>
+                <td class="num" data-label="Shift hours">{Number(r.shift_hours).toFixed(2)}</td>
+              </tr>
+            ))}
+            <tr class="sum-row">
+              <td class="card-title" data-label="" colspan="2">Total</td>
+              <td class="num" data-label="Jobs">{vehTotals.jobs}</td>
+              <td class="num" data-label="Booked hours">{vehTotals.booked.toFixed(2)}</td>
+              <td class="num" data-label="Shift days">{vehTotals.days}</td>
+              <td class="num" data-label="Shift hours">{vehTotals.hours.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  {
+    tab === 'bookings' && (
+      <div class="table-wrap" role="region" tabindex="0" aria-labelledby="rb-cap">
+        <table class="table table-cards">
+          <caption id="rb-cap" class="sr-only">Bookings per day, {periodLabel}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              <th scope="col" class="num">Completed</th>
+              <th scope="col" class="num">No-show</th>
+              <th scope="col" class="num">Cancelled</th>
+              <th scope="col" class="num">Revenue</th>
+              <th scope="col" class="num">Online</th>
+              <th scope="col" class="num">Office</th>
+            </tr>
+          </thead>
+          <tbody>
+            {days.map((r) => (
+              <tr>
+                <td class="card-title" data-label="Day">{r.day}</td>
+                <td class="num" data-label="Completed">{r.completed}</td>
+                <td class="num" data-label="No-show">{r.no_show}</td>
+                <td class="num" data-label="Cancelled">{r.cancelled}</td>
+                <td class="num" data-label="Revenue">{formatEuro(r.revenue_cents)}</td>
+                <td class="num" data-label="Online">{r.online}</td>
+                <td class="num" data-label="Office">{r.office}</td>
+              </tr>
+            ))}
+            <tr class="sum-row">
+              <td class="card-title" data-label="">Total</td>
+              <td class="num" data-label="Completed">{dayTotals.completed}</td>
+              <td class="num" data-label="No-show">{dayTotals.noShow}</td>
+              <td class="num" data-label="Cancelled">{dayTotals.cancelled}</td>
+              <td class="num" data-label="Revenue">{formatEuro(dayTotals.revenue)}</td>
+              <td class="num" data-label="Online">{dayTotals.online}</td>
+              <td class="num" data-label="Office">{dayTotals.office}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</AdminLayout>

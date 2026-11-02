@@ -20,12 +20,19 @@ import { callWebsiteDeployHook } from '../lib/deploy-hook';
 import { mapDbError } from '../lib/db-errors';
 import { eurosToCents, optionalEurosToCents } from '../lib/money';
 import {
+  adjustmentAmountCents,
+  endPreviousPlanOn,
+  eurosOrZero,
+  percentToBp,
+} from '../lib/pay-convert';
+import {
   clearPricesChanged,
   markPricesChanged,
   rebuildCooldownRemainingMs,
   setRebuildRequestedAt,
 } from '../lib/price-update-cookies';
 import { parseTstzRange, rangesOverlap } from '../lib/range';
+import { resolveStatementPeriod, type PeriodKind } from '../lib/report-period';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { athensLocalToInstant } from '../lib/time';
 
@@ -1293,6 +1300,288 @@ export const server = {
       });
       if (error) throwDb(error);
       return { ok: true, status: input.status };
+    },
+  }),
+
+  changeDriverPayPlan: defineAction({
+    accept: 'form',
+    input: z.object({
+      driverId: z.string().uuid(),
+      validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      monthlySalaryEuros: z.string().optional().nullable(),
+      dailyRateEuros: z.string().optional().nullable(),
+      hourlyRateEuros: z.string().optional().nullable(),
+      hourlyBasis: z.enum(['shift', 'hourly_bookings']),
+      percent: z.string().optional().nullable(),
+      percentBase: z.enum(['final', 'net']),
+      perTransferEuros: z.string().optional().nullable(),
+      note: z.string().optional().nullable(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      let monthly: number;
+      let daily: number;
+      let hourly: number;
+      let percentBp: number;
+      let perTransfer: number;
+      try {
+        monthly = eurosOrZero(input.monthlySalaryEuros ?? '');
+        daily = eurosOrZero(input.dailyRateEuros ?? '');
+        hourly = eurosOrZero(input.hourlyRateEuros ?? '');
+        percentBp = percentToBp(input.percent ?? '');
+        perTransfer = eurosOrZero(input.perTransferEuros ?? '');
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Check the amounts and percentage.' });
+      }
+      const endOn = endPreviousPlanOn(input.validFrom);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { data: openPlans, error: listErr } = await supabase
+        .from('driver_pay_plans')
+        .select('id, valid_from, valid_to')
+        .eq('driver_id', input.driverId)
+        .or(`valid_to.is.null,valid_to.gte.${input.validFrom}`);
+      if (listErr) throwDb(listErr);
+      for (const p of openPlans ?? []) {
+        if (p.valid_from >= input.validFrom) {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'This pay plan overlaps another plan for the same driver.',
+          });
+        }
+        if (p.valid_to == null || p.valid_to >= input.validFrom) {
+          const { error } = await supabase
+            .from('driver_pay_plans')
+            .update({ valid_to: endOn })
+            .eq('id', p.id);
+          if (error) throwDb(error);
+        }
+      }
+      const { data, error } = await supabase
+        .from('driver_pay_plans')
+        .insert({
+          driver_id: input.driverId,
+          valid_from: input.validFrom,
+          monthly_salary_cents: monthly,
+          daily_rate_cents: daily,
+          hourly_rate_cents: hourly,
+          hourly_basis: input.hourlyBasis,
+          percent_bp: percentBp,
+          percent_base: input.percentBase,
+          per_transfer_cents: perTransfer,
+          note: input.note?.trim() || null,
+        })
+        .select('id')
+        .single();
+      if (error) throwDb(error);
+      return { ok: true, id: data!.id };
+    },
+  }),
+
+  saveDriverPayRate: defineAction({
+    accept: 'form',
+    input: z.object({
+      planId: z.string().uuid(),
+      driverId: z.string().uuid(),
+      classId: z
+        .union([z.string().uuid(), z.literal(''), z.null()])
+        .optional()
+        .transform((v) => (v ? v : undefined)),
+      fromZoneId: z
+        .union([z.string().uuid(), z.literal(''), z.null()])
+        .optional()
+        .transform((v) => (v ? v : undefined)),
+      toZoneId: z
+        .union([z.string().uuid(), z.literal(''), z.null()])
+        .optional()
+        .transform((v) => (v ? v : undefined)),
+      amountEuros: z.string().min(1),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      let amount: number;
+      try {
+        amount = eurosToCents(input.amountEuros);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Check the override amount.' });
+      }
+      if (amount < 0) throw new ActionError({ code: 'BAD_REQUEST', message: 'Check the override amount.' });
+      const classId = input.classId ?? null;
+      const fromZoneId = input.fromZoneId ?? null;
+      const toZoneId = input.toZoneId ?? null;
+      if (!classId && !(fromZoneId && toZoneId)) {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: 'Pick a vehicle class and/or a route.',
+        });
+      }
+      if ((fromZoneId == null) !== (toZoneId == null)) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Pick both zones for a route override.' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('driver_pay_rates').insert({
+        plan_id: input.planId,
+        class_id: classId,
+        from_zone_id: fromZoneId,
+        to_zone_id: toZoneId,
+        amount_cents: amount,
+      });
+      if (error) throwDb(error);
+      return { ok: true, driverId: input.driverId };
+    },
+  }),
+
+  deleteDriverPayRate: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid(),
+      driverId: z.string().uuid(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('driver_pay_rates').delete().eq('id', input.id);
+      if (error) throwDb(error);
+      return { ok: true, driverId: input.driverId };
+    },
+  }),
+
+  addDriverAdjustment: defineAction({
+    accept: 'form',
+    input: z.object({
+      driverId: z.string().uuid(),
+      kind: z.enum(['tip', 'waiting', 'expense', 'bonus', 'deduction', 'advance']),
+      onDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      amountEuros: z.string().min(1),
+      bookingReference: z.string().optional().nullable(),
+      note: z.string().trim().min(1),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      let amountCents: number;
+      try {
+        amountCents = adjustmentAmountCents(input.kind, input.amountEuros);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Check the amount.' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      let bookingId: string | null = null;
+      const ref = input.bookingReference?.trim();
+      if (ref) {
+        const { data: b } = await supabase.from('bookings').select('id').eq('reference', ref).maybeSingle();
+        if (!b) throw new ActionError({ code: 'BAD_REQUEST', message: 'That booking reference was not found.' });
+        bookingId = b.id;
+      }
+      const { error } = await supabase.from('driver_pay_adjustments').insert({
+        driver_id: input.driverId,
+        on_date: input.onDate,
+        kind: input.kind,
+        amount_cents: amountCents,
+        booking_id: bookingId,
+        note: input.note,
+        created_by: staff.userId,
+      });
+      if (error) throwDb(error);
+      return { ok: true };
+    },
+  }),
+
+  buildDriverStatement: defineAction({
+    accept: 'form',
+    input: z.object({
+      driverId: z.string().uuid(),
+      periodKind: z.enum(['week', 'month', 'quarter', 'custom']),
+      from: z.string().optional().nullable(),
+      to: z.string().optional().nullable(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      let period: { from: string; to: string };
+      try {
+        period = resolveStatementPeriod(
+          input.periodKind as PeriodKind,
+          input.from ?? null,
+          input.to ?? null,
+        );
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Check the statement period.' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { data, error } = await supabase.rpc('driver_statement_build', {
+        p_driver_id: input.driverId,
+        p_from: period.from,
+        p_to: period.to,
+      });
+      if (error) throwDb(error);
+      return { id: data as string, driverId: input.driverId };
+    },
+  }),
+
+  recalculateDriverStatement: defineAction({
+    accept: 'form',
+    input: z.object({
+      statementId: z.string().uuid(),
+      driverId: z.string().uuid(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { data: st, error: sErr } = await supabase
+        .from('driver_statements')
+        .select('period_from, period_to, status')
+        .eq('id', input.statementId)
+        .single();
+      if (sErr || !st) throw new ActionError({ code: 'NOT_FOUND', message: 'Statement not found' });
+      if (st.status !== 'draft') {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: 'This statement is approved and cannot be recalculated',
+        });
+      }
+      const { error } = await supabase.rpc('driver_statement_build', {
+        p_driver_id: input.driverId,
+        p_from: st.period_from,
+        p_to: st.period_to,
+      });
+      if (error) throwDb(error);
+      return { ok: true, id: input.statementId };
+    },
+  }),
+
+  approveDriverStatement: defineAction({
+    accept: 'form',
+    input: z.object({ statementId: z.string().uuid() }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.rpc('driver_statement_approve', { p_id: input.statementId });
+      if (error) throwDb(error);
+      return { ok: true };
+    },
+  }),
+
+  markDriverStatementPaid: defineAction({
+    accept: 'form',
+    input: z.object({
+      statementId: z.string().uuid(),
+      paymentReference: z.string().trim().min(1),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.rpc('driver_statement_mark_paid', {
+        p_id: input.statementId,
+        p_reference: input.paymentReference,
+      });
+      if (error) throwDb(error);
+      return { ok: true };
     },
   }),
 

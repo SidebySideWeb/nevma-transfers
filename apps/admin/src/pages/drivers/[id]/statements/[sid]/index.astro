@@ -1,0 +1,221 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../../../../layouts/AdminLayout.astro';
+import Banner from '../../../../../components/Banner.astro';
+import { driversNotFound } from '../../../../../lib/drivers';
+import { formatEuro } from '../../../../../lib/money';
+import { formatPeriodRange, formatSignedEuro, kindLabel, statementStatusBadge } from '../../../../../lib/pay-format';
+import { createSupabaseServerClient } from '../../../../../lib/supabase';
+import { formatAthens } from '../../../../../lib/time';
+
+const denied = driversNotFound();
+if (denied) return denied;
+
+const staff = Astro.locals.staff!;
+const driverId = Astro.params.id!;
+const sid = Astro.params.sid!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const pageError =
+  actionErr(Astro.getActionResult?.(actions.recalculateDriverStatement)) ||
+  actionErr(Astro.getActionResult?.(actions.approveDriverStatement)) ||
+  actionErr(Astro.getActionResult?.(actions.markDriverStatementPaid));
+
+const [{ data: driver }, { data: st }] = await Promise.all([
+  supabase.from('drivers').select('id, full_name, employment').eq('id', driverId).maybeSingle(),
+  supabase.from('driver_statements').select('*').eq('id', sid).eq('driver_id', driverId).maybeSingle(),
+]);
+if (!driver || !st) return new Response(null, { status: 404 });
+
+const { data: lines } = await supabase
+  .from('driver_statement_lines')
+  .select('*')
+  .eq('statement_id', sid)
+  .order('on_date')
+  .order('kind');
+
+const byKind = new Map<string, typeof lines>();
+for (const line of lines ?? []) {
+  const list = byKind.get(line.kind) ?? [];
+  list.push(line);
+  byKind.set(line.kind, list);
+}
+
+const badge = statementStatusBadge(st.status);
+const periodLabel = formatPeriodRange(st.period_from, st.period_to);
+const exportHref = `/drivers/${driverId}/statements/${sid}/export.xlsx`;
+---
+
+<AdminLayout
+  title={`Statement: ${driver.full_name}`}
+  htmlTitle={`Statement: ${driver.full_name} - Elite Protection Admin`}
+  current="drivers"
+  staffEmail={staff.email}
+  crumbs={[
+    { href: '/drivers', label: 'Drivers' },
+    { href: `/drivers/${driverId}`, label: driver.full_name },
+    { label: 'Statements' },
+  ]}
+>
+  {pageError && <Banner tone="danger" role="alert">{pageError}</Banner>}
+
+  <div class="row" style="margin:-.5rem 0 1.25rem;gap:.5rem;flex-wrap:wrap;align-items:center">
+    <span class={`badge ${badge.cls}`}>{badge.text}</span>
+    <span class="muted small">
+      {driver.full_name} · {driver.employment === 'freelancer' ? 'Freelancer' : 'Employee'} · {periodLabel}
+      {st.created_at ? ` · calculated ${formatAthens(st.created_at)}` : ''}
+      {st.payment_reference ? ` · ${st.payment_reference}` : ''}
+    </span>
+  </div>
+
+  <div class="table-wrap" role="region" tabindex="0" aria-labelledby="st-cap">
+    <table class="table table-cards">
+      <caption id="st-cap" class="sr-only">Statement lines</caption>
+      <thead>
+        <tr>
+          <th scope="col">Kind</th>
+          <th scope="col">Date</th>
+          <th scope="col">Booking</th>
+          <th scope="col">Description</th>
+          <th scope="col" class="num">Qty</th>
+          <th scope="col" class="num">Rate</th>
+          <th scope="col" class="num">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          [...byKind.entries()].map(([kind, group]) => {
+            const sub = (group ?? []).reduce((s, l) => s + l.amount_cents, 0);
+            return (
+              <>
+                {(group ?? []).map((l) => (
+                  <tr>
+                    <td data-label="Kind">{kindLabel(l.kind)}</td>
+                    <td data-label="Date">{l.on_date}</td>
+                    <td data-label="Booking">
+                      {l.reference ? <a class="ref" href={`/bookings/${l.reference}`}>{l.reference}</a> : '—'}
+                    </td>
+                    <td class="card-title" data-label="Description">{l.description}</td>
+                    <td class="num" data-label="Qty">{Number(l.quantity)}</td>
+                    <td class="num" data-label="Rate">{l.rate_cents == null ? '—' : formatEuro(l.rate_cents)}</td>
+                    <td class="num" data-label="Amount">{formatSignedEuro(l.amount_cents)}</td>
+                  </tr>
+                ))}
+                <tr class="sum-row">
+                  <td class="card-title" data-label="" colspan="6">
+                    Subtotal · {kindLabel(kind)}
+                  </td>
+                  <td class="num" data-label="Subtotal">{formatSignedEuro(sub)}</td>
+                </tr>
+              </>
+            );
+          })
+        }
+        <tr class="sum-row">
+          <td class="card-title" data-label="" colspan="6">Total owed</td>
+          <td class="num" data-label="Total">{formatEuro(st.total_cents)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="row no-print" style="margin-top:1rem;justify-content:flex-end;gap:.5rem;flex-wrap:wrap">
+    {
+      st.status === 'draft' && (
+        <form method="POST" action={actions.recalculateDriverStatement}>
+          <input type="hidden" name="statementId" value={st.id} />
+          <input type="hidden" name="driverId" value={driverId} />
+          <button class="btn btn-quiet" type="submit">Recalculate</button>
+        </form>
+      )
+    }
+    {
+      st.status !== 'draft' && (
+        <form method="POST" action={actions.recalculateDriverStatement}>
+          <input type="hidden" name="statementId" value={st.id} />
+          <input type="hidden" name="driverId" value={driverId} />
+          <button class="btn btn-quiet" type="submit" data-testid="recalc-locked">Recalculate</button>
+        </form>
+      )
+    }
+    <a class="btn btn-secondary" href={exportHref}>Export Excel</a>
+    <button class="btn btn-secondary" type="button" onclick="window.print()">Print</button>
+    {
+      st.status === 'draft' && (
+        <button class="btn" type="button" data-open="approve-dialog">Approve…</button>
+      )
+    }
+    {
+      st.status === 'approved' && (
+        <button class="btn" type="button" data-open="paid-dialog">Mark paid…</button>
+      )
+    }
+  </div>
+</AdminLayout>
+
+<dialog class="dialog" id="approve-dialog" aria-labelledby="dd-ap">
+  <form method="POST" action={actions.approveDriverStatement}>
+    <input type="hidden" name="statementId" value={st.id} />
+    <div class="dialog-head">
+      <p class="eyebrow">Statement</p>
+      <h2 id="dd-ap">Approve this statement?</h2>
+    </div>
+    <div class="dialog-body">
+      <dl class="restate">
+        <dt>Driver</dt><dd>{driver.full_name}</dd>
+        <dt>Period</dt><dd>{periodLabel}</dd>
+        <dt>Total</dt><dd class="amount">{formatEuro(st.total_cents)}</dd>
+      </dl>
+      <p class="help">The lines are frozen after approval. Corrections after that go into the next statement as an adjustment.</p>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="approve-dialog">Back</button>
+      <button class="btn" type="submit">Approve {formatEuro(st.total_cents)}</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="paid-dialog" aria-labelledby="dd-pd">
+  <form method="POST" action={actions.markDriverStatementPaid}>
+    <input type="hidden" name="statementId" value={st.id} />
+    <div class="dialog-head">
+      <p class="eyebrow">Statement</p>
+      <h2 id="dd-pd">Mark as paid</h2>
+    </div>
+    <div class="dialog-body">
+      <div class="field">
+        <label for="pd-r">Payment reference</label>
+        <input id="pd-r" class="input" name="paymentReference" required />
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="paid-dialog">Back</button>
+      <button class="btn" type="submit">Mark paid</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-open');
+      const d = id && document.getElementById(id);
+      if (d instanceof HTMLDialogElement) d.showModal();
+    });
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-close');
+      const d = id && document.getElementById(id);
+      if (d instanceof HTMLDialogElement) d.close();
+    });
+  });
+</script>
