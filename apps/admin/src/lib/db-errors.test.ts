@@ -21,6 +21,26 @@ describe('mapDbError', () => {
     ).toBe('That label is already used');
   });
 
+  it('maps drivers email unique and missing drivers / columns', () => {
+    expect(
+      mapDbError({
+        code: '23505',
+        message: 'duplicate key value violates unique constraint "drivers_email_key"',
+        constraint: 'drivers_email_key',
+      }),
+    ).toBe('A driver with that e-mail already exists.');
+    expect(
+      mapDbError({
+        message: 'Could not find the table \'public.drivers\' in the schema cache',
+      }),
+    ).toMatch(/migration 0019/i);
+    expect(
+      mapDbError({
+        message: 'column vehicles.note does not exist',
+      }),
+    ).toMatch(/migrations/i);
+  });
+
   it('maps 23514 to the field validation text', () => {
     expect(
       mapDbError(

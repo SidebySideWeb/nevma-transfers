@@ -77,8 +77,18 @@ export function mapDbError(
   if (code === '23505' && /vehicles_label_key|vehicles_label/.test(haystack)) {
     return 'That label is already used';
   }
+  if (code === '23505' && /drivers_email|drivers.*email/.test(haystack)) {
+    return 'A driver with that e-mail already exists.';
+  }
   if (code === '23505' && /label/.test(haystack)) {
     return 'That label is already used';
+  }
+
+  if (/relation .*drivers.* does not exist|Could not find the table.*drivers/i.test(message)) {
+    return 'Drivers tables are missing. Apply database migration 0019 on this project.';
+  }
+  if (/column .* does not exist/i.test(message)) {
+    return 'The database is behind the app. Apply the latest migrations on this project.';
   }
 
   if (code === '23514') {

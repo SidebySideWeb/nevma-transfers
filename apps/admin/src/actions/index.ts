@@ -1085,13 +1085,23 @@ export const server = {
         .insert({
           full_name: input.fullName,
           phone: input.phone,
-          email: input.email.toLowerCase(),
+          email: input.email.trim().toLowerCase(),
           employment: input.employment,
           active: true,
         })
         .select('id')
         .single();
-      if (error) throwDb(error);
+      if (error) {
+        console.error(
+          JSON.stringify({
+            level: 'error',
+            code: 'add_driver_failed',
+            pg: error.code ?? null,
+            detail: String(error.message ?? '').slice(0, 160),
+          }),
+        );
+        throwDb(error);
+      }
       if (input.invite === 'true' || input.invite === 'on') {
         const staff = requireStaff(ctx.locals);
         const inv = await callInternalDriverInvite({ driverId: data!.id }, staff.userId);
