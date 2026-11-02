@@ -10,7 +10,7 @@ Two booking types: **transfer** (fixed price per zone pair and vehicle class) an
 
 Kit 2 (prompts 15–24, same repo and same Studio) adds the content pages (fleet, routes, VIP security page, About, Contact, Request a transfer) and form submissions. It only adds to kit 1.
 
-Drivers module: see `docs/DRIVERS.md` and `drivers-kit/` prompts; additive only, switched on with `FEATURE_DRIVERS=true` (migration `0019_drivers_dispatch.sql`).
+Drivers module: see `docs/DRIVERS.md` and `docs/superpowers/plans/2026-11-01-drivers-dispatch.md`; additive only, switched on with `FEATURE_DRIVERS=true` (migration `0019_drivers_dispatch.sql`).
 
 ## Repo map
 

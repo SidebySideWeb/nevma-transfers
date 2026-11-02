@@ -1,6 +1,6 @@
 # Drivers and dispatch module — implementation plan
 
-> For the builder in Cursor: run the prompts in `drivers-kit/` in order (D1 → D6). Each prompt is one task with its own tests and a commit.
+> Drivers module is built into this repo. Historical build order was D1 → D6 (originally shipped as `drivers-kit/` prompts). Spec: `docs/superpowers/specs/2026-11-01-drivers-dispatch-design.md`. Ops: `docs/DRIVERS.md`.
 
 **Goal:** add drivers, assignment, shifts, live status, pay statements, reports and the driver API v1, switched on per deployment.
 
