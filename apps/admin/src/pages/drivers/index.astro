@@ -1,0 +1,219 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import Select from '../../components/Select.astro';
+import { driversNotFound } from '../../lib/drivers';
+import { expiresWithinDays } from '../../lib/free-drivers';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const denied = driversNotFound();
+if (denied) return denied;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const params = Astro.url.searchParams;
+const q = params.get('q')?.trim() ?? '';
+const type = params.get('type') ?? '';
+const showInactive = params.get('inactive') === '1';
+
+const added = Astro.getActionResult?.(actions.addDriver);
+if (added?.data && typeof added.data === 'object' && 'id' in added.data) {
+  return Astro.redirect(`/drivers/${(added.data as { id: string }).id}`);
+}
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(added);
+
+let query = supabase
+  .from('drivers')
+  .select('id, full_name, phone, email, employment, active, licence_expires_on, permit_expires_on, user_id')
+  .order('full_name');
+if (!showInactive) query = query.eq('active', true);
+if (type === 'employee' || type === 'freelancer') query = query.eq('employment', type);
+if (q) {
+  const like = `%${q}%`;
+  query = query.or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like}`);
+}
+const { data: drivers, error } = await query;
+
+const { data: nowRows } = await supabase.from('drivers_now').select('driver_id, shift_id, vehicle_label');
+const nowById = new Map((nowRows ?? []).map((r) => [r.driver_id, r]));
+
+const monthStart = new Date();
+monthStart.setUTCDate(1);
+monthStart.setUTCHours(0, 0, 0, 0);
+const { data: jobCounts } = await supabase
+  .from('bookings')
+  .select('driver_id')
+  .not('driver_id', 'is', null)
+  .in('status', ['confirmed', 'assigned', 'completed'])
+  .gte('pickup_at', monthStart.toISOString());
+const jobsMonth = new Map<string, number>();
+for (const b of jobCounts ?? []) {
+  if (!b.driver_id) continue;
+  jobsMonth.set(b.driver_id, (jobsMonth.get(b.driver_id) ?? 0) + 1);
+}
+
+function fmtDay(iso: string | null) {
+  if (!iso) return '—';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Athens',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${iso}T12:00:00+02:00`));
+}
+
+function appBadge(userId: string | null) {
+  if (userId) return { cls: 's-confirmed', text: 'Linked' };
+  return { cls: 'plain', text: 'No login' };
+}
+---
+
+<AdminLayout title="Drivers" current="drivers" staffEmail={staff.email}>
+  <div class="page-head" style="padding:0 0 1rem;display:flex;justify-content:flex-end;gap:.5rem">
+    <button class="btn" type="button" data-open="add-driver">Add driver</button>
+  </div>
+
+  {pageError && <Banner tone="danger" role="alert">{pageError}</Banner>}
+  {error && <Banner tone="danger" role="alert">Could not load drivers.</Banner>}
+
+  <form class="filters" aria-label="Find drivers" method="get">
+    <div class="field" style="grid-column: span 2">
+      <label for="dr-q">Search</label>
+      <input id="dr-q" class="input" type="search" name="q" value={q} placeholder="Name, phone or e-mail" />
+    </div>
+    <div class="field">
+      <label for="dr-t">Type</label>
+      <Select
+        id="dr-t"
+        name="type"
+        options={[
+          { value: '', label: 'All', selected: !type },
+          { value: 'employee', label: 'Employees', selected: type === 'employee' },
+          { value: 'freelancer', label: 'Freelancers', selected: type === 'freelancer' },
+        ]}
+      />
+    </div>
+    <label class="check">
+      <input type="checkbox" name="inactive" value="1" checked={showInactive || undefined} /> Show inactive
+    </label>
+    <div class="actions"><button class="btn btn-sm" type="submit">Apply</button></div>
+  </form>
+
+  <div class="table-wrap" role="region" tabindex="0" aria-label="Drivers">
+    <table class="table table-cards">
+      <thead>
+        <tr>
+          <th scope="col">Driver</th>
+          <th scope="col">Type</th>
+          <th scope="col">Now</th>
+          <th scope="col" class="num">Jobs this month</th>
+          <th scope="col">Licence expires</th>
+          <th scope="col">Driver app</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          (drivers ?? []).map((d) => {
+            const now = nowById.get(d.id);
+            const app = appBadge(d.user_id);
+            const warn =
+              expiresWithinDays(d.licence_expires_on, 30) || expiresWithinDays(d.permit_expires_on, 30);
+            return (
+              <tr class:list={[{ 'is-muted': !d.active }]}>
+                <td class="card-title" data-label="Driver">
+                  <a href={`/drivers/${d.id}`}>{d.full_name}</a>
+                  {warn && <span class="badge s-pending">Expires soon</span>}
+                  <span class="sub">{d.phone}</span>
+                </td>
+                <td data-label="Type">{d.employment === 'freelancer' ? 'Freelancer' : 'Employee'}</td>
+                <td data-label="Now">
+                  {now?.shift_id ? (
+                    <span class="dot-on">On shift{now.vehicle_label ? ` · ${now.vehicle_label}` : ''}</span>
+                  ) : (
+                    <span class="dot-off">Off</span>
+                  )}
+                </td>
+                <td class="num" data-label="Jobs this month">
+                  {jobsMonth.get(d.id) ?? 0}
+                </td>
+                <td data-label="Licence">{fmtDay(d.licence_expires_on)}</td>
+                <td data-label="Driver app">
+                  <span class={`badge ${app.cls}`}>{app.text}</span>
+                </td>
+              </tr>
+            );
+          })
+        }
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>
+
+<dialog class="dialog" id="add-driver" aria-labelledby="ad-h">
+  <form method="POST" action={actions.addDriver}>
+    <div class="dialog-head">
+      <p class="eyebrow">Drivers</p>
+      <h2 id="ad-h">Add driver</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      <div class="field">
+        <label for="ad-n">Full name</label>
+        <input id="ad-n" class="input" name="fullName" required />
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="ad-p">Phone</label>
+          <input id="ad-p" class="input" name="phone" required />
+        </div>
+        <div class="field">
+          <label for="ad-e">E-mail</label>
+          <input id="ad-e" class="input" name="email" type="email" required />
+        </div>
+      </div>
+      <div class="field">
+        <label for="ad-t">Type</label>
+        <Select
+          id="ad-t"
+          name="employment"
+          options={[
+            { value: 'employee', label: 'Employee', selected: true },
+            { value: 'freelancer', label: 'Freelancer' },
+          ]}
+        />
+      </div>
+      <label class="check">
+        <input type="checkbox" name="invite" value="true" checked /> Send an invitation
+      </label>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="add-driver">Back</button>
+      <button class="btn" type="submit">Add driver</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-open');
+      const d = id && document.getElementById(id);
+      if (d instanceof HTMLDialogElement) d.showModal();
+    });
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-close');
+      const d = id && document.getElementById(id);
+      if (d instanceof HTMLDialogElement) d.close();
+    });
+  });
+</script>

@@ -85,6 +85,17 @@ describe('mapDbError', () => {
     ).toBe('Alex Driver is on another booking at that time');
 
     expect(
+      mapDbError(
+        {
+          code: '23P01',
+          message: 'conflicting key value violates exclusion constraint "bookings_no_driver_overlap"',
+          constraint: 'bookings_no_driver_overlap',
+        },
+        { driverName: 'Alex Driver', clashReference: 'ELP-AAAAAA' },
+      ),
+    ).toBe('Alex Driver is on ELP-AAAAAA at that time');
+
+    expect(
       mapDbError({
         code: '23P01',
         constraint: 'driver_shifts_driver_overlap',

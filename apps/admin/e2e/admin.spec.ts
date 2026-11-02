@@ -70,14 +70,14 @@ test('AC-18 assign vehicle; overlap shows clear error; invoice; refund; cancel',
   expect(count).toBeGreaterThan(0);
   const vehicleValue = await options.first().getAttribute('value');
   await setNativeSelect(page, 'veh', vehicleValue!);
-  await page.getByRole('button', { name: 'Assign' }).click();
+  await page.getByRole('button', { name: 'Assign vehicle' }).click();
   await expect(page.locator('.badge').filter({ hasText: 'assigned' })).toBeVisible({
     timeout: 15_000,
   });
 
   await page.goto('/bookings/TEM-ADAAAB');
   await setNativeSelect(page, 'veh', vehicleValue!);
-  await page.getByRole('button', { name: 'Assign' }).click();
+  await page.getByRole('button', { name: 'Assign vehicle' }).click();
   await expect(page.getByRole('alert')).toContainText(/overlap|not available|exclusion/i, {
     timeout: 15_000,
   });

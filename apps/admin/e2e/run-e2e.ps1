@@ -79,7 +79,7 @@ $passThrough = @($args)
 Push-Location $adminRoot
 try {
   if ($passThrough.Count -gt 0) {
-    & pnpm exec playwright test $passThrough
+    & pnpm exec playwright test @passThrough
   }
   else {
     & pnpm exec playwright test

@@ -2,7 +2,15 @@ import { defineAction, ActionError } from 'astro:actions';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import { searchCustomerRows } from '../lib/customer-search';
-import { callInternalBooking, callInternalCancel, callInternalPayment, callInternalRefund } from '../lib/internal';
+import {
+  callInternalBooking,
+  callInternalCancel,
+  callInternalDriverInvite,
+  callInternalDriverNotify,
+  callInternalPayment,
+  callInternalRefund,
+} from '../lib/internal';
+import { driversEnabled } from '../lib/drivers';
 import {
   classAvailabilityForTrip as tripClassAvailability,
   freeVehiclesForClass as tripFreeVehicles,
@@ -17,6 +25,7 @@ import {
   rebuildCooldownRemainingMs,
   setRebuildRequestedAt,
 } from '../lib/price-update-cookies';
+import { parseTstzRange, rangesOverlap } from '../lib/range';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { athensLocalToInstant } from '../lib/time';
 
@@ -1043,8 +1052,231 @@ export const server = {
     },
   }),
 
+  addDriver: defineAction({
+    accept: 'form',
+    input: z.object({
+      fullName: z.string().trim().min(1),
+      phone: z.string().trim().min(1),
+      email: z.email(),
+      employment: z.enum(['employee', 'freelancer']),
+      invite: z.string().optional(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { data, error } = await supabase
+        .from('drivers')
+        .insert({
+          full_name: input.fullName,
+          phone: input.phone,
+          email: input.email.toLowerCase(),
+          employment: input.employment,
+          active: true,
+        })
+        .select('id')
+        .single();
+      if (error) throwDb(error);
+      if (input.invite === 'true' || input.invite === 'on') {
+        const staff = requireStaff(ctx.locals);
+        const inv = await callInternalDriverInvite({ driverId: data!.id }, staff.userId);
+        if (!inv.ok) {
+          // Driver created; invitation failed — still land on the profile.
+          return { id: data!.id, inviteError: inv.message };
+        }
+      }
+      return { id: data!.id };
+    },
+  }),
+
+  updateDriver: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid(),
+      fullName: z.string().trim().min(1),
+      phone: z.string().trim().min(1),
+      email: z.email(),
+      employment: z.enum(['employee', 'freelancer']),
+      licenceNumber: z.string().trim().optional(),
+      licenceExpiresOn: z.string().optional(),
+      permitExpiresOn: z.string().optional(),
+      notes: z.string().optional(),
+      active: z.string().optional(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase
+        .from('drivers')
+        .update({
+          full_name: input.fullName,
+          phone: input.phone,
+          email: input.email.toLowerCase(),
+          employment: input.employment,
+          licence_number: input.licenceNumber || null,
+          licence_expires_on: input.licenceExpiresOn || null,
+          permit_expires_on: input.permitExpiresOn || null,
+          notes: input.notes || null,
+          active: input.active === 'true' || input.active === 'on',
+        })
+        .eq('id', input.id);
+      if (error) throwDb(error);
+      return { ok: true };
+    },
+  }),
+
+  inviteDriver: defineAction({
+    accept: 'form',
+    input: z.object({ id: z.string().uuid() }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const result = await callInternalDriverInvite({ driverId: input.id }, staff.userId);
+      if (!result.ok) throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
+      return result.data;
+    },
+  }),
+
+  saveDriverShift: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z
+        .union([z.string().uuid(), z.literal(''), z.null()])
+        .optional()
+        .transform((v) => (v ? v : undefined)),
+      driverId: z.string().uuid(),
+      vehicleId: z.string().uuid(),
+      startLocal: pickupLocal,
+      endLocal: z
+        .union([
+          z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
+          z.literal(''),
+          z.null(),
+        ])
+        .optional()
+        .transform((v) => (v ? v : undefined)),
+      startOdometer: z.string().optional().nullable(),
+      endOdometer: z.string().optional().nullable(),
+      note: z.string().optional().nullable(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      let startedAt: Date;
+      try {
+        startedAt = athensLocalToInstant(input.startLocal);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid start time' });
+      }
+      let endedAt: string | null = null;
+      if (input.endLocal) {
+        try {
+          endedAt = athensLocalToInstant(input.endLocal).toISOString();
+        } catch {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid end time' });
+        }
+      }
+      const startOdo = input.startOdometer?.trim() ? Number(input.startOdometer) : null;
+      const endOdo = input.endOdometer?.trim() ? Number(input.endOdometer) : null;
+      const row = {
+        driver_id: input.driverId,
+        vehicle_id: input.vehicleId,
+        started_at: startedAt.toISOString(),
+        ended_at: endedAt,
+        start_odometer: Number.isFinite(startOdo) ? startOdo : null,
+        end_odometer: Number.isFinite(endOdo) ? endOdo : null,
+        source: 'office' as const,
+        note: input.note?.trim() || null,
+      };
+      if (input.id) {
+        const { error } = await supabase.from('driver_shifts').update(row).eq('id', input.id);
+        if (error) throwDb(error);
+      } else {
+        const { error } = await supabase.from('driver_shifts').insert(row);
+        if (error) throwDb(error);
+      }
+      return { ok: true };
+    },
+  }),
+
+  assignDriver: defineAction({
+    accept: 'form',
+    input: z.object({
+      reference: z.string().min(1),
+      driverId: z
+        .union([z.string().uuid(), z.literal(''), z.null()])
+        .optional()
+        .transform((v) => (v ? v : undefined)),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const driverId = input.driverId || null;
+      const { data: booking, error: bErr } = await supabase
+        .from('bookings')
+        .select('id, driver_id, pickup_at, reference')
+        .eq('reference', input.reference)
+        .single();
+      if (bErr || !booking) throw new ActionError({ code: 'NOT_FOUND', message: 'Booking not found' });
+
+      const prev = booking.driver_id;
+      const { error } = await supabase
+        .from('bookings')
+        .update({ driver_id: driverId })
+        .eq('id', booking.id);
+      if (error) {
+        let driverName: string | undefined;
+        let clashReference: string | undefined;
+        if (driverId) {
+          const { data: d } = await supabase.from('drivers').select('full_name').eq('id', driverId).maybeSingle();
+          driverName = d?.full_name;
+          const { data: self } = await supabase
+            .from('bookings')
+            .select('blocked_range')
+            .eq('id', booking.id)
+            .maybeSingle();
+          const own = parseTstzRange(self?.blocked_range);
+          if (own) {
+            const { data: others } = await supabase
+              .from('bookings')
+              .select('id, reference, blocked_range, status')
+              .eq('driver_id', driverId)
+              .neq('id', booking.id)
+              .in('status', ['pending', 'confirmed', 'assigned']);
+            for (const o of others ?? []) {
+              const r = parseTstzRange(o.blocked_range);
+              if (r && rangesOverlap(own, r)) {
+                clashReference = o.reference;
+                break;
+              }
+            }
+          }
+        }
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: mapDbError(error, { driverName, clashReference }),
+        });
+      }
+
+      const pickupMs = new Date(booking.pickup_at).getTime();
+      const within48h = pickupMs - Date.now() <= 48 * 3600_000;
+      let kind: 'assigned' | 'changed' | 'removed' | null = null;
+      if (driverId && !prev) kind = 'assigned';
+      else if (driverId && prev && driverId !== prev) kind = 'changed';
+      else if (!driverId && prev) kind = 'removed';
+      if (kind && (kind === 'assigned' || within48h)) {
+        await callInternalDriverNotify({ reference: booking.reference, kind }, staff.userId);
+      }
+      return { ok: true };
+    },
+  }),
+
   /** AC-10: deliberately reject attempts to patch price_cents from the admin. */
   forgePriceCents: defineAction({
+
     accept: 'json',
     input: z.object({
       reference: z.string().min(1),

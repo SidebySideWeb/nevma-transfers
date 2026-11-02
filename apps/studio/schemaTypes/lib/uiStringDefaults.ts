@@ -590,6 +590,33 @@ export const uiStringDefaults: UiStringDefault[] = [
   { area: 'emails', key: 'email.paymentLink.subject', value: 'Complete your booking {reference}' },
   { area: 'emails', key: 'email.paymentLink.button', value: 'Pay securely' },
   { area: 'emails', key: 'email.paymentLink.body', value: 'Complete payment for booking {reference}.' },
+  { area: 'emails', key: 'email.driver.assigned.subject', value: 'New job {reference}' },
+  {
+    area: 'emails',
+    key: 'email.driver.assigned.body',
+    value:
+      'You have been assigned to booking {reference}. Pick-up {pickupAt}. {routeOrHours}. Address: {pickupAddress}. Passengers: {passengers}.',
+  },
+  { area: 'emails', key: 'email.driver.changed.subject', value: 'Job updated {reference}' },
+  {
+    area: 'emails',
+    key: 'email.driver.changed.body',
+    value:
+      'Your assignment for booking {reference} has changed. Pick-up {pickupAt}. {routeOrHours}. Address: {pickupAddress}. Passengers: {passengers}.',
+  },
+  { area: 'emails', key: 'email.driver.removed.subject', value: 'Job removed {reference}' },
+  {
+    area: 'emails',
+    key: 'email.driver.removed.body',
+    value:
+      'You are no longer assigned to booking {reference} (was {pickupAt}, {routeOrHours}, {pickupAddress}, {passengers} passengers).',
+  },
+  { area: 'emails', key: 'email.driver.invite.subject', value: 'Sign in to Elite Protection drivers' },
+  {
+    area: 'emails',
+    key: 'email.driver.invite.body',
+    value: 'Hello {name}. Your driver account is ready. Use this link to sign in: {link}',
+  },
 ];
 
 export type UiStringKey = (typeof uiStringDefaults)[number]['key'];

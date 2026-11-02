@@ -1,0 +1,370 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import Select from '../../components/Select.astro';
+import { driversNotFound } from '../../lib/drivers';
+import { tripStatusClass, tripStatusWord } from '../../lib/trip-status';
+import { createSupabaseServerClient } from '../../lib/supabase';
+import { formatAthens, formatAthensShort } from '../../lib/time';
+
+const denied = driversNotFound();
+if (denied) return denied;
+
+const staff = Astro.locals.staff!;
+const id = Astro.params.id!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const pageError =
+  actionErr(Astro.getActionResult?.(actions.updateDriver)) ||
+  actionErr(Astro.getActionResult?.(actions.inviteDriver)) ||
+  actionErr(Astro.getActionResult?.(actions.saveDriverShift));
+
+const saved = Astro.getActionResult?.(actions.updateDriver)?.data?.ok === true;
+const invited = Astro.getActionResult?.(actions.inviteDriver)?.data;
+
+const { data: driver } = await supabase.from('drivers').select('*').eq('id', id).maybeSingle();
+if (!driver) return new Response(null, { status: 404 });
+
+const nowIso = new Date().toISOString();
+const upcomingFrom = nowIso;
+const pastFrom = new Date(Date.now() - 14 * 86400_000).toISOString();
+const shiftFrom = new Date(Date.now() - 30 * 86400_000).toISOString();
+
+const [{ data: jobs }, { data: shifts }, { data: vehicles }, { data: nowRow }] = await Promise.all([
+  supabase
+    .from('bookings')
+    .select(
+      'reference, pickup_at, booking_type, duration_minutes, trip_status, status, vehicle_id, from_zone:zones!bookings_from_zone_id_fkey(name), to_zone:zones!bookings_to_zone_id_fkey(name), vehicle:vehicles!bookings_vehicle_id_fkey(label)',
+    )
+    .eq('driver_id', id)
+    .in('status', ['confirmed', 'assigned', 'completed'])
+    .gte('pickup_at', pastFrom)
+    .order('pickup_at', { ascending: true }),
+  supabase
+    .from('driver_shifts')
+    .select('id, started_at, ended_at, start_odometer, end_odometer, note, vehicle:vehicles(label, id)')
+    .eq('driver_id', id)
+    .gte('started_at', shiftFrom)
+    .order('started_at', { ascending: false }),
+  supabase.from('vehicles').select('id, label, status').neq('status', 'retired').order('label'),
+  supabase.from('drivers_now').select('*').eq('driver_id', id).maybeSingle(),
+]);
+
+const upcoming = (jobs ?? []).filter((j) => j.pickup_at >= upcomingFrom || ['confirmed', 'assigned'].includes(j.status));
+const recent = (jobs ?? []).filter((j) => j.pickup_at < upcomingFrom);
+
+function hoursBetween(start: string, end: string | null): string {
+  if (!end) return '—';
+  const h = (new Date(end).getTime() - new Date(start).getTime()) / 3_600_000;
+  return h.toFixed(2);
+}
+
+function kmBetween(a: number | null, b: number | null): string {
+  if (a == null || b == null) return '—';
+  return String(b - a);
+}
+
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const z = new Date(iso).toLocaleString('sv-SE', { timeZone: 'Europe/Athens' }).replace(' ', 'T').slice(0, 16);
+  return z;
+}
+
+const appStatus = driver.user_id
+  ? { cls: 's-confirmed', text: 'Linked' }
+  : { cls: 'plain', text: 'No login' };
+
+const editShiftId = Astro.url.searchParams.get('shift');
+const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
+---
+
+<AdminLayout
+  title={driver.full_name}
+  htmlTitle={`${driver.full_name} - Elite Protection Admin`}
+  current="drivers"
+  staffEmail={staff.email}
+  crumbs={[{ href: '/drivers', label: 'Drivers' }, { label: 'Driver' }]}
+>
+  {pageError && <Banner tone="danger" role="alert">{pageError}</Banner>}
+  {saved && <Banner tone="info" role="status">Driver saved.</Banner>}
+  {invited && <Banner tone="info" role="status">Invitation sent.</Banner>}
+
+  <div class="row" style="margin:-.5rem 0 1.25rem;gap:.5rem;flex-wrap:wrap;align-items:center">
+    <span class={`badge ${driver.active ? 's-confirmed' : 's-completed'}`}>
+      {driver.active ? 'Active' : 'Inactive'}
+    </span>
+    <span class="badge plain">{driver.employment === 'freelancer' ? 'Freelancer' : 'Employee'}</span>
+    {
+      nowRow?.shift_id ? (
+        <span class="dot-on">
+          On shift{nowRow.vehicle_label ? ` with ${nowRow.vehicle_label}` : ''}
+        </span>
+      ) : (
+        <span class="dot-off">Off shift</span>
+      )
+    }
+  </div>
+
+  <div class="cols cols-main" style="align-items:start">
+    <div class="stack">
+      <section class="panel" aria-labelledby="d-j">
+        <div class="panel-head">
+          <h2 id="d-j">Jobs</h2>
+          <a class="btn btn-secondary btn-sm" href="/calendar">On the calendar</a>
+        </div>
+        <div class="table-wrap" role="region" tabindex="0" aria-label={`Jobs of ${driver.full_name}`} style="border:0">
+          <table class="table table-cards">
+            <thead>
+              <tr>
+                <th scope="col">Reference</th>
+                <th scope="col">Pick-up</th>
+                <th scope="col">Trip</th>
+                <th scope="col">Vehicle</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                [...upcoming, ...recent].map((j) => {
+                  const from = (j.from_zone as { name?: string } | null)?.name;
+                  const to = (j.to_zone as { name?: string } | null)?.name;
+                  const trip =
+                    j.booking_type === 'hourly'
+                      ? `${from ?? '—'} · ${Math.round((j.duration_minutes || 0) / 60)} h`
+                      : `${from ?? '—'} → ${to ?? '—'}`;
+                  const vLabel = (j.vehicle as { label?: string } | null)?.label ?? '—';
+                  return (
+                    <tr>
+                      <td class="card-title" data-label="Reference">
+                        <a class="ref" href={`/bookings/${j.reference}`}>{j.reference}</a>
+                      </td>
+                      <td data-label="Pick-up">{formatAthensShort(j.pickup_at)}</td>
+                      <td data-label="Trip">{trip}</td>
+                      <td data-label="Vehicle">{vLabel}</td>
+                      <td data-label="Status">
+                        <span class={`badge ${tripStatusClass(j.trip_status)}`}>{tripStatusWord(j.trip_status)}</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="d-s">
+        <div class="panel-head">
+          <h2 id="d-s">Shifts</h2>
+          <button class="btn btn-secondary btn-sm" type="button" data-open="shift-dialog">Add a shift</button>
+        </div>
+        <div class="table-wrap" role="region" tabindex="0" aria-label={`Shifts of ${driver.full_name}`} style="border:0">
+          <table class="table table-cards">
+            <thead>
+              <tr>
+                <th scope="col">Day</th>
+                <th scope="col">Vehicle</th>
+                <th scope="col">Start</th>
+                <th scope="col">End</th>
+                <th scope="col" class="num">Hours</th>
+                <th scope="col" class="num">Km</th>
+                <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                (shifts ?? []).map((s) => {
+                  const v = s.vehicle as { label?: string; id?: string } | null;
+                  return (
+                    <tr>
+                      <td class="card-title" data-label="Day">{formatAthensShort(s.started_at).split(',')[0]}</td>
+                      <td data-label="Vehicle">{v?.label ?? '—'}</td>
+                      <td data-label="Start">{formatAthens(s.started_at).slice(-5)}</td>
+                      <td data-label="End">{s.ended_at ? formatAthens(s.ended_at).slice(-5) : '—'}</td>
+                      <td class="num" data-label="Hours">{hoursBetween(s.started_at, s.ended_at)}</td>
+                      <td class="num" data-label="Km">{kmBetween(s.start_odometer, s.end_odometer)}</td>
+                      <td class="actions" data-label="">
+                        <a class="btn btn-quiet btn-sm" href={`/drivers/${id}?shift=${s.id}#shift-dialog`}>Edit</a>
+                      </td>
+                    </tr>
+                  );
+                })
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="d-p">
+        <div class="panel-head"><h2 id="d-p">Pay plan</h2></div>
+        <div class="panel-body"><p class="muted">Pay plans arrive in the next drivers kit step.</p></div>
+      </section>
+      <section class="panel" aria-labelledby="d-a">
+        <div class="panel-head"><h2 id="d-a">Adjustments</h2></div>
+        <div class="panel-body"><p class="muted">Adjustments arrive in the next drivers kit step.</p></div>
+      </section>
+      <section class="panel" aria-labelledby="d-st">
+        <div class="panel-head"><h2 id="d-st">Statements</h2></div>
+        <div class="panel-body"><p class="muted">Statements arrive in the next drivers kit step.</p></div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="d-pr">
+        <div class="panel-head"><h2 id="d-pr">Profile</h2></div>
+        <form method="POST" action={actions.updateDriver} class="panel-body stack-sm">
+          <input type="hidden" name="id" value={driver.id} />
+          <div class="field">
+            <label for="dp-n">Full name</label>
+            <input id="dp-n" class="input" name="fullName" value={driver.full_name} required />
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="dp-p">Phone</label>
+              <input id="dp-p" class="input" name="phone" value={driver.phone} required />
+            </div>
+            <div class="field">
+              <label for="dp-e">E-mail</label>
+              <input id="dp-e" class="input" name="email" type="email" value={driver.email} required />
+            </div>
+          </div>
+          <div class="field">
+            <label for="dp-t">Type</label>
+            <Select
+              id="dp-t"
+              name="employment"
+              options={[
+                { value: 'employee', label: 'Employee', selected: driver.employment === 'employee' },
+                { value: 'freelancer', label: 'Freelancer', selected: driver.employment === 'freelancer' },
+              ]}
+            />
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="dp-ln">Licence number</label>
+              <input id="dp-ln" class="input" name="licenceNumber" value={driver.licence_number ?? ''} />
+            </div>
+            <div class="field">
+              <label for="dp-l">Licence expires</label>
+              <input id="dp-l" class="input" type="date" name="licenceExpiresOn" value={driver.licence_expires_on ?? ''} />
+            </div>
+            <div class="field">
+              <label for="dp-pe">Permit expires</label>
+              <input id="dp-pe" class="input" type="date" name="permitExpiresOn" value={driver.permit_expires_on ?? ''} />
+            </div>
+          </div>
+          <div class="field">
+            <label for="dp-no">Notes for the office</label>
+            <textarea id="dp-no" class="input" name="notes">{driver.notes ?? ''}</textarea>
+          </div>
+          <label class="switch">
+            <input type="checkbox" name="active" value="true" checked={driver.active || undefined} /> Active
+          </label>
+          <button class="btn" type="submit">Save driver</button>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="d-app">
+        <div class="panel-head">
+          <h2 id="d-app">Driver app</h2>
+          <span class={`badge ${appStatus.cls}`}>{appStatus.text}</span>
+        </div>
+        <div class="panel-body stack-sm">
+          <p class="small muted" style="margin:0">
+            {driver.user_id
+              ? 'The driver can sign in when the drivers’ app is ready.'
+              : 'No login yet. Send an invitation to link their e-mail.'}
+          </p>
+          <form method="POST" action={actions.inviteDriver}>
+            <input type="hidden" name="id" value={driver.id} />
+            <button class="btn btn-secondary btn-sm" type="submit">Send a new sign-in link</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </div>
+</AdminLayout>
+
+<dialog class="dialog" id="shift-dialog" aria-labelledby="sh-h">
+  <form method="POST" action={actions.saveDriverShift}>
+    <div class="dialog-head">
+      <p class="eyebrow">{driver.full_name}</p>
+      <h2 id="sh-h">{editing ? 'Edit shift' : 'Add a shift'}</h2>
+    </div>
+    <div class="dialog-body stack-sm">
+      {editing && <input type="hidden" name="id" value={editing.id} />}
+      <input type="hidden" name="driverId" value={driver.id} />
+      <div class="field">
+        <label for="sh-v">Vehicle</label>
+        <Select
+          id="sh-v"
+          name="vehicleId"
+          required
+          options={(vehicles ?? []).map((v) => ({
+            value: v.id,
+            label: v.label,
+            meta: v.status === 'active' ? undefined : v.status,
+            selected: editing ? (editing.vehicle as { id?: string } | null)?.id === v.id : false,
+          }))}
+        />
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="sh-s">Start (Athens)</label>
+          <input id="sh-s" class="input" type="datetime-local" name="startLocal" required value={toLocalInput(editing?.started_at)} />
+        </div>
+        <div class="field">
+          <label for="sh-e">End (Athens)</label>
+          <input id="sh-e" class="input" type="datetime-local" name="endLocal" value={toLocalInput(editing?.ended_at)} />
+        </div>
+      </div>
+      <div class="grid-fields">
+        <div class="field">
+          <label for="sh-so">Start odometer</label>
+          <input id="sh-so" class="input" name="startOdometer" inputmode="numeric" value={editing?.start_odometer ?? ''} />
+        </div>
+        <div class="field">
+          <label for="sh-eo">End odometer</label>
+          <input id="sh-eo" class="input" name="endOdometer" inputmode="numeric" value={editing?.end_odometer ?? ''} />
+        </div>
+      </div>
+      <div class="field">
+        <label for="sh-n">Reason / note</label>
+        <input id="sh-n" class="input" name="note" value={editing?.note ?? ''} />
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-quiet" type="button" data-close="shift-dialog">Back</button>
+      <button class="btn" type="submit">Save shift</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  const openShift = location.hash === '#shift-dialog' || new URLSearchParams(location.search).has('shift');
+  const dlg = document.getElementById('shift-dialog');
+  if (openShift && dlg instanceof HTMLDialogElement) dlg.showModal();
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-open');
+      const d = id && document.getElementById(id);
+      if (d instanceof HTMLDialogElement) d.showModal();
+    });
+  });
+  document.querySelectorAll('[data-close]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-close');
+      const d = id && document.getElementById(id);
+      if (d instanceof HTMLDialogElement) d.close();
+    });
+  });
+</script>

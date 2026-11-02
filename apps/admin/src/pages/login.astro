@@ -7,6 +7,7 @@ import '../styles/admin.css';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { assertLoginRateLimit } from '../lib/login-rate-limit';
 import { getStaffSession, signOut } from '../lib/auth';
+import { driversEnabled } from '../lib/drivers';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex');
@@ -36,12 +37,25 @@ if (Astro.request.method === 'POST') {
       formError = 'Sign in failed. Check your email and password.';
     } else {
       const staff = await getStaffSession(Astro.cookies);
-      if (!staff) {
-        await signOut(Astro.cookies);
-        formError = 'Sign in failed. Check your email and password.';
-      } else {
+      if (staff) {
         return Astro.redirect('/bookings');
       }
+      if (driversEnabled()) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data: driver } = await supabase
+            .from('drivers')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('active', true)
+            .maybeSingle();
+          if (driver) return Astro.redirect('/driver-welcome');
+        }
+      }
+      await signOut(Astro.cookies);
+      formError = 'Sign in failed. Check your email and password.';
     }
   }
 }

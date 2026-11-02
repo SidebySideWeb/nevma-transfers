@@ -78,7 +78,7 @@ test('one-vehicle class: office booking shows Auto; change clears it', async ({ 
 
   // Clear assignment — DB clears vehicle_auto_assigned.
   await setNativeSelect(page, 'veh', '');
-  await page.getByRole('button', { name: 'Assign' }).click();
+  await page.getByRole('button', { name: 'Assign vehicle' }).click();
   await expect(page.locator('.badge.plain', { hasText: 'Auto' })).toHaveCount(0);
   await axeCheck(page);
 });

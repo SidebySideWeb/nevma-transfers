@@ -17,9 +17,12 @@ import { formatEuro } from '../../lib/money';
 function formatVatRate(bp: number): string {
   return String(Number((bp / 100).toFixed(2)));
 }
+import { driversEnabled } from '../../lib/drivers';
+import { classifyDriverOffer, type DriverBookingSlice } from '../../lib/free-drivers';
 import { parseTstzRange, rangesOverlap } from '../../lib/range';
 import { createSupabaseServerClient } from '../../lib/supabase';
 import { formatAthens, formatAthensShort } from '../../lib/time';
+import { tripStatusWord } from '../../lib/trip-status';
 
 const staff = Astro.locals.staff!;
 const reference = Astro.params.reference!;
@@ -79,13 +82,23 @@ const METHOD_LABEL: Record<string, string> = {
 };
 let refundable = 0;
 let classVehicles: { id: string; label: string; busy: boolean }[] = [];
+let driverOffers: { value: string; label: string; meta?: string; selected?: boolean; disabled?: boolean }[] = [];
+let bookingEvents: {
+  kind: string;
+  at: string;
+  source: string;
+  note: string | null;
+  driver: { full_name?: string } | null;
+}[] = [];
 let fromName: string | undefined;
 let toName: string | undefined;
 let classKey = '-';
 let vehicleError: string | null = null;
+let driverError: string | null = null;
 let pageError: string | null = null;
 let refundConfirm = '';
 let cancelConfirm = '';
+const showDrivers = driversEnabled();
 
 if (found && booking) {
   const extrasRes = await supabase
@@ -159,11 +172,69 @@ if (found && booking) {
     }));
   }
 
+  if (showDrivers && ownRange) {
+    const [{ data: drivers }, { data: shifts }, { data: driverBookings }, { data: events }] =
+      await Promise.all([
+        supabase
+          .from('drivers')
+          .select('id, full_name, licence_expires_on')
+          .eq('active', true)
+          .order('full_name'),
+        supabase.from('driver_shifts').select('driver_id').is('ended_at', null),
+        supabase
+          .from('bookings')
+          .select('id, driver_id, reference, status, blocked_range')
+          .not('driver_id', 'is', null)
+          .in('status', ['pending', 'confirmed', 'assigned']),
+        supabase
+          .from('booking_events')
+          .select('kind, at, source, note, driver:drivers(full_name)')
+          .eq('booking_id', booking.id)
+          .order('at', { ascending: true }),
+      ]);
+    const onShift = new Set((shifts ?? []).map((s) => s.driver_id));
+    const slices: DriverBookingSlice[] = [];
+    for (const b of driverBookings ?? []) {
+      if (!b.driver_id) continue;
+      const r = parseTstzRange(b.blocked_range);
+      if (!r) continue;
+      slices.push({
+        id: b.id,
+        driverId: b.driver_id,
+        reference: b.reference,
+        status: b.status,
+        startMs: r.start.getTime(),
+        endMs: r.end.getTime(),
+      });
+    }
+    driverOffers = (drivers ?? []).map((d) => {
+      const offer = classifyDriverOffer({
+        driverId: d.id,
+        fullName: d.full_name,
+        onShift: onShift.has(d.id),
+        licenceExpiresOn: d.licence_expires_on,
+        tripStartMs: ownRange.start.getTime(),
+        tripEndMs: ownRange.end.getTime(),
+        bookings: slices,
+        excludeBookingId: booking.id,
+      });
+      return {
+        value: offer.id,
+        label: offer.label,
+        meta: offer.meta,
+        disabled: offer.disabled,
+        selected: booking.driver_id === d.id,
+      };
+    });
+    bookingEvents = (events ?? []) as typeof bookingEvents;
+  }
+
   fromName = (booking.from_zone as { name?: string } | null)?.name;
   toName = (booking.to_zone as { name?: string } | null)?.name;
   classKey = (booking.class as { key?: string } | null)?.key ?? '-';
 
   vehicleError = actionErr(Astro.getActionResult?.(actions.assignVehicle));
+  driverError = actionErr(Astro.getActionResult?.(actions.assignDriver));
   pageError =
     actionErr(Astro.getActionResult?.(actions.saveNotesInvoice)) ||
     actionErr(Astro.getActionResult?.(actions.refundBooking)) ||
@@ -309,10 +380,49 @@ if (found && booking) {
                   </div>
                   <div class="row">
                     <button class="btn" type="submit">
-                      Assign
+                      Assign vehicle
                     </button>
                   </div>
                 </form>
+                {
+                  showDrivers && (
+                    <form
+                      method="POST"
+                      action={actions.assignDriver}
+                      class="stack-sm"
+                      aria-label="Assign driver"
+                    >
+                      <input type="hidden" name="reference" value={reference} />
+                      <div class="field">
+                        <label for="drv">Driver</label>
+                        <Select
+                          id="drv"
+                          name="driverId"
+                          aria-invalid={driverError ? 'true' : undefined}
+                          aria-describedby={driverError ? 'drv-err' : undefined}
+                          options={[
+                            {
+                              value: '',
+                              label: '- Not assigned -',
+                              selected: !booking.driver_id,
+                            },
+                            ...driverOffers,
+                          ]}
+                        />
+                        {driverError && (
+                          <p class="error-text" id="drv-err" role="alert">
+                            {driverError}
+                          </p>
+                        )}
+                      </div>
+                      <div class="row">
+                        <button class="btn" type="submit">
+                          Assign driver
+                        </button>
+                      </div>
+                    </form>
+                  )
+                }
                 {booking.status === 'assigned' && (
                   <form method="POST" action={actions.markCompleted}>
                     <input type="hidden" name="reference" value={reference} />
@@ -487,6 +597,44 @@ if (found && booking) {
                 </div>
               </div>
             </section>
+
+            {
+              showDrivers && (
+                <section class="panel" aria-labelledby="trip-tl-h">
+                  <div class="panel-head">
+                    <h2 id="trip-tl-h">Trip timeline</h2>
+                  </div>
+                  <div class="panel-body">
+                    {bookingEvents.length === 0 ? (
+                      <EmptyState title="No trip events">No driver or trip events yet.</EmptyState>
+                    ) : (
+                      <ol class="timeline">
+                        {bookingEvents.map((ev) => {
+                          const name =
+                            (ev.driver as { full_name?: string } | null)?.full_name ?? '';
+                          let label = ev.kind;
+                          if (ev.kind === 'driver_assigned') {
+                            label = name ? `Driver assigned · ${name}` : 'Driver assigned';
+                          } else if (ev.kind === 'driver_removed') {
+                            label = name ? `Driver removed · ${name}` : 'Driver removed';
+                          } else {
+                            label = tripStatusWord(ev.kind);
+                          }
+                          const note = ev.note ? ` — ${ev.note}` : '';
+                          return (
+                            <li class="done">
+                              <time datetime={ev.at}>{formatAthensShort(ev.at)}</time>
+                              {label}
+                              <span class="muted small"> · {ev.source}{note}</span>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+                  </div>
+                </section>
+              )
+            }
 
             <section class="panel" aria-labelledby="pay-h">
               <div class="panel-head">

@@ -13,6 +13,8 @@ export type MapDbErrorOpts = {
   fieldValidationText?: string;
   /** Driver display name for bookings_no_driver_overlap (from the form / lookup). */
   driverName?: string | null;
+  /** Booking reference that blocks the assignment (DR-02). */
+  clashReference?: string | null;
 };
 
 const FALLBACK = 'That change could not be saved. Check the values and try again.';
@@ -84,9 +86,11 @@ export function mapDbError(
   if (code === '23P01' || /exclusion|overlap/i.test(haystack)) {
     if (/bookings_no_driver_overlap/.test(haystack)) {
       const name = opts.driverName?.trim();
-      return name
-        ? `${name} is on another booking at that time`
-        : 'That driver is on another booking at that time';
+      const clash = opts.clashReference?.trim();
+      const who = name ? `${name} is` : 'That driver is';
+      return clash
+        ? `${who} on ${clash} at that time`
+        : `${who} on another booking at that time`;
     }
     if (/driver_shifts_driver_overlap/.test(haystack)) {
       return 'This driver already has a shift that overlaps that time.';

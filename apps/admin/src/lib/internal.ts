@@ -21,7 +21,9 @@ async function postInternal(
     | '/api/internal/cancel'
     | '/api/internal/refund'
     | '/api/internal/bookings'
-    | '/api/internal/payments',
+    | '/api/internal/payments'
+    | '/api/internal/drivers/invite'
+    | '/api/internal/drivers/notify',
   body: unknown,
   staffUserId: string,
 ): Promise<InternalResult> {
@@ -116,4 +118,15 @@ export async function callInternalPayment(
   staffUserId: string,
 ) {
   return postInternal('/api/internal/payments', body, staffUserId);
+}
+
+export async function callInternalDriverInvite(body: { driverId: string }, staffUserId: string) {
+  return postInternal('/api/internal/drivers/invite', body, staffUserId);
+}
+
+export async function callInternalDriverNotify(
+  body: { reference: string; kind: 'assigned' | 'changed' | 'removed' },
+  staffUserId: string,
+) {
+  return postInternal('/api/internal/drivers/notify', body, staffUserId);
 }

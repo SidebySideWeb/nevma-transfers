@@ -1,0 +1,60 @@
+---
+export const prerender = false;
+
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/admin.css';
+import { createSupabaseServerClient } from '../lib/supabase';
+import { driversEnabled } from '../lib/drivers';
+
+if (!driversEnabled()) {
+  return new Response(null, { status: 404 });
+}
+
+const supabase = createSupabaseServerClient(Astro.cookies);
+const {
+  data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login?error=auth');
+}
+
+const { data: staff } = await supabase.from('staff').select('user_id').eq('user_id', user.id).maybeSingle();
+if (staff) {
+  return Astro.redirect('/bookings');
+}
+
+const { data: driver } = await supabase
+  .from('drivers')
+  .select('full_name, active')
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+if (!driver || !driver.active) {
+  await supabase.auth.signOut();
+  return Astro.redirect('/login?error=auth');
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Driver welcome - Elite Protection</title>
+  </head>
+  <body class="ep-admin" style="min-height:100vh;display:grid;place-items:center;padding:2rem">
+    <main class="panel" style="max-width:28rem;width:100%">
+      <div class="panel-body stack-sm" style="text-align:center">
+        <p class="eyebrow">Elite Protection</p>
+        <h1 class="title" style="font-size:1.75rem">Hello{driver.full_name ? `, ${driver.full_name}` : ''}</h1>
+        <p>Your account is ready; the drivers' app is coming.</p>
+        <form method="POST" action="/logout">
+          <button class="btn btn-secondary" type="submit">Sign out</button>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>

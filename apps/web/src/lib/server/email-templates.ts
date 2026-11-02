@@ -438,6 +438,85 @@ export function lateRefundEmail(input: LateRefundInput): EmailParts {
   };
 }
 
+export type DriverAssignmentInput = {
+  kind: 'assigned' | 'changed' | 'removed';
+  reference: string;
+  pickupAtLocal: string;
+  routeOrHours: string;
+  pickupAddress: string;
+  passengers: number;
+  driverName: string;
+  companyName: string;
+  companyPhone: string;
+  companyEmail: string;
+};
+
+export function driverAssignmentEmail(input: DriverAssignmentInput): EmailParts {
+  const subjectKey =
+    input.kind === 'assigned'
+      ? 'email.driver.assigned.subject'
+      : input.kind === 'changed'
+        ? 'email.driver.changed.subject'
+        : 'email.driver.removed.subject';
+  const bodyKey =
+    input.kind === 'assigned'
+      ? 'email.driver.assigned.body'
+      : input.kind === 'changed'
+        ? 'email.driver.changed.body'
+        : 'email.driver.removed.body';
+  const subject = t(subjectKey, { reference: input.reference });
+  const body = t(bodyKey, {
+    reference: input.reference,
+    pickupAt: `${input.pickupAtLocal} (Athens)`,
+    routeOrHours: input.routeOrHours,
+    pickupAddress: input.pickupAddress,
+    passengers: input.passengers,
+  });
+  const text = [body, '', companyFooter(input)].join('\n');
+  const htmlBody = `<p style="margin:0 0 16px;">${escapeHtml(body)}</p>`;
+  return {
+    subject,
+    text,
+    html: wrapHtml(subject, htmlBody, {
+      name: input.companyName,
+      phone: input.companyPhone,
+      email: input.companyEmail,
+    }),
+  };
+}
+
+export type DriverInviteInput = {
+  name: string;
+  link: string;
+  companyName: string;
+  companyPhone: string;
+  companyEmail: string;
+};
+
+export function driverInviteEmail(input: DriverInviteInput): EmailParts {
+  const subject = t('email.driver.invite.subject');
+  const body = t('email.driver.invite.body', { name: input.name, link: input.link });
+  const text = [body, '', companyFooter(input)].join('\n');
+  const htmlBody = `
+    <p style="margin:0 0 16px;">${escapeHtml(body)}</p>
+    <p style="margin:0;">
+      <a href="${escapeHtml(input.link)}"
+         style="display:inline-block;padding:12px 20px;background:${th.accent};color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
+        Sign in
+      </a>
+    </p>
+  `;
+  return {
+    subject,
+    text,
+    html: wrapHtml(subject, htmlBody, {
+      name: input.companyName,
+      phone: input.companyPhone,
+      email: input.companyEmail,
+    }),
+  };
+}
+
 export type FormAnswerLine = { key: string; label: string; value: string };
 
 export type FormOfficeInput = {
