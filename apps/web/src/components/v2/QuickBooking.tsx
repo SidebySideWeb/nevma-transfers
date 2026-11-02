@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BrandDropdown } from './BrandDropdown';
+import { DateField } from './DateField';
 
 export type QuickZone = { code: string; name: string };
 export type QuickHourly = { minHours: number; maxHours: number };
@@ -188,10 +189,14 @@ export function QuickBooking({
         </div>
       )}
 
-      <div className="field s984cb">
-        <label htmlFor="q-date">{labels.date}</label>
-        <input id="q-date" name="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-      </div>
+      <DateField
+        id="q-date"
+        name="date"
+        fieldClass="field s984cb"
+        label={labels.date}
+        value={date}
+        onChange={setDate}
+      />
       <div className="field s10827">
         <label htmlFor="q-time">{labels.time}</label>
         <input

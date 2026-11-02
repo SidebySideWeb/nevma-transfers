@@ -48,13 +48,52 @@ async function setZone(page: Page, id: 'b-from' | 'b-to', optionLabel: RegExp | 
   await page.getByRole('option', { name: optionLabel }).click();
 }
 
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
+/** Pick YYYY-MM-DD on the V2 DateField (`#b-date` button + calendar dialog). */
+async function setPickupDate(page: Page, iso: string) {
+  const [ys, ms, ds] = iso.split('-');
+  const y = Number(ys);
+  const m = Number(ms);
+  const d = Number(ds);
+  const title = `${MONTHS[m - 1]} ${y}`;
+  await page.locator('#b-date').click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  for (let i = 0; i < 24; i++) {
+    const t = await dialog.locator('.ep-cal-title').innerText();
+    if (t.trim() === title) break;
+    const [curMonth, curYear] = t.trim().split(/\s+/);
+    const curM = MONTHS.indexOf(curMonth as (typeof MONTHS)[number]) + 1;
+    const curY = Number(curYear);
+    const cur = curY * 12 + curM;
+    const want = y * 12 + m;
+    await dialog.getByRole('button', { name: want > cur ? /Next month/i : /Previous month/i }).click();
+  }
+  await expect(dialog.locator('.ep-cal-title')).toHaveText(title);
+  await dialog.getByRole('gridcell', { name: String(d), exact: true }).click();
+}
+
 async function fillSearchTransfer(page: Page, hoursAhead = 8) {
   await page.goto('/book');
   await expect(page.getByRole('heading', { name: /Where and when/i })).toBeVisible();
   await setZone(page, 'b-from', /Athens International Airport|AIA/i);
   await setZone(page, 'b-to', /^DEMO Athens$|^Athens$/i);
   const { date, time } = futureParts(hoursAhead);
-  await page.locator('#b-date').fill(date);
+  await setPickupDate(page, date);
   await page.locator('#b-time').fill(time);
   await page.locator('#b-pick').fill('Street 1, Athens');
   await page.locator('#b-drop').fill('Street 2, Athens');
@@ -114,7 +153,7 @@ test('hourly booking for 4 hours', async ({ page }) => {
   }
   await expect(hoursGroup).toContainText('4');
   const { date, time } = futureParts(36);
-  await page.locator('#b-date').fill(date);
+  await setPickupDate(page, date);
   await page.locator('#b-time').fill(time);
   await page.locator('#b-pick').fill('Street 1, Athens');
   await page.getByRole('button', { name: /See vehicles/i }).click();
@@ -131,7 +170,7 @@ test('AC-16: no-price pair shows contact block', async ({ page }) => {
   await setZone(page, 'b-from', /Athens North|Northern/i);
   await setZone(page, 'b-to', /^Piraeus port$/i);
   const { date, time } = futureParts(5);
-  await page.locator('#b-date').fill(date);
+  await setPickupDate(page, date);
   await page.locator('#b-time').fill(time);
   // Bump pax/bags to 7 via steppers (default is usually 1–2).
   const paxMore = page.getByRole('button', { name: /More passengers/i });

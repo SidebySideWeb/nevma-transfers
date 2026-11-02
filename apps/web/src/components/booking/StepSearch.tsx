@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { BrandDropdown } from '../v2/BrandDropdown';
+import { DateField } from '../v2/DateField';
 import { joinLocal, requestQuoteHref, splitLocal } from './v2/journey';
 import type { BookingStrings, DetailsState, OptionsData, SearchState } from './types';
 
@@ -233,17 +234,15 @@ export function StepSearch({
             {err('dropoffAddress', 'b-drop')}
           </div>
         )}
-        <div className="f2">
-          <label htmlFor="b-date">{strings['booking.date']}</label>
-          <input
-            id="b-date"
-            type="date"
-            value={date}
-            onChange={(e) => onChange({ pickupLocal: joinLocal(e.target.value, time) })}
-            {...invalid('pickupLocal', 'b-date')}
-          />
+        <DateField
+          id="b-date"
+          label={strings['booking.date'] ?? 'Date'}
+          value={date}
+          onChange={(iso) => onChange({ pickupLocal: joinLocal(iso, time) })}
+          {...invalid('pickupLocal', 'b-date')}
+        >
           {err('pickupLocal', 'b-date')}
-        </div>
+        </DateField>
         <div className="f2">
           <label htmlFor="b-time">{strings['booking.time']}</label>
           <input
