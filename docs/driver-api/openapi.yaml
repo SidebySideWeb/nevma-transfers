@@ -1,0 +1,183 @@
+openapi: 3.1.0
+info:
+  title: Driver API
+  version: 1.0.0
+  description: |
+    API for the drivers' web app (built later). Served by apps/admin under /api/driver/v1.
+    Every endpoint uses the driver's own Supabase session (Bearer access token) and calls the database
+    functions of migration 0015, which allow a driver to see and change only their own data.
+    No prices or customer payment data are ever returned. Rules: docs/DRIVERS.md.
+servers:
+  - url: https://admin.example.com/api/driver/v1
+security:
+  - bearer: []
+paths:
+  /me:
+    get:
+      summary: The signed-in driver and their open shift, if any
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/NotADriver' }
+  /vehicles:
+    get:
+      summary: Vehicles the driver can start the day with (active and not in another open shift)
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Vehicle' } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/NotADriver' }
+  /shift/start:
+    post:
+      summary: Start the day with a vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicleId]
+              properties:
+                vehicleId: { type: string, format: uuid }
+                odometer: { type: integer, minimum: 0 }
+      responses:
+        '201': { description: Started, content: { application/json: { schema: { $ref: '#/components/schemas/Shift' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/NotADriver' }
+        '409': { description: 'already_on_shift or vehicle_in_use', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { description: 'vehicle_unavailable', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /shift/end:
+    post:
+      summary: End the day
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { odometer: { type: integer, minimum: 0 } } }
+      responses:
+        '200': { description: Ended, content: { application/json: { schema: { $ref: '#/components/schemas/Shift' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { description: no_shift, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /jobs:
+    get:
+      summary: The driver's jobs for a day or a week (Athens dates, at most 31 days)
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date }, description: 'Default: today (Athens)' }
+        - { name: to, in: query, schema: { type: string, format: date }, description: 'Default: same as from' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Job' } } } } }
+        '400': { description: 'invalid_request (dates)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/NotADriver' }
+  /jobs/{reference}:
+    get:
+      summary: One job of the driver
+      parameters: [ { name: reference, in: path, required: true, schema: { type: string, example: EP-7K3QX2 } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Job' } } } }
+        '404': { description: 'not found or not the driver''s job', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /jobs/{reference}/status:
+    post:
+      summary: Move the job forward (on the way, arrived, passenger on board, completed, no-show)
+      parameters: [ { name: reference, in: path, required: true, schema: { type: string } } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [on_way, arrived, on_board, completed, no_show] }
+                note: { type: string, maxLength: 500 }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { reference: { type: string }, tripStatus: { $ref: '#/components/schemas/TripStatus' } } } } } }
+        '403': { description: 'forbidden (not the driver''s job)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: not_found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: 'invalid_transition or no_shift', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /earnings:
+    get:
+      summary: The driver's earnings for a period (only when DRIVER_EARNINGS_VISIBLE=true)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalCents: { type: integer }
+                  lines: { type: array, items: { $ref: '#/components/schemas/EarningLine' } }
+        '403': { description: 'earnings are not shown to drivers', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer, description: Supabase access token of the driver }
+  responses:
+    Unauthorized: { description: 'missing or expired token', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    NotADriver: { description: 'the account is not an active driver', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  schemas:
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string, examples: [unauthorized, not_a_driver, already_on_shift, vehicle_in_use, vehicle_unavailable, no_shift, invalid_transition, not_found, invalid_request, rate_limited] }
+        message: { type: string, description: Plain English, safe to show to the driver }
+    TripStatus: { type: string, enum: [scheduled, on_way, arrived, on_board, completed, no_show] }
+    Me:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        shift: { oneOf: [ { $ref: '#/components/schemas/ShiftSummary' }, { type: 'null' } ] }
+    ShiftSummary:
+      type: object
+      properties: { id: { type: string }, startedAt: { type: string, format: date-time }, vehicleId: { type: string }, vehicleLabel: { type: string }, className: { type: string } }
+    Shift:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        vehicleId: { type: string, format: uuid }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: [string, 'null'], format: date-time }
+        startOdometer: { type: [integer, 'null'] }
+        endOdometer: { type: [integer, 'null'] }
+    Vehicle:
+      type: object
+      properties: { id: { type: string, format: uuid }, label: { type: string }, className: { type: string }, plate: { type: [string, 'null'] } }
+    Job:
+      type: object
+      properties:
+        reference: { type: string }
+        bookingType: { type: string, enum: [transfer, hourly] }
+        status: { type: string, enum: [confirmed, assigned, completed] }
+        tripStatus: { $ref: '#/components/schemas/TripStatus' }
+        pickupAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        fromZone: { type: string }
+        toZone: { type: [string, 'null'] }
+        pickupAddress: { type: string }
+        dropoffAddress: { type: [string, 'null'] }
+        hours: { type: [integer, 'null'] }
+        flightNumber: { type: [string, 'null'] }
+        passengers: { type: integer }
+        luggage: { type: integer }
+        customerName: { type: string }
+        customerPhone: { type: [string, 'null'], description: 'Only from 24 hours before pick-up to 6 hours after the trip ends' }
+        notes: { type: [string, 'null'] }
+        className: { type: string }
+        vehicleLabel: { type: [string, 'null'] }
+        vipSecurity: { type: boolean }
+        extras: { type: array, items: { type: string } }
+    EarningLine:
+      type: object
+      properties:
+        kind: { type: string, enum: [salary, day, hours, percent, transfer, adjustment] }
+        onDate: { type: string, format: date }
+        reference: { type: [string, 'null'] }
+        description: { type: string }
+        quantity: { type: number }
+        rateCents: { type: [integer, 'null'] }
+        amountCents: { type: integer }

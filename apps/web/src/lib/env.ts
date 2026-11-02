@@ -27,6 +27,8 @@ export const webServerEnvSchema = webPublicEnvSchema.extend({
   TURNSTILE_SECRET_KEY: z.string().min(1),
   ADMIN_TO_WEB_SIGNING_SECRET: z.string().min(1),
   CRON_SECRET: z.string().min(1),
+  /** Drivers / dispatch module (invite route). Default off. */
+  FEATURE_DRIVERS: z.enum(['true', 'false']).default('false'),
 });
 
 export type WebPublicEnv = z.infer<typeof webPublicEnvSchema>;
@@ -60,6 +62,7 @@ function rawServer(): Record<string, string | undefined> {
     TURNSTILE_SECRET_KEY: import.meta.env.TURNSTILE_SECRET_KEY,
     ADMIN_TO_WEB_SIGNING_SECRET: import.meta.env.ADMIN_TO_WEB_SIGNING_SECRET,
     CRON_SECRET: import.meta.env.CRON_SECRET,
+    FEATURE_DRIVERS: import.meta.env.FEATURE_DRIVERS ?? process.env.FEATURE_DRIVERS,
   };
 }
 

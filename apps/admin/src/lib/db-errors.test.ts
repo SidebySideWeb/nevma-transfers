@@ -38,4 +38,82 @@ describe('mapDbError', () => {
     expect(msg).not.toMatch(/relation|character|ERROR:/i);
     expect(msg.length).toBeGreaterThan(10);
   });
+
+  it('shows the text after driver rule codes', () => {
+    expect(mapDbError({ message: 'driver_inactive: this driver is not active' })).toBe(
+      'this driver is not active',
+    );
+    expect(mapDbError({ message: 'already_on_shift: end your current day first' })).toBe(
+      'end your current day first',
+    );
+    expect(mapDbError({ message: 'vehicle_in_use: another driver has this vehicle' })).toBe(
+      'another driver has this vehicle',
+    );
+    expect(mapDbError({ message: 'vehicle_unavailable: this vehicle is not in service' })).toBe(
+      'this vehicle is not in service',
+    );
+    expect(mapDbError({ message: 'no_shift: start your day with a vehicle first' })).toBe(
+      'start your day with a vehicle first',
+    );
+    expect(mapDbError({ message: 'invalid_transition: scheduled to completed' })).toBe(
+      'scheduled to completed',
+    );
+    expect(mapDbError({ message: 'statement_locked: this statement is approved and cannot be recalculated' })).toBe(
+      'this statement is approved and cannot be recalculated',
+    );
+    expect(mapDbError({ message: 'forbidden: not your booking' })).toBe('not your booking');
+  });
+
+  it('maps 23P01 driver overlaps to plain sentences', () => {
+    expect(
+      mapDbError({
+        code: '23P01',
+        message: 'conflicting key value violates exclusion constraint "bookings_no_driver_overlap"',
+        constraint: 'bookings_no_driver_overlap',
+      }),
+    ).toBe('That driver is on another booking at that time');
+
+    expect(
+      mapDbError(
+        {
+          code: '23P01',
+          message: 'conflicting key value violates exclusion constraint "bookings_no_driver_overlap"',
+          constraint: 'bookings_no_driver_overlap',
+        },
+        { driverName: 'Alex Driver' },
+      ),
+    ).toBe('Alex Driver is on another booking at that time');
+
+    expect(
+      mapDbError({
+        code: '23P01',
+        constraint: 'driver_shifts_driver_overlap',
+        message: 'exclusion',
+      }),
+    ).toBe('This driver already has a shift that overlaps that time.');
+
+    expect(
+      mapDbError({
+        code: '23P01',
+        constraint: 'driver_shifts_vehicle_overlap',
+        message: 'exclusion',
+      }),
+    ).toBe('That vehicle is already on a shift that overlaps that time.');
+
+    expect(
+      mapDbError({
+        code: '23P01',
+        constraint: 'driver_pay_plans_no_overlap',
+        message: 'exclusion',
+      }),
+    ).toBe('This pay plan overlaps another plan for the same driver.');
+
+    expect(
+      mapDbError({
+        code: '23P01',
+        constraint: 'driver_statements_no_overlap',
+        message: 'exclusion',
+      }),
+    ).toBe('This statement period overlaps another statement for the same driver.');
+  });
 });

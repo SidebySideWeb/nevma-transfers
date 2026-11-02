@@ -5,6 +5,7 @@ import '../styles/tokens.css';
 import '../styles/admin.css';
 import Banner from '../components/Banner.astro';
 import { buildBanner } from '../lib/banner';
+import { driversEnabled } from '../lib/drivers';
 import { countNeedsVehicle } from '../lib/nav-count';
 import {
   hasPricesChanged,
@@ -48,17 +49,33 @@ const cooldownSeconds = Math.ceil(cooldownMs / 1000);
 const rebuildError =
   Astro.getActionResult?.(actions.requestWebsiteRebuild)?.error?.message ?? null;
 
-const groups = [
-  {
-    id: 'operations',
-    label: 'Operations',
-    items: [
-      { href: '/bookings', id: 'bookings', label: 'Bookings', count: needsVehicle },
-      { href: '/calendar', id: 'calendar', label: 'Fleet calendar' },
-      { href: '/customers', id: 'customers', label: 'Customers' },
-      { href: '/blocked-slots', id: 'blocked-slots', label: 'Blocked slots' },
-    ],
-  },
+const showDrivers = driversEnabled();
+
+type NavItem = { href: string; id: string; label: string; count?: number };
+type NavGroup = { id: string; label: string; items: NavItem[] };
+
+const operationsItems: NavItem[] = [
+  ...(showDrivers ? [{ href: '/today', id: 'today', label: 'Today' }] : []),
+  { href: '/bookings', id: 'bookings', label: 'Bookings', count: needsVehicle },
+  { href: '/calendar', id: 'calendar', label: 'Fleet calendar' },
+  { href: '/customers', id: 'customers', label: 'Customers' },
+  { href: '/blocked-slots', id: 'blocked-slots', label: 'Blocked slots' },
+];
+
+const groups: NavGroup[] = [
+  { id: 'operations', label: 'Operations', items: operationsItems },
+  ...(showDrivers
+    ? [
+        {
+          id: 'drivers',
+          label: 'Drivers',
+          items: [
+            { href: '/drivers', id: 'drivers', label: 'Drivers' },
+            { href: '/reports', id: 'reports', label: 'Reports' },
+          ],
+        },
+      ]
+    : []),
   {
     id: 'pricing',
     label: 'Pricing',
@@ -77,7 +94,7 @@ const groups = [
       { href: '/settings', id: 'settings', label: 'Settings' },
     ],
   },
-] as const;
+];
 ---
 
 <!doctype html>
@@ -127,7 +144,7 @@ const groups = [
                     <li>
                       <a href={item.href} aria-current={current === item.id ? 'page' : undefined}>
                         <span>{item.label}</span>
-                        {'count' in item && item.count > 0 ? (
+                        {item.count != null && item.count > 0 ? (
                           <span class="nav-count" aria-label={`${item.count} need a vehicle`}>
                             {item.count}
                           </span>

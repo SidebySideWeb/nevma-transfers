@@ -14,6 +14,8 @@ export const adminServerEnvSchema = adminPublicEnvSchema.extend({
   SANITY_DATASET: z.string().min(1),
   SANITY_READ_TOKEN: z.string().min(1),
   ADMIN_TO_WEB_SIGNING_SECRET: z.string().min(1),
+  /** Drivers / dispatch module. Default off. */
+  FEATURE_DRIVERS: z.enum(['true', 'false']).default('false'),
 });
 
 export type AdminPublicEnv = z.infer<typeof adminPublicEnvSchema>;
@@ -35,6 +37,7 @@ function rawServer(): Record<string, string | undefined> {
     SANITY_DATASET: import.meta.env.SANITY_DATASET,
     SANITY_READ_TOKEN: import.meta.env.SANITY_READ_TOKEN,
     ADMIN_TO_WEB_SIGNING_SECRET: import.meta.env.ADMIN_TO_WEB_SIGNING_SECRET,
+    FEATURE_DRIVERS: import.meta.env.FEATURE_DRIVERS ?? process.env.FEATURE_DRIVERS,
   };
 }
 
