@@ -27,8 +27,19 @@ async function defaultVerify(token: string, ip: string | undefined): Promise<boo
     body,
   });
   if (!res.ok) return false;
-  const data = (await res.json()) as { success?: boolean };
-  return Boolean(data.success);
+  const data = (await res.json()) as { success?: boolean; 'error-codes'?: string[] };
+  if (!data.success) {
+    // No token/secret — only Cloudflare's error codes (e.g. hostname-mismatch).
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        code: 'turnstile_verify_failed',
+        errorCodes: data['error-codes'] ?? [],
+      }),
+    );
+    return false;
+  }
+  return true;
 }
 
 export async function verifyTurnstile(token: string, ip?: string): Promise<boolean> {
