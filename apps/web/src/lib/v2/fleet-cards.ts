@@ -2,6 +2,7 @@ import { fleetGroup, type FleetGroup } from '../content/fleet-group';
 import { priceLabel } from '../content/price-label';
 import type { PublishableClass } from '../content/vehicles';
 import { hourlyFromForClass, type Catalog } from '../server/catalog';
+import { v2PhotoUrl } from './bg-image';
 import { airportCentsForClass } from './fleet-showcase';
 import { portablePlain } from './portable';
 
@@ -67,7 +68,9 @@ export function buildFleetCards(
       airportText: euro(airportCents, showPrices),
       hourlyText: euro(hourlyCents, showPrices),
       hourlyMin: hourlyRow?.minHours ?? null,
-      photoUrl: photo?.url || photo?.asset?.url || `/images/v2/${cls.key}-street.jpg`,
+      photoUrl:
+        v2PhotoUrl((photo as Parameters<typeof v2PhotoUrl>[0]) ?? null, 640) ||
+        `/images/v2/${cls.key}-street.jpg`,
       photoAlt: photo?.alt || cls.name,
     };
   });

@@ -4,7 +4,7 @@ import CtaLink from '../CtaLink.astro';
 import { getPublishableClasses } from '../../../lib/content/vehicles';
 import { getSiteSettings } from '../../../lib/sanity/content';
 import { getCatalog } from '../../../lib/server/catalog';
-import { bgImage } from '../../../lib/v2/bg-image';
+import { bgImageLazy } from '../../../lib/v2/bg-image';
 import { bookRouteHref, featuredRouteRates, liveZoneCode } from '../../../lib/v2/featured-route';
 import { resolveCtaHref, type CtaLinkData } from '../../../lib/v2/cta';
 import type { SanityImage } from '../../../lib/sanity/image';
@@ -28,7 +28,7 @@ const noteLink = section.noteLink as CtaLinkData | undefined;
 const primary = section.primary as CtaLinkData | undefined;
 const secondary = section.secondary as CtaLinkData | undefined;
 const image = section.image as SanityImage | undefined;
-const style = bgImage(image ?? null);
+const lazy = bgImageLazy(image ?? null);
 const alt = image?.alt?.trim() || '';
 
 const route = (section.route || routeOverride) as
@@ -64,7 +64,7 @@ const noteLabel = noteLink?.label || 'request a quote';
 
 <section data-block="featuredRoute" class="se6a8d">
   <div class="s95e76">
-    <div class="bgx2 sc25c8" role="img" aria-label={alt} style={style}></div>
+    <div class="bgx2 sc25c8" role="img" aria-label={alt} style={lazy?.style} data-bg-image={lazy?.['data-bg-image']}></div>
     <div class="sa160b">
       {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
       <Heading heading={heading} variant="inline" as="h2" class="display sb3db9" />

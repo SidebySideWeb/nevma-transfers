@@ -1,6 +1,6 @@
 ---
 import Heading from '../Heading.astro';
-import { bgImage } from '../../../lib/v2/bg-image';
+import { bgImageLazy } from '../../../lib/v2/bg-image';
 import { v2ImageSrc } from '../../../lib/v2/image-src';
 import { resolveCtaHref, type CtaLinkData } from '../../../lib/v2/cta';
 import type { SanityImage } from '../../../lib/sanity/image';
@@ -62,12 +62,12 @@ const bgs = ['bgx2', 'bgx3'] as const;
       <div class="sebfdc">
         {cards.map((card, i) => {
           const href = resolveCtaHref(card.link);
-          const style = bgImage(card.image ?? null);
+          const lazy = bgImageLazy(card.image ?? null);
           const bg = bgs[i] ?? 'bgx2';
           const overlay = overlays[i] ?? 's40d0c';
           return (
             <a href={href} class="card zoom sd07e7">
-              <div class:list={[bg, 'ph', 's22cbe']} style={style}></div>
+              <div class:list={[bg, 'ph', 's22cbe']} style={lazy?.style} data-bg-image={lazy?.['data-bg-image']}></div>
               <div class={overlay}></div>
               <div class="sbbe77">
                 {card.label ? <div class="eyebrow">{card.label}</div> : null}

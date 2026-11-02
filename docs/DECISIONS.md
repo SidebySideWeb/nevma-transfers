@@ -21,6 +21,7 @@ D = decided by the user (date). P = proposed in this kit, change if needed. O = 
 | 13 | Office (manual) bookings: created through the web app's signed internal route; staff choose a Viva payment link (vehicle held, DEMO 4 h) or an offline payment (paid now or to collect); price override needs a reason. Fleet calendar per vehicle (day/week, view + click to book or block, no drag). Customers kept by e-mail for future features. Brand dropdown on every admin select. (`docs/OFFICE-BOOKINGS.md`, migration 0011) | D 1 Nov |
 | 14 | The office manages vehicle classes (booking side), vehicles, zones, routes, prices and extras in the admin; the website side of a class (name, photos, text) stays in Sanity under the same key. Database guards keep keys fixed once used and switch off instead of delete (`docs/FLEET-SETUP.md`, migration 0012). | D 1 Nov |
 | 15 | The website follows the Elite Protection V2 design (`design/v2/`, `docs/DESIGN-V2.md`), with final prices (no "excl. VAT") and an added Transfer / By the hour switch. Demo data follows the design's fleet (E-Class, S-Class, V-Class, Vito, Sprinter), photos and figures, still DEMO. | D 1 Nov |
+| 16 | Website built by porting `design/v2/build`; the fidelity test (`v2-fidelity.spec.ts`) is the definition of done for public pages. | D 2 Nov |
 
 ## Proposed in this kit
 

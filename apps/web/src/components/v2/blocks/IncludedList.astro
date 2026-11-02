@@ -1,5 +1,5 @@
 ---
-import { bgImage } from '../../../lib/v2/bg-image';
+import { bgImageLazy } from '../../../lib/v2/bg-image';
 import { resolveCtaHref, resolveCtaLabel, type CtaLinkData } from '../../../lib/v2/cta';
 import type { SanityImage } from '../../../lib/sanity/image';
 
@@ -15,7 +15,7 @@ const addOnTitle = typeof section.addOnTitle === 'string' ? section.addOnTitle :
 const addOnText = typeof section.addOnText === 'string' ? section.addOnText : '';
 const addOnLink = section.addOnLink as CtaLinkData | undefined;
 const image = section.image as SanityImage | undefined;
-const style = bgImage(image ?? null);
+const lazy = bgImageLazy(image ?? null);
 const href = resolveCtaHref(addOnLink);
 const linkLabel = resolveCtaLabel(addOnLink);
 ---
@@ -36,7 +36,7 @@ const linkLabel = resolveCtaLabel(addOnLink);
       </div>
     </div>
     <a href={href} class="card zoom s3078d">
-      <div class="bgx2 ph s22cbe" style={style}></div>
+      <div class="bgx2 ph s22cbe" style={lazy?.style} data-bg-image={lazy?.['data-bg-image']}></div>
       <div class="s5bfdd"></div>
       <div class="s4f9a1">
         {addOnLabel ? <div class="eyebrow">{addOnLabel}</div> : null}

@@ -136,7 +136,7 @@ export function StepSearch({
       {/* Added after the design (extra/08b-book-hourly): Transfer / By the hour, from the zone-field classes. */}
       <div
         data-v2-extra
-        className="v2-trip"
+        className="js-trip"
         role="group"
         aria-label={`${strings['booking.toggle.transfer']} / ${strings['booking.toggle.hourly']}`}
       >
@@ -186,7 +186,7 @@ export function StepSearch({
               more={more}
               onChange={(hours) => onChange({ hours })}
             />
-            <span className="v2-hint">
+            <span className="js-hint">
               {(strings['booking.hours.hint'] ?? '')
                 .replace('{min}', String(hourBounds.min))
                 .replace('{max}', String(hourBounds.max))}

@@ -35,7 +35,8 @@ let hourlyBounds = { minHours: 3, maxHours: 12 };
 if (showQuick) {
   try {
     const cat = await getCatalog();
-    zones = cat.zones.map((z) => ({ code: z.code, name: z.name }));
+    // Design board labels omit the DEMO seed prefix (same as EnquiryForm).
+    zones = cat.zones.map((z) => ({ code: z.code, name: z.name.replace(/^DEMO\s+/i, '') }));
     if (cat.hourly.length) {
       hourlyBounds = {
         minHours: Math.min(...cat.hourly.map((h) => h.minHours)),

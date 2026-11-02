@@ -136,7 +136,7 @@ export function BookingHero({
         </div>
       </section>
       {/* Not part of the design block (keeps its text exact): one polite announcement a minute. */}
-      <span className="v2-sr-only" role="status" aria-live="polite" data-testid="hold-live">
+      <span className="js-sr-only" role="status" aria-live="polite" data-testid="hold-live">
         {announce}
       </span>
     </>

@@ -1,6 +1,6 @@
 ---
 import Heading from '../Heading.astro';
-import { bgImage } from '../../../lib/v2/bg-image';
+import { bgImageLazy } from '../../../lib/v2/bg-image';
 import type { SanityImage } from '../../../lib/sanity/image';
 
 type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
@@ -17,7 +17,7 @@ const lead = typeof section.lead === 'string' ? section.lead : '';
 const badgeValue = typeof section.badgeValue === 'string' ? section.badgeValue : '';
 const badgeLabel = typeof section.badgeLabel === 'string' ? section.badgeLabel : '';
 const image = section.image as SanityImage | undefined;
-const style = bgImage(image ?? null);
+const lazy = bgImageLazy(image ?? null);
 const alt = image?.alt?.trim() || '';
 const items = Array.isArray(section.items)
   ? (section.items as { title?: string; text?: string }[])
@@ -45,7 +45,7 @@ const items = Array.isArray(section.items)
   ) : layout === 'feature' ? (
     <section data-block="onBoard" class="s3a297">
       <div class="zoom s3dc7c">
-        <div class="bgx4 ph s22cbe" role="img" aria-label={alt} style={style}></div>
+        <div class="bgx4 ph s22cbe" role="img" aria-label={alt} style={lazy?.style} data-bg-image={lazy?.['data-bg-image']}></div>
         {(badgeValue || badgeLabel) && (
           <div class="s08b2e">
             {badgeValue ? <div class="sc9672">{badgeValue}</div> : null}

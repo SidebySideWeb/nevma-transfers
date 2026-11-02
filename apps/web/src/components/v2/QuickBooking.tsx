@@ -35,8 +35,11 @@ function pickDefaults(zones: QuickZone[], from?: string, to?: string) {
     '';
   const t =
     (to && codes.has(to) && to) ||
-    zones.find((z) => z.code !== f && (/centre|center|athens$/i.test(z.code) || z.name === 'Athens'))
-      ?.code ||
+    zones.find(
+      (z) =>
+        z.code !== f &&
+        (/centre|center|athens$/i.test(z.code) || /^athens$/i.test(z.name.replace(/^DEMO\s+/i, ''))),
+    )?.code ||
     zones.find((z) => z.code !== f)?.code ||
     '';
   return { from: f, to: t };

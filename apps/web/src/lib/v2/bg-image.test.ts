@@ -6,7 +6,7 @@ describe('bgImage', () => {
     vi.unstubAllEnvs();
   });
 
-  it('builds a CDN URL with width, auto format and q=75', () => {
+  it('builds a CDN URL with width, auto format and q=70', () => {
     vi.stubEnv('SANITY_PROJECT_ID', 'project1');
     vi.stubEnv('SANITY_DATASET', 'production');
     const style = bgImage(
@@ -20,7 +20,7 @@ describe('bgImage', () => {
     expect(style).toMatch(/^--bg-image:url\(/);
     expect(style).toContain('cdn.sanity.io');
     expect(style).toContain('w=1200');
-    expect(style).toMatch(/q=75|quality=75|q%3D75/);
+    expect(style).toMatch(/q=70|quality=70|q%3D70/);
     expect(style).toMatch(/auto=format|auto%3Dformat/);
   });
 

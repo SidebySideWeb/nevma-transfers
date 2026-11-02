@@ -1,7 +1,7 @@
 ---
 import Heading from '../Heading.astro';
 import CtaLink from '../CtaLink.astro';
-import { bgImage } from '../../../lib/v2/bg-image';
+import { bgImageLazy } from '../../../lib/v2/bg-image';
 import { getSiteSettings } from '../../../lib/sanity/content';
 import type { CtaLinkData } from '../../../lib/v2/cta';
 import type { SanityImage } from '../../../lib/sanity/image';
@@ -21,13 +21,13 @@ const points = Array.isArray(section.points) ? (section.points as string[]) : []
 const primary = section.primary as CtaLinkData | undefined;
 const secondary = section.secondary as CtaLinkData | undefined;
 const image = section.image as SanityImage | undefined;
-const style = bgImage(image ?? null);
+const lazy = bgImageLazy(image ?? null);
 const alt = image?.alt?.trim() || '';
 ---
 
 <section data-block="escortFeature" class="s3a297">
   <div class="zoom s93919">
-    <div class="bgx2 ph s22cbe" role="img" aria-label={alt} style={style}></div>
+    <div class="bgx2 ph s22cbe" role="img" aria-label={alt} style={lazy?.style} data-bg-image={lazy?.['data-bg-image']}></div>
   </div>
   <div class="sad35a">
     {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}

@@ -61,8 +61,8 @@ const counts = filterCounts(cards);
         return (
           <article class="card sd9345" data-group={group}>
             <a href={`/fleet/${c.key}`} class="zoom sfc2ca" aria-label={`${c.name} details`}>
-              <img class="ph sc22be" src={c.photoUrl} alt={c.photoAlt} loading="lazy" decoding="async" />
-              <span class="s85b16">{c.kind}</span>
+              <img class="ph sc22be" src={c.photoUrl} alt="" loading="lazy" decoding="async" width="640" height="400" />
+              <span class="s85b16" aria-hidden="true">{c.kind}</span>
             </a>
             <div class="s4c805">
               <div>

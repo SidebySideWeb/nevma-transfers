@@ -9,7 +9,7 @@
     "check:live": "node ../../scripts/check-live-demo.mjs",
     "check:seo": "node ./scripts/check-seo-dist.mjs",
     "preview": "astro preview",
-    "lint": "eslint .",
+    "lint": "eslint . && node ../../scripts/check-v2-classes.mjs",
     "typecheck": "astro check",
     "test": "vitest run",
     "test:e2e": "playwright test",

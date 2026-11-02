@@ -1,7 +1,7 @@
 ---
 import Heading from '../Heading.astro';
 import CtaLink from '../CtaLink.astro';
-import { bgImage } from '../../../lib/v2/bg-image';
+import { bgImageLazy } from '../../../lib/v2/bg-image';
 import { getSiteSettings } from '../../../lib/sanity/content';
 import type { CtaLinkData } from '../../../lib/v2/cta';
 import type { SanityImage } from '../../../lib/sanity/image';
@@ -20,7 +20,11 @@ const heading = section.heading as DisplayHeading | undefined;
 const lead = typeof section.lead === 'string' ? section.lead : '';
 const primary = section.primary as CtaLinkData | undefined;
 const secondary = section.secondary as CtaLinkData | undefined;
-const style = bgImage((section.image as SanityImage) ?? null);
+const lazy = bgImageLazy(
+  (section.image as SanityImage) ?? null,
+  960,
+  layout === 'compact' ? '/images/v2/brand-facets.jpg' : '/images/v2/chauffeur-hotel.jpg',
+);
 ---
 
 {
@@ -37,7 +41,7 @@ const style = bgImage((section.image as SanityImage) ?? null);
       </div>
     </section>
   ) : layout === 'compact' ? (
-    <section data-block="ctaPanel" class="bgx3 s6f967" style={style}>
+    <section data-block="ctaPanel" class="bgx3 s6f967" style={lazy?.style} data-bg-image={lazy?.['data-bg-image']}>
       <div class="sb1820">
         <Heading heading={heading} variant="inline" as="h2" class="display sbbbfc" />
         {(primary || secondary) && (
@@ -49,7 +53,7 @@ const style = bgImage((section.image as SanityImage) ?? null);
       </div>
     </section>
   ) : (
-    <section data-block="ctaPanel" class="bgx6 s019b3" style={style}>
+    <section data-block="ctaPanel" class="bgx6 s019b3" style={lazy?.style} data-bg-image={lazy?.['data-bg-image']}>
       <div class="sc7e49">
         <div class="sbd96c">
           {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}

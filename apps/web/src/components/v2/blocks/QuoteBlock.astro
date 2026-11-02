@@ -1,5 +1,5 @@
 ---
-import { bgImage } from '../../../lib/v2/bg-image';
+import { bgImageLazy } from '../../../lib/v2/bg-image';
 import type { SanityImage } from '../../../lib/sanity/image';
 
 interface Props {
@@ -10,10 +10,14 @@ const { section } = Astro.props;
 const raw = typeof section.quote === 'string' ? section.quote.trim() : '';
 const quote = raw.replace(/^[“”"']+|[“”"']+$/g, '');
 const caption = typeof section.caption === 'string' ? section.caption : '';
-const style = bgImage((section.image as SanityImage) ?? null);
+const lazy = bgImageLazy(
+  (section.image as SanityImage) ?? null,
+  960,
+  '/images/v2/brand-facets.jpg',
+);
 ---
 
-<section data-block="quoteBlock" class="bgx5 s47064" style={style}>
+<section data-block="quoteBlock" class="bgx5 s47064" style={lazy?.style} data-bg-image={lazy?.['data-bg-image']}>
   <div class="sf222b" aria-hidden="true"></div>
   <div class="sf8d84">
     <div class="s853d3"></div>

@@ -3,6 +3,7 @@ import SiteFooter from '../components/v2/SiteFooter.astro';
 import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
 import { responsiveImage, type SanityImage } from '../lib/sanity/image';
 import type { ResolvedSeo } from '../lib/seo';
+import { v2PhotoUrl } from '../lib/v2/bg-image';
 import '../styles/fonts.css';
 import '../styles/tokens.css';
 import '../styles/v2.css';
@@ -38,10 +39,18 @@ const {
   withFooter = true,
 } = Astro.props;
 
-const preload = responsiveImage(preloadImage ?? null, {
-  fallbackWidth: 1600,
-  fallbackHeight: 1000,
-});
+const preload =
+  responsiveImage(preloadImage ?? null, {
+    fallbackWidth: 960,
+    fallbackHeight: 600,
+  }) ??
+  (() => {
+    const src = v2PhotoUrl(
+      (preloadImage as (SanityImage & { _sanityAsset?: string | null }) | null) ?? null,
+      960,
+    );
+    return src ? { src, srcset: '', width: 960, height: 600, alt: '' } : null;
+  })();
 
 const canonical =
   seo?.canonical || new URL(Astro.url.pathname, Astro.site ?? 'http://localhost:4321').href;
@@ -92,21 +101,48 @@ const bodyClass = `pg-${designPage}`;
           rel="preload"
           as="image"
           href={preload.src}
-          imagesrcset={preload.srcset}
-          imagesizes="100vw"
+          imagesrcset={preload.srcset || undefined}
+          imagesizes={preload.srcset ? '100vw' : undefined}
           fetchpriority="high"
         />
       )
     }
   </head>
   <body class={bodyClass}>
-    <a class="v2-skip" href="#main">Skip to content</a>
+    <a class="js-skip" href="#main">Skip to content</a>
     <div id="dc-root">
-      <div id="main" class={rootClass}>
+      <main id="main" class={rootClass}>
         <slot />
         {withFooter ? <SiteFooter settings={settings} /> : null}
-      </div>
+      </main>
     </div>
+    <script>
+      // Lazy V2 backgrounds: hero stays eager; below-fold use data-bg-image.
+      const apply = (el: HTMLElement) => {
+        const url = el.dataset.bgImage;
+        if (!url) return;
+        el.style.setProperty('--bg-image', `url(${url})`);
+        delete el.dataset.bgImage;
+      };
+      const nodes = [...document.querySelectorAll<HTMLElement>('[data-bg-image]')];
+      if (!nodes.length) {
+        /* nothing */
+      } else if (!('IntersectionObserver' in window)) {
+        nodes.forEach(apply);
+      } else {
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (!e.isIntersecting) continue;
+              apply(e.target as HTMLElement);
+              io.unobserve(e.target);
+            }
+          },
+          { rootMargin: '120px 0px' },
+        );
+        nodes.forEach((n) => io.observe(n));
+      }
+    </script>
   </body>
 </html>
 
@@ -118,12 +154,12 @@ const bodyClass = `pg-${designPage}`;
     color: #f4f0e6;
     font-family: 'Jost', sans-serif;
   }
-  .v2-skip {
+  .js-skip {
     position: absolute;
     left: -9999px;
     top: 0;
   }
-  .v2-skip:focus {
+  .js-skip:focus {
     left: 16px;
     top: 16px;
     z-index: 100;

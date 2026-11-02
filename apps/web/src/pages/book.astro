@@ -88,7 +88,7 @@ const header = {
 
 <style is:global>
   /* Parts of the booking flow that v2.css (a copy of the design) does not have. */
-  .v2-sr-only {
+  .js-sr-only {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -119,17 +119,17 @@ const header = {
   [data-block='appBody'] .notice a {
     color: inherit;
   }
-  [data-block='appBody'] .v2-hint {
+  [data-block='appBody'] .js-hint {
     font-size: 12px;
     color: #8e887b;
   }
   /* Transfer / By the hour (extra/08b-book-hourly), drawn with the zone fields' `dd-btn`. */
-  [data-block='appBody'] .v2-trip[data-v2-extra] {
+  [data-block='appBody'] .js-trip[data-v2-extra] {
     display: flex;
     align-self: flex-start;
     border: 1px solid rgba(207, 164, 95, 0.45);
   }
-  [data-block='appBody'] .v2-trip .dd-btn {
+  [data-block='appBody'] .js-trip .dd-btn {
     width: auto;
     height: 44px;
     padding: 0 24px;
@@ -139,7 +139,7 @@ const header = {
     letter-spacing: 0.18em;
     text-transform: uppercase;
   }
-  [data-block='appBody'] .v2-trip .dd-btn[aria-pressed='true'] {
+  [data-block='appBody'] .js-trip .dd-btn[aria-pressed='true'] {
     background: #e7c687;
     color: #0a0a0b;
   }
