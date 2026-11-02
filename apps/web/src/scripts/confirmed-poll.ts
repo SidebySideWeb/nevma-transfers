@@ -38,6 +38,10 @@ if (confirmedRoot?.dataset.pending === '1') {
     if (Date.now() - started >= maxMs) {
       waitingEl?.setAttribute('hidden', '');
       timeoutEl?.removeAttribute('hidden');
+      // Swap the hero lead so it matches the timeout body (not "still confirming").
+      const timeoutMsg = confirmedRoot.dataset.timeoutMsg;
+      const heroLead = document.querySelector<HTMLElement>('[data-block="appHero"] .s97596');
+      if (timeoutMsg && heroLead) heroLead.textContent = timeoutMsg;
       document.getElementById('confirmed-timeout-title')?.focus();
       return;
     }

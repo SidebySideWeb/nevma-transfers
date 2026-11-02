@@ -37,6 +37,7 @@ const arrowRoute = (label: string) =>
     id="confirmed-root"
     data-order-code={orderCode}
     data-pending={view ? '0' : '1'}
+    data-timeout-msg={view ? undefined : timeoutMsg}
   >
     {
       view ? (
@@ -86,9 +87,9 @@ const arrowRoute = (label: string) =>
             lead={waiting}
             pathname="/booking/confirmed"
           />
+          {/* Waiting copy lives in the hero lead; this block only keeps the home CTA until timeout. */}
           <section data-block="appBody" class="sc16b1" id="confirmed-waiting" role="status" aria-live="polite">
             <div class="s8e90e">
-              <p class="s97596">{waiting}</p>
               <div class="s4ba17">
                 <a class="btn btn-line s95216" href="/">{homeLabel}</a>
               </div>
@@ -96,8 +97,7 @@ const arrowRoute = (label: string) =>
           </section>
           <section data-block="appBody" class="sc16b1" id="confirmed-timeout" hidden>
             <div class="s8e90e">
-              <h2 class="display s96d2b" id="confirmed-timeout-title" tabindex="-1">{title.replace(/\*/g, '')}</h2>
-              <p class="s97596">{timeoutMsg}</p>
+              <p class="s97596" id="confirmed-timeout-title" tabindex="-1">{timeoutMsg}</p>
               <p>
                 <a href={`tel:${settings.phone.replace(/[^\d+]/g, '')}`}>{settings.phone}</a>
               </p>

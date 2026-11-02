@@ -691,3 +691,5 @@ body.pg-15-manage-booking .srow span:last-child{color:#F4F0E6}
 .ep-address-sec{display:block;font-size:13px;color:#8e887b}
 .ep-address-attr{padding:8px 12px 10px;opacity:.85}
 .ep-address-attr img{display:block;height:14px;width:auto}
+/* Triple-class V2 rules (e.g. .sc16b1.sc16b1.sc16b1{display:flex}) beat the UA [hidden] rule. */
+[hidden]{display:none!important}
