@@ -10,7 +10,8 @@ type StatusPayload = {
 
 const confirmedRoot = document.getElementById('confirmed-root');
 if (confirmedRoot?.dataset.pending === '1') {
-  const orderCode = confirmedRoot.dataset.orderCode ?? '';
+  const root = confirmedRoot;
+  const orderCode = root.dataset.orderCode ?? '';
   const waitingEl = document.getElementById('confirmed-waiting');
   const timeoutEl = document.getElementById('confirmed-timeout');
   const pollMs = 3000;
@@ -39,7 +40,7 @@ if (confirmedRoot?.dataset.pending === '1') {
       waitingEl?.setAttribute('hidden', '');
       timeoutEl?.removeAttribute('hidden');
       // Swap the hero title so it matches the timeout body (not "still confirming").
-      const timeoutMsg = confirmedRoot.dataset.timeoutMsg;
+      const timeoutMsg = root.dataset.timeoutMsg;
       const heroTitle = document.querySelector<HTMLElement>('[data-block="appHero"] h1');
       if (timeoutMsg && heroTitle) heroTitle.textContent = timeoutMsg;
       document.getElementById('confirmed-timeout-title')?.focus();
