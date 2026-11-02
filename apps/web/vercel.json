@@ -4,6 +4,13 @@
     { "path": "/api/cron/stuck-payments", "schedule": "0 6 * * *" },
     { "path": "/api/cron/form-retention", "schedule": "0 3 * * 1" }
   ],
+  "redirects": [
+    {
+      "source": "/booking/success",
+      "destination": "/booking/confirmed",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
