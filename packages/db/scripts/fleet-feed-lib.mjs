@@ -38,7 +38,7 @@ export function validateFeed(feed) {
   const rate = val(s.vat_rate_percent);
   if (!(typeof rate === 'number' && rate >= 0 && rate <= 100)) e('settings.vat_rate_percent.value must be a number between 0 and 100');
   if (typeof s.prices_include_vat !== 'boolean') e('settings.prices_include_vat must be true or false');
-  if (s.booking_reference_format) warnings.push(`settings.booking_reference_format ("${s.booking_reference_format}") is ignored: references are EP-XXXXXX (migration 0009)`);
+  if (s.booking_reference_format) warnings.push(`settings.booking_reference_format ("${s.booking_reference_format}") is ignored: references are ELP-XXXXXX (migration 0017)`);
   for (const k of ['default_buffer_minutes', 'hourly_max_hours']) if (k in s) warnings.push(`settings.${k} is informational: each class carries its own buffer and hourly maximum`);
 
   const classes = new Set();

@@ -16,7 +16,7 @@ Both are joined by the class `key` (for example `v-class`). Both importers share
 | `settings.hold_minutes`, `min_lead_minutes` | `settings` | value and `is_demo` |
 | `settings.refund_window_hours` | `settings.cancel_window_hours` | online cancellation window |
 | `settings.default_buffer_minutes`, `hourly_max_hours` | — | informational; each class and hourly rate carries its own |
-| `settings.booking_reference_format` | — | ignored: references are `EP-XXXXXX` (migration 0009) |
+| `settings.booking_reference_format` | — | ignored: references are `ELP-XXXXXX` (migration 0017) |
 | `vehicle_classes[].operations` | `vehicle_classes` (key, internal name = `content.name`, capacity, luggage, buffer, `sort_order × 10`, active, `is_demo`) | upsert by key |
 | `vehicle_classes[].content` | Sanity `vehicleClass` (`name` = short name, `fullName`, `tagline` = kind label, `group`, `amenities`, `copy` = blurb, specs, SEO, photos hero first) | "TEM Protection" in SEO text becomes Elite Protection |
 | `vehicles[]` | `vehicles` (label, class, plate, status, `is_demo`) | upsert by label (case-insensitive) |

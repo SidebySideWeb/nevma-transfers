@@ -183,9 +183,9 @@ test('AC-09 vip_security follows the vip-security extra on the booking', async (
   assert.equal(await flag(), false);
 });
 
-test('booking references look like EP-XXXXXX without ambiguous characters', async () => {
+test('booking references look like ELP-XXXXXX without ambiguous characters', async () => {
   const b = await insertBooking(db.pool, booking(ids, { pickup_at: '2026-12-13T10:00:00+02:00' }));
-  assert.match(b.reference, /^EP-[A-HJ-NP-Z2-9]{6}$/);
+  assert.match(b.reference, /^ELP-[A-HJ-NP-Z2-9]{6}$/);
 });
 
 test('AC-37: 0010 VAT — € 220.00 → € 177.42 + € 42.58; rate change leaves past bookings', async () => {
