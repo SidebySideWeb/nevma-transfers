@@ -6,6 +6,10 @@ delete from public.booking_events
 delete from public.bookings where customer_email = 'e2e-today@example.com';
 delete from public.driver_shifts
  where driver_id in (select id from public.drivers where email = 'e2e-today-driver@tem.local');
+-- Clear recent / open shifts on DEMO E-CLASS-1 so the seed open shift cannot overlap them.
+delete from public.driver_shifts
+ where vehicle_id = (select id from public.vehicles where label = 'DEMO E-CLASS-1' limit 1)
+   and (ended_at is null or started_at > now() - interval '2 days');
 delete from public.drivers where email = 'e2e-today-driver@tem.local';
 
 insert into public.drivers (full_name, phone, email, employment, active)

@@ -48,7 +48,7 @@ export default defineConfig({
       env: {
         ...process.env,
         VITEST: '',
-        FEATURE_DRIVERS: 'true',
+        FEATURE_DRIVERS: process.env.FEATURE_DRIVERS ?? 'true',
         SUPABASE_URL: supabaseUrl,
         SUPABASE_ANON_KEY: supabaseAnon,
         ADMIN_TO_WEB_SIGNING_SECRET: signing,
