@@ -80,6 +80,9 @@ export function transferRequestSchema(ctx: SchemaCtx) {
         (v) => (v === '' || v == null ? 0 : v),
         intField(0, 100),
       ),
+      // V2 request form fields (design/v2 EnquiryForm).
+      flight: shortText.optional().or(z.literal('')).transform((v) => v || undefined),
+      kind: shortText.optional().or(z.literal('')).transform((v) => v || undefined),
       vehicleClass: z
         .string()
         .trim()

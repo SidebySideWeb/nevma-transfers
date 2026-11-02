@@ -16,7 +16,9 @@ async function getTurnstileToken(siteKey: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const host = document.createElement('div');
     host.style.position = 'fixed';
-    host.style.left = '-9999px';
+    host.style.right = '16px';
+    host.style.bottom = '16px';
+    host.style.zIndex = '9999';
     document.body.appendChild(host);
     let settled = false;
     const finish = (fn: () => void) => {
@@ -37,7 +39,8 @@ async function getTurnstileToken(siteKey: string): Promise<string> {
     }
     const id = ts.render(host, {
       sitekey: siteKey,
-      size: 'invisible',
+      appearance: 'interaction-only',
+      execution: 'execute',
       callback: (token) => finish(() => resolve(token)),
       'error-callback': () => finish(() => reject(new Error('turnstile_failed'))),
     });

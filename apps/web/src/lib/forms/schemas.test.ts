@@ -75,6 +75,29 @@ describe('form schemas validation', () => {
     }
   });
 
+  it('accepts V2 request fields flight and kind (strict schema)', () => {
+    const schema = transferRequestSchema({ zoneCodes: zones, classKeys: classes, now });
+    const result = schema.safeParse({
+      name: 'Ada',
+      email: 'ada@example.com',
+      phone: '+30 210 0000000',
+      fromZone: 'demo-airport',
+      toZone: 'demo-centre',
+      datetime: futureLocal(),
+      passengers: 2,
+      luggage: 2,
+      flight: 'A3 650',
+      kind: 'One-off transfer',
+      vehicleClass: 'any',
+      consent: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.flight).toBe('A3 650');
+      expect(result.data.kind).toBe('One-off transfer');
+    }
+  });
+
   it('fromOther required when fromZone is other', () => {
     const schema = transferRequestSchema({ zoneCodes: zones, classKeys: classes, now });
     const result = schema.safeParse({

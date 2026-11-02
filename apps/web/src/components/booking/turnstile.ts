@@ -7,7 +7,9 @@ declare global {
         el: HTMLElement,
         opts: {
           sitekey: string;
-          size?: string;
+          size?: 'normal' | 'flexible' | 'compact';
+          appearance?: 'always' | 'execute' | 'interaction-only';
+          execution?: 'render' | 'execute';
           callback?: (token: string) => void;
           'error-callback'?: () => void;
         },
@@ -47,8 +49,11 @@ export async function getTurnstileToken(siteKey: string): Promise<string> {
 
   return new Promise((resolve, reject) => {
     const host = document.createElement('div');
+    // Keep on-screen: interaction-only stays hidden unless a challenge is required.
     host.style.position = 'fixed';
-    host.style.left = '-9999px';
+    host.style.right = '16px';
+    host.style.bottom = '16px';
+    host.style.zIndex = '9999';
     document.body.appendChild(host);
     let settled = false;
     const finish = (fn: () => void) => {
@@ -67,9 +72,12 @@ export async function getTurnstileToken(siteKey: string): Promise<string> {
       reject(new Error('turnstile_missing'));
       return;
     }
+    // size "invisible" was removed; mode is set on the sitekey in Cloudflare.
+    // appearance + execution keep the booking UX quiet until execute().
     const id = ts.render(host, {
       sitekey: siteKey,
-      size: 'invisible',
+      appearance: 'interaction-only',
+      execution: 'execute',
       callback: (token) => finish(() => resolve(token)),
       'error-callback': () => finish(() => reject(new Error('turnstile_failed'))),
     });

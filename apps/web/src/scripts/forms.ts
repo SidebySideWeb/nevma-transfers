@@ -7,18 +7,21 @@ type FormStrings = {
   errorSummary: string;
 };
 
+const DEFAULT_STRINGS: FormStrings = {
+  sending: 'Sending…',
+  submit: 'Send',
+  errorGeneric: 'Error',
+  errorRequired: 'Required',
+  errorEmail: 'Invalid email',
+  errorSummary: 'Please check',
+};
+
 function parseStrings(raw: string | undefined): FormStrings {
   try {
-    return JSON.parse(raw || '{}') as FormStrings;
+    const parsed = JSON.parse(raw || '{}') as Partial<FormStrings>;
+    return { ...DEFAULT_STRINGS, ...parsed };
   } catch {
-    return {
-      sending: 'Sending…',
-      submit: 'Send',
-      errorGeneric: 'Error',
-      errorRequired: 'Required',
-      errorEmail: 'Invalid email',
-      errorSummary: 'Please check',
-    };
+    return { ...DEFAULT_STRINGS };
   }
 }
 

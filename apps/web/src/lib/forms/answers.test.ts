@@ -16,6 +16,8 @@ describe('toAnswers', () => {
       vehicleClass: 'demo-v-class',
       vipSecurity: false,
       invoice: false,
+      flight: 'A3 650',
+      kind: 'One-off transfer',
       consent: true as const,
     } as TransferRequestData;
 
@@ -30,5 +32,7 @@ describe('toAnswers', () => {
     expect(answers.find((a) => a.key === 'datetime')?.value).toBe('Tue 1 Dec 2026, 10:00 (Athens)');
     expect(answers.find((a) => a.key === 'vehicleClass')?.value).toBe('DEMO Van');
     expect(answers.find((a) => a.key === 'vipSecurity')?.value).toBe('No');
+    expect(answers.find((a) => a.key === 'flight')?.value).toBe('A3 650');
+    expect(answers.find((a) => a.key === 'kind')?.value).toBe('One-off transfer');
   });
 });

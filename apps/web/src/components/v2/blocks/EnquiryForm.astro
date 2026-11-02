@@ -53,6 +53,14 @@ const heading = section.heading as { before?: string; accent?: string; after?: s
 const asideLink = section.asideLink as CtaLinkData | undefined;
 const asideSteps = (Array.isArray(section.asideSteps) ? section.asideSteps : []) as string[];
 const submitLabel = form?.submitLabel?.trim() || t(`form.submit.${layout}`);
+const formStrings = JSON.stringify({
+  sending: t('form.sending'),
+  submit: submitLabel,
+  errorGeneric: t('form.error.generic'),
+  errorRequired: t('form.error.required'),
+  errorEmail: t('form.error.email'),
+  errorSummary: t('booking.errors.summary'),
+});
 const tel = (p: string) => `tel:${p.replace(/[^\d+]/g, '')}`;
 
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
@@ -179,7 +187,7 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
   layout === 'security' ? (
     <section data-block="enquiryForm" class="s68e7c" id="enquiry">
       <div class="s4582f">
-        <form class="seddc3" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey}>
+        <form class="seddc3" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey} data-strings={formStrings}>
           {errorEntries.length ? (
             <div class="notice notice-danger" role="alert" tabindex="-1" id="form-error-summary">
               <p><strong>{t('booking.errors.summary')}</strong></p>
@@ -215,7 +223,7 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
     </section>
   ) : layout === 'contact' ? (
     <section data-block="enquiryForm" class="s1bd29">
-      <form class="seddc3" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey}>
+      <form class="seddc3" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey} data-strings={formStrings}>
         {errorEntries.length ? (
           <div class="notice notice-danger" role="alert" tabindex="-1" id="form-error-summary">
             <p><strong>{t('booking.errors.summary')}</strong></p>
@@ -251,7 +259,14 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
     </section>
   ) : (
     <section data-block="enquiryForm" class="s8d7b0">
-      <form class="s83498" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey}>
+      <form
+        class="s83498"
+        method="post"
+        action={`/api/forms/${formKey}`}
+        novalidate
+        data-tem-form={formKey}
+        data-strings={formStrings}
+      >
         {errorEntries.length ? (
           <div class="notice notice-danger" role="alert" tabindex="-1" id="form-error-summary">
             <p><strong>{t('booking.errors.summary')}</strong></p>

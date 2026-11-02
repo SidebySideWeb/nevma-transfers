@@ -60,6 +60,12 @@ function transferAnswers(data: TransferRequestData, ctx: AnswersCtx): Answer[] {
     { key: 'passengers', label: label('form.passengers'), value: String(data.passengers) },
     { key: 'luggage', label: label('form.luggage'), value: String(data.luggage) },
   );
+  if (data.flight) {
+    out.push({ key: 'flight', label: label('form.flight'), value: data.flight });
+  }
+  if (data.kind) {
+    out.push({ key: 'kind', label: label('form.serviceType'), value: data.kind });
+  }
   const classValue =
     data.vehicleClass === 'any'
       ? label('form.vehicleClass.any')
