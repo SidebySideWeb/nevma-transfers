@@ -15,6 +15,7 @@ const secrets = [
   { name: 'VIVA_CLIENT_SECRET', value: process.env.VIVA_CLIENT_SECRET || '' },
   { name: 'VIVA_API_KEY', value: process.env.VIVA_API_KEY || '' },
   { name: 'ADMIN_TO_WEB_SIGNING_SECRET', value: process.env.ADMIN_TO_WEB_SIGNING_SECRET || '' },
+  { name: 'GOOGLE_PLACES_API_KEY', value: process.env.GOOGLE_PLACES_API_KEY || '' },
 ].filter((s) => s.value && s.value.length >= 8);
 
 if (!secrets.length) {
@@ -67,6 +68,9 @@ function walk(dir, app) {
       const text = readFileSync(full, 'utf8');
       for (const s of secrets) {
         if (text.includes(s.value)) offenders.push(`${rel} contains ${s.name}`);
+      }
+      if (text.includes('places.googleapis.com')) {
+        offenders.push(`${rel} contains places.googleapis.com`);
       }
     }
   }

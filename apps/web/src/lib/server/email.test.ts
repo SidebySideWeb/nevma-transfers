@@ -108,11 +108,18 @@ describe('emails (prompt 08)', () => {
       invoiceTaxOffice: 'Athens',
       invoiceAddress: 'Street 1',
       adminUrl: 'https://admin.example.com/bookings/TEM-ABCDEF',
+      pickupAddress: 'Hilton Athens',
+      pickupPlaceId: 'ChIJVXealLU_xkcRja_At0z9AGY',
+      pickupLat: 37.9767,
+      pickupLng: 23.7503,
     });
     expect(office.text).toContain('VIP SECURITY');
     expect(office.text).toContain('a@example.com');
     expect(office.subject).toContain('TEM-ABCDEF');
     expect(office.text).not.toContain('(automatic)');
+    expect(office.text).toContain('Open in Google Maps'.replace('Open in Google Maps', 'Google Maps:'));
+    expect(office.html).toContain('Open in Google Maps');
+    expect(office.html).toContain('destination_place_id');
 
     const officeAuto = officeNewEmail({
       ...baseConfirm,

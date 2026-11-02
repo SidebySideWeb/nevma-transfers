@@ -1,3 +1,4 @@
+import { addressAnswer, parsePlace } from '@tem/places';
 import { formatLocal } from '../booking/time';
 import { localToInstant } from '../booking/time';
 import { t, type UiStringKey } from '../strings';
@@ -50,10 +51,30 @@ function transferAnswers(data: TransferRequestData, ctx: AnswersCtx): Answer[] {
     },
   ];
   if (data.pickupAddress) {
-    out.push({ key: 'pickupAddress', label: label('form.pickupAddress'), value: data.pickupAddress });
+    let pick = null;
+    try {
+      pick = parsePlace((data as { pickupPlace?: unknown }).pickupPlace ?? null);
+    } catch {
+      pick = null;
+    }
+    out.push({
+      key: 'pickupAddress',
+      label: label('form.pickupAddress'),
+      value: addressAnswer(data.pickupAddress, pick),
+    });
   }
   if (data.dropoffAddress) {
-    out.push({ key: 'dropoffAddress', label: label('form.dropoffAddress'), value: data.dropoffAddress });
+    let drop = null;
+    try {
+      drop = parsePlace((data as { dropoffPlace?: unknown }).dropoffPlace ?? null);
+    } catch {
+      drop = null;
+    }
+    out.push({
+      key: 'dropoffAddress',
+      label: label('form.dropoffAddress'),
+      value: addressAnswer(data.dropoffAddress, drop),
+    });
   }
   out.push(
     { key: 'datetime', label: label('form.datetime'), value: when },

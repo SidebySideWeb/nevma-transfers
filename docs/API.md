@@ -75,6 +75,8 @@ Creates the pending booking from the hold and the Viva order. Needs Turnstile.
   "holdId": "uuid",
   "pickupAddress": "Street 1, Athens",
   "dropoffAddress": "Street 2, Athens",
+  "pickupPlace": { "placeId": "ChIJ…", "lat": 37.98, "lng": 23.73 },
+  "dropoffPlace": { "placeId": "ChIJ…", "lat": 37.94, "lng": 23.65 },
   "passengers": 2, "luggage": 2, "flightNumber": "A3 123",
   "extras": ["vip-security"],
   "customer": { "name": "Full Name", "email": "name@example.com", "phone": "+30 690 000 0000" },
@@ -84,7 +86,9 @@ Creates the pending booking from the hold and the Viva order. Needs Turnstile.
   "turnstileToken": "..."
 }
 ```
-One transaction: lock the class row; check the hold is active, unexpired and belongs to this visitor; recompute the price (zone price or rate x hours, plus extras; all extras active); insert `bookings` (`pending`, `hold_expires_at` = hold expiry, cancel token hash) and `booking_extras`; mark the hold `converted`. After commit, create the Viva order.
+Optional `pickupPlace` / `dropoffPlace` (docs/ADDRESS-AUTOCOMPLETE.md): stored when the customer picks a Google suggestion. A drop-off place on an hourly booking is `invalid_request`. Typed addresses without place data stay valid.
+
+One transaction: lock the class row; check the hold is active, unexpired and belongs to this visitor; recompute the price (zone price or rate x hours, plus extras; all extras active); insert `bookings` (`pending`, `hold_expires_at` = hold expiry, cancel token hash) and `booking_extras`; mark the hold `converted`. After commit, create the Viva order. Optional place columns are set next to the address text.
 ```json
 {
   "reference": "EP-7K3QX2",

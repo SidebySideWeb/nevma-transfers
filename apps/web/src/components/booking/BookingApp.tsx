@@ -25,6 +25,8 @@ export type BookingAppProps = {
   turnstileSiteKey: string;
   contact: ContactInfo;
   header: HeroHeader;
+  /** PUBLIC_ADDRESS_AUTOCOMPLETE=true and server key present (build-time public flag). */
+  addressAutocomplete?: boolean;
 };
 
 function skewFromDateHeader(dateHeader: string | null): number {
@@ -46,7 +48,13 @@ function focusErrorSummary() {
   });
 }
 
-export default function BookingApp({ strings, turnstileSiteKey, contact, header }: BookingAppProps) {
+export default function BookingApp({
+  strings,
+  turnstileSiteKey,
+  contact,
+  header,
+  addressAutocomplete = false,
+}: BookingAppProps) {
   const [state, dispatch] = useReducer(bookingReducer, undefined, createInitialState);
   const [preferredClassKey, setPreferredClassKey] = useState<string | null>(null);
   const [pickedClassKey, setPickedClassKey] = useState<string | null>(null);
@@ -303,6 +311,10 @@ export default function BookingApp({ strings, turnstileSiteKey, contact, header 
         turnstileToken: token,
       };
       if (state.search.type === 'transfer') body.dropoffAddress = state.details.dropoffAddress;
+      if (state.details.pickupPlace) body.pickupPlace = state.details.pickupPlace;
+      if (state.search.type === 'transfer' && state.details.dropoffPlace) {
+        body.dropoffPlace = state.details.dropoffPlace;
+      }
       if (state.details.flightNumber) body.flightNumber = state.details.flightNumber;
       if (state.details.notes) body.notes = state.details.notes;
       if (state.details.needInvoice) {
@@ -465,6 +477,7 @@ export default function BookingApp({ strings, turnstileSiteKey, contact, header 
         errors={state.errors}
         formError={state.formError}
         busy={state.busy}
+        addressAutocomplete={addressAutocomplete}
         onChange={(patch) => dispatch({ type: 'SET_SEARCH', patch })}
         onChangeDetails={(patch) => dispatch({ type: 'SET_DETAILS', patch })}
         onSubmit={submitQuote}

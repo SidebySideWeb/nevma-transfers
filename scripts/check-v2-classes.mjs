@@ -40,6 +40,7 @@ const EXTRA_ALLOW = new Set([
   'notice',
   'notice-danger',
   'error',
+  'is-invalid', // booking / form field error outline (page or component CSS)
   'turnstile-slot',
   'v2-menu-nojs', // noscript menu fallback in SiteHeader
 ]);

@@ -89,6 +89,8 @@ export type OfficeBookingBody = {
   pickupLocal: string;
   pickupAddress: string;
   dropoffAddress?: string;
+  pickupPlace?: { placeId: string; lat: number; lng: number };
+  dropoffPlace?: { placeId: string; lat: number; lng: number };
   flightNumber?: string;
   passengers: number;
   luggage: number;

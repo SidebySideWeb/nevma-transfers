@@ -43,6 +43,14 @@ type BookingRow = {
   to_zone: string | null;
   vehicle_label: string | null;
   vehicle_auto_assigned: boolean;
+  pickup_address: string | null;
+  dropoff_address: string | null;
+  pickup_place_id: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_place_id: string | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
 };
 
 function pickupLocalAthens(pickup: Date): string {
@@ -65,7 +73,10 @@ async function loadBooking(reference: string): Promise<BookingRow | null> {
             b.vip_security, b.invoice_status, b.customer_name, b.customer_email, b.customer_phone,
             b.notes, b.flight_number, b.invoice_company, b.invoice_vat, b.invoice_tax_office,
             b.invoice_address, c.name as class_name, zf.name as from_zone, zt.name as to_zone,
-            v.label as vehicle_label, b.vehicle_auto_assigned
+            v.label as vehicle_label, b.vehicle_auto_assigned,
+            b.pickup_address, b.dropoff_address,
+            b.pickup_place_id, b.pickup_lat, b.pickup_lng,
+            b.dropoff_place_id, b.dropoff_lat, b.dropoff_lng
        from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
        join public.zones zf on zf.id = b.from_zone_id
@@ -185,6 +196,14 @@ export async function sendConfirmationEmails(
     adminUrl: adminUrl(reference),
     vehicleLabel: booking.vehicle_label,
     vehicleAutoAssigned: booking.vehicle_auto_assigned,
+    pickupAddress: booking.pickup_address,
+    dropoffAddress: booking.dropoff_address,
+    pickupPlaceId: booking.pickup_place_id,
+    pickupLat: booking.pickup_lat,
+    pickupLng: booking.pickup_lng,
+    dropoffPlaceId: booking.dropoff_place_id,
+    dropoffLat: booking.dropoff_lat,
+    dropoffLng: booking.dropoff_lng,
   });
   await sendEmail({
     to: co.officeTo,

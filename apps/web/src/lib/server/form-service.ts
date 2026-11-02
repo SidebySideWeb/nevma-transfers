@@ -193,14 +193,26 @@ export async function submitForm(
     timeZone: 'Europe/Athens',
   };
 
+  const pickupPlaceRaw = body.pickupPlace;
+  const dropoffPlaceRaw = body.dropoffPlace;
+  const bodyForSchema = { ...body };
+  delete bodyForSchema.pickupPlace;
+  delete bodyForSchema.dropoffPlace;
+  delete bodyForSchema.pickupPlaceId;
+  delete bodyForSchema.pickupLat;
+  delete bodyForSchema.pickupLng;
+  delete bodyForSchema.dropoffPlaceId;
+  delete bodyForSchema.dropoffLat;
+  delete bodyForSchema.dropoffLng;
+
   let parsed:
     | ReturnType<ReturnType<typeof transferRequestSchema>['parse']>
     | ReturnType<ReturnType<typeof vipSecuritySchema>['parse']>
     | ReturnType<ReturnType<typeof contactSchema>['parse']>;
   try {
-    if (formKey === 'transfer-request') parsed = transferRequestSchema(schemaCtx).parse(body);
-    else if (formKey === 'vip-security') parsed = vipSecuritySchema(schemaCtx).parse(body);
-    else parsed = contactSchema(schemaCtx).parse(body);
+    if (formKey === 'transfer-request') parsed = transferRequestSchema(schemaCtx).parse(bodyForSchema);
+    else if (formKey === 'vip-security') parsed = vipSecuritySchema(schemaCtx).parse(bodyForSchema);
+    else parsed = contactSchema(schemaCtx).parse(bodyForSchema);
   } catch (e) {
     if (e instanceof ZodError) {
       const fieldsRaw = zodFields(e);
@@ -253,7 +265,11 @@ export async function submitForm(
   const recipient =
     (topicRow?.recipientEmail && topicRow.recipientEmail.trim()) || formDoc.recipientEmail;
 
-  const answers: Answer[] = toAnswers(formKey, parsed, {
+  const answersPayload =
+    formKey === 'transfer-request'
+      ? ({ ...parsed, pickupPlace: pickupPlaceRaw, dropoffPlace: dropoffPlaceRaw } as unknown as typeof parsed)
+      : parsed;
+  const answers: Answer[] = toAnswers(formKey, answersPayload, {
     zoneNames: Object.fromEntries(zones.map((z) => [z.code, z.name])),
     classNames: Object.fromEntries(classes.map((c) => [c.key, c.name])),
     topicLabels: Object.fromEntries((formDoc.topics ?? []).map((x) => [x.key, x.label])),

@@ -59,11 +59,22 @@ const holdHourly = z
 
 export const HoldRequest = z.discriminatedUnion('type', [holdTransfer, holdHourly]);
 
+const placePayload = z
+  .object({
+    placeId: z.string().min(10),
+    lat: z.number(),
+    lng: z.number(),
+  })
+  .strict()
+  .optional();
+
 export const BookingRequest = z
   .object({
     holdId: uuid,
     pickupAddress: z.string().min(1),
     dropoffAddress: z.string().min(1).optional(),
+    pickupPlace: placePayload,
+    dropoffPlace: placePayload,
     passengers: z.number().int().positive(),
     luggage: z.number().int().nonnegative(),
     flightNumber: z.string().optional(),

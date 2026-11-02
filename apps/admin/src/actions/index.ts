@@ -924,6 +924,14 @@ export const server = {
       pickupLocal,
       pickupAddress: z.string().trim().min(1),
       dropoffAddress: z.string().trim().optional(),
+      pickupPlace: z
+        .object({ placeId: z.string().min(10), lat: z.number(), lng: z.number() })
+        .strict()
+        .optional(),
+      dropoffPlace: z
+        .object({ placeId: z.string().min(10), lat: z.number(), lng: z.number() })
+        .strict()
+        .optional(),
       flightNumber: z.string().trim().optional(),
       passengers: z.number().int().positive(),
       luggage: z.number().int().nonnegative(),

@@ -14,9 +14,13 @@ export type SearchState = {
   luggage: number;
 };
 
+export type PlaceSelection = { placeId: string; lat: number; lng: number } | null;
+
 export type DetailsState = {
   pickupAddress: string;
   dropoffAddress: string;
+  pickupPlace: PlaceSelection;
+  dropoffPlace: PlaceSelection;
   flightNumber: string;
   name: string;
   email: string;
@@ -63,6 +67,8 @@ export type BookingState = {
 export const initialDetails = (): DetailsState => ({
   pickupAddress: '',
   dropoffAddress: '',
+  pickupPlace: null,
+  dropoffPlace: null,
   flightNumber: '',
   name: '',
   email: '',

@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { BrandDropdown } from '../v2/BrandDropdown';
 import { DateField } from '../v2/DateField';
 import { joinLocal, requestQuoteHref, splitLocal } from './v2/journey';
+import { AddressField } from './AddressField';
 import type { BookingStrings, DetailsState, OptionsData, SearchState } from './types';
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
   errors: Record<string, string>;
   formError: string | null;
   busy: boolean;
+  addressAutocomplete: boolean;
   onChange: (patch: Partial<SearchState>) => void;
   onChangeDetails: (patch: Partial<DetailsState>) => void;
   onSubmit: () => void;
@@ -79,6 +81,7 @@ export function StepSearch({
   errors,
   formError,
   busy,
+  addressAutocomplete,
   onChange,
   onChangeDetails,
   onSubmit,
@@ -213,32 +216,35 @@ export function StepSearch({
       </div>
 
       <div className="grid">
-        <div className={wrapClass('f2', 'pickupAddress')}>
-          <label htmlFor="b-pick">{strings['booking.pickup.address']}</label>
-          <input
-            id="b-pick"
-            type="text"
-            autoComplete="street-address"
-            placeholder={strings['form.placeholder.address']}
-            value={details.pickupAddress}
-            onChange={(e) => onChangeDetails({ pickupAddress: e.target.value })}
-            {...invalid('pickupAddress', 'b-pick')}
-          />
-          {err('pickupAddress', 'b-pick')}
-        </div>
+        <AddressField
+          id="b-pick"
+          label={strings['booking.pickup.address'] ?? ''}
+          name="pickupAddress"
+          placePrefix="pickup"
+          placeholder={strings['form.placeholder.address']}
+          value={details.pickupAddress}
+          place={details.pickupPlace}
+          enabled={addressAutocomplete}
+          error={errors.pickupAddress}
+          onChange={(pickupAddress, pickupPlace) => onChangeDetails({ pickupAddress, pickupPlace })}
+          {...invalid('pickupAddress', 'b-pick')}
+        />
         {!hourly && (
-          <div className={wrapClass('f2', 'dropoffAddress')}>
-            <label htmlFor="b-drop">{strings['booking.dropoff.address']}</label>
-            <input
-              id="b-drop"
-              type="text"
-              placeholder={strings['form.placeholder.address']}
-              value={details.dropoffAddress}
-              onChange={(e) => onChangeDetails({ dropoffAddress: e.target.value })}
-              {...invalid('dropoffAddress', 'b-drop')}
-            />
-            {err('dropoffAddress', 'b-drop')}
-          </div>
+          <AddressField
+            id="b-drop"
+            label={strings['booking.dropoff.address'] ?? ''}
+            name="dropoffAddress"
+            placePrefix="dropoff"
+            placeholder={strings['form.placeholder.address']}
+            value={details.dropoffAddress}
+            place={details.dropoffPlace}
+            enabled={addressAutocomplete}
+            error={errors.dropoffAddress}
+            onChange={(dropoffAddress, dropoffPlace) =>
+              onChangeDetails({ dropoffAddress, dropoffPlace })
+            }
+            {...invalid('dropoffAddress', 'b-drop')}
+          />
         )}
         <DateField
           id="b-date"

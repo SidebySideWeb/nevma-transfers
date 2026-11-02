@@ -18,6 +18,7 @@ import F2 from '../forms/F2.astro';
 import FormDropdown from '../forms/FormDropdown';
 import FormFoot from '../forms/FormFoot.astro';
 import Heading from '../Heading.astro';
+import RequestAddressField from '../../forms/RequestAddressField';
 
 interface Props {
   section: Record<string, unknown>;
@@ -278,8 +279,28 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
           <div class="grid">
             <FormDropdown client:load id="r-from" name="fromZone" label={t('form.fromZone')} options={zones} initial={fromZone} query="from" fieldClass="f2 s6c9df" required />
             <FormDropdown client:load id="r-to" name="toZone" label={t('form.toZone')} options={zones} initial={toZone} query="to" fieldClass="f2 sbee8a" required />
-            <F2 id="r-pick" name="pickupAddress" label={t('form.pickupAddress')} error={errors.pickupAddress}><input id="r-pick" name="pickupAddress" type="text" placeholder={t('form.placeholder.address')} value={v('pickupAddress')} /></F2>
-            <F2 id="r-drop" name="dropoffAddress" label={t('form.dropoffAddress')} error={errors.dropoffAddress}><input id="r-drop" name="dropoffAddress" type="text" placeholder={t('form.placeholder.address')} value={v('dropoffAddress')} /></F2>
+            <RequestAddressField
+              client:load
+              id="r-pick"
+              name="pickupAddress"
+              placePrefix="pickup"
+              label={t('form.pickupAddress')}
+              placeholder={t('form.placeholder.address')}
+              initialValue={v('pickupAddress')}
+              error={errors.pickupAddress}
+              enabled={import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE === 'true'}
+            />
+            <RequestAddressField
+              client:load
+              id="r-drop"
+              name="dropoffAddress"
+              placePrefix="dropoff"
+              label={t('form.dropoffAddress')}
+              placeholder={t('form.placeholder.address')}
+              initialValue={v('dropoffAddress')}
+              error={errors.dropoffAddress}
+              enabled={import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE === 'true'}
+            />
             <F2 id="r-date" name="datetime" label={t('form.date')}><input id="r-date" name="pickupDate" type="date" required value={pickupDate ?? ''} /></F2>
             <F2 id="r-time" name="datetime" label={t('form.time')} error={errors.datetime}><input id="r-time" name="pickupTime" type="time" required value={pickupTime ?? ''} aria-invalid={errors.datetime ? 'true' : undefined} aria-describedby={errors.datetime ? 'datetime-err' : undefined} /></F2>
             <F2 id="r-flight" name="flight" label={t('form.flight')}><input id="r-flight" name="flight" type="text" placeholder={t('form.placeholder.flight')} value={v('flight')} /></F2>

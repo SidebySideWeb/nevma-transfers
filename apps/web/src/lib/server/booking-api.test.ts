@@ -590,4 +590,98 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
       /* already converted */
     });
   });
+
+  it('stores pickupPlace and refuses hourly dropoffPlace', async () => {
+    const place = {
+      placeId: 'ChIJVXealLU_xkcRja_At0z9AGY',
+      lat: 37.9767,
+      lng: 23.7503,
+    };
+    const hold = await createHold(
+      {
+        type: 'transfer',
+        fromZone: 'demo-airport',
+        toZone: 'demo-centre',
+        pickupLocal: futureLocal(),
+        passengers: 2,
+        luggage: 2,
+        classKey: 'demo-e-class',
+        turnstileToken: 'ok',
+      },
+      'vid-place',
+      ip,
+    );
+    const booking = await createBooking(
+      {
+        holdId: hold.holdId,
+        pickupAddress: 'Hilton Athens',
+        dropoffAddress: 'Street 2',
+        pickupPlace: place,
+        passengers: 2,
+        luggage: 2,
+        extras: [],
+        customer: { name: 'A', email: 'a@example.com', phone: '+30 6900000000' },
+        consent: true,
+        turnstileToken: 'ok',
+      },
+      'vid-place',
+      ip,
+    );
+    const { rows } = await db.pool.query<{ pickup_place_id: string; pickup_lat: number }>(
+      `select pickup_place_id, pickup_lat from public.bookings where reference = $1`,
+      [booking.reference],
+    );
+    expect(rows[0]?.pickup_place_id).toBe(place.placeId);
+    expect(rows[0]?.pickup_lat).toBeCloseTo(place.lat, 4);
+
+    const hourly = await createHold(
+      {
+        type: 'hourly',
+        fromZone: 'demo-centre',
+        hours: 3,
+        pickupLocal: futureLocal(),
+        passengers: 2,
+        luggage: 2,
+        classKey: 'demo-e-class',
+        turnstileToken: 'ok',
+      },
+      'vid-place-h',
+      '203.0.113.11',
+    );
+    await expect(
+      createBooking(
+        {
+          holdId: hourly.holdId,
+          pickupAddress: 'Street 1',
+          dropoffPlace: place,
+          passengers: 2,
+          luggage: 2,
+          extras: [],
+          customer: { name: 'A', email: 'a@example.com', phone: '+30 6900000000' },
+          consent: true,
+          turnstileToken: 'ok',
+        },
+        'vid-place-h',
+        '203.0.113.11',
+      ),
+    ).rejects.toMatchObject({ code: 'invalid_request' });
+
+    await expect(
+      createBooking(
+        {
+          holdId: hourly.holdId,
+          pickupAddress: 'Street 1',
+          pickupPlace: { placeId: 'bad', lat: 1, lng: 2 },
+          passengers: 2,
+          luggage: 2,
+          extras: [],
+          customer: { name: 'A', email: 'a@example.com', phone: '+30 6900000000' },
+          consent: true,
+          turnstileToken: 'ok',
+        },
+        'vid-place-h',
+        '203.0.113.11',
+      ),
+    ).rejects.toMatchObject({ code: 'invalid_request' });
+  });
 });

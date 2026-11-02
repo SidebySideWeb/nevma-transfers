@@ -81,11 +81,16 @@ if (/^[0-9a-f-]{36}$/i.test(customerParam)) {
   }
 }
 
+const addressAutocomplete =
+  (import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE ?? process.env.PUBLIC_ADDRESS_AUTOCOMPLETE) === 'true' &&
+  Boolean(import.meta.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API_KEY);
+
 const pageData = {
   vehicleId: prefillVehicle?.id ?? '',
   holdText,
   extras: extras.map((e) => ({ code: e.code, name: e.name, priceCents: e.price_cents })),
   customer: prefillCustomer,
+  addressAutocomplete,
 };
 ---
 

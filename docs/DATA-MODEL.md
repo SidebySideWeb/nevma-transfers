@@ -157,3 +157,11 @@ Rules: `docs/DRIVERS.md`. Tables `drivers`, `driver_shifts`, `booking_events`, `
 ## 0020 — `hit_rate_limit` security definer (2 Nov 2026)
 
 Makes `hit_rate_limit` `security definer` so the Driver API (`/api/driver/v1`) can enforce 60 req/min per driver with the driver's own session. Authenticated may execute; table `rate_limits` stays closed to direct access.
+
+## 0021 — Place data on booking addresses (2 Nov 2026)
+
+Rules: `docs/ADDRESS-AUTOCOMPLETE.md`. `bookings.pickup_place_id`, `pickup_lat`, `pickup_lng`, `dropoff_place_id`, `dropoff_lat`, `dropoff_lng` (all optional; set when a Google suggestion is picked). Checks: all three or none per address, place ID format, coordinates inside Greece, no drop-off place without a drop-off address. No new staff grants. Tests: `packages/db/tests/places.test.mjs`. (Kit called this migration 0017; this repo already used 0017 for the ELP reference.)
+
+## 0022 — `driver_jobs` place columns (2 Nov 2026)
+
+Extends `driver_jobs` with `pickup_place_id` / lat / lng and drop-off equivalents so the drivers API can build exact Google Maps links (`docs/ADDRESS-AUTOCOMPLETE.md`).

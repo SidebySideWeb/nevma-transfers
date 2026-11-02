@@ -684,3 +684,10 @@ body.pg-15-manage-booking .srow span:last-child{color:#F4F0E6}
 .sff789.sff789.sff789{height: 64px;width: auto;display: block;align-self: flex-start}
 @media (max-width: 960px){.nav{display:none !important}.burger{display:inline-flex !important}.hide-m{display:none !important}.field{border-right:0;border-bottom:1px solid rgba(207,164,95,.22)}.display.xl{font-size:56px !important}.mosaic{grid-template-columns:repeat(2,1fr);grid-auto-rows:180px}.mtile{grid-column:span 1 !important;grid-row:span 1 !important}}
 @media (prefers-reduced-motion: reduce){.spin{animation:none}}
+/* Address autocomplete (docs/ADDRESS-AUTOCOMPLETE.md) — additive; closed list matches zone .ddl */
+.ep-address{position:relative}
+.ep-address-ddl{z-index:40}
+.ep-address-main{font-weight:600;display:block}
+.ep-address-sec{display:block;font-size:13px;color:#8e887b}
+.ep-address-attr{padding:8px 12px 10px;opacity:.85}
+.ep-address-attr img{display:block;height:14px;width:auto}

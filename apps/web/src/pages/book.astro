@@ -61,6 +61,7 @@ const header = {
           turnstileSiteKey={turnstileSiteKey}
           contact={{ phone: settings.phone, email: settings.email }}
           header={header}
+          addressAutocomplete={import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE === 'true'}
         />
       </>
     ) : (
@@ -142,6 +143,13 @@ const header = {
     font-size: 12px;
     color: #8e887b;
   }
+  /* Address autocomplete list (reuses .ddl; attribution under suggestions). */
+  [data-block='appBody'] .ep-address { position: relative; }
+  [data-block='appBody'] .ep-address-ddl { z-index: 40; }
+  [data-block='appBody'] .ep-address-main { font-weight: 600; display: block; }
+  [data-block='appBody'] .ep-address-sec { display: block; font-size: 13px; color: #8e887b; }
+  [data-block='appBody'] .ep-address-attr { padding: 8px 12px 10px; opacity: 0.85; }
+  [data-block='appBody'] .ep-address-attr img { display: block; height: 14px; width: auto; }
   /* Transfer / By the hour (extra/08b-book-hourly), drawn with the zone fields' `dd-btn`. */
   [data-block='appBody'] .js-trip[data-v2-extra] {
     display: flex;

@@ -14,6 +14,7 @@ import { bookingDb, type BookingDb } from './db';
 import { mapPgBookingError } from './http';
 import { fireOnCancelled } from './hooks';
 import { getPaymentProvider } from './payments';
+import { parsePlace, placeColumns, PlacesError } from '@tem/places';
 import { assertRateLimit, RATE } from './rate-limit';
 import { getSettings } from './settings';
 import { quoteTrip, zoneByCode, routeDuration } from './trip-quote';
@@ -468,6 +469,32 @@ export async function createBooking(raw: unknown, visitorKey: string, ip?: strin
     RATE.bookingPerVisitor.max,
   );
 
+  let pickupPlace;
+  let dropoffPlace;
+  try {
+    pickupPlace = parsePlace(body.pickupPlace ?? null);
+    dropoffPlace = parsePlace(body.dropoffPlace ?? null);
+  } catch (e) {
+    if (e instanceof PlacesError) {
+      throw new BookingError('invalid_request', {
+        stringKey: 'error.invalid_request',
+        message: e.message,
+      });
+    }
+    throw e;
+  }
+  const { rows: holdType } = await db().query<{ booking_type: string }>(
+    `select booking_type::text from public.slot_holds where id = $1::uuid and visitor_key = $2`,
+    [body.holdId, visitorKey],
+  );
+  if (holdType[0]?.booking_type === 'hourly' && dropoffPlace) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'dropoff place not allowed on hourly',
+      field: 'dropoffPlace',
+    });
+  }
+
   const inv = body.invoice;
   let created: {
     booking_id: string;
@@ -509,6 +536,24 @@ export async function createBooking(raw: unknown, visitorKey: string, ip?: strin
   } catch (e) {
     throw mapPgBookingError(e);
   }
+
+  const pickCols = placeColumns('pickup', pickupPlace);
+  const dropCols = placeColumns('dropoff', dropoffPlace);
+  await db().query(
+    `update public.bookings set
+       pickup_place_id = $2, pickup_lat = $3, pickup_lng = $4,
+       dropoff_place_id = $5, dropoff_lat = $6, dropoff_lng = $7
+     where id = $1::uuid`,
+    [
+      created.booking_id,
+      pickCols.pickup_place_id,
+      pickCols.pickup_lat,
+      pickCols.pickup_lng,
+      dropCols.dropoff_place_id,
+      dropCols.dropoff_lat,
+      dropCols.dropoff_lng,
+    ],
+  );
 
   const settings = await getSettings();
   const holdExpires = new Date(created.hold_expires_at);

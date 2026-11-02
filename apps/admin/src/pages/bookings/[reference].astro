@@ -17,6 +17,7 @@ import { formatEuro } from '../../lib/money';
 function formatVatRate(bp: number): string {
   return String(Number((bp / 100).toFixed(2)));
 }
+import { mapsDirectionsUrl } from '@tem/places';
 import { driversEnabled } from '../../lib/drivers';
 import { classifyDriverOffer, type DriverBookingSlice } from '../../lib/free-drivers';
 import { parseTstzRange, rangesOverlap } from '../../lib/range';
@@ -317,6 +318,24 @@ if (found && booking) {
                   <dd>
                     {fromName ?? '-'}
                     {booking.pickup_address ? ` · ${booking.pickup_address}` : ''}
+                    {
+                      booking.pickup_address && (
+                        <a
+                          class="muted"
+                          href={mapsDirectionsUrl({
+                            address: booking.pickup_address,
+                            placeId: booking.pickup_place_id,
+                            lat: booking.pickup_lat,
+                            lng: booking.pickup_lng,
+                          })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {' '}
+                          Open in Google Maps
+                        </a>
+                      )
+                    }
                   </dd>
                   {booking.booking_type === 'transfer' && (
                     <>
@@ -324,6 +343,24 @@ if (found && booking) {
                       <dd>
                         {toName ?? '-'}
                         {booking.dropoff_address ? ` · ${booking.dropoff_address}` : ''}
+                        {
+                          booking.dropoff_address && (
+                            <a
+                              class="muted"
+                              href={mapsDirectionsUrl({
+                                address: booking.dropoff_address,
+                                placeId: booking.dropoff_place_id,
+                                lat: booking.dropoff_lat,
+                                lng: booking.dropoff_lng,
+                              })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {' '}
+                              Open in Google Maps
+                            </a>
+                          )
+                        }
                       </dd>
                     </>
                   )}

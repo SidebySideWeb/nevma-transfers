@@ -334,6 +334,16 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .ep-select-list [aria-disabled="true"] { color: var(--color-faint); cursor: not-allowed; }
 .ep-opt-meta { font-size: var(--admin-text-sm); color: var(--color-muted); white-space: nowrap; }
 .ep-select-list .is-active .ep-opt-meta { color: var(--color-label); }
+.ep-address { position: relative; }
+.ep-address.is-open .ep-address-list { display: block; }
+.ep-address-list { display: none; position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: .25rem 0; list-style: none;
+  background: var(--color-surface); border: 1px solid rgb(207 164 95 / .28); border-radius: 6px; max-height: 288px; overflow-y: auto; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
+.ep-address-list [role="option"] { display: block; min-height: 40px; padding: .375rem .875rem; cursor: pointer; color: var(--color-text-soft); font-size: var(--admin-text); }
+.ep-address-list [role="option"]:hover, .ep-address-list .is-active { background: var(--tint-accent); color: var(--color-text); }
+.ep-address-main { font-weight: 600; display: block; }
+.ep-address-sec { display: block; font-size: 12px; }
+.ep-address-attr { padding: .35rem .875rem .5rem; }
+.ep-address-attr img { display: block; height: 14px; width: auto; }
 .input-sm, .ep-select .input-sm { min-height: 32px; font-size: var(--admin-text-sm); }
 
 /* customer lookup */

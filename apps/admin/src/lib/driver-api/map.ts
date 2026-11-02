@@ -1,5 +1,7 @@
 /** Map DB / RPC rows to OpenAPI camelCase shapes. */
 
+import { mapsDirectionsUrl } from '@tem/places';
+
 type JobRow = {
   reference: string;
   booking_type: string;
@@ -22,6 +24,12 @@ type JobRow = {
   vehicle_label: string | null;
   vip_security: boolean;
   extras: string[] | null;
+  pickup_place_id?: string | null;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
+  dropoff_place_id?: string | null;
+  dropoff_lat?: number | null;
+  dropoff_lng?: number | null;
 };
 
 export function mapJob(r: JobRow) {
@@ -47,6 +55,21 @@ export function mapJob(r: JobRow) {
     vehicleLabel: r.vehicle_label,
     vipSecurity: r.vip_security,
     extras: r.extras ?? [],
+    /** Drivers app "Navigate" — exact place when stored, otherwise search the address text. */
+    navigateUrl: mapsDirectionsUrl({
+      address: r.pickup_address,
+      placeId: r.pickup_place_id,
+      lat: r.pickup_lat,
+      lng: r.pickup_lng,
+    }),
+    dropoffNavigateUrl: r.dropoff_address
+      ? mapsDirectionsUrl({
+          address: r.dropoff_address,
+          placeId: r.dropoff_place_id,
+          lat: r.dropoff_lat,
+          lng: r.dropoff_lng,
+        })
+      : null,
   };
 }
 

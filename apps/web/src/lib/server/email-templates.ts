@@ -1,3 +1,4 @@
+import { mapsDirectionsUrl } from '@tem/places';
 import { formatEuro, formatVatRate } from '../booking/pricing';
 import { t } from '../strings';
 import { emailTheme as th } from './email-theme';
@@ -42,6 +43,14 @@ export type OfficeNewInput = ConfirmationInput & {
   /** Set when the DB single-vehicle rule assigned the vehicle. */
   vehicleLabel?: string | null;
   vehicleAutoAssigned?: boolean;
+  pickupAddress?: string | null;
+  dropoffAddress?: string | null;
+  pickupPlaceId?: string | null;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  dropoffPlaceId?: string | null;
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
 };
 
 export type ReminderInput = {
@@ -252,6 +261,36 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
   };
 }
 
+function officeAddressLines(input: OfficeNewInput): { text: string[]; html: string } {
+  const lines: string[] = [];
+  const htmlParts: string[] = [];
+  if (input.pickupAddress) {
+    const url = mapsDirectionsUrl({
+      address: input.pickupAddress,
+      placeId: input.pickupPlaceId,
+      lat: input.pickupLat,
+      lng: input.pickupLng,
+    });
+    lines.push(`Pick-up address: ${input.pickupAddress}`, `Google Maps: ${url}`);
+    htmlParts.push(
+      `<p style="margin:0 0 4px;"><strong>Pick-up address:</strong> ${escapeHtml(input.pickupAddress)} · <a href="${escapeHtml(url)}">Open in Google Maps</a></p>`,
+    );
+  }
+  if (input.dropoffAddress) {
+    const url = mapsDirectionsUrl({
+      address: input.dropoffAddress,
+      placeId: input.dropoffPlaceId,
+      lat: input.dropoffLat,
+      lng: input.dropoffLng,
+    });
+    lines.push(`Drop-off address: ${input.dropoffAddress}`, `Google Maps: ${url}`);
+    htmlParts.push(
+      `<p style="margin:0 0 4px;"><strong>Drop-off address:</strong> ${escapeHtml(input.dropoffAddress)} · <a href="${escapeHtml(url)}">Open in Google Maps</a></p>`,
+    );
+  }
+  return { text: lines, html: htmlParts.join('\n') };
+}
+
 export function officeNewEmail(input: OfficeNewInput): EmailParts {
   const subject = t('email.office.new.subject', { reference: input.reference });
   const vipLine = input.vipSecurity ? 'VIP SECURITY' : '';
@@ -259,10 +298,12 @@ export function officeNewEmail(input: OfficeNewInput): EmailParts {
     input.vehicleAutoAssigned && input.vehicleLabel
       ? `Vehicle: ${input.vehicleLabel} (automatic)`
       : '';
+  const addresses = officeAddressLines(input);
   const text = [
     subject,
     vipLine,
     tripLines(input),
+    ...addresses.text,
     autoVehicleLine,
     '',
     `Customer: ${input.customerName}`,
@@ -284,6 +325,7 @@ export function officeNewEmail(input: OfficeNewInput): EmailParts {
   const htmlBody = `
     ${vipLine ? `<p style="margin:0 0 12px;font-weight:700;color:${th.accent};letter-spacing:0.06em;">${vipLine}</p>` : ''}
     <p style="margin:0 0 8px;white-space:pre-line;">${escapeHtml(tripLines(input))}</p>
+    ${addresses.html}
     ${
       autoVehicleLine
         ? `<p style="margin:0 0 8px;"><strong>Vehicle:</strong> ${escapeHtml(input.vehicleLabel!)} (automatic)</p>`

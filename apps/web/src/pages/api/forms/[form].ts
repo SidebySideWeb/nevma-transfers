@@ -45,6 +45,33 @@ export const POST: APIRoute = async ({ params, request, clientAddress, cookies }
     body = { ...rest, datetime: pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : '' };
   }
 
+  // AddressField hidden inputs → pickupPlace / dropoffPlace objects for Maps links in answers.
+  if (formKey === 'transfer-request') {
+    for (const prefix of ['pickup', 'dropoff'] as const) {
+      const id = body[`${prefix}PlaceId`];
+      const lat = body[`${prefix}Lat`];
+      const lng = body[`${prefix}Lng`];
+      delete body[`${prefix}PlaceId`];
+      delete body[`${prefix}Lat`];
+      delete body[`${prefix}Lng`];
+      if (
+        !body[`${prefix}Place`] &&
+        typeof id === 'string' &&
+        id &&
+        lat !== '' &&
+        lng !== '' &&
+        lat != null &&
+        lng != null
+      ) {
+        const latN = Number(lat);
+        const lngN = Number(lng);
+        if (Number.isFinite(latN) && Number.isFinite(lngN)) {
+          body[`${prefix}Place`] = { placeId: id, lat: latN, lng: lngN };
+        }
+      }
+    }
+  }
+
   const result = await submitForm(formKey, body, { ip: clientAddress });
 
   if (result.ok) {

@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { parsePlace, placeColumns, PlacesError } from '@tem/places';
 import { assertLeadTime, localToInstant, toIsoWithOffset } from '../booking/time';
 import { BookingError } from '../booking/types';
 import { rejectMoneyFields } from '../booking/validation';
@@ -9,6 +10,11 @@ import { mapPgBookingError } from './http';
 import { getPaymentProvider } from './payments';
 import { getSettings } from './settings';
 import { quoteTrip, sumExtras } from './trip-quote';
+
+const placePayload = z
+  .object({ placeId: z.string().min(10), lat: z.number(), lng: z.number() })
+  .strict()
+  .optional();
 
 /** Viva checkout/v2 paymentTimeout accepted examples go up to 65535 s (~18.2 h). Cap holds to that. */
 export const VIVA_MAX_PAYMENT_TIMEOUT_SECONDS = 65535;
@@ -35,6 +41,8 @@ const OfficeBookingBody = z
     pickupLocal,
     pickupAddress: z.string().min(1),
     dropoffAddress: z.string().min(1).optional(),
+    pickupPlace: placePayload,
+    dropoffPlace: placePayload,
     flightNumber: z.string().optional(),
     passengers: z.number().int().positive(),
     luggage: z.number().int().nonnegative(),
@@ -73,6 +81,13 @@ const OfficeBookingBody = z
     }
     if (v.payment !== 'link' && !v.offlineMethod) {
       ctx.addIssue({ code: 'custom', message: 'offlineMethod required', path: ['offlineMethod'] });
+    }
+    if (v.bookingType === 'hourly' && v.dropoffPlace) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'dropoff place not allowed on hourly',
+        path: ['dropoffPlace'],
+      });
     }
   });
 
@@ -265,6 +280,39 @@ export async function createOfficeBooking(
       ],
     );
     booking = rows[0]!;
+
+    let pickupPlace;
+    let dropoffPlace;
+    try {
+      pickupPlace = parsePlace(body.pickupPlace ?? null);
+      dropoffPlace =
+        body.bookingType === 'transfer' ? parsePlace(body.dropoffPlace ?? null) : null;
+    } catch (e) {
+      if (e instanceof PlacesError) {
+        throw new BookingError('invalid_request', {
+          stringKey: 'error.invalid_request',
+          message: e.message,
+        });
+      }
+      throw e;
+    }
+    const pickCols = placeColumns('pickup', pickupPlace);
+    const dropCols = placeColumns('dropoff', dropoffPlace);
+    await bookingDb().query(
+      `update public.bookings set
+         pickup_place_id = $2, pickup_lat = $3, pickup_lng = $4,
+         dropoff_place_id = $5, dropoff_lat = $6, dropoff_lng = $7
+       where id = $1::uuid`,
+      [
+        booking.id,
+        pickCols.pickup_place_id,
+        pickCols.pickup_lat,
+        pickCols.pickup_lng,
+        dropCols.dropoff_place_id,
+        dropCols.dropoff_lat,
+        dropCols.dropoff_lng,
+      ],
+    );
 
     for (const line of extras.lines) {
       await bookingDb().query(

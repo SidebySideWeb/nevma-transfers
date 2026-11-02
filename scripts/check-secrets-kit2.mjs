@@ -37,6 +37,7 @@ const secrets = [
   { name: 'SANITY_WRITE_TOKEN', value: process.env.SANITY_WRITE_TOKEN || '' },
   { name: 'SUPABASE_SERVICE_ROLE_KEY', value: process.env.SUPABASE_SERVICE_ROLE_KEY || '' },
   { name: 'TEM_WEB_DEPLOY_HOOK_URL', value: process.env.TEM_WEB_DEPLOY_HOOK_URL || '' },
+  { name: 'GOOGLE_PLACES_API_KEY', value: process.env.GOOGLE_PLACES_API_KEY || '' },
 ].filter((s) => s.value && s.value.length >= 8);
 
 if (!secrets.length) {

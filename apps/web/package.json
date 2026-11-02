@@ -23,6 +23,7 @@
     "@sanity/client": "^7.12.0",
     "@sanity/image-url": "^2.1.1",
     "@supabase/supabase-js": "^2.76.1",
+    "@tem/places": "workspace:*",
     "astro": "^7.4.4",
     "astro-portabletext": "^1.0.1",
     "groq": "^3.99.0",

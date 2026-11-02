@@ -1,0 +1,16 @@
+{
+  "name": "@tem/places",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Google Places (New) address autocomplete for booking and request forms: server-side calls, validation, Maps links.",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.mjs",
+      "default": "./src/index.mjs"
+    }
+  },
+  "types": "./src/index.d.ts",
+  "scripts": { "test": "node --test test/*.test.mjs" }
+}

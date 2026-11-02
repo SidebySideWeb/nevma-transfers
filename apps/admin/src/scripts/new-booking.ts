@@ -1,6 +1,7 @@
 import { actions } from 'astro:actions';
 import { refreshSelect } from '../components/enhance-select';
 import { eurosToCents, formatEuro } from '../lib/money';
+import { enhanceAddressField, type PlaceValue } from './address-autocomplete';
 
 /** New booking form: customer lookup, live class availability and price hint, submit. */
 
@@ -26,6 +27,7 @@ type Hit = {
 type PageData = {
   vehicleId: string;
   extras: { code: string; name: string; priceCents: number }[];
+  addressAutocomplete?: boolean;
   customer?: {
     id: string;
     name: string;
@@ -37,6 +39,9 @@ type PageData = {
     address: string | null;
   } | null;
 };
+
+let pickupPlace: PlaceValue = null;
+let dropoffPlace: PlaceValue = null;
 
 const data = JSON.parse(document.getElementById('nb-data')!.textContent || '{}') as PageData;
 const $ = <T extends HTMLElement = HTMLInputElement>(id: string) => document.getElementById(id) as T;
@@ -541,6 +546,8 @@ form.addEventListener('submit', async (e) => {
     pickupLocal: pickupLocal(),
     pickupAddress: $('nb-pa').value,
     dropoffAddress: hourly ? undefined : maybe($('nb-da').value),
+    pickupPlace: pickupPlace ?? undefined,
+    dropoffPlace: hourly ? undefined : dropoffPlace ?? undefined,
     flightNumber: maybe($('nb-fl').value),
     passengers: Number($('nb-px').value),
     luggage: Number($('nb-lg').value),
@@ -583,6 +590,19 @@ form.addEventListener('submit', async (e) => {
   }
   showErrors(found);
   if (res && !res.ok && res.code === 'unavailable') void loadAvailability();
+});
+
+enhanceAddressField($('nb-pa'), {
+  enabled: Boolean(data.addressAutocomplete),
+  onPlace: (p) => {
+    pickupPlace = p;
+  },
+});
+enhanceAddressField($('nb-da'), {
+  enabled: Boolean(data.addressAutocomplete),
+  onPlace: (p) => {
+    dropoffPlace = p;
+  },
 });
 
 renderType();
