@@ -101,12 +101,31 @@ const header = {
   }
   [data-block='appBody'] .error {
     display: block;
-    font-size: var(--text-sm);
-    color: var(--color-danger);
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #f0a0a0;
+  }
+  /* Light red highlight on invalid booking fields (inputs, date, zone dropdowns). */
+  [data-block='appBody'] .f2.is-invalid input,
+  [data-block='appBody'] .f2.is-invalid .ep-date-btn,
+  [data-block='appBody'] .field.is-invalid .dd-btn,
+  [data-block='appBody'] .f2 input[aria-invalid='true'],
+  [data-block='appBody'] .ep-date-btn[aria-invalid='true'],
+  [data-block='appBody'] .dd-btn[aria-invalid='true'] {
+    border-bottom-color: rgba(220, 90, 90, 0.85);
+    background: rgba(160, 40, 40, 0.14);
+    box-shadow: inset 0 -1px 0 rgba(220, 90, 90, 0.45);
+  }
+  [data-block='appBody'] .f2.is-invalid textarea,
+  [data-block='appBody'] .f2 textarea[aria-invalid='true'] {
+    border-color: rgba(220, 90, 90, 0.85);
+    background: rgba(160, 40, 40, 0.14);
   }
   [data-block='appBody'] .notice {
     padding: var(--space-4);
-    border: 1px solid var(--color-danger);
+    border: 1px solid rgba(220, 90, 90, 0.55);
+    background: rgba(160, 40, 40, 0.12);
     color: #f4f0e6;
   }
   [data-block='appBody'] .notice p {

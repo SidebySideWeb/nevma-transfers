@@ -115,6 +115,7 @@ export function StepSearch({
     'aria-invalid': errors[k] ? (true as const) : undefined,
     'aria-describedby': errors[k] ? `${id}-err` : undefined,
   });
+  const wrapClass = (base: string, k: string) => (errors[k] ? `${base} is-invalid` : base);
 
   return (
     <form className="s8f7a6" onSubmit={handleSubmit} noValidate>
@@ -123,7 +124,7 @@ export function StepSearch({
           <p>
             <strong>{strings['booking.errors.summary']}</strong>
           </p>
-          {formError && <p>{formError}</p>}
+          {formError && formError !== strings['booking.errors.summary'] && <p>{formError}</p>}
           <ul>
             {errorKeys.map((k) => (
               <li key={k}>
@@ -163,6 +164,8 @@ export function StepSearch({
           value={search.fromZone}
           onChange={(fromZone) => onChange({ fromZone })}
           fieldClass="field sf1db8"
+          error={errors.fromZone}
+          {...invalid('fromZone', 'b-from')}
         />
         <div className="sc5f4a">
           <button
@@ -176,7 +179,7 @@ export function StepSearch({
           </button>
         </div>
         {hourly ? (
-          <div className="field s636a1" data-v2-extra>
+          <div className={wrapClass('field s636a1', 'hours')} data-v2-extra>
             <CountStepper
               id="lbl-hours"
               label={strings['booking.hours.label'] ?? ''}
@@ -192,6 +195,7 @@ export function StepSearch({
                 .replace('{min}', String(hourBounds.min))
                 .replace('{max}', String(hourBounds.max))}
             </span>
+            {err('hours', 'lbl-hours')}
           </div>
         ) : (
           <BrandDropdown
@@ -202,12 +206,14 @@ export function StepSearch({
             value={search.toZone}
             onChange={(toZone) => onChange({ toZone })}
             fieldClass="field s636a1"
+            error={errors.toZone}
+            {...invalid('toZone', 'b-to')}
           />
         )}
       </div>
 
       <div className="grid">
-        <div className="f2">
+        <div className={wrapClass('f2', 'pickupAddress')}>
           <label htmlFor="b-pick">{strings['booking.pickup.address']}</label>
           <input
             id="b-pick"
@@ -221,7 +227,7 @@ export function StepSearch({
           {err('pickupAddress', 'b-pick')}
         </div>
         {!hourly && (
-          <div className="f2">
+          <div className={wrapClass('f2', 'dropoffAddress')}>
             <label htmlFor="b-drop">{strings['booking.dropoff.address']}</label>
             <input
               id="b-drop"
@@ -239,18 +245,19 @@ export function StepSearch({
           label={strings['booking.date'] ?? 'Date'}
           value={date}
           onChange={(iso) => onChange({ pickupLocal: joinLocal(iso, time) })}
+          fieldClass={wrapClass('f2', 'pickupLocal')}
           {...invalid('pickupLocal', 'b-date')}
         >
           {err('pickupLocal', 'b-date')}
         </DateField>
-        <div className="f2">
+        <div className={wrapClass('f2', 'pickupLocal')}>
           <label htmlFor="b-time">{strings['booking.time']}</label>
           <input
             id="b-time"
             type="time"
             value={time}
             onChange={(e) => onChange({ pickupLocal: joinLocal(date, e.target.value) })}
-            {...invalid('pickupLocal', 'b-date')}
+            {...invalid('pickupLocal', 'b-time')}
           />
         </div>
         <div className="f2">

@@ -7,10 +7,17 @@ export function splitLocal(pickupLocal: string): { date: string; time: string } 
 }
 
 export function joinLocal(date: string, time: string): string {
-  return date || time ? `${date}T${time}` : '';
+  // Browsers sometimes emit HH:mm:ss; the quote API only accepts HH:mm.
+  const t = time.slice(0, 5);
+  return date || t ? `${date}T${t}` : '';
 }
 
 const LOCAL_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/;
+
+/** True when `pickupLocal` is exactly `YYYY-MM-DDTHH:mm` (API shape). */
+export function isPickupLocal(pickupLocal: string): boolean {
+  return LOCAL_RE.test(pickupLocal);
+}
 
 /** "Tue 17 Nov 2026" and "14:30". The value is a wall time: no zone conversion, so no date library. */
 export function formatWhen(pickupLocal: string): { date: string; time: string } | null {

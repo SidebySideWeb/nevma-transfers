@@ -128,7 +128,7 @@ export function StepDetails({
     label: string | undefined,
     extra: { type?: string; autoComplete?: string; placeholder?: string } = {},
   ): ReactNode => (
-    <div className="f2">
+    <div className={errors[k] ? 'f2 is-invalid' : 'f2'}>
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
@@ -150,7 +150,7 @@ export function StepDetails({
           <p>
             <strong>{strings['booking.errors.summary']}</strong>
           </p>
-          {formError && <p>{formError}</p>}
+          {formError && formError !== strings['booking.errors.summary'] && <p>{formError}</p>}
           <ul>
             {errorKeys.map((k) => (
               <li key={k}>{FIELD_ID[k] ? <a href={`#${FIELD_ID[k]}`}>{errors[k]}</a> : errors[k]}</li>

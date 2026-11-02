@@ -18,7 +18,7 @@ import {
   type HeroStepKey,
 } from './v2/BookingHero';
 import { BookingSummary, type BookingSummaryProps } from './v2/BookingSummary';
-import { fill, formatWhen, hoursText, routeLines } from './v2/journey';
+import { fill, formatWhen, hoursText, isPickupLocal, routeLines } from './v2/journey';
 
 export type BookingAppProps = {
   strings: BookingStrings;
@@ -128,11 +128,26 @@ export default function BookingApp({ strings, turnstileSiteKey, contact, header 
   );
 
   const submitQuote = async () => {
-    // The addresses live on the journey step in the V2 design, so ask for them here, before a hold exists.
+    // Catch incomplete journey fields here so we never POST a Zod-invalid /api/quote body (400).
+    const msg = (key: string, fallback: string) => strings[key] ?? fallback;
     const missing: Record<string, string> = {};
-    if (!state.details.pickupAddress.trim()) missing.pickupAddress = strings['error.invalid_request'] ?? '';
-    if (state.search.type === 'transfer' && !state.details.dropoffAddress.trim()) {
-      missing.dropoffAddress = strings['error.invalid_request'] ?? '';
+    if (!state.search.fromZone) missing.fromZone = msg('booking.error.fromZone', 'Choose a pick-up zone.');
+    if (state.search.type === 'transfer') {
+      if (!state.search.toZone) missing.toZone = msg('booking.error.toZone', 'Choose a drop-off zone.');
+      else if (state.search.fromZone === state.search.toZone) {
+        missing.toZone = msg('booking.error.sameZone', 'Pick-up and drop-off must be different zones.');
+      }
+      if (!state.details.dropoffAddress.trim()) {
+        missing.dropoffAddress = msg('booking.error.dropoffAddress', 'Enter a drop-off address or hotel name.');
+      }
+    } else if (!(state.search.hours > 0)) {
+      missing.hours = msg('booking.error.hours', 'Choose how many hours you need.');
+    }
+    if (!isPickupLocal(state.search.pickupLocal)) {
+      missing.pickupLocal = msg('booking.error.pickupLocal', 'Choose a pick-up date and time.');
+    }
+    if (!state.details.pickupAddress.trim()) {
+      missing.pickupAddress = msg('booking.error.pickupAddress', 'Enter a pick-up address or hotel name.');
     }
     if (Object.keys(missing).length) {
       dispatch({ type: 'SET_ERRORS', errors: missing, formError: strings['booking.errors.summary'] });
@@ -248,14 +263,21 @@ export default function BookingApp({ strings, turnstileSiteKey, contact, header 
   const submitBooking = async () => {
     if (!state.hold) return;
     const errors: Record<string, string> = {};
-    if (!state.details.pickupAddress) errors.pickupAddress = strings['error.invalid_request'] ?? '';
-    if (state.search.type === 'transfer' && !state.details.dropoffAddress) {
-      errors.dropoffAddress = strings['error.invalid_request'] ?? '';
+    const msg = (key: string, fallback: string) => strings[key] ?? fallback;
+    if (!state.details.pickupAddress) {
+      errors.pickupAddress = msg('booking.error.pickupAddress', 'Enter a pick-up address or hotel name.');
     }
-    if (!state.details.name) errors.name = strings['error.invalid_request'] ?? '';
-    if (!state.details.email) errors.email = strings['error.invalid_request'] ?? '';
-    if (!state.details.phone) errors.phone = strings['error.invalid_request'] ?? '';
-    if (!state.details.consent) errors.consent = strings['error.invalid_request'] ?? '';
+    if (state.search.type === 'transfer' && !state.details.dropoffAddress) {
+      errors.dropoffAddress = msg('booking.error.dropoffAddress', 'Enter a drop-off address or hotel name.');
+    }
+    if (!state.details.name) errors.name = msg('booking.error.name', 'Enter your full name.');
+    if (!state.details.email) errors.email = msg('booking.error.email', 'Enter a valid email address.');
+    if (!state.details.phone) {
+      errors.phone = msg('booking.error.phone', 'Enter a phone number we can reach you on.');
+    }
+    if (!state.details.consent) {
+      errors.consent = msg('booking.error.consent', 'Please accept the terms to continue.');
+    }
     if (Object.keys(errors).length) {
       dispatch({ type: 'SET_ERRORS', errors, formError: strings['booking.errors.summary'] });
       focusErrorSummary();

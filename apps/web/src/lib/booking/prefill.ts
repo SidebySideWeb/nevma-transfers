@@ -64,7 +64,7 @@ export function parseBookingPrefill(
   const date = read(params, 'date');
   const time = read(params, 'time');
   if (date && time && /^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{2}:\d{2}/.test(time)) {
-    search.pickupLocal = `${date}T${time}`;
+    search.pickupLocal = `${date}T${time.slice(0, 5)}`;
   }
 
   const classRaw = read(params, 'class');

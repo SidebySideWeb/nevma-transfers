@@ -12,6 +12,9 @@ export type BrandDropdownProps = {
   fieldClass?: string;
   required?: boolean;
   disabled?: boolean;
+  error?: string | null;
+  'aria-invalid'?: boolean | 'true' | 'false';
+  'aria-describedby'?: string;
 };
 
 /** V2 brand dropdown: `dd-btn` + `ddl` listbox (08-book-1-open), hidden native select for no-JS. */
@@ -25,7 +28,11 @@ export function BrandDropdown({
   fieldClass = 'field s2f216',
   required,
   disabled,
+  error,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
 }: BrandDropdownProps) {
+  const invalid = Boolean(error) || ariaInvalid === true || ariaInvalid === 'true';
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const root = useRef<HTMLDivElement>(null);
@@ -95,7 +102,7 @@ export function BrandDropdown({
   };
 
   return (
-    <div className={fieldClass} ref={root}>
+    <div className={`${fieldClass}${invalid ? ' is-invalid' : ''}`.trim()} ref={root}>
       <label id={labelId} htmlFor={id}>
         {label}
       </label>
@@ -108,6 +115,8 @@ export function BrandDropdown({
         aria-controls={listId}
         aria-labelledby={`${labelId} ${valueId}`}
         aria-activedescendant={open ? optId(active) : undefined}
+        aria-invalid={invalid || undefined}
+        aria-describedby={ariaDescribedBy}
         disabled={disabled}
         onClick={() => (open ? setOpen(false) : show())}
         onKeyDown={onKeyDown}
@@ -154,6 +163,11 @@ export function BrandDropdown({
           </option>
         ))}
       </select>
+      {error ? (
+        <span className="error" id={`${id}-err`}>
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 }

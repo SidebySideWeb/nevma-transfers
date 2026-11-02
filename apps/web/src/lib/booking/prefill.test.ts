@@ -55,6 +55,14 @@ describe('parseBookingPrefill', () => {
     expect(r.search.passengers).toBeUndefined();
   });
 
+  it('strips seconds from prefilled time', () => {
+    const r = parseBookingPrefill(
+      { date: '2026-11-05', time: '10:00:00', from: 'demo-airport' },
+      options,
+    );
+    expect(r.search.pickupLocal).toBe('2026-11-05T10:00');
+  });
+
   it('never copies price / amount / total query fields into search', () => {
     const r = parseBookingPrefill(
       {
