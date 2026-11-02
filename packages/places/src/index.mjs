@@ -46,7 +46,10 @@ async function call(fetchImpl, url, init) {
   } catch {
     throw new PlacesError('places_unavailable', 'Google Places did not answer');
   }
-  if (!res.ok) throw new PlacesError('places_unavailable', `Google Places answered ${res.status}`);
+  if (!res.ok) {
+    // Status only — never forward Google error bodies (may echo request metadata).
+    throw new PlacesError('places_unavailable', `Google Places answered ${res.status}`);
+  }
   return res.json();
 }
 
