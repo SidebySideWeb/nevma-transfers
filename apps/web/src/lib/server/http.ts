@@ -47,7 +47,13 @@ export function fail(error: BookingError | unknown, httpOverride?: number): Resp
   }
 
   const id = crypto.randomUUID().slice(0, 8);
-  console.error(JSON.stringify({ level: 'error', id, code: 'unhandled' }));
+  const detail =
+    error instanceof Error
+      ? error.message.slice(0, 180)
+      : typeof error === 'string'
+        ? error.slice(0, 180)
+        : 'unknown';
+  console.error(JSON.stringify({ level: 'error', id, code: 'unhandled', detail }));
   return json(
     {
       error: 'invalid_request' satisfies ErrorCode,

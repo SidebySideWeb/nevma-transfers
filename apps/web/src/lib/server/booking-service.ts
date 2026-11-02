@@ -537,23 +537,37 @@ export async function createBooking(raw: unknown, visitorKey: string, ip?: strin
     throw mapPgBookingError(e);
   }
 
-  const pickCols = placeColumns('pickup', pickupPlace);
-  const dropCols = placeColumns('dropoff', dropoffPlace);
-  await db().query(
-    `update public.bookings set
-       pickup_place_id = $2, pickup_lat = $3, pickup_lng = $4,
-       dropoff_place_id = $5, dropoff_lat = $6, dropoff_lng = $7
-     where id = $1::uuid`,
-    [
-      created.booking_id,
-      pickCols.pickup_place_id,
-      pickCols.pickup_lat,
-      pickCols.pickup_lng,
-      dropCols.dropoff_place_id,
-      dropCols.dropoff_lat,
-      dropCols.dropoff_lng,
-    ],
-  );
+  // Place IDs/coords are optional enrichment (migration 0021). Never abandon a created booking if this fails
+  // (e.g. production DB without 0021 yet, or a check-constraint reject).
+  try {
+    const pickCols = placeColumns('pickup', pickupPlace);
+    const dropCols = placeColumns('dropoff', dropoffPlace);
+    await db().query(
+      `update public.bookings set
+         pickup_place_id = $2, pickup_lat = $3, pickup_lng = $4,
+         dropoff_place_id = $5, dropoff_lat = $6, dropoff_lng = $7
+       where id = $1::uuid`,
+      [
+        created.booking_id,
+        pickCols.pickup_place_id,
+        pickCols.pickup_lat,
+        pickCols.pickup_lng,
+        dropCols.dropoff_place_id,
+        dropCols.dropoff_lat,
+        dropCols.dropoff_lng,
+      ],
+    );
+  } catch (e) {
+    const detail = e instanceof Error ? e.message.slice(0, 180) : 'unknown';
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        code: 'booking_places_update_failed',
+        reference: created.reference,
+        detail,
+      }),
+    );
+  }
 
   const settings = await getSettings();
   const holdExpires = new Date(created.hold_expires_at);
