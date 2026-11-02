@@ -19,7 +19,7 @@ const view = await cancelPageView(token);
 const pageTitle = t('booking.cancel.title');
 const tooLate = t('booking.cancel.tooLate');
 const invalid = t('booking.cancel.invalid');
-const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+const turnstileSiteKey = import.meta.env.TURNSTILE_SITE_KEY || '';
 ---
 
 <PublicLayout

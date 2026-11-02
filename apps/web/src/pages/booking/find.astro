@@ -10,7 +10,7 @@ import { t, tAccent } from '../../lib/strings';
 await loadUiStrings();
 const settings = await getSiteSettings();
 const sent = Astro.url.searchParams.get('sent') === '1';
-const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+const turnstileSiteKey = import.meta.env.TURNSTILE_SITE_KEY || '';
 const dummyTurnstile = turnstileSiteKey.startsWith('1x0000000');
 const sentMsg = t('lookup.sent');
 const title = t('lookup.title');

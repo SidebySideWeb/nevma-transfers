@@ -24,8 +24,10 @@ export default defineConfig({
       ...process.env,
       VITEST: '',
       DATABASE_URL: process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:54329/postgres',
-      PUBLIC_TURNSTILE_SITE_KEY:
-        process.env.PUBLIC_TURNSTILE_SITE_KEY || '1x0000000000000000000000000000000AA',
+      TURNSTILE_SITE_KEY:
+        process.env.TURNSTILE_SITE_KEY ||
+        process.env.PUBLIC_TURNSTILE_SITE_KEY ||
+        '1x0000000000000000000000000000000AA',
       TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA',
       PUBLIC_SITE_URL: baseURL,
       PUBLIC_ADMIN_URL: 'http://127.0.0.1:4322',

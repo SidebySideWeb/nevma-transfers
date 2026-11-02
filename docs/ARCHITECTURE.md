@@ -100,7 +100,7 @@ Every variable is listed in `.env.example`. Where each is used:
 | `VIVA_ENV` | server only | | | `demo` or `live` |
 | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | server only | | | |
 | `TURNSTILE_SECRET_KEY` | server only | | | |
-| `PUBLIC_TURNSTILE_SITE_KEY` | browser | | | |
+| `TURNSTILE_SITE_KEY` | server only (passed into HTML/widgets; not a `PUBLIC_` client env) | | | |
 | `ADMIN_TO_WEB_SIGNING_SECRET` | server | server | | same value in both |
 | `CRON_SECRET` | server | | | Vercel sends it as a Bearer token |
 | `PUBLIC_SITE_URL`, `PUBLIC_ADMIN_URL` | yes | yes | | |

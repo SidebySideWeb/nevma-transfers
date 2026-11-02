@@ -4,7 +4,6 @@ import { z } from 'zod';
 export const webPublicEnvSchema = z.object({
   PUBLIC_SITE_URL: z.url(),
   PUBLIC_ADMIN_URL: z.url(),
-  PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1),
   PUBLIC_BOOKING_OPEN: z.enum(['true', 'false']),
 });
 
@@ -23,6 +22,8 @@ export const webServerEnvSchema = webPublicEnvSchema.extend({
   VIVA_ENV: z.enum(['demo', 'live']),
   RESEND_API_KEY: z.string().min(1),
   RESEND_FROM_EMAIL: z.string().min(1),
+  // Site key is injected into HTML by the server (not a PUBLIC_ bundle var).
+  TURNSTILE_SITE_KEY: z.string().min(1),
   TURNSTILE_SECRET_KEY: z.string().min(1),
   ADMIN_TO_WEB_SIGNING_SECRET: z.string().min(1),
   CRON_SECRET: z.string().min(1),
@@ -35,7 +36,6 @@ function rawPublic(): Record<string, string | undefined> {
   return {
     PUBLIC_SITE_URL: import.meta.env.PUBLIC_SITE_URL,
     PUBLIC_ADMIN_URL: import.meta.env.PUBLIC_ADMIN_URL,
-    PUBLIC_TURNSTILE_SITE_KEY: import.meta.env.PUBLIC_TURNSTILE_SITE_KEY,
     PUBLIC_BOOKING_OPEN: import.meta.env.PUBLIC_BOOKING_OPEN,
   };
 }
@@ -56,6 +56,7 @@ function rawServer(): Record<string, string | undefined> {
     VIVA_ENV: import.meta.env.VIVA_ENV,
     RESEND_API_KEY: import.meta.env.RESEND_API_KEY,
     RESEND_FROM_EMAIL: import.meta.env.RESEND_FROM_EMAIL,
+    TURNSTILE_SITE_KEY: import.meta.env.TURNSTILE_SITE_KEY,
     TURNSTILE_SECRET_KEY: import.meta.env.TURNSTILE_SECRET_KEY,
     ADMIN_TO_WEB_SIGNING_SECRET: import.meta.env.ADMIN_TO_WEB_SIGNING_SECRET,
     CRON_SECRET: import.meta.env.CRON_SECRET,

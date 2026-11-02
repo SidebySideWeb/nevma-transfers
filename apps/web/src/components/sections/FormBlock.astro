@@ -28,7 +28,7 @@ const title = heading || form?.title || '';
 const intro = form?.intro || '';
 const headingId = title ? 'form-block-h' : undefined;
 const submitLabel = form?.submitLabel?.trim() || t('form.submit');
-const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+const turnstileSiteKey = import.meta.env.TURNSTILE_SITE_KEY || '';
 const dummyTurnstile = turnstileSiteKey.startsWith('1x0000000');
 
 const flashRaw = Astro.cookies.get(FORM_FLASH_COOKIE)?.value;

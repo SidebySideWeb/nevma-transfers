@@ -19,7 +19,7 @@ for (const entry of uiStringDefaults) {
   strings[entry.key] = t(entry.key as UiStringKey);
 }
 
-const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+const turnstileSiteKey = import.meta.env.TURNSTILE_SITE_KEY || '';
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 
 // Same links and words as SiteHeader.astro: the island draws the header inside `appHero` (08-book).

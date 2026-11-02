@@ -63,7 +63,7 @@ const formStrings = JSON.stringify({
 });
 const tel = (p: string) => `tel:${p.replace(/[^\d+]/g, '')}`;
 
-const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+const turnstileSiteKey = import.meta.env.TURNSTILE_SITE_KEY || '';
 const dummyTurnstile = turnstileSiteKey.startsWith('1x0000000');
 
 // Flash cookie from a failed no-JS submit (SSR only; prerendered pages ignore it).
