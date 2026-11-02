@@ -19,6 +19,14 @@ export function placesOffResponse(): Response {
 export function placesFail(err: unknown): Response {
   if (err instanceof PlacesError) {
     const status = err.code === 'places_unavailable' ? 503 : 400;
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        code: 'places_api',
+        placesCode: err.code,
+        detail: err.message.slice(0, 120),
+      }),
+    );
     return json(
       {
         error: err.code === 'places_unavailable' ? 'places_unavailable' : 'invalid_request',
@@ -37,7 +45,8 @@ export function placesFail(err: unknown): Response {
   if (err instanceof Error && err.message === 'rate_limit') {
     return json({ error: 'rate_limited', message: 'rate_limited' }, 429, NO_STORE);
   }
-  console.error(JSON.stringify({ level: 'error', code: 'places_unhandled' }));
+  const detail = err instanceof Error ? err.message.slice(0, 180) : 'unknown';
+  console.error(JSON.stringify({ level: 'error', code: 'places_unhandled', detail }));
   return json({ error: 'places_unavailable', message: 'places_unavailable' }, 503, NO_STORE);
 }
 
