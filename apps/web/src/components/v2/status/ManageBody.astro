@@ -1,0 +1,137 @@
+---
+import { formatEuro, formatVatRate } from '../../../lib/booking/pricing';
+import { t, type UiStringKey } from '../../../lib/strings';
+
+interface TimelineStep {
+  key: string;
+  title: string;
+  current: boolean;
+  done: boolean;
+}
+
+interface Props {
+  routeLabel: string;
+  addressLine: string;
+  className: string;
+  passengers: number;
+  luggage: number;
+  leadName: string;
+  timeline: TimelineStep[];
+  photoUrl: string | null;
+  typeLabel: string;
+  baseCents: number;
+  vatRateBp: number;
+  vatCents: number;
+  totalCents: number;
+  reference: string;
+  officeEmail: string;
+  officePhoneHref: string;
+  calendarHref: string;
+  cancelHref: string | null;
+}
+
+const {
+  routeLabel,
+  addressLine,
+  className,
+  passengers,
+  luggage,
+  leadName,
+  timeline,
+  photoUrl,
+  typeLabel,
+  baseCents,
+  vatRateBp,
+  vatCents,
+  totalCents,
+  reference,
+  officeEmail,
+  officePhoneHref,
+  calendarHref,
+  cancelHref,
+} = Astro.props;
+
+const textKey = (key: string): UiStringKey =>
+  `manage.timeline.${key}Text` as UiStringKey;
+---
+
+<section data-block="appBody" class="s03fba">
+  <div class="sfa3e2">
+    <div class="s2614b">
+      <div class="sdabc6">
+        <div class="s36738">{t('manage.route')}</div>
+        <div class="s874ef" set:html={routeLabel} />
+        <div class="sa3ecc">{addressLine}</div>
+      </div>
+      <div class="sfc795">
+        <div class="se8892">
+          <div class="s36738">{t('manage.vehicle')}</div>
+          <div class="s276eb">Mercedes-Benz {className}</div>
+        </div>
+        <div class="se8892">
+          <div class="s36738">{t('manage.passengers')}</div>
+          <div class="s276eb">{passengers}</div>
+        </div>
+        <div class="se8892">
+          <div class="s36738">{t('manage.luggage')}</div>
+          <div class="s276eb">{t('manage.luggageCount', { count: luggage })}</div>
+        </div>
+        <div class="se8892">
+          <div class="s36738">{t('manage.lead')}</div>
+          <div class="s276eb">{leadName}</div>
+        </div>
+      </div>
+    </div>
+    <div class="sc4d29">
+      <div class="eyebrow">{t('manage.statusTitle')}</div>
+      <ol class="s723e9">
+        {
+          timeline.map((step) => (
+            <li class="s99244">
+              <span class={step.done ? 'sce3cd' : 's00515'} aria-hidden="true" />
+              <div class={step.done ? 's6fb45' : 's36782'}>{step.title}</div>
+              <div class="sf0124">{t(textKey(step.key))}</div>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </div>
+  <aside class="s9066a">
+    <div class="sce5e0">
+      {photoUrl ? <div class="bgx2 s7408d" style={`--bg-image: url(${photoUrl})`} /> : <div class="bgx2 s7408d" />}
+      <div class="s475b1">
+        <div class="display s1beea">{className}</div>
+        <div class="srow">
+          <span>{typeLabel}</span>
+          <span>{formatEuro(baseCents)}</span>
+        </div>
+        <div class="srow">
+          <span>VAT {formatVatRate(vatRateBp)}</span>
+          <span>{formatEuro(vatCents)}</span>
+        </div>
+        <div class="scfd62">
+          <span>{t('manage.paid')}</span>
+          <span class="s12984">{formatEuro(totalCents)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="sa033f">
+      <div class="eyebrow s8f7ac">{t('manage.manageTitle')}</div>
+      <a
+        class="btn btn-line"
+        href={`mailto:${officeEmail}?subject=${encodeURIComponent(`Invoice ${reference}`)}`}
+      >
+        {t('manage.requestInvoice')}
+      </a>
+      <a class="btn btn-line" href={officePhoneHref}>{t('manage.callOffice')}</a>
+      <a class="btn btn-line" href={calendarHref}>{t('manage.addToCalendar')}</a>
+      {
+        cancelHref ? (
+          <a class="s0d264" href={cancelHref}>{t('manage.cancel')}</a>
+        ) : null
+      }
+      <div class="s6c19a">{t('manage.changesByPhone')}</div>
+    </div>
+  </aside>
+</section>

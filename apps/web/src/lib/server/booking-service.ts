@@ -657,10 +657,133 @@ export async function bookingStatus(orderCode: string) {
   };
 }
 
+/** What the return pages show about a booking: the card of 10 / 11 / 16 and the journey of 09. */
+export type ReturnCard = {
+  reference: string;
+  classKey: string;
+  className: string;
+  /** First Sanity photo of the class (display only), or null. */
+  photoUrl: string | null;
+  /** "Tue 17 Nov 2026, 14:30" in the business time zone. */
+  pickupLabel: string;
+  /** "A → B", or "A · 4 h" for hourly hire. */
+  routeLabel: string;
+  passengers: number;
+  luggage: number;
+};
+
+type CardRow = {
+  reference: string;
+  pickup_at: Date;
+  booking_type: string;
+  hours: number | null;
+  duration_minutes: number;
+  passengers: number;
+  luggage: number;
+  class_key: string;
+  class_name: string;
+  from_name: string | null;
+  to_name: string | null;
+};
+
+const CARD_COLUMNS = `b.reference, b.pickup_at, b.booking_type, b.hours, b.duration_minutes,
+       b.passengers, b.luggage, c.key as class_key, c.name as class_name,
+       zf.name as from_name, zt.name as to_name`;
+const CARD_JOINS = `join public.vehicle_classes c on c.id = b.class_id
+       left join public.zones zf on zf.id = b.from_zone_id
+       left join public.zones zt on zt.id = b.to_zone_id`;
+
+async function toReturnCard(row: CardRow): Promise<ReturnCard> {
+  const settings = await getSettings();
+  const photoUrl =
+    (await loadSanityVehicleClasses()).find((c) => c.key === row.class_key)?.photos?.[0]?.url ??
+    null;
+  const hours = row.hours ?? Math.round(row.duration_minutes / 60);
+  return {
+    reference: row.reference,
+    classKey: row.class_key,
+    className: row.class_name,
+    photoUrl,
+    pickupLabel: formatLocal(new Date(row.pickup_at), settings.timezone),
+    routeLabel:
+      row.booking_type === 'hourly'
+        ? `${row.from_name ?? '-'} · ${hours} h`
+        : `${row.from_name ?? '-'} → ${row.to_name ?? '-'}`,
+    passengers: row.passengers,
+    luggage: row.luggage,
+  };
+}
+
+export type ConfirmedView = {
+  card: ReturnCard;
+  /** Only for the visitor who made the booking (cookie); null otherwise. */
+  email: string | null;
+  /** Server amounts: the lines in cents, VAT rate and VAT share (price analysis, AC-37). */
+  lines: { label: string; cents: number }[];
+  vatRateBp: number;
+  vatCents: number;
+  totalCents: number;
+  bookingType: 'transfer' | 'hourly';
+  hours: number;
+};
+
+/** The paid booking behind a Viva order code, or null while it is not confirmed yet. */
+export async function confirmedView(
+  orderCode: string | null | undefined,
+  visitorKey: string | undefined,
+): Promise<ConfirmedView | null> {
+  if (!orderCode || !/^\d{1,18}$/.test(orderCode)) return null;
+  const { rows } = await db().query<
+    CardRow & {
+      id: string;
+      status: string;
+      visitor_key: string | null;
+      customer_email: string;
+      price_cents: number;
+      base_price_cents: number;
+      vat_rate_bp: number;
+      vat_cents: number;
+    }
+  >(
+    `select b.id, b.status, b.visitor_key, b.customer_email, b.price_cents, b.base_price_cents,
+            b.vat_rate_bp, b.vat_cents, ${CARD_COLUMNS}
+       from public.bookings b
+       ${CARD_JOINS}
+      where b.viva_order_code = $1::bigint`,
+    [orderCode],
+  );
+  const b = rows[0];
+  if (!b || !['confirmed', 'assigned', 'completed'].includes(b.status)) return null;
+  const { rows: extras } = await db().query<{ name: string; cents: number }>(
+    `select e.name, be.price_cents as cents
+       from public.booking_extras be
+       join public.extras e on e.id = be.extra_id
+      where be.booking_id = $1::uuid
+      order by e.code`,
+    [b.id],
+  );
+  const card = await toReturnCard(b);
+  const hours = b.hours ?? Math.round(b.duration_minutes / 60);
+  return {
+    card,
+    email: visitorKey && b.visitor_key === visitorKey ? b.customer_email : null,
+    lines: [
+      { label: b.class_name, cents: b.base_price_cents },
+      ...extras.map((e) => ({ label: e.name, cents: e.cents })),
+    ],
+    vatRateBp: b.vat_rate_bp,
+    vatCents: b.vat_cents,
+    totalCents: b.price_cents,
+    bookingType: b.booking_type as 'transfer' | 'hourly',
+    hours,
+  };
+}
+
 export type NotCompletedView =
-  | { kind: 'expired' }
+  | { kind: 'expired'; card: ReturnCard | null }
   | {
       kind: 'live';
+      card: ReturnCard;
       reference: string;
       holdExpiresAt: string;
       holdExpiresAtMs: number;
@@ -671,27 +794,30 @@ export async function notCompletedView(
   orderCode: string | null | undefined,
   visitorKey: string | undefined,
 ): Promise<NotCompletedView> {
-  if (!orderCode || !visitorKey) return { kind: 'expired' };
-  const { rows } = await db().query<{
-    reference: string;
-    status: string;
-    payment_status: string;
-    hold_expires_at: Date | null;
-  }>(
-    `select reference, status, payment_status, hold_expires_at
-       from public.bookings
-      where viva_order_code = $1::bigint and visitor_key = $2`,
+  if (!orderCode || !visitorKey || !/^\d{1,18}$/.test(orderCode)) {
+    return { kind: 'expired', card: null };
+  }
+  const { rows } = await db().query<
+    CardRow & { status: string; payment_status: string; hold_expires_at: Date | null }
+  >(
+    `select b.status, b.payment_status, b.hold_expires_at, ${CARD_COLUMNS}
+       from public.bookings b
+       ${CARD_JOINS}
+      where b.viva_order_code = $1::bigint and b.visitor_key = $2`,
     [orderCode, visitorKey],
   );
   const b = rows[0];
-  if (!b || b.status !== 'pending' || b.payment_status !== 'unpaid' || !b.hold_expires_at) {
-    return { kind: 'expired' };
+  if (!b) return { kind: 'expired', card: null };
+  const card = await toReturnCard(b);
+  if (b.status !== 'pending' || b.payment_status !== 'unpaid' || !b.hold_expires_at) {
+    return { kind: 'expired', card };
   }
   const expiresMs = new Date(b.hold_expires_at).getTime();
-  if (expiresMs <= Date.now()) return { kind: 'expired' };
+  if (expiresMs <= Date.now()) return { kind: 'expired', card };
   const settings = await getSettings();
   return {
     kind: 'live',
+    card,
     reference: b.reference,
     holdExpiresAt: toIsoWithOffset(new Date(b.hold_expires_at), settings.timezone),
     holdExpiresAtMs: expiresMs,
@@ -738,6 +864,7 @@ export type CancelPageView =
   | {
       kind: 'ok';
       reference: string;
+      card: ReturnCard;
       pickupLabel: string;
       tripLabel: string;
       refundCents: number;
@@ -748,23 +875,12 @@ export type CancelPageView =
 export async function cancelPageView(token: string): Promise<CancelPageView> {
   if (!token || token.length < 16) return { kind: 'invalid' };
   const hash = hashCancelToken(token);
-  const { rows } = await db().query<{
-    reference: string;
-    pickup_at: Date;
-    booking_type: string;
-    duration_minutes: number;
-    price_cents: number;
-    payment_status: string;
-    status: string;
-    from_name: string | null;
-    to_name: string | null;
-  }>(
-    `select b.reference, b.pickup_at, b.booking_type, b.duration_minutes, b.price_cents,
-            b.payment_status, b.status,
-            zf.name as from_name, zt.name as to_name
+  const { rows } = await db().query<
+    CardRow & { price_cents: number; payment_status: string; status: string }
+  >(
+    `select b.price_cents, b.payment_status, b.status, ${CARD_COLUMNS}
        from public.bookings b
-       left join public.zones zf on zf.id = b.from_zone_id
-       left join public.zones zt on zt.id = b.to_zone_id
+       ${CARD_JOINS}
       where b.cancel_token_hash = $1`,
     [hash],
   );
@@ -785,6 +901,7 @@ export async function cancelPageView(token: string): Promise<CancelPageView> {
   return {
     kind: 'ok',
     reference: b.reference,
+    card: await toReturnCard(b),
     pickupLabel: `${formatLocal(new Date(b.pickup_at), settings.timezone)} (Athens)`,
     tripLabel,
     refundCents,

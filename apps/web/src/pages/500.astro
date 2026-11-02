@@ -1,49 +1,29 @@
 ---
-import '../styles/tokens.css';
-import '../styles/base.css';
+import ErrorBody from '../components/v2/status/ErrorBody.astro';
+import StatusHero from '../components/v2/StatusHero.astro';
+import PublicLayout from '../layouts/PublicLayout.astro';
+import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
+import { escapeThenAccent } from '../lib/v2/accent';
+import { t, tDefault } from '../lib/strings';
+
+await loadUiStrings();
+const settings = await getSiteSettings();
+const title = tDefault('error.500.title');
+const lead = tDefault('error.500.lead');
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="noindex" />
-    <title>Temporary problem - Elite Protection</title>
-    <link
-      rel="preload"
-      href="/fonts/jost-latin-400-normal.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
-    <link
-      rel="preload"
-      href="/fonts/playfair-display-latin-500-normal.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
-  </head>
-  <body>
-    <header class="site-header">
-      <div class="wrap site-header-inner">
-        <a class="logo" href="/" aria-label="Elite Protection home">
-          <img src="/logo-white.png" alt="Elite Protection" width="160" height="52" />
-        </a>
-      </div>
-    </header>
-    <main id="main">
-      <section class="notice-block notice-block--danger">
-        <div class="narrow notice-block-inner">
-          <p class="eyebrow">Error</p>
-          <h1 class="display notice-block-title">Temporary problem</h1>
-          <p class="notice-block-lead">Please try again in a moment, or call our office.</p>
-          <div class="notice-block-actions">
-            <a class="btn btn-gold" href="/">Back to home</a>
-          </div>
-        </div>
-      </section>
-    </main>
-  </body>
-</html>
+<PublicLayout designPage="10-payment-failed" title={title} description={lead} robots="noindex">
+  <StatusHero
+    heroClass="s68332"
+    eyebrow="500"
+    titleHtml={escapeThenAccent(title)}
+    lead={lead}
+    pathname="/500"
+  />
+  <ErrorBody
+    homeLabel={tDefault('error.home')}
+    bookLabel={t('nav.book')}
+    phone={settings.phone}
+    help={lead}
+  />
+</PublicLayout>

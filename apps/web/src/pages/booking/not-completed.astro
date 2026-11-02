@@ -1,11 +1,14 @@
 ---
 export const prerender = false;
 
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import HoldExpiredBody from '../../components/v2/status/HoldExpiredBody.astro';
+import NotCompletedBody from '../../components/v2/status/NotCompletedBody.astro';
+import StatusHero from '../../components/v2/StatusHero.astro';
+import PublicLayout from '../../layouts/PublicLayout.astro';
 import { getSiteSettings, loadUiStrings } from '../../lib/sanity/content';
 import { notCompletedView } from '../../lib/server/booking-service';
 import { readVisitorKey } from '../../lib/server/visitor';
-import { t } from '../../lib/strings';
+import { t, tAccent } from '../../lib/strings';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('Referrer-Policy', 'no-referrer');
@@ -16,80 +19,81 @@ const orderCode = Astro.url.searchParams.get('s')?.trim() || null;
 const visitorKey = readVisitorKey(Astro.cookies);
 const view = await notCompletedView(orderCode, visitorKey);
 
-const pageTitle = t('booking.notCompleted.title');
-const body = t('booking.notCompleted.body');
-const expired = t('booking.hold.expired');
-const tryAgain = t('booking.retry');
-const chooseVehicle = t('booking.notCompleted.chooseVehicle');
-const startAgain = t('booking.notCompleted.startAgain');
-const timerTemplate = t('booking.notCompleted.timer');
+const live = view.kind === 'live';
+const card = view.card;
 const handoffTitle = t('booking.handoff.title');
 const handoffBody = t('booking.handoff.body');
 const handoffFallback = t('booking.handoff.fallback');
-const loading = t('booking.loading');
 ---
 
-<BaseLayout
-  title={`${pageTitle} - ${settings.companyName}`}
-  description={body}
+<PublicLayout
+  designPage={live ? '10-payment-failed' : '11-hold-expired'}
+  title={`${live ? t('booking.notCompleted.title') : t('booking.expired.title')}`.replace(/\*/g, '') + ` - ${settings.companyName}`}
+  description={live ? t('booking.notCompleted.body') : t('booking.expired.body')}
   robots="noindex,nofollow"
 >
-  <section class="notice-block notice-block--danger">
-    <div
-      class="narrow notice-block-inner"
-      id="not-completed-root"
-      data-mode={view.kind}
-      data-reference={view.kind === 'live' ? view.reference : ''}
-      data-expires-at-ms={view.kind === 'live' ? String(view.holdExpiresAtMs) : ''}
-      data-timer-template={timerTemplate}
-    >
-      {
-        view.kind === 'live' ? (
-          <>
-            <div id="live-panel" class="stack">
-              <p class="eyebrow">Payment</p>
-              <h1 class="display notice-block-title" tabindex="-1">{pageTitle}</h1>
-              <p class="notice-block-lead">{body}</p>
-              <p class="timer" role="status" aria-live="polite">
-                <span id="hold-remain">
-                  {timerTemplate.replace('{time}', '-')}
-                </span>
-              </p>
-              <p id="not-completed-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
-              <div class="row">
-                <button type="button" class="btn btn-gold" id="try-again" data-loading={loading}>
-                  {tryAgain}
-                </button>
-                <a class="btn btn-line" href="/book#vehicle" id="choose-vehicle">
-                  {chooseVehicle}
-                </a>
-              </div>
-            </div>
-            <div id="handoff" class="center stack" role="status" aria-live="polite" hidden>
-              <div class="row" style="justify-content: center">
-                <div class="spinner" aria-hidden="true" />
-              </div>
-              <h1 class="display" id="handoff-title" tabindex="-1">{handoffTitle}</h1>
-              <p class="muted">{handoffBody}</p>
+  <div
+    id="not-completed-root"
+    data-mode={live ? 'live' : 'expired'}
+    data-reference={live ? view.reference : ''}
+    data-expires-at-ms={live ? String(view.holdExpiresAtMs) : ''}
+    data-timer-template={t('booking.notCompleted.timer')}
+  >
+    {
+      live && card ? (
+        <>
+          <div id="live-panel">
+            <StatusHero
+              heroClass="s68332"
+              eyebrow={t('booking.notCompleted.eyebrow')}
+              titleHtml={tAccent('booking.notCompleted.title')}
+              lead={t('booking.notCompleted.body')}
+              pathname="/booking/not-completed"
+            />
+            <NotCompletedBody
+              reference={card.reference}
+              className={card.className.toUpperCase()}
+              whenLabel={card.pickupLabel}
+              routeLabel={card.routeLabel}
+              holdMmSs="--"
+              phone={settings.phone}
+            />
+          </div>
+          <div id="handoff" class="s3d21d" role="status" aria-live="polite" hidden>
+            <div class="s0e022">
+              <span aria-hidden="true" class="spin"></span>
+              <div class="eyebrow">{t('booking.handoff.eyebrow')}</div>
+              <h2 class="display se47a0" id="handoff-title" tabindex="-1">
+                {handoffTitle.replace(/\*/g, '')}
+              </h2>
+              <p class="s97596">{handoffBody}</p>
               <p>
                 <a class="btn btn-gold" id="handoff-link" href="#">{handoffFallback}</a>
               </p>
             </div>
-          </>
-        ) : (
-          <div class="stack">
-            <p class="eyebrow">Hold</p>
-            <h1 class="display notice-block-title" tabindex="-1">{pageTitle}</h1>
-            <p class="notice-block-lead">{expired}</p>
-            <div class="notice-block-actions">
-              <a class="btn btn-gold" href="/book">{startAgain}</a>
-            </div>
           </div>
-        )
-      }
-    </div>
-  </section>
-</BaseLayout>
+        </>
+      ) : (
+        <>
+          <StatusHero
+            heroClass="s68332"
+            eyebrow={t('booking.expired.eyebrow')}
+            titleHtml={tAccent('booking.expired.title')}
+            lead={t('booking.expired.body')}
+            pathname="/booking/not-completed"
+          />
+          <HoldExpiredBody
+            reference={card?.reference}
+            className={card?.className?.toUpperCase()}
+            whenLabel={card?.pickupLabel}
+            routeLabel={card?.routeLabel}
+            phone={settings.phone}
+          />
+        </>
+      )
+    }
+  </div>
+</PublicLayout>
 
 <script>
   import '../../scripts/not-completed';

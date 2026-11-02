@@ -126,10 +126,12 @@ test('AC-36: manage page facts, actions, ICS, cancel clears link; axe at 390/144
   await expect(page.getByText(/AIA Terminal 1/)).toBeVisible();
   await expect(page.getByText(/Syntagma Square/)).toBeVisible();
   await expect(page.getByText(/A3 650/)).toBeVisible();
-  await expect(page.locator('.manage-facts')).toContainText(/DEMO|E-Class|Executive/i);
-  await expect(page.locator('.manage-facts')).toContainText('2');
-  await expect(page.locator('.manage-paid-total')).toContainText(/€\s*220\.00/);
-  await expect(page.getByText(/Booked and paid|Confirmed by the office/i).first()).toBeVisible();
+  await expect(page.locator('.sfc795')).toContainText(/DEMO|E-Class|Executive|V-Class|Mercedes/i);
+  await expect(page.locator('.sfc795')).toContainText('2');
+  await expect(page.locator('.scfd62')).toContainText(/€\s*220\.00/);
+  await expect(
+    page.getByText(/Confirmed by our payment provider|Payment received/i).first(),
+  ).toBeVisible();
 
   const invoice = page.getByRole('link', { name: /request an invoice/i });
   await expect(invoice).toHaveAttribute('href', new RegExp(`mailto:.*subject=Invoice%20${reference}`));
@@ -157,8 +159,8 @@ test('AC-36: manage page facts, actions, ICS, cancel clears link; axe at 390/144
   await axeClean(page);
 
   await cancel.click();
-  await expect(page.getByRole('heading', { name: /Cancel your booking/i })).toBeVisible();
-  await page.getByRole('button', { name: new RegExp(`cancel booking ${reference}`, 'i') }).click();
+  await expect(page.getByRole('heading', { name: /Cancel this/i })).toBeVisible();
+  await page.getByRole('button', { name: /Yes, cancel booking/i }).click();
   await expect(page.getByRole('heading', { name: /has been cancelled/i })).toBeVisible({
     timeout: 15_000,
   });

@@ -1,0 +1,34 @@
+---
+import PublicLayout from '../../../layouts/PublicLayout.astro';
+import {
+  designPreviewHtml,
+  V2_PREVIEW_STATES,
+  v2PreviewEnabled,
+  type V2PreviewState,
+} from '../../../lib/v2/design-preview';
+
+export function getStaticPaths() {
+  if (!v2PreviewEnabled()) return [];
+  return (Object.keys(V2_PREVIEW_STATES) as V2PreviewState[]).map((state) => ({
+    params: { state },
+  }));
+}
+
+const state = Astro.params.state as string;
+if (!v2PreviewEnabled() || !(state in V2_PREVIEW_STATES)) {
+  return new Response(null, { status: 404 });
+}
+
+const meta = V2_PREVIEW_STATES[state as V2PreviewState];
+const html = designPreviewHtml(meta.design);
+---
+
+<PublicLayout
+  designPage={meta.page}
+  title={`V2 preview · ${state}`}
+  description="Design sample data for the V2 fidelity check. Not in the sitemap."
+  robots="noindex,nofollow"
+  withFooter={false}
+>
+  <div style="display:contents" set:html={html} />
+</PublicLayout>

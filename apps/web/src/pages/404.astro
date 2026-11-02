@@ -1,15 +1,28 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import NoticeBlock from '../components/v2/NoticeBlock.astro';
-import { tDefault } from '../lib/strings';
+import ErrorBody from '../components/v2/status/ErrorBody.astro';
+import StatusHero from '../components/v2/StatusHero.astro';
+import PublicLayout from '../layouts/PublicLayout.astro';
+import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
+import { escapeThenAccent } from '../lib/v2/accent';
+import { t, tDefault } from '../lib/strings';
 
+await loadUiStrings();
+const settings = await getSiteSettings();
 const title = tDefault('error.404.title');
 const lead = tDefault('error.404.lead');
 ---
 
-<BaseLayout title={title} description={lead} robots="noindex">
-  <NoticeBlock tone="danger" eyebrow="404" title={title} lead={lead}>
-    <a class="btn btn-gold" slot="actions" href="/">{tDefault('error.home')}</a>
-    <a class="btn btn-line" slot="actions" href="/book">{tDefault('nav.book')}</a>
-  </NoticeBlock>
-</BaseLayout>
+<PublicLayout designPage="10-payment-failed" title={title} description={lead} robots="noindex">
+  <StatusHero
+    heroClass="s68332"
+    eyebrow="404"
+    titleHtml={escapeThenAccent(title)}
+    lead={lead}
+    pathname="/404"
+  />
+  <ErrorBody homeLabel={tDefault('error.home')} bookLabel={t('nav.book')} phone={settings.phone} />
+</PublicLayout>
+
+<script is:inline>
+  document.querySelector('[data-block="appHero"] h1')?.focus();
+</script>

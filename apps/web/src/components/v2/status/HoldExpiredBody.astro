@@ -1,0 +1,38 @@
+---
+import { t } from '../../../lib/strings';
+
+interface Props {
+  reference?: string | null;
+  className?: string | null;
+  whenLabel?: string | null;
+  routeLabel?: string | null;
+  phone: string;
+}
+
+const { reference, className, whenLabel, routeLabel, phone } = Astro.props;
+const phoneHref = `tel:${phone.replace(/[^\d+]/g, '')}`;
+const hasCard = Boolean(reference && whenLabel && routeLabel);
+---
+
+<section data-block="appBody" class="s83f2d">
+  {
+    hasCard ? (
+      <div class="sbfd03">
+        <div class="bgx2 sb426a"></div>
+        <div class="sf8883">
+          <div class="s36738">
+            {reference}
+            {className ? ` · ${className}` : ''}
+          </div>
+          <div class="display s1a9b3">{whenLabel}</div>
+          <div class="sa3ecc">{routeLabel}</div>
+        </div>
+      </div>
+    ) : null
+  }
+  <div class="s4ba17">
+    <a class="btn btn-gold s95216" href="/book">{t('booking.expired.restart')}</a>
+    <a class="btn btn-line s95216" href={phoneHref}>{t('booking.expired.call')}</a>
+  </div>
+  <div class="s221fe">{t('booking.expired.late')}</div>
+</section>

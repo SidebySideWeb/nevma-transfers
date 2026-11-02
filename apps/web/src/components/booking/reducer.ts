@@ -14,6 +14,7 @@ export type Action =
       serverSkewMs: number;
     }
   | { type: 'CLEAR_HOLD' }
+  | { type: 'CLEAR_BOOKING' }
   | { type: 'BOOKING_OK'; booking: NonNullable<BookingState['booking']>; serverSkewMs: number }
   | { type: 'SET_ERRORS'; errors: Record<string, string>; formError?: string | null }
   | { type: 'CLEAR_ERRORS' }
@@ -82,6 +83,8 @@ export function bookingReducer(state: BookingState, action: Action): BookingStat
       };
     case 'CLEAR_HOLD':
       return { ...state, hold: null, selectedClassKey: null };
+    case 'CLEAR_BOOKING':
+      return { ...state, booking: null };
     case 'BOOKING_OK':
       return {
         ...state,

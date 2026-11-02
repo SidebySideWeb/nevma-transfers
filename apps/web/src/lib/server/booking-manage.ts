@@ -1,7 +1,7 @@
 import 'server-only';
 import { formatEuro } from '../booking/pricing';
 import { formatLocal } from '../booking/time';
-import { hashCancelToken } from './booking-service';
+import { hashCancelToken, loadSanityVehicleClasses } from './booking-service';
 import { bookingDb } from './db';
 import { getSettings } from './settings';
 import { getSiteSettings } from '../sanity/content';
@@ -24,6 +24,9 @@ export type ManagePageView =
       dropoffAddress: string | null;
       flightNumber: string | null;
       className: string;
+      /** First Sanity photo of the class (display only), or null. */
+      photoUrl: string | null;
+      leadName: string;
       passengers: number;
       luggage: number;
       extras: { name: string; cents: number; label: string }[];
@@ -73,7 +76,9 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     pickup_address: string;
     dropoff_address: string | null;
     flight_number: string | null;
+    class_key: string;
     class_name: string;
+    customer_name: string;
     passengers: number;
     luggage: number;
     price_cents: number;
@@ -84,7 +89,7 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     to_name: string | null;
   }>(
     `select b.reference, b.status, b.pickup_at, b.duration_minutes, b.booking_type, b.hours,
-            b.pickup_address, b.dropoff_address, b.flight_number, c.name as class_name,
+            b.pickup_address, b.dropoff_address, b.flight_number, c.key as class_key, c.name as class_name, b.customer_name,
             b.passengers, b.luggage, b.price_cents, b.base_price_cents, b.vat_rate_bp, b.vat_cents,
             zf.name as from_name, zt.name as to_name
        from public.bookings b
@@ -109,6 +114,8 @@ export async function managePageView(token: string): Promise<ManagePageView> {
 
   const settings = await getSettings();
   const site = await getSiteSettings();
+  const photoUrl =
+    (await loadSanityVehicleClasses()).find((c) => c.key === b.class_key)?.photos?.[0]?.url ?? null;
   const cutoff = new Date(b.pickup_at).getTime() - settings.cancelWindowHours * 3600_000;
   const canCancel =
     (b.status === 'confirmed' || b.status === 'assigned') && Date.now() <= cutoff;
@@ -142,6 +149,8 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     dropoffAddress: b.dropoff_address,
     flightNumber: b.flight_number,
     className: b.class_name,
+    photoUrl,
+    leadName: b.customer_name,
     passengers: b.passengers,
     luggage: b.luggage,
     extras: (extras ?? []).map((e) => ({

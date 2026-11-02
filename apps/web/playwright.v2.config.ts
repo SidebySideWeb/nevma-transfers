@@ -27,6 +27,7 @@ export default defineConfig({
       VITEST: '',
       PUBLIC_SITE_URL: baseURL,
       PUBLIC_BOOKING_OPEN: 'true',
+      PUBLIC_V2_PREVIEW: '1',
     },
   },
 });

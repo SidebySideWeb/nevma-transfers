@@ -1,0 +1,151 @@
+---
+import { formatEuro, formatVatRate } from '../../../lib/booking/pricing';
+import { t } from '../../../lib/strings';
+
+interface Line {
+  label: string;
+  cents: number;
+}
+
+interface Props {
+  reference: string;
+  email: string | null;
+  whenLabel: string;
+  routeLabel: string;
+  vehicleLine: string;
+  photoUrl: string;
+  photoAlt: string;
+  manageHref: string;
+  calendarHref?: string;
+  lines: Line[];
+  vatRateBp: number;
+  vatCents: number;
+  totalCents: number;
+  phone: string;
+  emailContact: string;
+}
+
+const {
+  reference,
+  email,
+  whenLabel,
+  routeLabel,
+  vehicleLine,
+  photoUrl,
+  photoAlt,
+  manageHref,
+  calendarHref,
+  lines,
+  vatRateBp,
+  vatCents,
+  totalCents,
+  phone,
+  emailContact,
+} = Astro.props;
+
+const phoneHref = `tel:${phone.replace(/[^\d+]/g, '')}`;
+const sentParts = email
+  ? t('booking.confirmed.sentTo', { email: '\u0000' }).split('\u0000')
+  : null;
+const invoiceLink = t('booking.confirmed.invoiceLink');
+const paidByParts = t('booking.confirmed.paidBy', { link: '___' }).split('___');
+---
+
+<section data-block="appBody" class="sc16b1">
+  <div class="s8e90e">
+    <div class="secd92">
+      <div class="s13297" aria-hidden="true">✓</div>
+      <div class="sb97d3">
+        <div class="s36738">{t('booking.confirmed.reference')}</div>
+        <div class="display sec254">{reference}</div>
+      </div>
+      <div class="s5b327">
+        {
+          sentParts && email ? (
+            <>
+              {sentParts[0]}
+              <strong class="sd01f5">{email}</strong>
+              {sentParts[1] ?? ''}
+            </>
+          ) : (
+            t('booking.confirmed.body')
+          )
+        }
+      </div>
+    </div>
+    <div class="sbfd03">
+      <div class="s1d2eb"><img class="sc22be" src={photoUrl} alt={photoAlt} /></div>
+      <div class="s1445f">
+        <div class="s36738">{t('booking.confirmed.journey')}</div>
+        <div class="display s96d2b">{whenLabel}</div>
+        <div class="s331e6" set:html={routeLabel} />
+        <div class="sa3ecc">{vehicleLine}</div>
+      </div>
+    </div>
+    <div class="sc4d29">
+      <div class="eyebrow">{t('booking.confirmed.next')}</div>
+      <ol class="s723e9">
+        <li class="sb21c3">
+          <span class="sce3cd" aria-hidden="true"></span>
+          <div class="s5e37e">{t('booking.confirmed.step1')}</div>
+          <div class="sf0124">{t('booking.confirmed.step1Text')}</div>
+        </li>
+        <li class="sb21c3">
+          <span class="sce3cd" aria-hidden="true"></span>
+          <div class="s5e37e">{t('booking.confirmed.step2')}</div>
+          <div class="sf0124">{t('booking.confirmed.step2Text')}</div>
+        </li>
+        <li class="sb21c3">
+          <span class="s00515" aria-hidden="true"></span>
+          <div class="s8506a">{t('booking.confirmed.step3')}</div>
+          <div class="sf0124">{t('booking.confirmed.step3Text')}</div>
+        </li>
+        <li class="sb21c3">
+          <span class="s00515" aria-hidden="true"></span>
+          <div class="s8506a">{t('booking.confirmed.step4')}</div>
+          <div class="sf0124">{t('booking.confirmed.step4Text')}</div>
+        </li>
+      </ol>
+    </div>
+    <div class="s4ba17">
+      <a class="btn btn-gold s95216" href={manageHref}>{t('booking.confirmed.manage')}</a>
+      {
+        calendarHref ? (
+          <a class="btn btn-line s95216" href={calendarHref}>{t('booking.confirmed.calendar')}</a>
+        ) : null
+      }
+      <a class="btn btn-line s95216" href="/">{t('booking.confirmed.home')}</a>
+    </div>
+  </div>
+  <aside class="s9066a">
+    <div class="se57a3">
+      <div class="eyebrow">{t('booking.confirmed.paid')}</div>
+      {
+        lines.map((line) => (
+          <div class="srow">
+            <span>{line.label}</span>
+            <span>{formatEuro(line.cents)}</span>
+          </div>
+        ))
+      }
+      <div class="srow">
+        <span>VAT {formatVatRate(vatRateBp)}</span>
+        <span>{formatEuro(vatCents)}</span>
+      </div>
+      <div class="scfd62">
+        <span class="s276eb">{t('booking.total')}</span>
+        <span class="s50d22">{formatEuro(totalCents)}</span>
+      </div>
+      <div class="s6c19a">
+        {paidByParts[0]}
+        <a href={manageHref}>{invoiceLink}</a>
+        {paidByParts[1] ?? ''}
+      </div>
+    </div>
+    <div class="s5055b">
+      <div class="eyebrow">{t('booking.confirmed.questions')}</div>
+      <a class="s91789" href={phoneHref}>{phone}</a>
+      <a class="s19255" href={`mailto:${emailContact}`}>{emailContact}</a>
+    </div>
+  </aside>
+</section>

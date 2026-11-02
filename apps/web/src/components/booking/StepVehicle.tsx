@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Notice, VehicleCard } from '../ui';
-import { formatEuro } from './format';
+import { formatEuroV2 } from './format';
+import { fill, requestQuoteHref, routeLines } from './v2/journey';
 import type { BookingStrings, ContactInfo, OptionsData, QuoteData, SearchState } from './types';
 
 type Props = {
@@ -13,17 +13,25 @@ type Props = {
   holdExpiredMessage: boolean;
   formError: string | null;
   preferredClassKey?: string | null;
+  /** Radio choice (kept by BookingApp so the summary can follow it). */
+  pickedClassKey: string | null;
+  onPick: (classKey: string) => void;
+  /** Creates the hold for the chosen vehicle. */
   onSelect: (classKey: string) => void;
-  onChangeSearch: () => void;
+  onBack: () => void;
 };
 
-function requestQuoteHref(search: SearchState, classKey?: string): string {
-  const q = new URLSearchParams();
-  if (search.fromZone) q.set('from', search.fromZone);
-  if (search.type === 'transfer' && search.toZone) q.set('to', search.toZone);
-  if (classKey) q.set('class', classKey);
-  const qs = q.toString();
-  return qs ? `/request-a-transfer?${qs}` : '/request-a-transfer';
+type QuoteOption = QuoteData['options'][number];
+const sellable = (o: QuoteOption) => o.available && o.baseCents != null;
+
+/** The radio that is on: the customer's pick, else the prefilled class, else the first one that can be sold. */
+export function defaultVehicleKey(
+  quote: QuoteData,
+  picked: string | null,
+  preferred?: string | null,
+): string | null {
+  const ok = (k?: string | null) => (k && quote.options.some((o) => o.classKey === k && sellable(o)) ? k : null);
+  return ok(picked) ?? ok(preferred) ?? quote.options.find(sellable)?.classKey ?? null;
 }
 
 export function StepVehicle({
@@ -36,131 +44,167 @@ export function StepVehicle({
   holdExpiredMessage,
   formError,
   preferredClassKey,
+  pickedClassKey,
+  onPick,
   onSelect,
-  onChangeSearch,
+  onBack,
 }: Props) {
   const classByKey = new Map(options.classes.map((c) => [c.key, c]));
-  const fromName = options.zones.find((z) => z.code === search.fromZone)?.name ?? search.fromZone;
-  const toName = options.zones.find((z) => z.code === search.toZone)?.name ?? search.toZone;
-  const summary =
-    search.type === 'transfer'
-      ? `${fromName} → ${toName}`
-      : `${fromName} · ${search.hours} h`;
-
+  const route = routeLines(strings, options, search);
+  const selected = defaultVehicleKey(quote, pickedClassKey, preferredClassKey);
+  const selectedName = (selected && classByKey.get(selected)?.name) || selected || '';
   const priced = quote.options.filter((o) => o.baseCents != null);
   const showContact = priced.length === 0;
-  const preferredRef = useRef<HTMLButtonElement | null>(null);
+  const hasNoPrice = quote.options.some((o) => o.reason === 'no_price');
+  const rows = useRef(new Map<string, HTMLButtonElement>());
 
   useEffect(() => {
-    if (!preferredClassKey) return;
-    preferredRef.current?.focus();
+    if (preferredClassKey && selected === preferredClassKey) rows.current.get(selected)?.focus();
   }, [preferredClassKey, quote.options]);
 
+  const intro = fill(strings['booking.vehicle.intro'], { route: '\u0000' }).split('\u0000');
+
+  const move = (from: string, step: 1 | -1) => {
+    const keys = quote.options.filter(sellable).map((o) => o.classKey);
+    const next = keys[(keys.indexOf(from) + step + keys.length) % keys.length];
+    if (!next) return;
+    onPick(next);
+    rows.current.get(next)?.focus();
+  };
+
   return (
-    <>
-      <h1 tabIndex={-1}>{strings['booking.vehicle.title']}</h1>
+    <div className="s8f7a6">
       {holdExpiredMessage && (
-        <Notice tone="danger" role="status" className="hold-expired-notice">
-          <p className="eyebrow">{strings['booking.step.journey']}</p>
-          <p className="display" style={{ fontSize: '1.5rem', margin: 0 }}>
-            {strings['booking.hold.expired']}
+        <div className="notice notice-danger" role="status">
+          <p>
+            <strong>{strings['booking.hold.expired']}</strong>
           </p>
-        </Notice>
+        </div>
       )}
       {formError && (
-        <Notice tone="danger" role="alert">
+        <div className="notice notice-danger" role="alert">
           {formError}
-        </Notice>
+        </div>
       )}
-      <p className="muted">
-        {summary} · {quote.pickupAt} (Athens) · {search.passengers} passengers ·{' '}
-        <button type="button" className="btn btn-ghost" onClick={onChangeSearch}>
-          {strings['booking.change']}
-        </button>
-      </p>
 
       {showContact ? (
-        <Notice>
-          <p>{strings['booking.contactUs']}</p>
-          <div className="row">
-            <a className="btn btn-ghost" href={`tel:${contact.phone.replace(/\s/g, '')}`}>
+        <>
+          <p className="s0a0a6">{strings['booking.contactUs']}</p>
+          <div className="s8dac8">
+            <a className="btn btn-line" href={`tel:${contact.phone.replace(/\s/g, '')}`}>
               {contact.phone}
             </a>
-            <a className="btn btn-ghost" href={`mailto:${contact.email}`}>
+            <a className="btn btn-line" href={`mailto:${contact.email}`}>
               {contact.email}
             </a>
             <a className="btn btn-gold" href={requestQuoteHref(search)}>
-              {strings['site.requestQuote'] ?? 'Request a quote'}
+              {strings['site.requestQuote']}
             </a>
           </div>
-        </Notice>
+        </>
       ) : (
-        <div className="stack">
-          {quote.options.map((opt) => {
-            const meta = classByKey.get(opt.classKey);
-            const name = meta?.name ?? opt.classKey;
-            const unavailable = !opt.available || opt.baseCents == null;
-            const reason =
-              opt.reason === 'no_price'
-                ? strings['error.no_price']
-                : strings['error.unavailable'];
-            const preferred = preferredClassKey === opt.classKey;
-            return (
-              <VehicleCard
-                key={opt.classKey}
-                name={name}
-                kind={meta?.tagline || undefined}
-                detail={
-                  meta
-                    ? strings['booking.vehicle.capacity']
-                        ?.replace('{passengers}', String(meta.maxPassengers))
-                        .replace('{luggage}', String(meta.maxLuggage))
-                    : undefined
-                }
-                photoUrl={meta?.photo?.url}
-                photoAlt={meta?.photo?.alt ?? name}
-                disabled={unavailable}
-                price={
-                  opt.baseCents != null ? (
-                    formatEuro(opt.baseCents)
-                  ) : (
-                    <span className="badge badge-warning">{strings['error.no_price']}</span>
-                  )
-                }
-                status={
-                  unavailable ? (
-                    <span className="muted">
-                      {reason}
-                      {opt.reason === 'no_price' ? (
-                        <>
-                          {' · '}
-                          <a href={requestQuoteHref(search, opt.classKey)}>
-                            {strings['site.requestQuote'] ?? 'Request a quote'}
-                          </a>
-                        </>
-                      ) : null}
+        <>
+          <p className="s0a0a6">
+            {intro[0]}
+            <strong className="sd01f5">{route.text}</strong>
+            {intro[1]}
+          </p>
+          <div className="sb2770" role="radiogroup" aria-label={strings['booking.vehicle.title']}>
+            {quote.options.map((opt) => {
+              const meta = classByKey.get(opt.classKey);
+              const name = meta?.name ?? opt.classKey;
+              const disabled = !sellable(opt);
+              const on = opt.classKey === selected;
+              const reason =
+                opt.reason === 'no_price'
+                  ? strings['error.no_price']
+                  : strings['booking.vehicle.unavailable'];
+              return (
+                <button
+                  key={opt.classKey}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  aria-disabled={disabled}
+                  tabIndex={on ? 0 : -1}
+                  className={`vrow ${disabled ? 'sb9ce2' : on ? 's667af' : 'sfee0d'}`}
+                  ref={(el) => {
+                    if (el) rows.current.set(opt.classKey, el);
+                    else rows.current.delete(opt.classKey);
+                  }}
+                  onClick={() => !disabled && onPick(opt.classKey)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                      e.preventDefault();
+                      move(opt.classKey, 1);
+                    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      move(opt.classKey, -1);
+                    }
+                  }}
+                >
+                  <span className="sdaacc">
+                    {meta?.photo?.url ? <img className="sc22be" src={meta.photo.url} alt="" /> : null}
+                  </span>
+                  <span className="safecf">
+                    <span className="s7864d">{meta?.tagline}</span>
+                    <span className="display s87b2d">{name}</span>
+                    <span className="s8ad2a">
+                      {meta
+                        ? fill(strings['booking.vehicle.seatsBags'], {
+                            passengers: meta.maxPassengers,
+                            luggage: meta.maxLuggage,
+                          })
+                        : null}
+                      {' · '}
+                      <span className={disabled ? 's0a350' : 'sbbc0f'}>
+                        {disabled ? reason : strings['booking.vehicle.available']}
+                      </span>
                     </span>
-                  ) : undefined
-                }
-                action={
-                  unavailable ? undefined : (
-                    <button
-                      type="button"
-                      className="btn btn-gold"
-                      disabled={busy}
-                      ref={preferred ? preferredRef : undefined}
-                      aria-current={preferred ? 'true' : undefined}
-                      onClick={() => onSelect(opt.classKey)}
-                    >
-                      {busy ? strings['booking.loading'] : strings['booking.vehicle.select']}
-                    </button>
-                  )
-                }
-              />
-            );
-          })}
-        </div>
+                  </span>
+                  <span className="s893bf">
+                    <span className="s7244a">
+                      {opt.baseCents != null ? formatEuroV2(opt.baseCents) : '—'}
+                    </span>
+                    <span className="sb53f1">{strings['booking.vehicle.priceNote']}</span>
+                    <span className={`radio ${on ? 'sbdbb7' : 's26017'}`}>
+                      <span className={on ? 's94d88' : 's0c8bc'} />
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {hasNoPrice && (
+            <a className="sd347e" href={requestQuoteHref(search)}>
+              {strings['site.requestQuote']}
+            </a>
+          )}
+        </>
       )}
-    </>
+
+      <div className="s8dac8">
+        <button type="button" className="btn btn-line" onClick={onBack} disabled={busy}>
+          <span aria-hidden="true">←</span> {strings['booking.step.journey']}
+        </button>
+        {!showContact && (
+          <button
+            type="button"
+            className="btn btn-gold sd0928"
+            disabled={busy || !selected}
+            onClick={() => selected && onSelect(selected)}
+          >
+            {busy ? (
+              strings['booking.loading']
+            ) : (
+              <>
+                {fill(strings['booking.vehicle.continue'], { vehicle: selectedName })}{' '}
+                <span aria-hidden="true">→</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

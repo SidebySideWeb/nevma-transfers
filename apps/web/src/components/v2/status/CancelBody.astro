@@ -1,0 +1,68 @@
+---
+import { t } from '../../../lib/strings';
+
+interface Props {
+  reference: string;
+  className: string;
+  whenLabel: string;
+  routeLabel: string;
+  refundLabel: string;
+  keepHref: string;
+  token: string;
+  turnstileSiteKey: string;
+}
+
+const {
+  reference,
+  className,
+  whenLabel,
+  routeLabel,
+  refundLabel,
+  keepHref,
+  token,
+  turnstileSiteKey,
+} = Astro.props;
+
+const policy = t('booking.cancel.policyLink');
+const noteParts = t('booking.cancel.refundNote', { policy: '___' }).split('___');
+---
+
+<section data-block="appBody" class="s83f2d">
+  <div
+    id="cancel-root"
+    data-token={token}
+    data-turnstile-site-key={turnstileSiteKey}
+  >
+    <div id="cancel-card">
+      <div class="sbfd03">
+        <div class="bgx2 sb426a"></div>
+        <div class="sf8883">
+          <div class="s36738">{reference} · {className}</div>
+          <div class="display s1a9b3">{whenLabel}</div>
+          <div class="sa3ecc">{routeLabel}</div>
+        </div>
+      </div>
+      <div class="s07367">
+        <div class="s36738">{t('booking.cancel.refundLabel')}</div>
+        <div class="saaa79">{refundLabel}</div>
+        <div class="sf0124">
+          {noteParts[0]}
+          <a href="/legal#cancellation">{policy}</a>
+          {noteParts[1] ?? ''}
+        </div>
+      </div>
+      <p id="cancel-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
+      <div class="s4ba17">
+        <form id="cancel-form">
+          <button type="submit" id="cancel-submit" class="btn btn-gold s95216">
+            {t('booking.cancel.confirm')}
+          </button>
+        </form>
+        <a class="btn btn-line s95216" href={keepHref}>{t('booking.cancel.keep')}</a>
+      </div>
+    </div>
+    <div id="cancel-done" class="s6499d" role="status" hidden>
+      <h2 id="cancel-done-title" class="display s1a9b3" tabindex="-1">{t('booking.cancel.done')}</h2>
+    </div>
+  </div>
+</section>

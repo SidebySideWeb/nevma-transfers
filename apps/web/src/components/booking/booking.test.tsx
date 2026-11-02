@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bookingReducer, createInitialState } from './reducer';
 import { StepDetails } from './StepDetails';
 import { StepSearch } from './StepSearch';
@@ -41,6 +41,15 @@ const strings: Record<string, string> = {
   'booking.continue': 'Continue',
   'booking.hold.timer': 'Held for {minutes} minutes.',
   'booking.hold.warning': '2 minutes left',
+  'booking.swap': 'Swap pick-up and drop-off',
+  'booking.date': 'Date',
+  'booking.time': 'Pick-up time',
+  'booking.quoteLink': 'Route not listed? Request a quote',
+  'form.stepper.fewer': 'Fewer',
+  'form.stepper.more': 'More',
+  'booking.extras.label': 'Optional add-on',
+  'booking.review.submit': 'Review & pay',
+  'booking.step.vehicle': 'Vehicle',
 };
 
 const options: OptionsData = {
@@ -87,6 +96,8 @@ const options: OptionsData = {
   ],
 };
 
+afterEach(cleanup);
+
 describe('booking reducer', () => {
   it('transitions quote → vehicle and hold → details', () => {
     let s = createInitialState();
@@ -129,63 +140,85 @@ describe('StepSearch hourly', () => {
         strings={strings}
         options={options}
         search={search}
+        details={initialDetails()}
         errors={{}}
         formError={null}
         busy={false}
         onChange={onChange}
+        onChangeDetails={vi.fn()}
         onSubmit={vi.fn()}
       />,
     );
     expect(screen.getByLabelText('Drop-off area')).toBeTruthy();
-    await user.click(screen.getByLabelText('By the hour'));
+    await user.click(screen.getByRole('button', { name: 'By the hour' }));
     expect(onChange).toHaveBeenCalledWith({ type: 'hourly' });
     rerender(
       <StepSearch
         strings={strings}
         options={options}
         search={{ ...search, type: 'hourly' }}
+        details={initialDetails()}
         errors={{}}
         formError={null}
         busy={false}
         onChange={onChange}
+        onChangeDetails={vi.fn()}
         onSubmit={vi.fn()}
       />,
     );
     expect(screen.queryByLabelText('Drop-off area')).toBeNull();
-    expect(screen.getByLabelText('Number of hours')).toBeTruthy();
+    expect(screen.queryByLabelText('Drop-off address')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Number of hours' })).toBeTruthy();
   });
 });
 
 describe('StepDetails VIP', () => {
-  it('VIP unchecked by default', () => {
+  const renderDetails = (onChange = vi.fn(), extras: { code: string; quantity: number }[] = []) =>
     render(
       <StepDetails
         strings={strings}
         options={options}
         search={{ ...initialSearch(), fromZone: 'demo-airport', toZone: 'demo-centre' }}
-        hold={{
-          holdId: 'h',
-          expiresAt: new Date(Date.now() + 600_000).toISOString(),
-          classKey: 'demo-e-class',
-          baseCents: 7000,
-        }}
-        details={initialDetails()}
-        selectedClassKey="demo-e-class"
-        serverSkewMs={0}
+        details={{ ...initialDetails(), extras }}
         errors={{}}
         formError={null}
         busy={false}
-        onChange={vi.fn()}
+        onChange={onChange}
         onSubmit={vi.fn()}
         onBack={vi.fn()}
-        onHoldExpired={vi.fn()}
       />,
     );
-    const vip = screen.getByRole('checkbox', { name: /VIP security/i }) as HTMLInputElement;
-    expect(vip.checked).toBe(false);
+
+  it('VIP unchecked by default', () => {
+    renderDetails();
+    const vip = screen.getByRole('switch', { name: /VIP security/i });
+    expect(vip.getAttribute('aria-checked')).toBe('false');
+    expect(vip.className).toBe('addon s651d2');
+  });
+
+  it('VIP switch turns on with the design on-state classes and sends the extra', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const { unmount } = renderDetails(onChange);
+    await user.click(screen.getByRole('switch', { name: /VIP security/i }));
+    expect(onChange).toHaveBeenCalledWith({ extras: [{ code: 'vip-security', quantity: 1 }] });
+    unmount();
+    renderDetails(vi.fn(), [{ code: 'vip-security', quantity: 1 }]);
+    const on = screen.getByRole('switch', { name: /VIP security/i });
+    expect(on.getAttribute('aria-checked')).toBe('true');
+    expect(on.className).toBe('addon sbdbb7');
+  });
+
+  it('invoice disclosure is a button with aria-expanded that reveals the company fields', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderDetails(onChange);
+    const toggle = screen.getByRole('button', { name: /I need an invoice/i });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    await user.click(toggle);
+    expect(onChange).toHaveBeenCalledWith({ needInvoice: true });
   });
 });
-
 describe('api bodies never send money fields', () => {
   it('fetch spy rejects price/amount/total/Cents keys', async () => {
     const bodies: unknown[] = [];

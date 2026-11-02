@@ -1,24 +1,32 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { StepIndicator, SummaryCard } from '../ui';
+import { formatVatRate } from '../../lib/booking/pricing';
 import { parseBookingPrefill, quoteRequestBody } from '../../lib/booking/prefill';
 import { BookingApiError, bookingApi } from './api';
-import { formatEuro } from './format';
+import { formatEuroV2 } from './format';
 import { Handoff } from './Handoff';
 import { bookingReducer, createInitialState, stepFromHash } from './reducer';
 import { StepDetails } from './StepDetails';
-import { StepReview } from './StepReview';
+import { StepReview, type ReviewTarget } from './StepReview';
 import { StepSearch } from './StepSearch';
-import { StepVehicle } from './StepVehicle';
+import { StepVehicle, defaultVehicleKey } from './StepVehicle';
 import { getTurnstileToken } from './turnstile';
-import type { BookingStrings, ContactInfo, Step } from './types';
+import type { BookingStrings, ContactInfo } from './types';
+import {
+  BookingHero,
+  type HeroHeader,
+  type HeroHold,
+  type HeroStepKey,
+} from './v2/BookingHero';
+import { BookingSummary, type BookingSummaryProps } from './v2/BookingSummary';
+import { fill, formatWhen, hoursText, routeLines } from './v2/journey';
 
 export type BookingAppProps = {
   strings: BookingStrings;
   turnstileSiteKey: string;
   contact: ContactInfo;
+  header: HeroHeader;
 };
 
-const STEPS: Step[] = ['search', 'vehicle', 'details', 'review', 'handoff'];
 function skewFromDateHeader(dateHeader: string | null): number {
   if (!dateHeader) return 0;
   const server = Date.parse(dateHeader);
@@ -28,8 +36,7 @@ function skewFromDateHeader(dateHeader: string | null): number {
 
 function focusStepHeading() {
   requestAnimationFrame(() => {
-    const h1 = document.querySelector<HTMLElement>('#booking-app h1');
-    h1?.focus();
+    document.querySelector<HTMLElement>('[data-block="appHero"] h1')?.focus();
   });
 }
 
@@ -39,10 +46,12 @@ function focusErrorSummary() {
   });
 }
 
-export default function BookingApp({ strings, turnstileSiteKey, contact }: BookingAppProps) {
+export default function BookingApp({ strings, turnstileSiteKey, contact, header }: BookingAppProps) {
   const [state, dispatch] = useReducer(bookingReducer, undefined, createInitialState);
   const [preferredClassKey, setPreferredClassKey] = useState<string | null>(null);
+  const [pickedClassKey, setPickedClassKey] = useState<string | null>(null);
   const syncHash = useRef(true);
+  const prevStep = useRef(state.step);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,11 +82,15 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
   }, [strings]);
 
   useEffect(() => {
+    const from = prevStep.current;
+    prevStep.current = state.step;
     if (!syncHash.current) return;
     const next = `#${state.step}`;
     if (window.location.hash !== next) {
       window.history.pushState(null, '', next);
     }
+    // The hand-off dialog takes focus itself and gives it back to "Pay" on close.
+    if (state.step === 'handoff' || from === 'handoff') return;
     focusStepHeading();
   }, [state.step]);
 
@@ -115,14 +128,27 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
   );
 
   const submitQuote = async () => {
+    // The addresses live on the journey step in the V2 design, so ask for them here, before a hold exists.
+    const missing: Record<string, string> = {};
+    if (!state.details.pickupAddress.trim()) missing.pickupAddress = strings['error.invalid_request'] ?? '';
+    if (state.search.type === 'transfer' && !state.details.dropoffAddress.trim()) {
+      missing.dropoffAddress = strings['error.invalid_request'] ?? '';
+    }
+    if (Object.keys(missing).length) {
+      dispatch({ type: 'SET_ERRORS', errors: missing, formError: strings['booking.errors.summary'] });
+      focusErrorSummary();
+      return;
+    }
     dispatch({ type: 'BUSY', busy: true });
     dispatch({ type: 'CLEAR_ERRORS' });
     try {
       const body = quoteRequestBody(state.search);
       const { data } = await bookingApi.quote(body);
+      setPickedClassKey(null);
       dispatch({ type: 'QUOTE_OK', quote: data });
     } catch (e) {
       if (e instanceof BookingApiError && e.body.error === 'no_price') {
+        setPickedClassKey(null);
         dispatch({
           type: 'QUOTE_OK',
           quote: {
@@ -142,7 +168,8 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
     }
   };
 
-  const selectVehicle = async (classKey: string) => {
+  /** Creates the hold. Returns false when it failed (the error is already in state). */
+  const selectVehicle = async (classKey: string): Promise<boolean> => {
     dispatch({ type: 'BUSY', busy: true });
     dispatch({ type: 'CLEAR_ERRORS' });
     try {
@@ -176,24 +203,46 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
         classKey,
         serverSkewMs: skewFromDateHeader(dateHeader),
       });
+      return true;
     } catch (e) {
       const err = mapApiError(e);
       dispatch({ type: 'SET_ERRORS', ...err });
+      return false;
     } finally {
       dispatch({ type: 'BUSY', busy: false });
     }
   };
 
-  const releaseHoldAndBack = async () => {
-    if (state.hold) {
-      try {
-        await bookingApi.releaseHold(state.hold.holdId);
-      } catch {
-        /* still leave the step */
-      }
+  /** Frees whatever the customer is holding: the pending booking (review) or the bare hold (details). */
+  const releaseHeld = async () => {
+    try {
+      if (state.booking) await bookingApi.releaseBooking(state.booking.reference);
+      else if (state.hold) await bookingApi.releaseHold(state.hold.holdId);
+    } catch {
+      /* still leave the step */
     }
+    dispatch({ type: 'CLEAR_BOOKING' });
     dispatch({ type: 'CLEAR_HOLD' });
-    dispatch({ type: 'SET_STEP', step: 'vehicle' });
+  };
+
+  const goTo = async (target: ReviewTarget) => {
+    dispatch({ type: 'BUSY', busy: true });
+    // Back to Details keeps the typed data and takes a fresh hold on the same vehicle.
+    const classKey = state.selectedClassKey;
+    await releaseHeld();
+    dispatch({ type: 'BUSY', busy: false });
+    dispatch({ type: 'CLEAR_HOLD_EXPIRED' });
+    if (target === 'details') {
+      if (classKey && (await selectVehicle(classKey))) return;
+      dispatch({ type: 'SET_STEP', step: 'vehicle' });
+      return;
+    }
+    dispatch({ type: 'SET_STEP', step: target });
+  };
+
+  const goStep = (step: HeroStepKey) => {
+    if (state.busy || step === 'review') return;
+    void goTo(step);
   };
 
   const submitBooking = async () => {
@@ -266,131 +315,221 @@ export default function BookingApp({ strings, turnstileSiteKey, contact }: Booki
     dispatch({ type: 'HOLD_EXPIRED' });
   }, []);
 
-  if (!state.options) {
-    return (
-      <div id="booking-app" className="wrap section">
-        <p>{strings['booking.loading']}</p>
+  const { options, step } = state;
+  const heroStep: HeroStepKey = step === 'handoff' ? 'review' : step;
+  const titleKey = {
+    search: 'booking.search.title',
+    vehicle: 'booking.vehicle.title',
+    details: 'booking.details.title',
+    review: 'booking.review.title',
+  }[heroStep];
+
+  // Which vehicle the aside shows: the held one, else the radio that is on, else a suggestion.
+  const heldClass = options?.classes.find((c) => c.key === state.selectedClassKey);
+  const radioKey = options && state.quote ? defaultVehicleKey(state.quote, pickedClassKey, preferredClassKey) : null;
+  const shownClass =
+    heldClass ??
+    (step === 'vehicle' ? options?.classes.find((c) => c.key === radioKey) : undefined) ??
+    options?.classes.find((c) => c.key === preferredClassKey) ??
+    options?.classes.find((c) => c.photo) ??
+    options?.classes[0];
+
+  const holdExpiresAt = state.booking?.holdExpiresAt ?? state.hold?.expiresAt;
+  const hold: HeroHold | null =
+    holdExpiresAt && heldClass && (step === 'details' || step === 'review' || step === 'handoff')
+      ? {
+          expiresAt: holdExpiresAt,
+          serverSkewMs: state.serverSkewMs,
+          label: fill(strings['booking.hold.badge'], { vehicle: heldClass.name }).toUpperCase(),
+          timerLabel: strings['booking.heldFor'] ?? '',
+          announceTemplate: strings['booking.hold.timer'] ?? '{minutes}',
+          warningText: strings['booking.hold.warning'] ?? '',
+          onExpired: onHoldExpired,
+        }
+      : null;
+
+  let summary: BookingSummaryProps | null = null;
+  if (options && shownClass) {
+    const route = routeLines(strings, options, state.search);
+    const when = formatWhen(state.search.pickupLocal);
+    const quoted = state.quote?.options.find((o) => o.classKey === shownClass.key);
+    const lineLabel =
+      state.search.type === 'transfer'
+        ? fill(strings['booking.summary.line'], { vehicle: shownClass.name })
+        : `${shownClass.name} · ${hoursText(strings, state.search.hours)}`;
+    const total = (label: string, cents: number) => ({ label, value: formatEuroV2(cents) });
+    let lines: BookingSummaryProps['lines'] = [];
+    let sum: BookingSummaryProps['total'];
+    let analysis: BookingSummaryProps['analysis'];
+    if (state.booking && (step === 'review' || step === 'handoff')) {
+      const b = state.booking;
+      lines = b.lines.map((l) => ({ label: l.label, value: formatEuroV2(l.cents) }));
+      analysis = {
+        title: strings['booking.review.priceAnalysis'] ?? '',
+        net: total(strings['booking.review.net'] ?? '', b.totalCents - b.vatCents),
+        vat: total(
+          fill(strings['booking.review.vat'], { rate: formatVatRate(b.vatRateBp) }),
+          b.vatCents,
+        ),
+        total: total(strings['booking.total'] ?? '', b.totalCents),
+      };
+    } else if (step === 'details' && state.hold) {
+      // Display only: the base price from the hold plus each chosen extra's listed price. No sum here;
+      // the server totals it when the booking is created.
+      const extras = state.details.extras.flatMap((e) => {
+        const ex = options.extras.find((x) => x.code === e.code);
+        return ex ? [{ label: ex.name, value: formatEuroV2(ex.priceCents) }] : [];
+      });
+      lines = [{ label: lineLabel, value: formatEuroV2(state.hold.baseCents) }, ...extras];
+      if (extras.length === 0) sum = total(strings['booking.total'] ?? '', state.hold.baseCents);
+    } else if (step === 'vehicle' && quoted?.baseCents != null) {
+      lines = [{ label: lineLabel, value: formatEuroV2(quoted.baseCents) }];
+      sum = total(strings['booking.total'] ?? '', quoted.baseCents);
+    }
+    summary = {
+      step,
+      ariaLabel: strings['booking.summary.title'] ?? '',
+      vehicle: {
+        eyebrow: step === 'search' ? (strings['booking.summary.suggested'] ?? '') : (shownClass.tagline ?? ''),
+        name: shownClass.name,
+        photoUrl: shownClass.photo?.url,
+      },
+      routeLabel: strings['booking.summary.route'] ?? '',
+      route: { from: route.from, to: route.second, arrow: route.to !== null },
+      rows: [
+        {
+          label: strings['booking.summary.datetime'] ?? '',
+          value: when ? `${when.date}, ${when.time}` : '—',
+        },
+        {
+          label: strings['booking.summary.paxBags'] ?? '',
+          value: `${state.search.passengers} · ${state.search.luggage}`,
+        },
+      ],
+      lines,
+      total: sum,
+      analysis,
+      notes: lines.length > 0 ? [strings['booking.priceNote'] ?? ''] : [],
+      help: {
+        label: strings['booking.summary.help'] ?? '',
+        phone: contact.phone,
+        href: `tel:${contact.phone.replace(/[^\d+]/g, '')}`,
+      },
+    };
+  }
+
+  let main;
+  if (!options) {
+    main = (
+      <div className="s8f7a6">
+        {state.formError ? (
+          <div className="notice notice-danger" role="alert">
+            {state.formError}
+          </div>
+        ) : (
+          <p className="s0a0a6" role="status">
+            {strings['booking.loading']}
+          </p>
+        )}
       </div>
+    );
+  } else if (step === 'search') {
+    main = (
+      <StepSearch
+        strings={strings}
+        options={options}
+        search={state.search}
+        details={state.details}
+        errors={state.errors}
+        formError={state.formError}
+        busy={state.busy}
+        onChange={(patch) => dispatch({ type: 'SET_SEARCH', patch })}
+        onChangeDetails={(patch) => dispatch({ type: 'SET_DETAILS', patch })}
+        onSubmit={submitQuote}
+      />
+    );
+  } else if (step === 'vehicle' && state.quote) {
+    main = (
+      <StepVehicle
+        strings={strings}
+        options={options}
+        search={state.search}
+        quote={state.quote}
+        contact={contact}
+        busy={state.busy}
+        holdExpiredMessage={state.holdExpiredMessage}
+        formError={state.formError}
+        preferredClassKey={preferredClassKey}
+        pickedClassKey={pickedClassKey}
+        onPick={setPickedClassKey}
+        onSelect={(classKey) => void selectVehicle(classKey)}
+        onBack={() => {
+          dispatch({ type: 'CLEAR_HOLD_EXPIRED' });
+          dispatch({ type: 'SET_STEP', step: 'search' });
+        }}
+      />
+    );
+  } else if (step === 'details' && state.hold && state.selectedClassKey) {
+    main = (
+      <StepDetails
+        strings={strings}
+        options={options}
+        search={state.search}
+        details={state.details}
+        errors={state.errors}
+        formError={state.formError}
+        busy={state.busy}
+        onChange={(patch) => dispatch({ type: 'SET_DETAILS', patch })}
+        onSubmit={submitBooking}
+        onBack={() => void goTo('vehicle')}
+      />
+    );
+  } else if ((step === 'review' || step === 'handoff') && state.booking) {
+    main = (
+      <StepReview
+        strings={strings}
+        options={options}
+        search={state.search}
+        details={state.details}
+        classKey={state.selectedClassKey}
+        booking={state.booking}
+        busy={state.busy}
+        formError={state.formError}
+        onPay={pay}
+        onEdit={(target) => void goTo(target)}
+      >
+        {step === 'handoff' && (
+          <Handoff
+            checkoutUrl={state.booking.checkoutUrl}
+            total={formatEuroV2(state.booking.totalCents)}
+            strings={strings}
+            onBack={() => dispatch({ type: 'SET_STEP', step: 'review' })}
+          />
+        )}
+      </StepReview>
     );
   }
 
-  const stepIndex = Math.max(0, STEPS.indexOf(state.step === 'handoff' ? 'review' : state.step));
-
-  // Summary: shown once a vehicle is held. It displays server data only; no price is computed here.
-  const cls = state.options.classes.find((c) => c.key === state.selectedClassKey);
-  const zoneName = (code: string) => state.options?.zones.find((z) => z.code === code)?.name ?? code;
-  const showSummary =
-    cls && (state.step === 'details' || state.step === 'review') && (state.hold || state.booking);
-  const journey = state.search;
-  const summary = showSummary ? (
-    <SummaryCard
-      label="Booking summary"
-      title={cls.name}
-      photoUrl={cls.photo?.url}
-      rows={[
-        {
-          label: strings['booking.pickup.zone'] ?? '',
-          value: zoneName(journey.fromZone),
-        },
-        ...(journey.type === 'transfer'
-          ? [{ label: strings['booking.dropoff.zone'] ?? '', value: zoneName(journey.toZone) }]
-          : [{ label: strings['booking.hours.label'] ?? '', value: journey.hours }]),
-        {
-          label: strings['booking.pickup.datetime'] ?? '',
-          value: `${journey.pickupLocal.replace('T', ' ')} (Athens)`,
-        },
-        { label: `${strings['booking.passengers']} · ${strings['booking.luggage']}`, value: `${journey.passengers} · ${journey.luggage}` },
-      ]}
-      lines={
-        state.step === 'details' && state.hold
-          ? [{ label: cls.name, value: formatEuro(state.hold.baseCents) }]
-          : []
-      }
-      note={strings['booking.priceNote']}
-    />
-  ) : null;
-
   return (
-    <div id="booking-app" className="wrap section booking-v2">
-      <p className="eyebrow">{strings['home.eyebrow'] ?? 'VIP Transfer'}</p>
-      <StepIndicator
-        steps={[
-          strings['booking.step.journey'] ?? 'Journey',
-          strings['booking.step.vehicle'] ?? 'Vehicle',
-          strings['booking.step.details'] ?? 'Details',
-          strings['booking.step.payment'] ?? 'Payment',
+    <>
+      <BookingHero
+        header={header}
+        step={heroStep}
+        title={strings[titleKey] ?? ''}
+        stepLabels={[
+          strings['booking.step.journey'] ?? '',
+          strings['booking.step.vehicle'] ?? '',
+          strings['booking.step.details'] ?? '',
+          strings['booking.step.payment'] ?? '',
         ]}
-        current={stepIndex}
-        label={strings['booking.summary.title'] ?? 'Booking steps'}
+        stepsLabel={strings['booking.summary.title'] ?? ''}
+        hold={hold}
+        onGoStep={goStep}
       />
-
-      <div className={`booking-layout${summary ? ' has-aside' : ''}`}>
-        <div className="booking-main">
-          {state.step === 'search' && (
-            <StepSearch
-              strings={strings}
-              options={state.options}
-              search={state.search}
-              errors={state.errors}
-              formError={state.formError}
-              busy={state.busy}
-              onChange={(patch) => dispatch({ type: 'SET_SEARCH', patch })}
-              onSubmit={submitQuote}
-            />
-          )}
-          {state.step === 'vehicle' && state.quote && (
-            <StepVehicle
-              strings={strings}
-              options={state.options}
-              search={state.search}
-              quote={state.quote}
-              contact={contact}
-              busy={state.busy}
-              holdExpiredMessage={state.holdExpiredMessage}
-              formError={state.formError}
-              preferredClassKey={preferredClassKey}
-              onSelect={selectVehicle}
-              onChangeSearch={() => {
-                dispatch({ type: 'CLEAR_HOLD_EXPIRED' });
-                dispatch({ type: 'SET_STEP', step: 'search' });
-              }}
-            />
-          )}
-          {state.step === 'details' && state.hold && state.selectedClassKey && (
-            <StepDetails
-              strings={strings}
-              options={state.options}
-              search={state.search}
-              hold={state.hold}
-              details={state.details}
-              selectedClassKey={state.selectedClassKey}
-              serverSkewMs={state.serverSkewMs}
-              errors={state.errors}
-              formError={state.formError}
-              busy={state.busy}
-              onChange={(patch) => dispatch({ type: 'SET_DETAILS', patch })}
-              onSubmit={submitBooking}
-              onBack={releaseHoldAndBack}
-              onHoldExpired={onHoldExpired}
-            />
-          )}
-          {state.step === 'review' && state.booking && (
-            <StepReview
-              strings={strings}
-              booking={state.booking}
-              serverSkewMs={state.serverSkewMs}
-              busy={state.busy}
-              formError={state.formError}
-              onPay={pay}
-              onHoldExpired={onHoldExpired}
-            />
-          )}
-          {state.step === 'handoff' && state.booking && (
-            <Handoff checkoutUrl={state.booking.checkoutUrl} strings={strings} />
-          )}
-        </div>
-        {summary && <aside className="booking-aside">{summary}</aside>}
-      </div>
-    </div>
+      <section data-block="appBody" className="s39f3a" id="booking-app">
+        {main}
+        {summary ? <BookingSummary {...summary} /> : null}
+      </section>
+    </>
   );
 }

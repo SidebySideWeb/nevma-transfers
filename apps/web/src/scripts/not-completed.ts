@@ -19,7 +19,9 @@ if (notCompletedRoot?.dataset.mode === 'live') {
       return;
     }
     if (timerEl) {
-      timerEl.textContent = timerTemplate.replace(/\{time\}/g, formatRemain(left));
+      // Digits only: the "HELD FOR" label is beside the timer in the V2 card.
+      timerEl.textContent = formatRemain(left);
+      void timerTemplate;
     }
     window.setTimeout(tick, 1000);
   };

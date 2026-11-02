@@ -6,9 +6,11 @@ import { t } from '../../lib/strings';
 interface Props {
   settings: SiteSettings;
   pathname?: string;
+  /** The booking island draws the header inside its own appHero; render only the menu panel and script. */
+  menuOnly?: boolean;
 }
 
-const { settings, pathname = '/' } = Astro.props;
+const { settings, pathname = '/', menuOnly = false } = Astro.props;
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 const bookingOpen = isBookingOpen();
 const bookHref = bookingOpen ? '/book' : '/request-a-transfer';
@@ -34,6 +36,7 @@ const items = [
 ];
 ---
 
+{!menuOnly && (
 <header data-block="siteHeader" class="s5420c">
   <div class="s9b0ab">
     <a class="s5d8d1" href="/" aria-label={`${settings.companyName} home`}>
@@ -69,6 +72,7 @@ const items = [
     </div>
   </div>
 </header>
+)}
 
 <template id="v2-menu-template">
   <div class="mm s1cd3b" id="v2-menu" role="dialog" aria-modal="true" aria-label={t('nav.menu')}>

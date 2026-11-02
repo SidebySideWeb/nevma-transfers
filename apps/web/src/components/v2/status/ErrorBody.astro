@@ -1,0 +1,42 @@
+---
+import { tDefault } from '../../../lib/strings';
+
+interface Props {
+  homeLabel?: string;
+  bookLabel?: string;
+  phone?: string;
+  help?: string;
+}
+
+const {
+  homeLabel = tDefault('error.home'),
+  bookLabel = tDefault('nav.book'),
+  phone,
+  help,
+} = Astro.props;
+const phoneHref = phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : '';
+---
+
+<section data-block="appBody" class="s83f2d">
+  <div class="s4ba17">
+    <a class="btn btn-gold s95216" href="/">{homeLabel}</a>
+    <a class="btn btn-line s95216" href="/book">{bookLabel}</a>
+  </div>
+  {
+    help && phone ? (
+      <div class="s221fe">
+        {help.includes(phone) ? (
+          <>
+            {help.slice(0, help.indexOf(phone))}
+            <a href={phoneHref}>{phone}</a>
+            {help.slice(help.indexOf(phone) + phone.length)}
+          </>
+        ) : (
+          help
+        )}
+      </div>
+    ) : help ? (
+      <div class="s221fe">{help}</div>
+    ) : null
+  }
+</section>

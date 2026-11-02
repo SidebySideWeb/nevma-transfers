@@ -1,0 +1,48 @@
+---
+import { t } from '../../../lib/strings';
+
+interface Props {
+  phone: string;
+}
+
+const { phone } = Astro.props;
+const phoneHref = `tel:${phone.replace(/[^\d+]/g, '')}`;
+const urgent = t('form.received.urgent', { phone });
+---
+
+<section data-block="appBody" class="s83f2d">
+  <div class="s061fa">
+    <a href="/fleet" class="card zoom s4be37">
+      <div class="bgx2 ph s22cbe"></div>
+      <div class="sa6621"></div>
+      <div class="sc9351">
+        <div class="eyebrow">{t('form.received.meanwhile')}</div>
+        <div class="display s9e28e">{t('form.received.fleet')}</div>
+      </div>
+    </a>
+    <a href="/vip-security" class="card zoom s4be37">
+      <div class="bgx3 ph s22cbe"></div>
+      <div class="sa6621"></div>
+      <div class="sc9351">
+        <div class="eyebrow">{t('form.received.also')}</div>
+        <div class="display s9e28e">{t('form.received.vip')}</div>
+      </div>
+    </a>
+  </div>
+  <div class="s4ba17">
+    <a class="btn btn-gold s95216" href="/">{t('form.received.home')}</a>
+  </div>
+  <div class="s221fe">
+    {
+      urgent.includes(phone) ? (
+        <>
+          {urgent.slice(0, urgent.indexOf(phone))}
+          <a href={phoneHref}>{phone}</a>
+          {urgent.slice(urgent.indexOf(phone) + phone.length)}
+        </>
+      ) : (
+        urgent
+      )
+    }
+  </div>
+</section>

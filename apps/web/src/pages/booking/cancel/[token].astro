@@ -1,10 +1,12 @@
 ---
 export const prerender = false;
 
-import BaseLayout from '../../../layouts/BaseLayout.astro';
+import CancelBody from '../../../components/v2/status/CancelBody.astro';
+import StatusHero from '../../../components/v2/StatusHero.astro';
+import PublicLayout from '../../../layouts/PublicLayout.astro';
 import { getSiteSettings, loadUiStrings } from '../../../lib/sanity/content';
 import { cancelPageView } from '../../../lib/server/booking-service';
-import { t } from '../../../lib/strings';
+import { t, tAccent } from '../../../lib/strings';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('Referrer-Policy', 'no-referrer');
@@ -15,95 +17,82 @@ const token = Astro.params.token ?? '';
 const view = await cancelPageView(token);
 
 const pageTitle = t('booking.cancel.title');
-const doneMsg = t('booking.cancel.done');
 const tooLate = t('booking.cancel.tooLate');
 const invalid = t('booking.cancel.invalid');
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
 ---
 
-<BaseLayout
-  title={`${pageTitle} - ${settings.companyName}`}
-  description={pageTitle}
+<PublicLayout
+  designPage="16-cancel-booking"
+  title={`${pageTitle.replace(/\*/g, '')} - ${settings.companyName}`}
+  description={pageTitle.replace(/\*/g, '')}
   robots="noindex,nofollow"
 >
-  <section class="notice-block">
-    <div class="narrow notice-block-inner stack">
-      {
-        view.kind === 'invalid' && (
-          <div class="notice notice-block--expired" role="status">
-            <p class="eyebrow">{pageTitle}</p>
-            <h1 class="display notice-block-title" tabindex="-1">{invalid}</h1>
-            <p>
-              <a href={`tel:${settings.phone.replace(/\s/g, '')}`}>{settings.phone}</a>
-              {' · '}
-              <a href={`mailto:${settings.email}`}>{settings.email}</a>
-            </p>
+  {
+    view.kind === 'invalid' && (
+      <>
+        <StatusHero
+          heroClass="s68332"
+          eyebrow={t('booking.cancel.eyebrow', { reference: '—' })}
+          titleHtml={tAccent('booking.cancel.title')}
+          lead={invalid}
+          pathname="/booking/find"
+        />
+        <section data-block="appBody" class="s83f2d">
+          <div class="s221fe">
+            <a href={`tel:${settings.phone.replace(/[^\d+]/g, '')}`}>{settings.phone}</a>
+            {' · '}
+            <a href={`mailto:${settings.email}`}>{settings.email}</a>
           </div>
-        )
-      }
+        </section>
+      </>
+    )
+  }
 
-      {
-        view.kind === 'tooLate' && (
-          <div class="notice notice-block--expired" role="status">
-            <p class="eyebrow">{pageTitle}</p>
-            <h1 class="display notice-block-title" tabindex="-1">{tooLate}</h1>
-            <p>
-              <a href={`tel:${settings.phone.replace(/\s/g, '')}`}>{settings.phone}</a>
-              {' · '}
-              <a href={`mailto:${settings.email}`}>{settings.email}</a>
-            </p>
+  {
+    view.kind === 'tooLate' && (
+      <>
+        <StatusHero
+          heroClass="s68332"
+          eyebrow={t('booking.cancel.eyebrow', { reference: '—' })}
+          titleHtml={tAccent('booking.cancel.title')}
+          lead={tooLate}
+          pathname="/booking/find"
+        />
+        <section data-block="appBody" class="s83f2d">
+          <div class="s221fe">
+            <a href={`tel:${settings.phone.replace(/[^\d+]/g, '')}`}>{settings.phone}</a>
+            {' · '}
+            <a href={`mailto:${settings.email}`}>{settings.email}</a>
           </div>
-        )
-      }
+        </section>
+      </>
+    )
+  }
 
-      {
-        view.kind === 'ok' && (
-          <div
-            id="cancel-root"
-            data-token={token}
-            data-turnstile-site-key={turnstileSiteKey}
-          >
-            <section id="cancel-card" class="card stack" aria-labelledby="c-h">
-              <h1 id="c-h" tabindex="-1">{pageTitle}</h1>
-              <dl class="summary">
-                <div>
-                  <dt>{t('booking.cancel.booking')}</dt>
-                  <dd>{view.reference}</dd>
-                </div>
-                <div>
-                  <dt>{t('booking.cancel.pickup')}</dt>
-                  <dd>{view.pickupLabel}</dd>
-                </div>
-                <div>
-                  <dt>{t('booking.cancel.trip')}</dt>
-                  <dd>{view.tripLabel}</dd>
-                </div>
-                <div>
-                  <dt>{t('booking.cancel.refund')}</dt>
-                  <dd>{t('booking.cancel.refundToCard', { amount: view.refundLabel })}</dd>
-                </div>
-              </dl>
-              <p id="cancel-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
-              <form id="cancel-form">
-                <button id="cancel-submit" class="btn btn-danger btn-block" type="submit">
-                  {t('booking.cancel.confirm', { reference: view.reference })}
-                </button>
-              </form>
-            </section>
-            <div
-              id="cancel-done"
-              class="notice notice-success"
-              role="status"
-              hidden
-            >
-              <h1 id="cancel-done-title" tabindex="-1">{doneMsg}</h1>
-            </div>
-          </div>
-        )
-      }
-    </div>
-  </section>
-</BaseLayout>
+  {
+    view.kind === 'ok' && (
+      <>
+        <StatusHero
+          heroClass="s68332"
+          eyebrow={t('booking.cancel.eyebrow', { reference: view.reference })}
+          titleHtml={tAccent('booking.cancel.title')}
+          pathname={`/booking/cancel/${token}`}
+        />
+        <CancelBody
+          reference={view.card.reference}
+          className={view.card.className.toUpperCase()}
+          whenLabel={view.card.pickupLabel}
+          routeLabel={view.card.routeLabel}
+          refundLabel={view.refundLabel}
+          keepHref={`/booking/manage/${token}`}
+          token={token}
+          turnstileSiteKey={turnstileSiteKey}
+        />
+      </>
+    )
+  }
+</PublicLayout>
 
 <script>
   import '../../../scripts/cancel-page';

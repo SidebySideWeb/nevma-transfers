@@ -1,0 +1,53 @@
+---
+import SiteHeader from './SiteHeader.astro';
+import { getSiteSettings } from '../../lib/sanity/content';
+
+interface Props {
+  /** Section classes after bgx1 (e.g. "s68332", "s96765", "sd750a"). */
+  heroClass: string;
+  /** Inner wrap class (sd5030 for most status pages, s2d3f5 for manage). */
+  innerClass?: string;
+  /** h1 class (display sc0a7a default; manage uses display sc9e5e). */
+  titleClass?: string;
+  eyebrow: string;
+  /** Escaped HTML from tAccent / escapeThenAccent. */
+  titleHtml: string;
+  lead?: string;
+  /** Manage page status pill. */
+  badge?: { label: string; note?: string };
+  pathname?: string;
+}
+
+const {
+  heroClass,
+  innerClass = 'sd5030',
+  titleClass = 'display sc0a7a',
+  eyebrow,
+  titleHtml,
+  lead,
+  badge,
+  pathname = '/',
+} = Astro.props;
+
+const settings = await getSiteSettings();
+---
+
+<section data-block="appHero" class:list={['bgx1', heroClass]}>
+  <SiteHeader settings={settings} pathname={pathname} />
+  <div class={innerClass}>
+    <div class="eyebrow">{eyebrow}</div>
+    <h1 class={titleClass} tabindex="-1" set:html={titleHtml} />
+    {lead ? <p class="s97596">{lead}</p> : null}
+    {
+      badge ? (
+        <div class="s8dac8">
+          <span class="s1ba8f">
+            <span class="sb3186" aria-hidden="true" />
+            {badge.label}
+          </span>
+          {badge.note ? <span class="sd59a8">{badge.note}</span> : null}
+        </div>
+      ) : null
+    }
+  </div>
+</section>

@@ -1,108 +1,43 @@
 ---
 export const prerender = false;
 
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import FindBookingBody from '../../components/v2/status/FindBookingBody.astro';
+import StatusHero from '../../components/v2/StatusHero.astro';
+import PublicLayout from '../../layouts/PublicLayout.astro';
 import { getSiteSettings, loadUiStrings } from '../../lib/sanity/content';
-import { t } from '../../lib/strings';
+import { t, tAccent } from '../../lib/strings';
 
 await loadUiStrings();
 const settings = await getSiteSettings();
 const sent = Astro.url.searchParams.get('sent') === '1';
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
 const dummyTurnstile = turnstileSiteKey.startsWith('1x0000000');
-
-const title = t('lookup.title');
-const intro = t('lookup.intro');
 const sentMsg = t('lookup.sent');
-const titleParts = title.split(/\s+/);
-const titleLead = titleParts[0] ?? title;
-const titleRest = titleParts.slice(1).join(' ');
+const title = t('lookup.title');
 ---
 
-<BaseLayout
-  title={`${title} - ${settings.companyName}`}
-  description={intro}
+<PublicLayout
+  designPage="14-find-my-booking"
+  title={`${title.replace(/\*/g, '')} - ${settings.companyName}`}
+  description={t('lookup.intro')}
   robots="noindex,nofollow"
 >
-  <section class="page-band">
-    <div class="wrap page-band-inner">
-      <p class="eyebrow">{t('manage.title')}</p>
-      <h1 class="display page-band-title">
-        {titleLead}{titleRest ? <>{' '}<em>{titleRest}</em></> : null}
-      </h1>
-      <p class="page-band-lead">{intro}</p>
-    </div>
-  </section>
-
-  <section class="section">
-    <div
-      class="wrap narrow stack"
-      id="lookup-root"
-      data-sent={sent ? '1' : '0'}
-      data-sent-message={sentMsg}
-    >
-      {
-        sent ? (
-          <div class="card stack notice-success" role="status" id="lookup-sent" tabindex="-1">
-            <h2 class="display" style="font-size: var(--text-2xl)">{sentMsg}</h2>
-            <a class="btn btn-line" href="/booking/find">
-              {title}
-            </a>
-          </div>
-        ) : (
-          <form
-            id="lookup-form"
-            class="card stack"
-            method="post"
-            action="/api/bookings/lookup"
-            novalidate
-          >
-            <div class="grid grid-2">
-              <div class="field">
-                <label for="lk-ref">{t('lookup.reference')}</label>
-                <input
-                  id="lk-ref"
-                  name="reference"
-                  type="text"
-                  autocomplete="off"
-                  required
-                  spellcheck="false"
-                  placeholder="EP-XXXXXX"
-                />
-              </div>
-              <div class="field">
-                <label for="lk-mail">{t('lookup.email')}</label>
-                <input
-                  id="lk-mail"
-                  name="email"
-                  type="email"
-                  autocomplete="email"
-                  required
-                />
-              </div>
-            </div>
-
-            <div class="turnstile-slot" data-turnstile-sitekey={turnstileSiteKey}>
-              {
-                dummyTurnstile ? (
-                  <input type="hidden" name="cf-turnstile-response" value="ok" />
-                ) : (
-                  <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark" />
-                )
-              }
-            </div>
-
-            <p id="lookup-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
-
-            <button class="btn btn-gold" type="submit" data-submit>
-              {t('lookup.submit')}
-            </button>
-          </form>
-        )
-      }
-    </div>
-  </section>
-</BaseLayout>
+  <StatusHero
+    heroClass="s68332"
+    eyebrow={t('lookup.eyebrow')}
+    titleHtml={tAccent('lookup.title')}
+    lead={t('lookup.intro')}
+    pathname="/booking/find"
+  />
+  <FindBookingBody
+    phone={settings.phone}
+    email={settings.email}
+    turnstileSiteKey={turnstileSiteKey}
+    dummyTurnstile={dummyTurnstile}
+    sent={sent}
+    sentMsg={sentMsg}
+  />
+</PublicLayout>
 
 {
   !dummyTurnstile && turnstileSiteKey ? (

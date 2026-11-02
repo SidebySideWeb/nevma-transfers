@@ -1,12 +1,12 @@
 ---
 export const prerender = false;
 
-import BaseLayout from '../../../layouts/BaseLayout.astro';
-import StatusBadge from '../../../components/v2/StatusBadge.astro';
-import Timeline from '../../../components/v2/Timeline.astro';
-import { formatEuro, formatVatRate } from '../../../lib/booking/pricing';
+import ManageBody from '../../../components/v2/status/ManageBody.astro';
+import StatusHero from '../../../components/v2/StatusHero.astro';
+import PublicLayout from '../../../layouts/PublicLayout.astro';
 import { getSiteSettings, loadUiStrings } from '../../../lib/sanity/content';
 import { managePageView } from '../../../lib/server/booking-manage';
+import { escapeThenAccent } from '../../../lib/v2/accent';
 import { t } from '../../../lib/strings';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
@@ -26,173 +26,87 @@ const pickupDisplay =
 const comma = pickupDisplay.lastIndexOf(',');
 const pickupLead = comma >= 0 ? pickupDisplay.slice(0, comma) : pickupDisplay;
 const pickupTime = comma >= 0 ? pickupDisplay.slice(comma + 1).trim() : '';
+const titleHtml =
+  view.kind === 'ok'
+    ? escapeThenAccent(
+        pickupTime ? `${pickupLead}, *${pickupTime}*` : pickupLead || pageTitle,
+      )
+    : escapeThenAccent(invalid);
+
+const routeHtml =
+  view.kind === 'ok'
+    ? view.routeOrHours.replace(' → ', ' <span class="sbbc0f">→</span> ')
+    : '';
+
+const addressLine =
+  view.kind === 'ok'
+    ? [
+        view.pickupAddress,
+        view.dropoffAddress ? `→ ${view.dropoffAddress}` : null,
+        view.flightNumber ? `Flight ${view.flightNumber}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
 ---
 
-<BaseLayout
+<PublicLayout
+  designPage="15-manage-booking"
   title={`${pageTitle} - ${settings.companyName}`}
   description={pageTitle}
   robots="noindex,nofollow"
 >
   {
     view.kind === 'invalid' ? (
-      <section class="state-page">
-        <div class="state-card stack" role="status">
-          <h1 class="display" tabindex="-1">{invalid}</h1>
-          <a class="btn btn-gold" href="/booking/find">
-            {findTitle}
-          </a>
-        </div>
-      </section>
-    ) : (
       <>
-        <section class="page-band">
-          <div class="wrap page-band-inner">
-            <p class="eyebrow">
-              {pageTitle} · {view.reference}
-            </p>
-            <h1 class="display page-band-title">
-              {pickupLead}
-              {pickupTime ? (
-                <>
-                  , <em>{pickupTime}</em>
-                </>
-              ) : null}
-            </h1>
-            <div class="row">
-              <StatusBadge tone="info" label={view.statusLabel} />
-              <span class="muted">{t('manage.chauffeurNote')}</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="wrap manage-layout">
-            <div class="manage-main stack">
-              <div class="card manage-route">
-                <div class="manage-route-head">
-                  <div class="lbl">{view.bookingType === 'hourly' ? view.typeLabel : 'Route'}</div>
-                  <div class="manage-route-title">{view.routeOrHours}</div>
-                  <p class="muted">
-                    {view.pickupAddress}
-                    {view.dropoffAddress ? ` → ${view.dropoffAddress}` : ''}
-                    {view.flightNumber ? ` · ${view.flightNumber}` : ''}
-                  </p>
-                </div>
-                <ul class="manage-facts">
-                  <li>
-                    <span class="lbl">Vehicle</span>
-                    <span>{view.className}</span>
-                  </li>
-                  <li>
-                    <span class="lbl">{t('booking.passengers')}</span>
-                    <span>{view.passengers}</span>
-                  </li>
-                  <li>
-                    <span class="lbl">{t('booking.luggage')}</span>
-                    <span>{view.luggage}</span>
-                  </li>
-                  <li>
-                    <span class="lbl">Type</span>
-                    <span>{view.typeLabel}</span>
-                  </li>
-                </ul>
-                {
-                  view.extras.length > 0 ? (
-                    <ul class="manage-extras">
-                      {view.extras.map((e) => (
-                        <li>{e.label}</li>
-                      ))}
-                    </ul>
-                  ) : null
-                }
-              </div>
-
-              <div class="stack">
-                <p class="eyebrow">Status</p>
-                <Timeline
-                  items={view.timeline.map((step) => ({
-                    label: step.title,
-                    done: step.done,
-                    current: step.current,
-                  }))}
-                />
-              </div>
-            </div>
-
-            <aside class="manage-aside stack">
-              <div class="card manage-paid">
-                <div class="display" style="font-size: var(--text-xl); color: var(--color-accent)">
-                  {view.className}
-                </div>
-                <div class="manage-srow">
-                  <span>{view.typeLabel}</span>
-                  <span>{view.priceLabel}</span>
-                </div>
-                <p class="muted" style="margin: 0; font-size: var(--text-sm)">
-                  {t('booking.priceNote')}
-                </p>
-                <div class="manage-paid-total">
-                  <span>{t('manage.paid')}</span>
-                  <span class="display" style="font-size: var(--text-2xl); color: var(--color-accent)">
-                    {view.priceLabel}
-                  </span>
-                </div>
-                <details class="price-analysis-disclosure">
-                  <summary>{t('booking.review.priceAnalysis')}</summary>
-                  <dl class="summary">
-                    {
-                      view.analysisLines.map((line) => (
-                        <div>
-                          <dt>{line.label}</dt>
-                          <dd>{formatEuro(line.cents)}</dd>
-                        </div>
-                      ))
-                    }
-                    <div>
-                      <dt>{t('booking.review.net')}</dt>
-                      <dd>{formatEuro(view.netCents)}</dd>
-                    </div>
-                    <div>
-                      <dt>{t('booking.review.vat', { rate: formatVatRate(view.vatRateBp) })}</dt>
-                      <dd>{formatEuro(view.vatCents)}</dd>
-                    </div>
-                    <div>
-                      <dt>{t('booking.review.totalInclVat')}</dt>
-                      <dd>{view.priceLabel}</dd>
-                    </div>
-                  </dl>
-                </details>
-              </div>
-
-              <div class="card stack">
-                <p class="eyebrow">Manage</p>
-                <a
-                  class="btn btn-line btn-block"
-                  href={`mailto:${view.officeEmail}?subject=${encodeURIComponent(`Invoice ${view.reference}`)}`}
-                >
-                  {t('manage.requestInvoice')}
-                </a>
-                <a class="btn btn-line btn-block" href={view.officePhoneHref}>
-                  {t('manage.callOffice')}
-                </a>
-                <a class="btn btn-line btn-block" href="./calendar.ics">
-                  {t('manage.addToCalendar')}
-                </a>
-                {
-                  view.canCancel ? (
-                    <a class="manage-cancel" href={`/booking/cancel/${token}`}>
-                      {t('manage.cancel')}
-                    </a>
-                  ) : null
-                }
-                <p class="muted" style="margin: 0; font-size: var(--text-sm)">
-                  {t('manage.changesByPhone')}
-                </p>
-              </div>
-            </aside>
+        <StatusHero
+          heroClass="sd750a"
+          innerClass="s2d3f5"
+          titleClass="display sc9e5e"
+          eyebrow={pageTitle}
+          titleHtml={titleHtml}
+          pathname="/booking/find"
+        />
+        <section data-block="appBody" class="s03fba">
+          <div class="s4ba17">
+            <a class="btn btn-gold s95216" href="/booking/find">
+              {findTitle.replace(/\*/g, '')}
+            </a>
           </div>
         </section>
       </>
+    ) : (
+      <>
+        <StatusHero
+          heroClass="sd750a"
+          innerClass="s2d3f5"
+          titleClass="display sc9e5e"
+          eyebrow={t('manage.eyebrow', { reference: view.reference })}
+          titleHtml={titleHtml}
+          badge={{ label: view.statusLabel.toUpperCase(), note: t('manage.chauffeurNote') }}
+          pathname={`/booking/manage/${token}`}
+        />
+        <ManageBody
+          routeLabel={routeHtml}
+          addressLine={addressLine}
+          className={view.className}
+          passengers={view.passengers}
+          luggage={view.luggage}
+          leadName={view.leadName}
+          timeline={view.timeline}
+          photoUrl={view.photoUrl}
+          typeLabel={view.typeLabel}
+          baseCents={view.basePriceCents}
+          vatRateBp={view.vatRateBp}
+          vatCents={view.vatCents}
+          totalCents={view.priceCents}
+          reference={view.reference}
+          officeEmail={view.officeEmail}
+          officePhoneHref={view.officePhoneHref}
+          calendarHref="./calendar.ics"
+          cancelHref={view.canCancel ? `/booking/cancel/${token}` : null}
+        />
+      </>
     )
   }
-</BaseLayout>
+</PublicLayout>

@@ -149,8 +149,7 @@ for (const width of [1440, 390]) {
 
 for (const width of [1440, 390]) {
   for (const c of CASES) {
-    const run = c.route.startsWith('/dev/v2/') ? test.fixme : test;
-    run(`${c.route} = ${c.design} at ${width}px`, async ({ browser, baseURL }) => {
+    test(`${c.route} = ${c.design} at ${width}px`, async ({ browser, baseURL }) => {
       const ctx = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
       const design = await ctx.newPage();
       const site = await ctx.newPage();

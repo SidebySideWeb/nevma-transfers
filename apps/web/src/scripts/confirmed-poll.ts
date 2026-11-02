@@ -1,6 +1,6 @@
 /**
  * Polls GET /api/booking-status until confirmed (or 2 minutes).
- * Mutates the DOM: waiting → confirmed, or waiting → timeout.
+ * Waiting lead stays in the hero; on confirm the page reloads to render the full V2 body.
  */
 type StatusPayload = {
   reference?: string;
@@ -9,14 +9,10 @@ type StatusPayload = {
 };
 
 const confirmedRoot = document.getElementById('confirmed-root');
-if (confirmedRoot) {
+if (confirmedRoot?.dataset.pending === '1') {
   const orderCode = confirmedRoot.dataset.orderCode ?? '';
   const waitingEl = document.getElementById('confirmed-waiting');
-  const okEl = document.getElementById('confirmed-ok');
   const timeoutEl = document.getElementById('confirmed-timeout');
-  const bodyEl = document.getElementById('confirmed-body');
-  const titleEl = document.getElementById('confirmed-title');
-  const bodyTemplate = confirmedRoot.dataset.bodyTemplate ?? '';
   const pollMs = 3000;
   const maxMs = 120_000;
   const started = Date.now();
@@ -31,13 +27,7 @@ if (confirmedRoot) {
       if (res.ok) {
         const data = (await res.json()) as StatusPayload;
         if (data.status === 'confirmed' || data.status === 'assigned' || data.status === 'completed') {
-          if (bodyEl && data.reference) {
-            bodyEl.textContent = bodyTemplate.replace(/\{reference\}/g, data.reference);
-          }
-          waitingEl?.setAttribute('hidden', '');
-          timeoutEl?.setAttribute('hidden', '');
-          okEl?.removeAttribute('hidden');
-          titleEl?.focus();
+          window.location.reload();
           return;
         }
       }
@@ -47,7 +37,6 @@ if (confirmedRoot) {
 
     if (Date.now() - started >= maxMs) {
       waitingEl?.setAttribute('hidden', '');
-      okEl?.setAttribute('hidden', '');
       timeoutEl?.removeAttribute('hidden');
       document.getElementById('confirmed-timeout-title')?.focus();
       return;

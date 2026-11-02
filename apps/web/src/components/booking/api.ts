@@ -101,6 +101,13 @@ export const bookingApi = {
   releaseHold: (holdId: string) =>
     request<void>(`/api/holds/${encodeURIComponent(holdId)}`, { method: 'DELETE' }),
 
+  /** Ends a pending, unpaid booking and its hold (the review step's Edit buttons). */
+  releaseBooking: (reference: string) =>
+    request<{ ok: true }>('/api/bookings/release', {
+      method: 'POST',
+      body: JSON.stringify({ reference }),
+    }),
+
   createBooking: (body: unknown) =>
     request<{
       reference: string;

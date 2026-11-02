@@ -1,0 +1,66 @@
+---
+import { t } from '../../../lib/strings';
+
+interface Props {
+  reference: string;
+  className: string;
+  whenLabel: string;
+  routeLabel: string;
+  holdMmSs: string;
+  phone: string;
+  tryAgainId?: string;
+  orderCode?: string;
+}
+
+const {
+  reference,
+  className,
+  whenLabel,
+  routeLabel,
+  holdMmSs,
+  phone,
+  tryAgainId = 'try-again',
+} = Astro.props;
+
+const phoneHref = `tel:${phone.replace(/[^\d+]/g, '')}`;
+const help = t('booking.notCompleted.help', { phone });
+---
+
+<section data-block="appBody" class="s83f2d">
+  <div class="sbfd03">
+    <div class="bgx2 sb426a"></div>
+    <div class="sf8883">
+      <div class="s36738">{reference} · {className}</div>
+      <div class="display s1a9b3">{whenLabel}</div>
+      <div class="sa3ecc">{routeLabel}</div>
+    </div>
+    <div class="s602d3">
+      <div class="s50601" role="timer" aria-label={t('booking.notCompleted.heldFor')}>
+        <div class="s8248f">{t('booking.notCompleted.heldFor').toUpperCase()}</div>
+        <div class="sfd829" id="hold-remain">{holdMmSs}</div>
+      </div>
+    </div>
+  </div>
+  <p id="not-completed-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
+  <div class="s4ba17">
+    <button type="button" class="btn btn-gold s95216" id={tryAgainId}>
+      {t('booking.notCompleted.retry')}
+    </button>
+    <a class="btn btn-line s95216" href="/book#vehicle" id="choose-vehicle">
+      {t('booking.notCompleted.other')}
+    </a>
+  </div>
+  <div class="s221fe">
+    {
+      help.includes(phone) ? (
+        <>
+          {help.slice(0, help.indexOf(phone))}
+          <a href={phoneHref}>{phone}</a>
+          {help.slice(help.indexOf(phone) + phone.length)}
+        </>
+      ) : (
+        help
+      )
+    }
+  </div>
+</section>

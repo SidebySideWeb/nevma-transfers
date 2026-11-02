@@ -1,0 +1,93 @@
+---
+import { t } from '../../../lib/strings';
+
+interface Props {
+  phone: string;
+  email: string;
+  turnstileSiteKey: string;
+  dummyTurnstile: boolean;
+  sent?: boolean;
+  sentMsg?: string;
+}
+
+const {
+  phone,
+  email,
+  turnstileSiteKey,
+  dummyTurnstile,
+  sent = false,
+  sentMsg = '',
+} = Astro.props;
+
+const phoneHref = `tel:${phone.replace(/[^\d+]/g, '')}`;
+const helpBody = t('lookup.help.body', { phone, email });
+---
+
+<section data-block="appBody" class="s83f2d" id="lookup-root" data-sent={sent ? '1' : '0'} data-sent-message={sentMsg}>
+  {
+    sent ? (
+      <div class="s6499d" role="status" id="lookup-sent" tabindex="-1">
+        <p class="s37cf5">{sentMsg}</p>
+        <div class="s4ba17">
+          <a class="btn btn-line s95216" href="/booking/find">{t('lookup.title').replace(/\*/g, '')}</a>
+        </div>
+      </div>
+    ) : (
+      <form class="s6499d" id="lookup-form" method="post" action="/api/bookings/lookup" novalidate>
+        <div class="grid">
+          <div class="f2">
+            <label for="lk-ref">{t('lookup.reference')}</label>
+            <input
+              id="lk-ref"
+              name="reference"
+              type="text"
+              autocomplete="off"
+              required
+              spellcheck="false"
+              placeholder="EP-2026-0000"
+            />
+          </div>
+          <div class="f2">
+            <label for="lk-mail">{t('lookup.email')}</label>
+            <input id="lk-mail" name="email" type="email" autocomplete="email" required />
+          </div>
+        </div>
+        <div class="turnstile-slot" data-turnstile-sitekey={turnstileSiteKey}>
+          {
+            dummyTurnstile ? (
+              <input type="hidden" name="cf-turnstile-response" value="ok" />
+            ) : (
+              <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark" />
+            )
+          }
+        </div>
+        <p id="lookup-error" class="notice notice-danger" role="alert" tabindex="-1" hidden></p>
+        <div>
+          <button type="submit" class="btn btn-gold sd0928" data-submit>{t('lookup.submit')}</button>
+        </div>
+      </form>
+    )
+  }
+
+  <div class="s061fa">
+    <div class="s48805">
+      <div class="eyebrow">{t('lookup.help.title')}</div>
+      <div class="s37cf5">
+        {
+          helpBody.includes(phone) ? (
+            <>
+              Call <a href={phoneHref}>{phone}</a> or write to{' '}
+              <a href={`mailto:${email}`}>{email}</a>.
+            </>
+          ) : (
+            helpBody
+          )
+        }
+      </div>
+    </div>
+    <div class="s48805">
+      <div class="eyebrow">{t('lookup.why.title')}</div>
+      <div class="s37cf5">{t('lookup.why.body')}</div>
+    </div>
+  </div>
+</section>
