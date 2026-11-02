@@ -151,7 +151,7 @@ test('AC-06: confirmed page waits; webhook flips to confirmed; pending unchanged
   await expect(page.getByRole('heading', { name: /Booking confirmed/i })).toBeVisible({
     timeout: 10_000,
   });
-  await expect(page.locator('#confirmed-body')).toContainText(/(?:EP|TEM)-/);
+  await expect(page.locator('#confirmed-body')).toContainText(/(?:ELP|EP|TEM)-/);
   const focused = await page.locator('#confirmed-title').evaluate((el) => document.activeElement === el);
   expect(focused).toBe(true);
 

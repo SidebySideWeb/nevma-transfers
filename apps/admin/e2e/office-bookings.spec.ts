@@ -92,8 +92,8 @@ test('office booking paid offline from the calendar empty-time popover', async (
   await expect(page.locator('#nb-submit')).toHaveText('Create booking, paid offline');
   await page.locator('#nb-submit').click();
 
-  await expect(page).toHaveURL(/\/bookings\/((?:EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
-  const reference = /\/bookings\/((?:EP|TEM)-[A-Z0-9]+)/.exec(page.url())![1]!;
+  await expect(page).toHaveURL(/\/bookings\/((?:ELP|EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
+  const reference = /\/bookings\/((?:ELP|EP|TEM)-[A-Z0-9]+)/.exec(page.url())![1]!;
   await expect(page.getByRole('status')).toContainText(`Booking ${reference} created`);
   await expect(page.locator('.badge').filter({ hasText: 'Office' }).first()).toBeVisible();
   await expect(page.locator('#added-by')).toContainText(`Added by ${STAFF_EMAIL} · Cash`);
@@ -121,7 +121,7 @@ test('office booking with a payment link is pending and held', async ({ page }) 
   });
   await expect(page.locator('#nb-submit')).toHaveText('Create and send payment link');
   await page.locator('#nb-submit').click();
-  await expect(page).toHaveURL(/\/bookings\/((?:EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/bookings\/((?:ELP|EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
   await expect(page.locator('.badge').filter({ hasText: 'pending' })).toBeVisible();
   await expect(page.locator('.badge').filter({ hasText: 'Office' }).first()).toBeVisible();
   await expect(page.locator('#added-by')).toContainText('Viva');
@@ -138,7 +138,7 @@ test('record an offline payment on a to-collect booking', async ({ page }) => {
     note: 'e2e-office to collect',
   });
   await page.locator('#nb-submit').click();
-  await expect(page).toHaveURL(/\/bookings\/((?:EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/bookings\/((?:ELP|EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
   await expect(page.locator('#payment-status')).toHaveText('unpaid');
 
   await page.getByRole('button', { name: 'Record offline payment…' }).click();

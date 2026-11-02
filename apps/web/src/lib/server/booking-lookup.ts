@@ -8,7 +8,8 @@ import { bookingDb } from './db';
 import { assertRateLimit } from './rate-limit';
 import { rejectMoneyFields } from '../booking/validation';
 
-const REFERENCE_RE = /^(EP|TEM)-[A-HJ-NP-Z2-9]{6}$/;
+/** Current prefix is ELP- (0017); older EP-/TEM- rows still look up. */
+const REFERENCE_RE = /^(ELP|EP|TEM)-[A-HJ-NP-Z2-9]{6}$/;
 
 const LookupRequest = z.object({
   reference: z
