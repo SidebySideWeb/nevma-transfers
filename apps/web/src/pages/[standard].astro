@@ -1,13 +1,12 @@
 ---
-export const prerender = false;
+// Static HTML for V2 fidelity / CDN; form flash still works on the JS path (client validation).
+export const prerender = true;
 
 import PublicLayout from '../layouts/PublicLayout.astro';
 import Sections from '../components/sections/Sections.astro';
-import { FORM_FLASH_COOKIE } from '../lib/forms/form-cookie';
 import { getSiteSettings } from '../lib/sanity/content';
 import {
   getPageBySlug,
-  LEGAL_SLUGS,
   STANDARD_SLUGS,
   type StandardSlug,
 } from '../lib/sanity/pages';
@@ -20,15 +19,11 @@ const DESIGN_PAGE: Record<StandardSlug, string> = {
   'request-a-transfer': '12-request-transfer',
 };
 
-const standard = Astro.params.standard as string;
-if (!(STANDARD_SLUGS as readonly string[]).includes(standard)) {
-  return new Response(null, { status: 404, statusText: 'Not Found' });
-}
-if ((LEGAL_SLUGS as readonly string[]).includes(standard)) {
-  throw new Error(`Standard slug "${standard}" collides with a legal page slug`);
+export function getStaticPaths() {
+  return STANDARD_SLUGS.map((standard) => ({ params: { standard } }));
 }
 
-const slug = standard as StandardSlug;
+const slug = Astro.params.standard as StandardSlug;
 const page = await getPageBySlug(slug);
 const settings = await getSiteSettings();
 const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
@@ -59,11 +54,7 @@ if (slug === 'vip-security') {
   jsonLd.push(organizationJsonLd(settings, siteUrl, slug === 'contact' ? { contactPoint: true } : undefined));
 }
 
-const hasFlash = Boolean(Astro.cookies.get(FORM_FLASH_COOKIE)?.value);
-Astro.response.headers.set(
-  'Cache-Control',
-  hasFlash ? 'private, no-store' : 'public, s-maxage=60, stale-while-revalidate=300',
-);
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
 ---
 
 <PublicLayout designPage={DESIGN_PAGE[slug]} seo={seo} jsonLd={jsonLd}>

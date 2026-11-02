@@ -1,33 +1,53 @@
 ---
-/**
- * V2 stub for FeatureTrio — markup from design/v2/build/blocks/05-vip-security/02-featureTrio.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+type Item = { title?: string; text?: string };
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const layout = typeof section.layout === 'string' ? section.layout : 'band';
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const lead = typeof section.lead === 'string' ? section.lead : '';
+const items = Array.isArray(section.items) ? (section.items as Item[]) : [];
+const numerals = ['i.', 'ii.', 'iii.', 'iv.', 'v.'] as const;
 ---
-<section data-block="featureTrio" class="s3f7d6">
 
-    <div class="sf3927">
-      <span class="s22fe0">i.</span>
-      <h2 class="s0cf6c">Discreet presence</h2>
-      <p class="sec10d">VIP security escorts that respect your privacy and daily routine.</p>
-    </div>
-
-    <div class="sf3927">
-      <span class="s22fe0">ii.</span>
-      <h2 class="s0cf6c">Tailored to your needs</h2>
-      <p class="sec10d">Protection planned around your schedule and the requirements of each occasion.</p>
-    </div>
-
-    <div class="sf3927">
-      <span class="s22fe0">iii.</span>
-      <h2 class="s0cf6c">Protection on the move</h2>
-      <p class="sec10d">VIP protection combined with luxury transfers.</p>
-    </div>
-
-</section>
+{
+  layout === 'section' ? (
+    <section data-block="featureTrio" class="s1eb68">
+      <div class="s4c22b">
+        <div class="sd7476">
+          {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+          <Heading heading={heading} variant="inline" as="h2" class="display sd7c6c" />
+          {lead ? <p class="sec10d">{lead}</p> : null}
+        </div>
+        <div class="s19268">
+          {items.map((item, i) => (
+            <div class="s8f9c4">
+              <span class="s8343a">{numerals[i] ?? `${i + 1}.`}</span>
+              <div>
+                <div class="display s715d2">{item.title ?? ''}</div>
+                <div class="s6cb80">{item.text ?? ''}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  ) : (
+    <section data-block="featureTrio" class="s3f7d6">
+      {items.map((item, i) => (
+        <div class="sf3927">
+          <span class="s22fe0">{numerals[i] ?? `${i + 1}.`}</span>
+          <h2 class="s0cf6c">{item.title ?? ''}</h2>
+          <p class="sec10d">{item.text ?? ''}</p>
+        </div>
+      ))}
+    </section>
+  )
+}

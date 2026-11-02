@@ -1,6 +1,7 @@
 ---
 import Heading from '../Heading.astro';
 import { bgImage } from '../../../lib/v2/bg-image';
+import { v2ImageSrc } from '../../../lib/v2/image-src';
 import { resolveCtaHref, type CtaLinkData } from '../../../lib/v2/cta';
 import type { SanityImage } from '../../../lib/sanity/image';
 
@@ -10,7 +11,7 @@ type Card = {
   title?: string;
   text?: string;
   link?: CtaLinkData;
-  image?: SanityImage;
+  image?: SanityImage & { _sanityAsset?: string };
 };
 
 interface Props {
@@ -27,38 +28,57 @@ const overlays = ['s40d0c', 'sff762'] as const;
 const bgs = ['bgx2', 'bgx3'] as const;
 ---
 
-<section data-block="divisionCards" class="sd67c2">
-  {
-    layout === 'home' ? (
-      <div class="s9e1ac">
-        <div class="s5e6cc">
-          {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
-          <Heading heading={heading} variant="inline" as="h2" class="display sa7950" />
-        </div>
-        {lead ? <p class="s94d1d">{lead}</p> : null}
-      </div>
-    ) : null
-  }
-  <div class="sebfdc">
-    {
-      cards.map((card, i) => {
+{
+  layout === 'about' ? (
+    <section data-block="divisionCards" class="s55347">
+      {cards.map((card) => {
         const href = resolveCtaHref(card.link);
-        const style = bgImage(card.image ?? null);
-        const bg = bgs[i] ?? 'bgx2';
-        const overlay = overlays[i] ?? 's40d0c';
+        const src = v2ImageSrc(card.image, '/images/v2/v-class-london.jpg');
         return (
-          <a href={href} class="card zoom sd07e7">
-            <div class:list={[bg, 'ph', 's22cbe']} style={style}></div>
-            <div class={overlay}></div>
+          <a href={href} class="card zoom sd0ee0">
+            <img class="ph sc22be" src={src} alt="" loading="lazy" decoding="async" />
+            <div class="se3f18"></div>
             <div class="sbbe77">
               {card.label ? <div class="eyebrow">{card.label}</div> : null}
-              {card.title ? <div class="display se2257">{card.title}</div> : null}
-              {card.text ? <div class="s62156">{card.text}</div> : null}
+              {card.title ? <div class="display sc4958">{card.title}</div> : null}
+              {card.text ? <div class="s20f11">{card.text}</div> : null}
               {card.link?.label ? <span class="link-arrow seae9b">{card.link.label}</span> : null}
             </div>
           </a>
         );
-      })
-    }
-  </div>
-</section>
+      })}
+    </section>
+  ) : (
+    <section data-block="divisionCards" class="sd67c2">
+      {layout === 'home' ? (
+        <div class="s9e1ac">
+          <div class="s5e6cc">
+            {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+            <Heading heading={heading} variant="inline" as="h2" class="display sa7950" />
+          </div>
+          {lead ? <p class="s94d1d">{lead}</p> : null}
+        </div>
+      ) : null}
+      <div class="sebfdc">
+        {cards.map((card, i) => {
+          const href = resolveCtaHref(card.link);
+          const style = bgImage(card.image ?? null);
+          const bg = bgs[i] ?? 'bgx2';
+          const overlay = overlays[i] ?? 's40d0c';
+          return (
+            <a href={href} class="card zoom sd07e7">
+              <div class:list={[bg, 'ph', 's22cbe']} style={style}></div>
+              <div class={overlay}></div>
+              <div class="sbbe77">
+                {card.label ? <div class="eyebrow">{card.label}</div> : null}
+                {card.title ? <div class="display se2257">{card.title}</div> : null}
+                {card.text ? <div class="s62156">{card.text}</div> : null}
+                {card.link?.label ? <span class="link-arrow seae9b">{card.link.label}</span> : null}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  )
+}

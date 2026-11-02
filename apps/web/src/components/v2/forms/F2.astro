@@ -1,0 +1,17 @@
+---
+// Design `f2` field wrapper: label, control (slot), kit 2 inline error.
+interface Props {
+  id: string;
+  name: string;
+  label: string;
+  error?: string;
+  class?: string;
+}
+const { id, name, label, error, class: cls } = Astro.props;
+---
+
+<div class={cls ? `f2 ${cls}` : 'f2'}>
+  <label for={id}>{label}</label>
+  <slot />
+  {error ? <span class="error" id={`${name}-err`}>{error}</span> : null}
+</div>

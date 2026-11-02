@@ -39,6 +39,12 @@ export const POST: APIRoute = async ({ params, request, clientAddress, cookies }
     return new Response(null, { status: 400 });
   }
 
+  // The V2 request form has separate date and time inputs; the schema takes one `datetime`.
+  if (formKey === 'transfer-request' && ('pickupDate' in body || 'pickupTime' in body)) {
+    const { pickupDate, pickupTime, ...rest } = body;
+    body = { ...rest, datetime: pickupDate && pickupTime ? `${pickupDate}T${pickupTime}` : '' };
+  }
+
   const result = await submitForm(formKey, body, { ip: clientAddress });
 
   if (result.ok) {

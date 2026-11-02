@@ -1,50 +1,56 @@
 ---
-/**
- * V2 stub for Occasions — markup from design/v2/build/blocks/04-services/04-occasions.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import { v2ImageSrc } from '../../../lib/v2/image-src';
+import type { SanityImage } from '../../../lib/sanity/image';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+type Card = {
+  title?: string;
+  text?: string;
+  image?: SanityImage & { _sanityAsset?: string };
+};
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const cards = Array.isArray(section.cards)
+  ? (section.cards as Card[])
+  : Array.isArray(section.items)
+    ? (section.items as Card[])
+    : [];
 ---
+
 <section data-block="occasions" class="s1eb68">
   <div class="sd890e">
     <div class="s7483a">
-      <div class="eyebrow">Where we take you</div>
-      <h2 class="display sd7c6c">For every <em>occasion</em></h2>
+      {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+      <Heading heading={heading} variant="inline" as="h2" class="display sd7c6c" />
     </div>
     <div class="sebfdc">
-
-        <div class="card zoom s29e3f">
-          <div class="s5d782"><img class="ph s58119" src="/images/v2/chauffeur-hotel.jpg" alt=""></div>
-          <div class="sac29c">
-            <span class="s096bd">01</span>
-            <h3 class="display s9e28e">Airports, ports &amp; hotels</h3>
-            <p class="se404f">Pick-up and transfers to and from arrival points, accommodation and departures.</p>
+      {
+        cards.map((card, i) => (
+          <div class="card zoom s29e3f">
+            <div class="s5d782">
+              <img
+                class="ph s58119"
+                src={v2ImageSrc(card.image, '/images/v2/chauffeur-hotel.jpg')}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <div class="sac29c">
+              <span class="s096bd">{String(i + 1).padStart(2, '0')}</span>
+              <h3 class="display s9e28e">{card.title ?? ''}</h3>
+              <p class="se404f">{card.text ?? ''}</p>
+            </div>
           </div>
-        </div>
-
-        <div class="card zoom s29e3f">
-          <div class="s5d782"><img class="ph s58119" src="/images/v2/e-class-int.jpg" alt=""></div>
-          <div class="sac29c">
-            <span class="s096bd">02</span>
-            <h3 class="display s9e28e">Business &amp; private travel</h3>
-            <p class="se404f">Meetings, events, private appointments and journeys with multiple stops.</p>
-          </div>
-        </div>
-
-        <div class="card zoom s29e3f">
-          <div class="s5d782"><img class="ph s58119" src="/images/v2/sprinter-2.jpg" alt=""></div>
-          <div class="sac29c">
-            <span class="s096bd">03</span>
-            <h3 class="display s9e28e">Groups &amp; delegations</h3>
-            <p class="se404f">Scheduled returns, private tours and itineraries for larger parties.</p>
-          </div>
-        </div>
-
+        ))
+      }
     </div>
   </div>
 </section>

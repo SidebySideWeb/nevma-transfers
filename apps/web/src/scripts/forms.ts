@@ -38,23 +38,28 @@ function fieldValue(el: Element): string {
 }
 
 function setFieldError(form: HTMLFormElement, name: string, message: string | null) {
-  const el = form.elements.namedItem(name);
+  // V2 EnquiryForm posts one `datetime` built from two inputs; show its error under the time.
+  const el = form.elements.namedItem(name === 'datetime' ? 'pickupTime' : name);
   const control =
     el instanceof RadioNodeList ? (el[0] as HTMLElement | undefined) : (el as HTMLElement | null);
   if (!control) return;
-  const field = control.closest('.field') || control.closest('label')?.parentElement;
-  let err = form.querySelector(`#${CSS.escape(name)}-err`) as HTMLElement | null;
+  const field = control.closest('.field, .f2');
+  const errId = `${name}-err`;
+  let err = form.querySelector(`#${CSS.escape(errId)}`) as HTMLElement | null;
   if (message) {
     control.setAttribute('aria-invalid', 'true');
     if (!err) {
       err = document.createElement('span');
       err.className = 'error';
-      err.id = `${name}-err`;
-      (field || control.parentElement)?.appendChild(err);
+      err.id = errId;
+      if (field) field.appendChild(err);
+      else (control.closest('label') || control).after(err);
     }
     err.textContent = message;
+    if (!control.hasAttribute('aria-describedby')) control.setAttribute('aria-describedby', errId);
   } else {
     control.removeAttribute('aria-invalid');
+    if (control.getAttribute('aria-describedby') === errId) control.removeAttribute('aria-describedby');
     err?.remove();
   }
 }
@@ -83,7 +88,8 @@ function showSummary(form: HTMLFormElement, fields: Record<string, string>, titl
   for (const [name, message] of Object.entries(fields)) {
     const li = document.createElement('li');
     const a = document.createElement('a');
-    a.href = `#${name}`;
+    const control = form.elements.namedItem(name === 'datetime' ? 'pickupTime' : name);
+    a.href = `#${(control instanceof Element && control.id) || name}`;
     a.textContent = message;
     li.appendChild(a);
     ul.appendChild(li);

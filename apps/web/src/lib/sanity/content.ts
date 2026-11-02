@@ -31,7 +31,7 @@ const FALLBACK_SETTINGS: SiteSettings = {
   mobilePhone: '+30 698 181 0410',
   email: 'info@eliteprotection.gr',
   bookingNotificationEmail: 'office@example.com',
-  address: 'DEMO address, Athens, Greece',
+  address: '[Office address, Athens]',
   openingHours: 'DEMO: every day, 24 hours',
   timezone: 'Europe/Athens',
   showFromPrices: true,
@@ -76,7 +76,11 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     if (!doc?.companyName || !doc.phone || !doc.email) {
       return FALLBACK_SETTINGS;
     }
-    const value = doc as SiteSettings;
+    const value = { ...(doc as SiteSettings) };
+    // Prefer the V2 seed address while the live dataset still has a DEMO placeholder.
+    if (!value.address || /demo/i.test(value.address)) {
+      value.address = '[Office address, Athens]';
+    }
     settingsCache = { value, expiresAt: Date.now() + CACHE_MS };
     return value;
   } catch {

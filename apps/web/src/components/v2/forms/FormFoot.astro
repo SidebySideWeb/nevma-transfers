@@ -1,0 +1,49 @@
+---
+// Honeypot, consent, Turnstile and submit of the V2 EnquiryForm (kit 2 behaviour, design markup).
+import { t } from '../../../lib/strings';
+
+interface Props {
+  formKey: string;
+  /** `form.consent.*` text with a `{privacy}` placeholder. */
+  consent: string;
+  submitLabel: string;
+  btnClass: string;
+  consentChecked?: boolean;
+  errors: Record<string, string>;
+  turnstileSiteKey: string;
+}
+
+const { formKey, consent, submitLabel, btnClass, consentChecked, errors, turnstileSiteKey } = Astro.props;
+const [before, after = ''] = consent.split('{privacy}');
+const dummy = turnstileSiteKey.startsWith('1x0000000');
+---
+
+<div class="js-hp" aria-hidden="true" hidden>
+  <label for={`hp-${formKey}`}>{t('form.email')}</label>
+  <input id={`hp-${formKey}`} name="website" tabindex="-1" autocomplete="off" />
+</div>
+<label class="sb72c0"
+  ><input
+    class="sd8619"
+    type="checkbox"
+    name="consent"
+    id="consent"
+    required
+    checked={consentChecked}
+    aria-invalid={errors.consent ? 'true' : undefined}
+    aria-describedby={errors.consent ? 'consent-err' : undefined}
+  />
+  {before}<a href="/legal#privacy">{t('form.privacyLink')}</a>{after}</label
+>
+{errors.consent ? <span class="error" id="consent-err">{errors.consent}</span> : null}
+<div>
+  {
+    dummy ? (
+      <input type="hidden" name="cf-turnstile-response" value="ok" />
+    ) : turnstileSiteKey ? (
+      <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark" />
+    ) : null
+  }
+  {errors.turnstile ? <span class="error" id="turnstile-err">{errors.turnstile}</span> : null}
+  <button class={`btn btn-gold ${btnClass}`} type="submit" data-submit>{submitLabel}</button>
+</div>

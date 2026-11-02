@@ -1,20 +1,13 @@
 ---
 export const prerender = true;
 
-import { PortableText } from 'astro-portabletext';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import Breadcrumbs from '../../components/Breadcrumbs.astro';
-import Faq from '../../components/sections/Faq.astro';
-import PortableLink from '../../components/sections/PortableLink.astro';
-import PageHero from '../../components/v2/PageHero.astro';
-import PriceTable from '../../components/v2/PriceTable.astro';
-import { priceLabel } from '../../lib/content/price-label';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import PageHero from '../../components/v2/blocks/PageHero.astro';
+import FeaturedRoute from '../../components/v2/blocks/FeaturedRoute.astro';
+import FaqList from '../../components/v2/blocks/FaqList.astro';
+import CtaPanel from '../../components/v2/blocks/CtaPanel.astro';
 import { getPublishableRoutes } from '../../lib/content/routes';
-import { getPublishableClasses } from '../../lib/content/vehicles';
-import { isBookingOpen } from '../../lib/booking-open';
-import { formatEuro } from '../../lib/booking/pricing';
 import { getSiteSettings } from '../../lib/sanity/content';
-import { responsiveImage, type SanityImage } from '../../lib/sanity/image';
 import { fromPriceForRoute, getCatalog } from '../../lib/server/catalog';
 import { faqPageJsonLd, resolveSeo, serviceJsonLd } from '../../lib/seo';
 import { t } from '../../lib/strings';
@@ -44,62 +37,30 @@ interface Props {
 
 const { route } = Astro.props;
 const settings = await getSiteSettings();
-const [cat, classes] = await Promise.all([
-  getCatalog(),
-  getPublishableClasses().catch(() => []),
-]);
+const cat = await getCatalog().catch(() => null);
 const show = settings.showFromPrices !== false;
-const bookingOpen = isBookingOpen();
 const siteUrl = (Astro.site?.href || import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321').replace(
   /\/$/,
   '',
 );
 
-const classByKey = new Map(classes.map((c) => [c.key, c]));
-const priceRows = fromPriceForRoute(cat, route.fromZone, route.toZone).map((row) => {
-  const cls = classByKey.get(row.classKey);
-  return {
-    key: row.classKey,
-    name: cls?.name ?? row.classKey,
-    href: `/fleet/${row.classKey}`,
-    capacity: t('booking.vehicle.capacity', {
-      passengers: cls?.maxPassengers ?? 0,
-      luggage: cls?.maxLuggage ?? 0,
-    }),
-    price:
-      show && row.cents != null
-        ? formatEuro(row.cents)
-        : priceLabel(null, { show: true }).text,
-  };
-});
-
-const pricedCents = fromPriceForRoute(cat, route.fromZone, route.toZone)
-  .map((r) => r.cents)
-  .filter((c): c is number => c != null);
-
-const photo = responsiveImage((route.photo ?? null) as SanityImage, {
-  fallbackWidth: 1600,
-  fallbackHeight: 1000,
-});
+const pricedCents = cat
+  ? fromPriceForRoute(cat, route.fromZone, route.toZone)
+      .map((r) => r.cents)
+      .filter((c): c is number => c != null)
+  : [];
 
 const seoDoc = (route.seo ?? null) as {
   title?: string | null;
   description?: string | null;
   noindex?: boolean | null;
-  image?: SanityImage;
 } | null;
 
 const defaultTitle = `${route.title} transfer · ${settings.companyName}`;
-const rawDescription = seoDoc?.description || route.intro || '';
 const pageSeo = {
   title: seoDoc?.title || defaultTitle,
-  description: rawDescription
-    ? rawDescription.includes(route.title)
-      ? rawDescription
-      : `${route.title}. ${rawDescription}`
-    : undefined,
+  description: seoDoc?.description || route.intro || undefined,
   noindex: seoDoc?.noindex ?? undefined,
-  image: seoDoc?.image,
 };
 
 const seo = resolveSeo({
@@ -122,72 +83,58 @@ const jsonLd = [
     url: `${siteUrl}/routes/${route.slug}`,
     providerName: settings.companyName,
     offerPricesCents: pricedCents,
-    showPrice: show,
+    showPrice: show && pricedCents.length > 0,
   }),
   ...(faqItems.length ? [faqPageJsonLd(faqItems)] : []),
 ];
 
-const body = (route.body ?? []) as Parameters<typeof PortableText>[0]['value'];
-const bookHref = bookingOpen
-  ? `/book?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}`
-  : `/request-a-transfer?from=${encodeURIComponent(route.fromZone)}&to=${encodeURIComponent(route.toZone)}`;
-const duration = t('site.duration', { minutes: route.durationMinutes });
+const heroSection = {
+  _type: 'pageHero',
+  layout: 'page',
+  eyebrow: t('nav.services'),
+  heading: { before: route.title, accent: '' },
+  lead: route.intro || '',
+  image: route.photo ?? null,
+};
+
+const featuredSection = {
+  _type: 'featuredRoute',
+  eyebrow: t('services.featured.eyebrow'),
+  heading: { before: route.title, accent: '↔', after: '' },
+  lead: route.intro || '',
+  image: route.photo ?? null,
+  note: t('fleet.note.vat'),
+  noteLink: { label: 'request a quote', target: 'quote' },
+  primary: { label: t('site.bookRoute'), target: 'book' },
+  secondary: { label: t('services.featured.fleet'), target: 'fleet' },
+  route: { fromZone: route.fromZone, toZone: route.toZone },
+};
+
+const faqSection = {
+  _type: 'faqList',
+  eyebrow: t('services.faq.eyebrow'),
+  heading: { before: 'Questions,', accent: 'answered' },
+  showPhone: true,
+  lead: 'Anything else? Call us any time on',
+  items: faqItems,
+};
+
+const ctaSection = {
+  _type: 'ctaPanel',
+  layout: 'compact',
+  heading: { before: 'Something tailored', accent: 'to your itinerary?' },
+  primary: { label: t('site.requestQuote'), target: 'quote' },
+  secondary: { label: t('nav.book'), target: 'book' },
+};
 ---
 
-<BaseLayout seo={seo} jsonLd={jsonLd} heroHeader preloadImage={(route.photo ?? null) as SanityImage}>
-  <PageHero
-    settings={settings}
-    eyebrow={t('services.featured.eyebrow')}
-    title={route.title}
-    lead={route.intro || duration}
-    imageUrl={photo?.src}
-    class="page-hero--tall"
-  >
-    <a class="btn btn-gold" slot="actions" href={bookHref}>
-      {bookingOpen ? t('site.bookRoute') : t('site.requestQuote')}
-    </a>
-    <a class="btn btn-line" slot="actions" href="/fleet">{t('services.featured.fleet')}</a>
-  </PageHero>
-
-  <div class="wrap" style="padding-top: var(--space-4);">
-    <Breadcrumbs
-      items={[
-        { label: t('nav.services'), href: '/services' },
-        { label: route.title },
-      ]}
-      siteUrl={siteUrl}
-    />
-  </div>
-
-  <section class="section" aria-labelledby="prices-h">
-    <div class="wrap stack">
-      <h2 id="prices-h" class="display">{t('site.pricesForRoute')}</h2>
-      <PriceTable
-        columns={[
-          { key: 'name', label: t('fleet.col.vehicle') },
-          { key: 'capacity', label: t('fleet.col.seats') },
-          { key: 'price', label: t('booking.total'), numeric: true },
-        ]}
-        rows={priceRows}
-        footnotes={[t('fleet.note.vat'), t('fleet.note.capacity')]}
-      />
-    </div>
-  </section>
-
-  {
-    Array.isArray(body) && body.length > 0 ? (
-      <section class="section">
-        <div class="narrow stack prose">
-          <PortableText
-            value={body}
-            components={{
-              mark: { link: PortableLink },
-            }}
-          />
-        </div>
-      </section>
-    ) : null
-  }
-
-  {faqItems.length > 0 ? <Faq heading={t('services.faq.eyebrow')} items={faqItems} /> : null}
-</BaseLayout>
+<PublicLayout designPage="04-services" seo={seo} jsonLd={jsonLd}>
+  <PageHero section={heroSection} pathname={`/routes/${route.slug}`} />
+  <FeaturedRoute
+    section={featuredSection}
+    pathname={`/routes/${route.slug}`}
+    routeOverride={{ fromZone: route.fromZone, toZone: route.toZone, title: route.title }}
+  />
+  {faqItems.length ? <FaqList section={faqSection} pathname={`/routes/${route.slug}`} /> : null}
+  <CtaPanel section={ctaSection} pathname={`/routes/${route.slug}`} />
+</PublicLayout>

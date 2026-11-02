@@ -1,47 +1,50 @@
 ---
-/**
- * V2 stub for ServiceColumns — markup from design/v2/build/blocks/05-vip-security/03-serviceColumns.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+type Col = {
+  label?: string;
+  eyebrow?: string;
+  title?: string;
+  items?: string[];
+  bullets?: string[];
+};
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const columns = Array.isArray(section.columns) ? (section.columns as Col[]) : [];
 ---
+
 <section data-block="serviceColumns" class="s1eb68">
   <div class="sd890e">
     <div class="sc10bc">
-      <div class="eyebrow">Services</div>
-      <h2 class="display sd5a38">Comprehensive <em>security services</em></h2>
+      {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+      <Heading heading={heading} variant="inline" as="h2" class="display sd5a38" />
     </div>
     <div class="sebfdc">
-
-        <div class="s54ac4">
-          <div class="eyebrow sa0fcf">On site</div>
-          <h3 class="display se7c87">Guarding &amp; protection</h3>
-
-            <div class="s5df80"><span class="sbbc0f">—</span><span>Static guarding for commercial, public and residential premises</span></div>
-
-            <div class="s5df80"><span class="sbbc0f">—</span><span>Mobile patrols</span></div>
-
-            <div class="s5df80"><span class="sbbc0f">—</span><span>Event security and VIP protection</span></div>
-
-        </div>
-
-        <div class="s54ac4">
-          <div class="eyebrow sa0fcf">Systems</div>
-          <h3 class="display se7c87">Technology &amp; support</h3>
-
-            <div class="s5df80"><span class="sbbc0f">—</span><span>24-hour alarm and CCTV monitoring through an Alarm Receiving Centre</span></div>
-
-            <div class="s5df80"><span class="sbbc0f">—</span><span>Security assessments</span></div>
-
-            <div class="s5df80"><span class="sbbc0f">—</span><span>Installation and maintenance of alarm, CCTV and fire detection systems</span></div>
-
-        </div>
-
+      {
+        columns.map((col) => {
+          const label = col.eyebrow || col.label || '';
+          const bullets = col.bullets ?? col.items ?? [];
+          return (
+            <div class="s54ac4">
+              {label ? <div class="eyebrow sa0fcf">{label}</div> : null}
+              <h3 class="display se7c87">{col.title ?? ''}</h3>
+              {bullets.map((item) => (
+                <div class="s5df80">
+                  <span class="sbbc0f">—</span>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })
+      }
     </div>
   </div>
 </section>

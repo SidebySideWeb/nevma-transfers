@@ -1,47 +1,386 @@
 ---
 /**
- * V2 stub for EnquiryForm — markup from design/v2/build/blocks/07-contact/03-enquiryForm.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
+ * EnquiryForm: three layouts ported from design/v2/build/blocks
+ * (05-vip-security/05, 07-contact/03, 12-request-transfer/02).
+ * Kit 2 behaviour is kept: POST /api/forms/<key>, honeypot, Turnstile, flash errors,
+ * client validation (scripts/forms.ts). Field names are those of lib/forms/schemas.ts.
  */
+import { getPublishableClasses } from '../../../lib/content/vehicles';
+import { formatEuro } from '../../../lib/booking/pricing';
+import { FORM_FLASH_COOKIE, readFormFlash } from '../../../lib/forms/form-cookie';
+import { getSiteSettings } from '../../../lib/sanity/content';
+import { fromPriceForClass, getCatalog } from '../../../lib/server/catalog';
+import { t } from '../../../lib/strings';
+import { bgImage } from '../../../lib/v2/bg-image';
+import type { CtaLinkData } from '../../../lib/v2/cta';
+import CtaLink from '../CtaLink.astro';
+import F2 from '../forms/F2.astro';
+import FormDropdown from '../forms/FormDropdown';
+import FormFoot from '../forms/FormFoot.astro';
+import Heading from '../Heading.astro';
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
+
+type Layout = 'security' | 'contact' | 'request';
+const FORM_KEY = { security: 'vip-security', contact: 'contact', request: 'transfer-request' } as const;
+const CONSENT = { security: 'enquiry', contact: 'message', request: 'request' } as const;
+const BTN = { security: 'sd0928', contact: 'sd0928', request: 's1c986' } as const;
+/** Per-class thumbnail classes of the design; others use the first one. */
+const THUMB: Record<string, string> = {
+  'v-class': 'sf866d',
+  vito: 's7e9c7',
+  'e-class': 'sc20a2',
+  's-class': 'sa68b9',
+  sprinter: 's00031',
+};
+
 const { section } = Astro.props;
-void section;
+const settings = await getSiteSettings();
+const layout: Layout =
+  section.layout === 'security' || section.layout === 'request' ? section.layout : 'contact';
+const formKey = FORM_KEY[layout];
+const form = section.form as
+  | { topics?: { key?: string; label?: string }[] | null; submitLabel?: string | null }
+  | null
+  | undefined;
+const str = (v: unknown) => (typeof v === 'string' ? v : '');
+const eyebrow = str(section.eyebrow);
+const lead = str(section.lead);
+const heading = section.heading as { before?: string; accent?: string; after?: string } | undefined;
+const asideLink = section.asideLink as CtaLinkData | undefined;
+const asideSteps = (Array.isArray(section.asideSteps) ? section.asideSteps : []) as string[];
+const submitLabel = form?.submitLabel?.trim() || t(`form.submit.${layout}`);
+const tel = (p: string) => `tel:${p.replace(/[^\d+]/g, '')}`;
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+const dummyTurnstile = turnstileSiteKey.startsWith('1x0000000');
+
+// Flash cookie from a failed no-JS submit (SSR only; prerendered pages ignore it).
+let values: Record<string, string> = {};
+let errors: Record<string, string> = {};
+try {
+  const flash = readFormFlash(Astro.cookies.get(FORM_FLASH_COOKIE)?.value);
+  const flashForThis = flash && flash.form === formKey ? flash : null;
+  if (flashForThis) {
+    Astro.cookies.delete(FORM_FLASH_COOKIE, { path: '/' });
+    values = { ...(flashForThis.values ?? {}) };
+    errors = flashForThis.fields ?? {};
+  }
+} catch {
+  /* prerender: no request cookies */
+}
+const errorEntries = Object.entries(errors);
+const v = (key: string) => values[key] ?? '';
+const on = (key: string) => ['on', 'true', '1'].includes(v(key));
+const a = (name: string) =>
+  ({
+    'aria-invalid': errors[name] ? ('true' as const) : undefined,
+    'aria-describedby': errors[name] ? `${name}-err` : undefined,
+  }) as const;
+// Summary links point at the control ids of the design.
+const fieldId: Record<string, string> = {
+  name: 'name', email: 'email', phone: 'phone', message: 'msg', date: 'date', place: 'place',
+  topic: 'topic', serviceType: 'type', fromZone: 'from', toZone: 'to', pickupAddress: 'pick',
+  dropoffAddress: 'drop', datetime: 'time', invoiceCompany: 'co', invoiceVat: 'vat',
+  invoiceTaxOffice: 'tax', invoiceAddress: 'addr', consent: 'consent', passengers: 'lpax', luggage: 'lbags',
+};
+const prefix = { security: 's-', contact: 'c-', request: 'r-' }[layout];
+const hrefFor = (field: string) =>
+  field === 'consent' ? '#consent' : `#${prefix}${fieldId[field] ?? field}`;
+
+const consent = t(`form.consent.${CONSENT[layout]}`);
+const foot = {
+  formKey,
+  consent,
+  submitLabel,
+  btnClass: BTN[layout],
+  consentChecked: on('consent'),
+  errors,
+  turnstileSiteKey,
+};
+
+// Layout data
+const serviceOptions = [1, 2, 3, 4, 5, 6, 7].map((n) => {
+  const label = t(`form.service.${n}` as 'form.service.1');
+  return { value: label, label };
+});
+const topics = (form?.topics ?? [])
+  .filter((x): x is { key: string; label: string } => Boolean(x?.key && x?.label))
+  .map((x) => ({ value: x.key, label: x.label }));
+
+let zones: { value: string; label: string }[] = [];
+let classes: { key: string; name: string; style?: string }[] = [];
+let fromTransfer = '';
+if (layout === 'request') {
+  try {
+    const [cat, publishable] = await Promise.all([getCatalog(), getPublishableClasses()]);
+    // Prefer live (non-DEMO) zone labels so the form matches the V2 board.
+    zones = cat.zones
+      .filter((z) => !/^demo-/i.test(z.code))
+      .map((z) => ({ value: z.code, label: z.name.replace(/^DEMO\s+/i, '') }));
+    if (!zones.length) {
+      zones = cat.zones.map((z) => ({
+        value: z.code,
+        label: z.name.replace(/^DEMO\s+/i, ''),
+      }));
+    }
+    classes = publishable.map((c) => ({
+      key: c.key,
+      name: c.name,
+      style: bgImage((c.photos?.[0] ?? null) as Parameters<typeof bgImage>[0]),
+    }));
+    const cents = cat.classes
+      .map((c) => fromPriceForClass(cat, c.key))
+      .filter((x): x is number => x != null);
+    if (settings.showFromPrices !== false && cents.length) fromTransfer = formatEuro(Math.min(...cents));
+  } catch {
+    zones = [];
+    classes = [];
+  }
+}
+const fromZone =
+  v('fromZone') || zones.find((z) => /airport/i.test(z.label))?.value || zones[0]?.value || '';
+const toZone =
+  v('toZone') ||
+  zones.find((z) => z.value !== fromZone && /^(athens|athens-centre)$/i.test(z.value))?.value ||
+  zones.find((z) => z.value !== fromZone && /^athens/i.test(z.label) && !/airport/i.test(z.label))
+    ?.value ||
+  zones.find((z) => z.value !== fromZone)?.value ||
+  '';
+const kindOptions = [1, 2, 3, 4].map((n) => {
+  const label = t(`form.kind.${n}` as 'form.kind.1');
+  return { value: label, label };
+});
+const vehicleClass = v('vehicleClass') || 'any';
+const [pickupDate, pickupTime] = v('datetime').split('T');
+const showInvoice = on('invoice');
+// "Airport transfers from {fromTransfer} (VAT included)." is dropped when there is no price.
+const asideNote = str(section.asideNote).replace(
+  fromTransfer ? '{fromTransfer}' : /[^.?!]*\{fromTransfer\}[^.?!]*[.?!]\s*/,
+  fromTransfer,
+).trim();
+const roman = ['i.', 'ii.', 'iii.', 'iv.'];
 ---
-<section data-block="enquiryForm" class="s1bd29">
-  <form class="seddc3">
 
-    <div class="sb2770">
-      <div class="eyebrow">Send a message</div>
-      <h2 class="display scf6e9">How can we <em>help?</em></h2>
-      <p class="sec10d">Everything you tell us is treated in confidence. For an immediate answer, call us any time.</p>
-    </div>
-    <div class="grid">
-      <div class="f2"><label for="c-name">Full name</label><input id="c-name" type="text" autocomplete="name"></div>
-      <div class="f2"><label for="c-email">Email</label><input id="c-email" type="email" autocomplete="email"></div>
-      <div class="f2"><label for="c-phone">Phone (optional)</label><input id="c-phone" type="tel" autocomplete="tel"></div>
-      <div class="f2 sa4bec"><label for="c-topic">Topic</label>
-        <button type="button" id="c-topic" class="dd-btn" aria-haspopup="listbox" aria-expanded="false"><span>VIP Transfer</span><span class="sbebe0" aria-hidden="true">▾</span></button>
+<script>
+  import '../../../scripts/forms';
+  import '../../../scripts/enquiry-form';
+</script>
+{
+  turnstileSiteKey && !dummyTurnstile ? (
+    <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+  ) : null
+}
 
-
+{
+  layout === 'security' ? (
+    <section data-block="enquiryForm" class="s68e7c" id="enquiry">
+      <div class="s4582f">
+        <form class="seddc3" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey}>
+          {errorEntries.length ? (
+            <div class="notice notice-danger" role="alert" tabindex="-1" id="form-error-summary">
+              <p><strong>{t('booking.errors.summary')}</strong></p>
+              <ul>{errorEntries.map(([f, m]) => <li><a href={hrefFor(f)}>{m}</a></li>)}</ul>
+            </div>
+          ) : null}
+          <div class="sb2770">
+            {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+            <Heading heading={heading} variant="inline" as="h2" class="display sd7c6c" />
+            {lead ? <p class="sec10d">{lead}</p> : null}
+          </div>
+          <div class="grid">
+            <F2 id="s-name" name="name" label={t('form.name')} error={errors.name}><input id="s-name" name="name" type="text" autocomplete="name" required value={v('name')} {...a('name')} /></F2>
+            <F2 id="s-email" name="email" label={t('form.email')} error={errors.email}><input id="s-email" name="email" type="email" autocomplete="email" required value={v('email')} {...a('email')} /></F2>
+            <F2 id="s-phone" name="phone" label={t('form.phone')} error={errors.phone}><input id="s-phone" name="phone" type="tel" autocomplete="tel" required value={v('phone')} {...a('phone')} /></F2>
+            <FormDropdown client:load id="s-type" name="serviceType" label={t('form.serviceType')} options={serviceOptions} initial={v('serviceType') || serviceOptions[0]?.value || ''} fieldClass="f2 sa4bec" required />
+            <F2 id="s-date" name="date" label={t('form.date')} error={errors.date}><input id="s-date" name="date" type="date" value={v('date')} {...a('date')} /></F2>
+            <F2 id="s-place" name="place" label={t('form.place')} error={errors.place}><input id="s-place" name="place" type="text" value={v('place')} /></F2>
+            <F2 id="s-msg" name="message" label={t('form.message')} class="s57b60" error={errors.message}><textarea id="s-msg" name="message" rows="4">{v('message')}</textarea></F2>
+          </div>
+          <FormFoot {...foot} />
+        </form>
+        <aside class="sa81c6">
+          {str(section.asideBadge) ? <div class="s51833">{str(section.asideBadge)}</div> : null}
+          {str(section.asideTitle) ? <div class="eyebrow s7f5e0">{str(section.asideTitle)}</div> : null}
+          <div class="sc4784"></div>
+          <a class="s91789" href={tel(settings.phone)}>{settings.phone}</a>
+          {settings.mobilePhone ? <a class="s91789" href={tel(settings.mobilePhone)}>{settings.mobilePhone}</a> : null}
+          <a class="s3b875" href={`mailto:${settings.email}`}>{settings.email}</a>
+          {asideNote ? <p class="scda52">{asideNote}</p> : null}
+        </aside>
       </div>
-      <div class="f2 s57b60"><label for="c-msg">Message</label><textarea id="c-msg" rows="5"></textarea></div>
-    </div>
-    <label class="sb72c0"><input class="sd8619" type="checkbox"> I agree that Elite Protection may use these details to answer my message, as described in the <a href="/legal">privacy policy</a>.</label>
-    <div><a class="btn btn-gold sd0928" href="13-request-received.html">Send message</a></div>
-  </form>
-  <aside class="s43bb3">
-    <div class="sa7311">
-      <div class="se57bc" aria-hidden="true"></div>
-      <div class="seaf78" aria-hidden="true"></div>
-      <span class="s412f2">MAP · ATHENS (PLACEHOLDER)</span>
-    </div>
-    <div class="sc5933">
-      <div class="eyebrow">Already booked?</div>
-      <div class="s37cf5">Find your booking with its reference and the email you used. We send you a secure link.</div>
-      <a class="link-arrow sa1ae4" href="/booking/find">Find my booking →</a>
-    </div>
-  </aside>
-</section>
+    </section>
+  ) : layout === 'contact' ? (
+    <section data-block="enquiryForm" class="s1bd29">
+      <form class="seddc3" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey}>
+        {errorEntries.length ? (
+          <div class="notice notice-danger" role="alert" tabindex="-1" id="form-error-summary">
+            <p><strong>{t('booking.errors.summary')}</strong></p>
+            <ul>{errorEntries.map(([f, m]) => <li><a href={hrefFor(f)}>{m}</a></li>)}</ul>
+          </div>
+        ) : null}
+        <div class="sb2770">
+          {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+          <Heading heading={heading} variant="inline" as="h2" class="display scf6e9" />
+          {lead ? <p class="sec10d">{lead}</p> : null}
+        </div>
+        <div class="grid">
+          <F2 id="c-name" name="name" label={t('form.name')} error={errors.name}><input id="c-name" name="name" type="text" autocomplete="name" required value={v('name')} {...a('name')} /></F2>
+          <F2 id="c-email" name="email" label={t('form.email')} error={errors.email}><input id="c-email" name="email" type="email" autocomplete="email" required value={v('email')} {...a('email')} /></F2>
+          <F2 id="c-phone" name="phone" label={t('form.phoneOptional')} error={errors.phone}><input id="c-phone" name="phone" type="tel" autocomplete="tel" value={v('phone')} /></F2>
+          <FormDropdown client:load id="c-topic" name="topic" label={t('form.topic')} options={topics} initial={v('topic') || topics[0]?.value || ''} fieldClass="f2 sa4bec" required />
+          <F2 id="c-msg" name="message" label={t('form.message')} class="s57b60" error={errors.message}><textarea id="c-msg" name="message" rows="5" required {...a('message')}>{v('message')}</textarea></F2>
+        </div>
+        <FormFoot {...foot} />
+      </form>
+      <aside class="s43bb3">
+        <div class="sa7311">
+          <div class="se57bc" aria-hidden="true"></div>
+          <div class="seaf78" aria-hidden="true"></div>
+          {str(section.mapLabel) ? <span class="s412f2">{str(section.mapLabel)}</span> : null}
+        </div>
+        <div class="sc5933">
+          {str(section.asideTitle) ? <div class="eyebrow">{str(section.asideTitle)}</div> : null}
+          {asideNote ? <div class="s37cf5">{asideNote}</div> : null}
+          <CtaLink link={asideLink} class="link-arrow sa1ae4" phone={settings.phone} />
+        </div>
+      </aside>
+    </section>
+  ) : (
+    <section data-block="enquiryForm" class="s8d7b0">
+      <form class="s83498" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey}>
+        {errorEntries.length ? (
+          <div class="notice notice-danger" role="alert" tabindex="-1" id="form-error-summary">
+            <p><strong>{t('booking.errors.summary')}</strong></p>
+            <ul>{errorEntries.map(([f, m]) => <li><a href={hrefFor(f)}>{m}</a></li>)}</ul>
+          </div>
+        ) : null}
+        <fieldset class="fs">
+          <legend><span>01</span>{t('form.legend.journey')}</legend>
+          <div class="grid">
+            <FormDropdown client:load id="r-from" name="fromZone" label={t('form.fromZone')} options={zones} initial={fromZone} query="from" fieldClass="f2 s6c9df" required />
+            <FormDropdown client:load id="r-to" name="toZone" label={t('form.toZone')} options={zones} initial={toZone} query="to" fieldClass="f2 sbee8a" required />
+            <F2 id="r-pick" name="pickupAddress" label={t('form.pickupAddress')} error={errors.pickupAddress}><input id="r-pick" name="pickupAddress" type="text" placeholder={t('form.placeholder.address')} value={v('pickupAddress')} /></F2>
+            <F2 id="r-drop" name="dropoffAddress" label={t('form.dropoffAddress')} error={errors.dropoffAddress}><input id="r-drop" name="dropoffAddress" type="text" placeholder={t('form.placeholder.address')} value={v('dropoffAddress')} /></F2>
+            <F2 id="r-date" name="datetime" label={t('form.date')}><input id="r-date" name="pickupDate" type="date" required value={pickupDate ?? ''} /></F2>
+            <F2 id="r-time" name="datetime" label={t('form.time')} error={errors.datetime}><input id="r-time" name="pickupTime" type="time" required value={pickupTime ?? ''} aria-invalid={errors.datetime ? 'true' : undefined} aria-describedby={errors.datetime ? 'datetime-err' : undefined} /></F2>
+            <F2 id="r-flight" name="flight" label={t('form.flight')}><input id="r-flight" name="flight" type="text" placeholder={t('form.placeholder.flight')} value={v('flight')} /></F2>
+            <div class="f2 s69376">
+              <div class="sf8c7d"><span class="lbl" id="r-lpax">{t('form.passengers')}</span><div class="stepper" role="group" aria-labelledby="r-lpax" data-min="1" data-max="60"><button type="button" aria-label={t('form.stepper.fewer')}>−</button><span>{v('passengers') || '2'}</span><button type="button" aria-label={t('form.stepper.more')}>+</button><input type="hidden" name="passengers" value={v('passengers') || '2'} /></div></div>
+              <div class="sf8c7d"><span class="lbl" id="r-lbags">{t('form.luggage')}</span><div class="stepper" role="group" aria-labelledby="r-lbags" data-min="0" data-max="100"><button type="button" aria-label={t('form.stepper.fewer')}>−</button><span>{v('luggage') || '2'}</span><button type="button" aria-label={t('form.stepper.more')}>+</button><input type="hidden" name="luggage" value={v('luggage') || '2'} /></div></div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="fs">
+          <legend><span>02</span>{t('form.legend.service')}</legend>
+          <div class="grid">
+            <FormDropdown client:load id="r-kind" name="kind" label={t('form.serviceType')} options={kindOptions} initial={v('kind') || kindOptions[0]?.value || ''} fieldClass="f2 s919b4" />
+          </div>
+          <div class="sb3740">
+            <span class="lbl">{t('form.vehicleClass')}</span>
+            <div class="sa19db" role="radiogroup" aria-label={t('form.vehicleClass')} data-vehicle-group>
+              <input type="hidden" name="vehicleClass" value={vehicleClass} />
+              <button type="button" role="radio" aria-checked={vehicleClass === 'any' ? 'true' : 'false'} data-value="any" class={`vchip ${vehicleClass === 'any' ? 'seb984' : 's26017'}`}>
+                <span class="s12ec3"></span>
+                <span class="scc4e5"><span class={vehicleClass === 'any' ? 'se8b49' : 'sb89d2'}>{t('form.vehicleClass.any')}</span><span class={vehicleClass === 'any' ? 's933aa' : 's6d5f8'}></span></span>
+              </button>
+              {classes.map((c) => (
+                <button type="button" role="radio" aria-checked={vehicleClass === c.key ? 'true' : 'false'} data-value={c.key} class={`vchip ${vehicleClass === c.key ? 'seb984' : 's26017'}`}>
+                  <span class={THUMB[c.key] ?? 'sf866d'} style={c.style}></span>
+                  <span class="scc4e5"><span class={vehicleClass === c.key ? 'se8b49' : 'sb89d2'}>{c.name}</span><span class={vehicleClass === c.key ? 's933aa' : 's6d5f8'}></span></span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <button type="button" class={`addon ${on('vipSecurity') ? 'sbdbb7' : 's651d2'}`} role="switch" aria-checked={on('vipSecurity') ? 'true' : 'false'}>
+            <span class="bgx2 s8f0d4"></span>
+            <span class="sa1aa9">
+              <span class="eyebrow">{t('form.vipSecurity.label')}</span>
+              <span class="scaea4">{t('form.vipSecurity')}</span>
+              <span class="sf0124">{t('form.vipSecurity.hint')}</span>
+            </span>
+            <span class="sc3d65"><span class={`switch ${on('vipSecurity') ? 's94d88' : 's0c8bc'}`}><span class={on('vipSecurity') ? 'sba1a6' : 's3d884'}></span></span></span>
+          </button>
+          <input type="checkbox" name="vipSecurity" checked={on('vipSecurity')} hidden />
+        </fieldset>
+
+        <fieldset class="fs">
+          <legend><span>03</span>{t('form.legend.details')}</legend>
+          <div class="grid">
+            <F2 id="r-name" name="name" label={t('form.name')} error={errors.name}><input id="r-name" name="name" type="text" autocomplete="name" required value={v('name')} {...a('name')} /></F2>
+            <F2 id="r-email" name="email" label={t('form.email')} error={errors.email}><input id="r-email" name="email" type="email" autocomplete="email" required value={v('email')} {...a('email')} /></F2>
+            <F2 id="r-phone" name="phone" label={t('booking.details.phone')} error={errors.phone}><input id="r-phone" name="phone" type="tel" autocomplete="tel" placeholder={t('form.placeholder.phone')} required value={v('phone')} {...a('phone')} /></F2>
+            <F2 id="r-notes" name="message" label={t('form.notes')} class="s57b60" error={errors.message}><textarea id="r-notes" name="message" rows="4">{v('message')}</textarea></F2>
+          </div>
+          <button type="button" aria-expanded={showInvoice ? 'true' : 'false'} class="disclose"><span>{showInvoice ? '−' : '+'}</span> {t('form.invoice')}</button>
+          <input type="checkbox" name="invoice" id="invoice" data-invoice-toggle checked={showInvoice} hidden />
+          <div class="grid" id="invoice-fields" hidden={!showInvoice}>
+            <F2 id="r-co" name="invoiceCompany" label={t('booking.invoice.company')} error={errors.invoiceCompany}><input id="r-co" name="invoiceCompany" type="text" autocomplete="organization" value={v('invoiceCompany')} {...a('invoiceCompany')} /></F2>
+            <F2 id="r-vat" name="invoiceVat" label={t('booking.invoice.vat')} error={errors.invoiceVat}><input id="r-vat" name="invoiceVat" type="text" value={v('invoiceVat')} {...a('invoiceVat')} /></F2>
+            <F2 id="r-tax" name="invoiceTaxOffice" label={t('booking.invoice.taxOffice')} error={errors.invoiceTaxOffice}><input id="r-tax" name="invoiceTaxOffice" type="text" value={v('invoiceTaxOffice')} {...a('invoiceTaxOffice')} /></F2>
+            <F2 id="r-addr" name="invoiceAddress" label={t('booking.invoice.address')} error={errors.invoiceAddress}><input id="r-addr" name="invoiceAddress" type="text" autocomplete="street-address" value={v('invoiceAddress')} {...a('invoiceAddress')} /></F2>
+          </div>
+        </fieldset>
+
+        <div class="s30f48">
+          <FormFoot {...foot} />
+        </div>
+      </form>
+
+      <aside class="s01cc8">
+        <div class="s1ce12">
+          {str(section.asideTitle) ? <div class="eyebrow">{str(section.asideTitle)}</div> : null}
+          {asideSteps.length ? (
+            <ol class="sd0e44">
+              {asideSteps.map((step, i) => (
+                <li class={i === asideSteps.length - 1 ? 's05b22' : 's390f8'}><span class="s096bd">{roman[i]}</span>{step}</li>
+              ))}
+            </ol>
+          ) : null}
+          {asideNote || asideLink ? (
+            <div class="s4e9a9">{asideNote} <CtaLink link={asideLink} phone={settings.phone} />{asideLink?.label ? '.' : ''}</div>
+          ) : null}
+        </div>
+        <div class="s5055b">
+          {str(section.asideBadge) ? <div class="eyebrow">{str(section.asideBadge)}</div> : null}
+          <a class="s91789" href={tel(settings.phone)}>{settings.phone}</a>
+          <a class="s19255" href={`mailto:${settings.email}`}>{settings.email}</a>
+        </div>
+      </aside>
+    </section>
+  )
+}
+
+<style is:global>
+  /* Kit 2 form states that v2.css (a copy of the design) does not have. */
+  .js-hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  [data-block='enquiryForm'] [hidden] {
+    display: none !important;
+  }
+  [data-block='enquiryForm'] .error {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--color-danger);
+  }
+  [data-block='enquiryForm'] .notice {
+    padding: var(--space-4);
+    border: 1px solid var(--color-danger);
+  }
+  [data-block='enquiryForm'] .notice ul {
+    margin: 0;
+    padding-left: var(--space-4);
+  }
+  [data-block='enquiryForm'] .notice a {
+    color: inherit;
+  }
+</style>

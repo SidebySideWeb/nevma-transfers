@@ -1,23 +1,34 @@
 ---
-/**
- * V2 stub for ContactCards — markup from design/v2/build/blocks/07-contact/02-contactCards.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import { getSiteSettings } from '../../../lib/sanity/content';
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const settings = await getSiteSettings();
+const callLabel = typeof section.callLabel === 'string' ? section.callLabel : 'Call · 24/7';
+const emailLabel = typeof section.emailLabel === 'string' ? section.emailLabel : 'Email';
+const emailNote = typeof section.emailNote === 'string' ? section.emailNote : '';
+const officeLabel = typeof section.officeLabel === 'string' ? section.officeLabel : 'Office';
+const officeNote = typeof section.officeNote === 'string' ? section.officeNote : '';
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 ---
+
 <section data-block="contactCards" class="s6def7">
-  <a href="tel:+302109706967" class="card s90b27">
-    <span class="eyebrow">Call · 24/7</span><span class="s1a9b3">+30 210 970 6967</span><span class="s33268">+30 698 181 0410</span>
+  <a href={phoneHref} class="card s90b27">
+    <span class="eyebrow">{callLabel}</span>
+    <span class="s1a9b3">{settings.phone}</span>
+    {settings.mobilePhone ? <span class="s33268">{settings.mobilePhone}</span> : null}
   </a>
-  <a href="mailto:info@eliteprotection.gr" class="card s90b27">
-    <span class="eyebrow">Email</span><span class="sdc5f1">info@eliteprotection.gr</span><span class="sf0124">We reply as soon as possible</span>
+  <a href={`mailto:${settings.email}`} class="card s90b27">
+    <span class="eyebrow">{emailLabel}</span>
+    <span class="sdc5f1">{settings.email}</span>
+    {emailNote ? <span class="sf0124">{emailNote}</span> : null}
   </a>
   <div class="sc6f3d">
-    <span class="eyebrow">Office</span><span class="se23c6">[Office address, Athens]</span><span class="sf0124">To be supplied by Elite Protection</span>
+    <span class="eyebrow">{officeLabel}</span>
+    <span class="se23c6">{settings.address || ''}</span>
+    {officeNote ? <span class="sf0124">{officeNote}</span> : null}
   </div>
 </section>

@@ -1,49 +1,51 @@
 ---
-/**
- * V2 stub for BookingOptions — markup from design/v2/build/blocks/04-services/02-bookingOptions.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import { getSiteSettings } from '../../../lib/sanity/content';
+import { getCatalog } from '../../../lib/server/catalog';
+import {
+  bookingOptionPriceLabels,
+  fillBookingOptionNote,
+} from '../../../lib/v2/booking-options';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+type Option = { title?: string; text?: string; priceNote?: string };
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const settings = await getSiteSettings();
+const show = settings.showFromPrices !== false;
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const options = Array.isArray(section.options) ? (section.options as Option[]) : [];
+const numerals = ['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.'] as const;
+
+let labels = { fromTransfer: '—', fromHourly: '—' };
+try {
+  const cat = await getCatalog();
+  labels = bookingOptionPriceLabels(cat, show);
+} catch {
+  /* leave em dash */
+}
 ---
+
 <section data-block="bookingOptions" class="s12ef3">
   <div class="s177b7">
-    <div class="eyebrow">Booking options</div>
-    <h2 class="display sd5a38">Choose <em>how you travel</em></h2>
+    {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+    <Heading heading={heading} variant="inline" as="h2" class="display sd5a38" />
   </div>
   <div class="s061fa">
-
-      <div class="card s3a1c8">
-        <span class="sbfcc8">i.</span>
-        <h3 class="s0f85e">One-off transfer</h3>
-        <p class="se404f">A single journey from your pick-up point to your chosen destination.</p>
-        <span class="s7e51b">From €150</span>
-      </div>
-
-      <div class="card s3a1c8">
-        <span class="sbfcc8">ii.</span>
-        <h3 class="s0f85e">Transfer with waiting time</h3>
-        <p class="se404f">Your chauffeur remains available for your return or onward journey.</p>
-        <span class="s7e51b">On request</span>
-      </div>
-
-      <div class="card s3a1c8">
-        <span class="sbfcc8">iii.</span>
-        <h3 class="s0f85e">Hourly chauffeur</h3>
-        <p class="se404f">A vehicle and chauffeur at your disposal for meetings and multiple stops.</p>
-        <span class="s7e51b">From €60 / hour</span>
-      </div>
-
-      <div class="card s3a1c8">
-        <span class="sbfcc8">iv.</span>
-        <h3 class="s0f85e">Full-day chauffeur</h3>
-        <p class="se404f">A dedicated chauffeur and vehicle for your whole itinerary.</p>
-        <span class="s7e51b">On request</span>
-      </div>
-
+    {
+      options.map((opt, i) => (
+        <div class="card s3a1c8">
+          <span class="sbfcc8">{numerals[i] ?? `${i + 1}.`}</span>
+          <h3 class="s0f85e">{opt.title ?? ''}</h3>
+          <p class="se404f">{opt.text ?? ''}</p>
+          <span class="s7e51b">{fillBookingOptionNote(opt.priceNote || '', labels)}</span>
+        </div>
+      ))
+    }
   </div>
 </section>

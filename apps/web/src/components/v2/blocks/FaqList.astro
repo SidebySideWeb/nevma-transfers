@@ -1,52 +1,89 @@
 ---
-/**
- * V2 stub for FaqList — markup from design/v2/build/blocks/04-services/05-faqList.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import { getSiteSettings } from '../../../lib/sanity/content';
+import { faqExpandedAt, faqToggleSign } from '../../../lib/v2/faq-list';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+type Item = { question?: string; answer?: string; _key?: string };
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
 }
 const { section } = Astro.props;
-void section;
+const settings = await getSiteSettings();
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const lead = typeof section.lead === 'string' ? section.lead : '';
+const showPhone = section.showPhone === true;
+const items = Array.isArray(section.items) ? (section.items as Item[]) : [];
+const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const uid = Math.random().toString(36).slice(2, 8);
 ---
-<section data-block="faqList" class="sacd47">
+
+<section data-block="faqList" class="sacd47" data-faq-list>
   <div class="s2e6c9">
-    <div class="eyebrow">Good to know</div>
-    <h2 class="display sd7c6c">Questions, <em>answered</em></h2>
-    <p class="sec10d">Anything else? Call us any time on <a href="tel:+302109706967">+30 210 970 6967</a>.</p>
+    {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+    <Heading heading={heading} variant="inline" as="h2" class="display sd7c6c" />
+    {
+      lead || showPhone ? (
+        <p class="sec10d">
+          {lead ? `${lead} ` : null}
+          {showPhone ? <a href={phoneHref}>{settings.phone}</a> : null}
+          {showPhone ? '.' : null}
+        </p>
+      ) : null
+    }
   </div>
   <div class="sc0251">
-
-      <div>
-        <button type="button" class="faq-q" aria-expanded="true"><span>Are the prices final?</span><span class="s70818" aria-hidden="true">−</span></button>
-        <p class="s96485">Prices are fixed per vehicle and route, quoted in euros and exclusive of 24% VAT. You see the total before you pay.</p>
-      </div>
-
-      <div>
-        <button type="button" class="faq-q" aria-expanded="false"><span>Does the airport rate cover a return journey?</span><span class="s70818" aria-hidden="true">+</span></button>
-
-      </div>
-
-      <div>
-        <button type="button" class="faq-q" aria-expanded="false"><span>What is the minimum for a chauffeur by the hour?</span><span class="s70818" aria-hidden="true">+</span></button>
-
-      </div>
-
-      <div>
-        <button type="button" class="faq-q" aria-expanded="false"><span>How long is my vehicle held while I book?</span><span class="s70818" aria-hidden="true">+</span></button>
-
-      </div>
-
-      <div>
-        <button type="button" class="faq-q" aria-expanded="false"><span>Can I add a security escort?</span><span class="s70818" aria-hidden="true">+</span></button>
-
-      </div>
-
-      <div>
-        <button type="button" class="faq-q" aria-expanded="false"><span>How do I change or cancel a booking?</span><span class="s70818" aria-hidden="true">+</span></button>
-
-      </div>
-
+    {
+      items.map((item, i) => {
+        const open = faqExpandedAt(i);
+        const panelId = `faq-${uid}-${i}`;
+        return (
+          <div data-faq-item>
+            <button
+              type="button"
+              class="faq-q"
+              aria-expanded={open ? 'true' : 'false'}
+              aria-controls={panelId}
+              data-faq-btn
+            >
+              <span>{item.question ?? ''}</span>
+              <span class="s70818" aria-hidden="true" data-faq-sign>
+                {faqToggleSign(open)}
+              </span>
+            </button>
+            <p class="s96485" id={panelId} hidden={!open} data-faq-panel>
+              {item.answer ?? ''}
+            </p>
+          </div>
+        );
+      })
+    }
   </div>
 </section>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-faq-list]').forEach((root) => {
+    const items = [...root.querySelectorAll<HTMLElement>('[data-faq-item]')];
+    const paint = (open: number | null) => {
+      items.forEach((item, i) => {
+        const btn = item.querySelector<HTMLButtonElement>('[data-faq-btn]');
+        const panel = item.querySelector<HTMLElement>('[data-faq-panel]');
+        const sign = item.querySelector<HTMLElement>('[data-faq-sign]');
+        const on = open === i;
+        btn?.setAttribute('aria-expanded', String(on));
+        if (panel) panel.hidden = !on;
+        if (sign) sign.textContent = on ? '−' : '+';
+      });
+    };
+    items.forEach((item, i) => {
+      item.querySelector('[data-faq-btn]')?.addEventListener('click', () => {
+        const btn = item.querySelector<HTMLButtonElement>('[data-faq-btn]');
+        const was = btn?.getAttribute('aria-expanded') === 'true';
+        paint(was ? null : i);
+      });
+    });
+  });
+</script>

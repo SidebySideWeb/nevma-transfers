@@ -318,7 +318,27 @@ export function StepDetails({
             onChange={(e) => onChange({ consent: e.target.checked })}
             required
           />
-          <span>{strings['booking.consent']}</span>
+          <span>
+            {(strings['booking.terms'] || strings['booking.consent'] || '')
+              .split(/(\{terms\}|\{privacy\})/)
+              .map((part, i) => {
+                if (part === '{terms}') {
+                  return (
+                    <a key={i} href="/legal#terms">
+                      {strings['booking.terms.link'] || 'terms'}
+                    </a>
+                  );
+                }
+                if (part === '{privacy}') {
+                  return (
+                    <a key={i} href="/legal#privacy">
+                      {strings['booking.privacy.link'] || 'privacy policy'}
+                    </a>
+                  );
+                }
+                return <span key={i}>{part}</span>;
+              })}
+          </span>
         </label>
 
         <div className="row between">

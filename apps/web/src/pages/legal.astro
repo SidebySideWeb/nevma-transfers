@@ -3,6 +3,7 @@ export const prerender = true;
 
 import PublicLayout from '../layouts/PublicLayout.astro';
 import Sections from '../components/sections/Sections.astro';
+import LegalDocument from '../components/v2/blocks/LegalDocument.astro';
 import { getSiteSettings } from '../lib/sanity/content';
 import { getPageBySlug } from '../lib/sanity/pages';
 import { resolveSeo } from '../lib/seo';
@@ -20,8 +21,11 @@ const seo = resolveSeo({
   pathname: '/legal',
   siteUrl,
 });
+
+const heroSections = page.sections.filter((s) => s._type !== 'legalDocument');
 ---
 
 <PublicLayout designPage="17-legal" seo={seo}>
-  <Sections sections={page.sections} pathname={Astro.url.pathname} />
+  <Sections sections={heroSections} pathname={Astro.url.pathname} />
+  <LegalDocument />
 </PublicLayout>

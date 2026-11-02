@@ -1,39 +1,99 @@
 ---
-/**
- * V2 stub for FeaturedRoute — markup from design/v2/build/blocks/04-services/03-featuredRoute.html.
- * Accepts Sanity `section` for later prompts; design copy kept for fidelity stubs.
- */
+import Heading from '../Heading.astro';
+import CtaLink from '../CtaLink.astro';
+import { getPublishableClasses } from '../../../lib/content/vehicles';
+import { getSiteSettings } from '../../../lib/sanity/content';
+import { getCatalog } from '../../../lib/server/catalog';
+import { bgImage } from '../../../lib/v2/bg-image';
+import { bookRouteHref, featuredRouteRates, liveZoneCode } from '../../../lib/v2/featured-route';
+import { resolveCtaHref, type CtaLinkData } from '../../../lib/v2/cta';
+import type { SanityImage } from '../../../lib/sanity/image';
+
+type DisplayHeading = { before?: string | null; accent?: string | null; after?: string | null };
+
 interface Props {
   section: Record<string, unknown>;
   pathname?: string;
+  /** Override route zones when rendering `/routes/[slug]`. */
+  routeOverride?: { fromZone: string; toZone: string; title?: string };
 }
-const { section } = Astro.props;
-void section;
+const { section, routeOverride } = Astro.props;
+const settings = await getSiteSettings();
+const show = settings.showFromPrices !== false;
+const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
+const heading = section.heading as DisplayHeading | undefined;
+const lead = typeof section.lead === 'string' ? section.lead : '';
+const note = typeof section.note === 'string' ? section.note : '';
+const noteLink = section.noteLink as CtaLinkData | undefined;
+const primary = section.primary as CtaLinkData | undefined;
+const secondary = section.secondary as CtaLinkData | undefined;
+const image = section.image as SanityImage | undefined;
+const style = bgImage(image ?? null);
+const alt = image?.alt?.trim() || '';
+
+const route = (section.route || routeOverride) as
+  | { fromZone?: string; toZone?: string; fromCode?: string; toCode?: string; slug?: string }
+  | null
+  | undefined;
+const fromCode = routeOverride?.fromZone || route?.fromZone || route?.fromCode || '';
+const toCode = routeOverride?.toZone || route?.toZone || route?.toCode || '';
+const pricedFrom = liveZoneCode(fromCode);
+const pricedTo = liveZoneCode(toCode);
+
+let rates: ReturnType<typeof featuredRouteRates> = [];
+try {
+  const cat = await getCatalog();
+  let names = new Map(cat.classes.map((c) => [c.key, c.key]));
+  try {
+    const classes = await getPublishableClasses();
+    names = new Map(classes.map((c) => [c.key, c.name]));
+  } catch {
+    /* catalog keys are enough for a priced row */
+  }
+  rates =
+    pricedFrom && pricedTo ? featuredRouteRates(cat, pricedFrom, pricedTo, names, show) : [];
+} catch {
+  rates = [];
+}
+
+const bookHref =
+  pricedFrom && pricedTo ? bookRouteHref(pricedFrom, pricedTo) : resolveCtaHref(primary);
+const noteHref = resolveCtaHref(noteLink);
+const noteLabel = noteLink?.label || 'request a quote';
 ---
+
 <section data-block="featuredRoute" class="se6a8d">
   <div class="s95e76">
-    <div class="bgx2 sc25c8" role="img" aria-label="S-Class at the airport terminal"></div>
+    <div class="bgx2 sc25c8" role="img" aria-label={alt} style={style}></div>
     <div class="sa160b">
-      <div class="eyebrow">Featured route · airport transfer</div>
-      <h2 class="display sb3db9">Athens International <em>↔</em> Athens</h2>
-      <p class="s0a0a6">One-way journeys between AIA and Athens, with luggage assistance and your chauffeur waiting on arrival.</p>
-      <div class="sa0f5a">
-
-          <div class="rate"><span class="sd2071">V-Class</span><span class="s1c943">€180</span></div>
-
-          <div class="rate"><span class="sd2071">Vito</span><span class="s1c943">€150</span></div>
-
-          <div class="rate"><span class="sd2071">E-Class</span><span class="s1c943">€150</span></div>
-
-          <div class="rate"><span class="sd2071">S-Class</span><span class="s1c943">€180</span></div>
-
-          <div class="rate"><span class="sd2071">Sprinter</span><span class="s1c943">€180</span></div>
-
-      </div>
-      <div class="s6c19a">Prices in euros, exclusive of 24% VAT. Other zones: <a href="/request-a-transfer">request a quote</a>.</div>
+      {eyebrow ? <div class="eyebrow">{eyebrow}</div> : null}
+      <Heading heading={heading} variant="inline" as="h2" class="display sb3db9" />
+      {lead ? <p class="s0a0a6">{lead}</p> : null}
+      {
+        rates.length ? (
+          <div class="sa0f5a">
+            {rates.map((r) => (
+              <div class="rate">
+                <span class="sd2071">{r.name}</span>
+                <span class="s1c943">{r.priceText}</span>
+              </div>
+            ))}
+          </div>
+        ) : null
+      }
+      {
+        note ? (
+          <div class="s6c19a">
+            {note}{' '}
+            <a href={noteHref}>{noteLabel}</a>.
+          </div>
+        ) : null
+      }
       <div class="s4ba17">
-        <a class="btn btn-gold" href="/book">Book this route</a>
-        <a class="btn btn-line" href="/fleet">Full price list</a>
+        <a class="btn btn-gold" href={bookHref}>
+          {primary?.label || 'Book this route'}
+        </a>
+        <CtaLink link={secondary} class="btn btn-line" />
       </div>
     </div>
   </div>

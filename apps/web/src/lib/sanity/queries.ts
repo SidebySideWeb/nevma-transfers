@@ -83,7 +83,38 @@ const sectionProjection = /* groq */ `
     route->{ ${routeProjection} },
     image{ ${imageProjection} },
     heading{ ${displayHeadingProjection} },
-    primary{ ${ctaProjection} }
+    primary{ ${ctaProjection} },
+    secondary{ ${ctaProjection} },
+    noteLink{ ${ctaProjection} }
+  },
+  _type == "occasions" => {
+    ...,
+    heading{ ${displayHeadingProjection} },
+    items[]{ ..., image{ ${imageProjection} } }
+  },
+  _type == "serviceColumns" => {
+    ...,
+    heading{ ${displayHeadingProjection} },
+    columns[]{ ... }
+  },
+  _type == "escortFeature" => {
+    ...,
+    heading{ ${displayHeadingProjection} },
+    image{ ${imageProjection} },
+    primary{ ${ctaProjection} },
+    secondary{ ${ctaProjection} }
+  },
+  _type == "clientsBlock" => {
+    ...,
+    heading{ ${displayHeadingProjection} },
+    image{ ${imageProjection} },
+    primary{ ${ctaProjection} },
+    secondary{ ${ctaProjection} }
+  },
+  _type == "legalDocument" => {
+    ...,
+    heading{ ${displayHeadingProjection} },
+    body
   },
   _type == "enquiryForm" => {
     ...,
