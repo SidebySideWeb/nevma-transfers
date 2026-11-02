@@ -63,10 +63,9 @@ test('every env var in .env.example is documented in docs/ARCHITECTURE.md', () =
   for (const m of read('.env.example').matchAll(/^([A-Z_]+)=/gm)) assert.ok(arch.includes(m[1]), `${m[1]} not in ARCHITECTURE.md`);
 });
 
-test('every screen named in docs/PAGES.md exists in design/screens or design/admin', () => {
-  for (const m of read('docs/PAGES.md').matchAll(/`(design\/admin\/|design\/screens\/)?([\w-]+\.html)`/g)) {
-    const dir = m[1] === 'design/admin/' ? 'design/admin' : 'design/screens';
-    assert.ok(existsSync(join(root, dir, m[2])), `screen ${dir}/${m[2]} missing`);
+test('design paths named in docs/PAGES.md exist under design/v2 or design/admin', () => {
+  for (const m of read('docs/PAGES.md').matchAll(/`(design\/(?:admin|v2\/(?:build|pages))\/[\w./-]+\.html)`/g)) {
+    assert.ok(existsSync(join(root, m[1])), `design file ${m[1]} missing`);
   }
 });
 

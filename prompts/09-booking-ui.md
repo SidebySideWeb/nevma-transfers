@@ -4,7 +4,7 @@ Needs: 03, 06 (07 for real payment). Produces: the React island on `/book` match
 
 --- PROMPT ---
 
-Read `AGENTS.md`, `docs/PAGES.md` (`/book`), `docs/API.md` (public endpoints), `docs/BOOKING-RULES.md` §1–§4 and §8, `.cursor/rules/40-scripts-a11y.mdc`, and open `design/screens/search.html`, `vehicle-choice.html`, `details.html`, `review.html`, `viva-handoff.html` at 390 px and 1440 px first. Match them; tokens only; every string through `t()` (pass the resolved strings into the island as a prop from the Astro page so the island ships no Sanity client).
+Read `AGENTS.md`, `docs/PAGES.md` (`/book`), `docs/API.md` (public endpoints), `docs/BOOKING-RULES.md` §1–§4 and §8, `.cursor/rules/40-scripts-a11y.mdc`, and open `design/v2/pages/08-book.html` at 390 px and 1440 px first. Match them; tokens only; every string through `t()` (pass the resolved strings into the island as a prop from the Astro page so the island ships no Sanity client).
 
 1. `src/pages/book.astro` (prerendered, `noindex`): BaseLayout + `<BookingApp client:load strings={...} turnstileSiteKey={...} />`.
 2. `src/components/booking/`: `BookingApp.tsx` (one `useReducer`: `step`, `search`, `quote`, `hold`, `details`, `booking`, `errors`), `StepSearch.tsx`, `StepVehicle.tsx`, `StepDetails.tsx`, `StepReview.tsx`, `HoldTimer.tsx`, `Handoff.tsx`, `api.ts` (typed fetch wrappers for the endpoints; they never send amounts), `format.ts` (re-export `formatEuro`, `formatLocal` from `lib/booking`).

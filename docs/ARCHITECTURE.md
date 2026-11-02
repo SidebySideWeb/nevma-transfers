@@ -20,7 +20,7 @@ One Sanity project for the whole Elite Protection site (kit 1 and kit 2). Datase
 
 ```
 tem-platform/
-├─ AGENTS.md · README-START-HERE.md · .cursor/rules/ · .env.example · .nvmrc
+├─ AGENTS.md · README.md · .cursor/rules/ · .env.example · .nvmrc
 ├─ package.json · pnpm-workspace.yaml · turbo.json
 ├─ apps/
 │  ├─ web/            Astro site, booking island, /api/*            (prompt 01 creates it)

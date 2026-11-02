@@ -6,9 +6,9 @@ Needs: 16, 17. Produces: `/services`, one page per route, and `/book` prefilled 
 
 --- PROMPT ---
 
-Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; the older `design/screens/` wireframes only show structure and string keys.
+Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; match those V2 pages exactly.
 
-Read `AGENTS.md`, `docs/PAGES.md` (kit 2: `/services`, `/routes/[slug]`, booking prefill), `docs/ACCEPTANCE.md` (AC-25, AC-26, AC-32, AC-33) and open `design/screens/services.html` and `route.html` first.
+Read `AGENTS.md`, `docs/PAGES.md` (kit 2: `/services`, `/routes/[slug]`, booking prefill), `docs/ACCEPTANCE.md` (AC-25, AC-26, AC-32, AC-33) and open `design/v2/pages/04-services.html` first.
 
 1. `src/pages/services.astro`: renders `page-services` sections.
 2. `src/pages/routes/[slug].astro` with `getStaticPaths` from `getPublishableRoutes()` (unknown pairs are already excluded, AC-32):

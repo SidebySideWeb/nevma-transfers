@@ -41,7 +41,7 @@ Prompts 02 and 04 can run in parallel after 01. 05 needs only 01. Payments (07) 
 
 ## Kit 2 — content site and forms
 
-Copy the kit 2 files over the repo first (see `README-KIT2.md`), then:
+Kit 2 is already in this repo. Continue with:
 
 | # | Prompt | Result | ~Time |
 | --- | --- | --- | --- |
@@ -71,7 +71,7 @@ Open the prompt file and copy everything **below the line `--- PROMPT ---`** int
 ## When something goes wrong
 
 - The agent wants to change the Sanity schema or an existing migration: reply "Do not change it. Adapt the query or code; if the database really needs a change, write a new numbered migration and update docs/DATA-MODEL.md and the tests."
-- The agent invents design: reply "Match `design/screens/<file>.html` and use tokens only."
+- The agent invents design: reply "Match the V2 page in `design/v2/pages/` (see `docs/DESIGN-V2.md`)."
 - The agent computes a price in the browser or trusts a redirect: reply "Read AGENTS.md golden rules 3 and 6 and fix it."
 - A prompt is too big for one run: "Do steps 1–4 only, stop and report", then "Continue with step 5".
 - After any fix round: "Re-run the Check list of this prompt and report each item as pass or fail."

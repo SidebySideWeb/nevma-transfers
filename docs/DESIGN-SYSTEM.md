@@ -7,9 +7,8 @@ Decided 1 Nov 2026: the site uses the Elite Protection V2 design (near-black, go
 | File | Use |
 | --- | --- |
 | `design/tokens.css` | the only place values live; copy to `apps/web/src/styles/tokens.css` and `apps/admin/src/styles/tokens.css` |
-| `design/v2/` | the V2 design: working preview pages, screenshots at 1440 and 390 px, photos, fonts, extra boards; route mapping and the deliberate differences in `docs/DESIGN-V2.md` |
-| `design/screens/*.html`, `screens.css` | earlier structural wireframes (states, field lists, strings keys); use them for behaviour and copy keys, the V2 pages for the look |
-| `design/admin/` | the admin design kit: `admin.css`, boards for every admin route, components, states |
+| `design/v2/` | website look and markup (exact port into `apps/web`); preview pages, screenshots, photos, fonts — route mapping in `docs/DESIGN-V2.md` |
+| `design/admin/` | admin design kit: `admin.css`, boards for every admin route, components, states |
 
 ## Tokens (`design/tokens.css`)
 
@@ -26,7 +25,7 @@ Contrast: every text/background pair in use passes WCAG AA 4.5:1 (`scripts/contr
 
 ## Components
 
-The list of building blocks is in `docs/DESIGN-V2.md` ("Building blocks to make once"). Behaviour notes that still apply from the wireframes:
+The list of building blocks is in `docs/DESIGN-V2.md` ("Building blocks to make once"). Behaviour notes:
 
 | Component | Notes |
 | --- | --- |

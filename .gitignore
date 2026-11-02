@@ -14,6 +14,9 @@ tem-protection-build-kit.zip
 # Dropped kit archives / extract folders (source of truth is already in the repo)
 elite-protection-*.zip
 Elite-Protection-*.zip
+*.zip
+!seed/**/*.zip
+!seed/**/*.tar.gz
 elite-protection-admin-design/
 elite-protection-admin-design2/
 elite-protection-admin-design3/

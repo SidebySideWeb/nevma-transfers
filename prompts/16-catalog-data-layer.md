@@ -4,7 +4,7 @@ Needs: 15. Produces: one server module that reads the booking catalog from Postg
 
 --- PROMPT ---
 
-Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; the older `design/screens/` wireframes only show structure and string keys.
+Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; match those V2 pages exactly.
 
 Read `AGENTS.md`, `docs/ARCHITECTURE.md` §10, `docs/DATA-MODEL.md` (reference data), `docs/PAGES.md` (kit 2) and `docs/ACCEPTANCE.md` (AC-25, AC-32) first. Tests first, against the local Supabase with the DEMO seed (`packages/db/seed/demo.sql`).
 

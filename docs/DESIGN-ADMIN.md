@@ -24,7 +24,6 @@ The office tool uses the Elite Protection brand at work density. Same tokens as 
 | empty, loading, banners, not staff, not found | `design/admin/states.html` |
 | all components | `design/admin/components.html` |
 
-The older wireframes `design/screens/admin-*.html` now only point here.
 
 ## Rules
 

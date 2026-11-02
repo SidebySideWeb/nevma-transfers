@@ -14,7 +14,7 @@ Read `AGENTS.md` (kit 2 section), `docs/superpowers/specs/2026-11-01-tem-protect
 5. Deploy the Studio (`pnpm --filter @tem/studio deploy`).
 6. Ask me to create an **Editor** robot token named `tem-web-forms` and put it in `apps/web/.env` as `SANITY_WRITE_TOKEN` (and in Vercel later, prompt 23). Also set `PUBLIC_STUDIO_URL` to the deployed Studio URL. Check the read token used by the site is a **Viewer** token (it must not be able to create documents: try once with a test script and expect 403; never commit that script with a token).
 7. Add the new GROQ queries to `apps/web/src/lib/sanity/queries.ts` with `defineQuery`: `PAGES_STANDARD_QUERY` (slug + sections with all section fields; `formBlock.form->` expanded; `routeList.routes[]->` expanded), `ROUTES_QUERY`, `ROUTE_BY_SLUG_QUERY`, `FEATURED_ROUTES_QUERY`, `FORMS_QUERY`, `FORM_BY_KEY_QUERY`, and extend `SITE_SETTINGS_QUERY` with `showFromPrices`. Run `pnpm --filter @tem/studio typegen`; commit the generated types.
-8. Copy the new rules into `apps/web/src/styles/base.css`: the kit 2 component rules from `design/screens/screens.css` (navigation, mobile menu, breadcrumbs, feature grid, steps list, image-text, media, gallery, from-price, price table, facts, contact list, honeypot `.hp`). Tokens only.
+8. Copy the new rules into `apps/web/src/styles/base.css`: the kit 2 component rules from `design/v2/build/v2.css` (navigation, mobile menu, breadcrumbs, feature grid, steps list, image-text, media, gallery, from-price, price table, facts, contact list, honeypot `.hp`). Tokens only.
 
 Check (run and report pass/fail):
 - Schema validate 0/0; Studio tests 22 pass; Studio deployed.

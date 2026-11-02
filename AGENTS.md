@@ -20,7 +20,7 @@ apps/admin/      Standalone admin app, Supabase Auth, staff allow-list          
 apps/studio/     Sanity Studio                                                  (PROVIDED, validated: do not redesign)
 packages/db/     SQL migrations, DEMO seed, database tests                      (PROVIDED, validated)
 docs/            ARCHITECTURE, DATA-MODEL, BOOKING-RULES, API, CONTENT-MODEL, PAGES, DESIGN-SYSTEM, DECISIONS, ACCEPTANCE
-design/          v2/build = the website's code source (exact V2 pages + v2.css); admin/ = admin kit; tokens.css; screens/ = old wireframes
+design/          v2/build = the website's code source (exact V2 pages + v2.css); admin/ = admin kit; tokens.css
 seed/            Sanity DEMO seed (data.ndjson + images)
 prompts/         00-HOW-TO-RUN + 14 build prompts. Run in order.
 scripts/         check-placeholders and doc/prompt checks

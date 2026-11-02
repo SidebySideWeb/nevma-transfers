@@ -1,8 +1,6 @@
 # Pages and routes — kit 1
 
-Visual target for every public route: the V2 design page listed in `docs/DESIGN-V2.md` (`design/v2/`). The Screen column below names the earlier structural wireframes (states, fields, string keys).
-
-Visual reference: `design/screens/*.html` (open `design/index.html`). Every string comes from `uiStrings` or a Sanity document; keys are named below.
+Visual target for every public route: the V2 design page listed in `docs/DESIGN-V2.md` (`design/v2/`). Admin boards: `design/admin/`. Every string comes from `uiStrings` or a Sanity document; keys are named below.
 
 ## apps/web (public site)
 

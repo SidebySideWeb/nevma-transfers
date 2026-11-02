@@ -6,9 +6,9 @@ Needs: 17. Produces: the three standard pages rendered from Sanity sections (for
 
 --- PROMPT ---
 
-Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; the older `design/screens/` wireframes only show structure and string keys.
+Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; match those V2 pages exactly.
 
-Read `AGENTS.md`, `docs/PAGES.md` (kit 2), `docs/ACCEPTANCE.md` (AC-33, AC-34) and open `design/screens/vip-security.html` and `contact.html` first.
+Read `AGENTS.md`, `docs/PAGES.md` (kit 2), `docs/ACCEPTANCE.md` (AC-33, AC-34) and open `design/v2/pages/05-vip-security.html` and `design/v2/pages/07-contact.html` first.
 
 1. One generic route `src/pages/[standard].astro` with `getStaticPaths` for the standard pages that have no dedicated route: `vip-security`, `about`, `contact`, `request-a-transfer`. (Fleet and services keep their own routes from prompts 18 and 19; make sure the paths do not collide.) Each renders `page.sections` with `Sections.astro`. A missing page fails the build with a clear message.
 2. `/vip-security`: the `formBlock` section renders inside an element with `id="enquiry"` (the hero CTA links there). JSON-LD `Service` (name from the page title, provider Organization, `areaServed` Athens), no price.

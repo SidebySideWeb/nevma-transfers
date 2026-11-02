@@ -6,9 +6,9 @@ Needs: 16, 17. Produces: the fleet overview and one page per vehicle class. ~0.5
 
 --- PROMPT ---
 
-Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; the older `design/screens/` wireframes only show structure and string keys.
+Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; match those V2 pages exactly.
 
-Read `AGENTS.md`, `docs/PAGES.md` (kit 2: `/fleet`, `/fleet/[key]`), `docs/ACCEPTANCE.md` (AC-25, AC-33) and open `design/screens/fleet.html` and `vehicle.html` at 390 px and 1440 px first.
+Read `AGENTS.md`, `docs/PAGES.md` (kit 2: `/fleet`, `/fleet/[key]`), `docs/ACCEPTANCE.md` (AC-25, AC-33) and open `design/v2/pages/02-fleet.html` and `design/v2/pages/03-vehicle.html` at 390 px and 1440 px first.
 
 1. `src/pages/fleet/index.astro`: renders `page-fleet` sections (the `vehicleClassList` section produces the cards), with breadcrumbs Home / Fleet.
 2. `src/pages/fleet/[key].astro` with `getStaticPaths` from `getPublishableClasses()`:

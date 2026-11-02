@@ -43,16 +43,6 @@ test('every text/background token pair meets WCAG AA 4.5:1', () => {
   }
 });
 
-test('wireframes use tokens only: no hex colours in design/screens', () => {
-  const dir = join(root, 'design', 'screens');
-  const files = readdirSync(dir).filter((f) => /\.(html|css)$/.test(f));
-  assert.ok(files.length >= 13, 'expected the screens and screens.css');
-  for (const f of files) {
-    const body = readFileSync(join(dir, f), 'utf8');
-    assert.doesNotMatch(body, /#[0-9a-fA-F]{3,8}\b(?![\w-]*=)/, `${f} contains a hex colour`);
-  }
-});
-
 test('admin design kit uses tokens only and has every admin board', () => {
   const dir = join(root, 'design', 'admin');
   const files = readdirSync(dir).filter((f) => /\.(html|css)$/.test(f) && f !== 'tokens.css'); // tokens.css: the admin update's own copy of the tokens
@@ -66,8 +56,9 @@ test('admin design kit uses tokens only and has every admin board', () => {
   }
 });
 
-test('no NEVMA branding in the design', () => {
-  for (const f of readdirSync(join(root, 'design', 'screens'))) {
-    assert.doesNotMatch(readFileSync(join(root, 'design', 'screens', f), 'utf8'), /nevma/i, f);
+test('no NEVMA branding in the admin design kit', () => {
+  const dir = join(root, 'design', 'admin');
+  for (const f of readdirSync(dir).filter((n) => /\.(html|css)$/.test(n))) {
+    assert.doesNotMatch(readFileSync(join(dir, f), 'utf8'), /nevma/i, f);
   }
 });

@@ -4,7 +4,7 @@ Needs: 02, 03. Produces: the public pages from Sanity, SEO basics, structured da
 
 --- PROMPT ---
 
-Read `AGENTS.md`, `docs/PAGES.md`, `docs/CONTENT-MODEL.md` (page sections) and open `design/screens/home.html` first.
+Read `AGENTS.md`, `docs/PAGES.md`, `docs/CONTENT-MODEL.md` (page sections) and open `design/v2/pages/01-home.html` first.
 
 1. `src/components/sections/`: `Hero.astro`, `RichText.astro` (Portable Text via `astro-portabletext`; links with `rel="noopener"` for external; no `set:html` of editor content), `CtaBand.astro`, `Faq.astro` (native `<details>`), and `Sections.astro` that renders `page.sections` in order by `_type`. A `ctaTarget` of `book` links to `/book`.
 2. `src/pages/index.astro` renders `page-home`; `src/pages/[legal].astro` with `getStaticPaths` for `privacy`, `cookies`, `terms`, `cancellation`. Missing page → build fails with a clear message.

@@ -6,9 +6,9 @@ Needs: 15, 16. Produces: header navigation with phone menu, footer links, breadc
 
 --- PROMPT ---
 
-Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; the older `design/screens/` wireframes only show structure and string keys.
+Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; match those V2 pages exactly.
 
-Read `AGENTS.md`, `docs/CONTENT-MODEL.md` (page sections), `docs/PAGES.md` (kit 2: navigation) and open `design/screens/fleet.html`, `services.html`, `vip-security.html`, `contact.html` at 390 px and 1440 px first. Match them; tokens only; every label through `t()` (keys in areas `site` and `forms`).
+Read `AGENTS.md`, `docs/CONTENT-MODEL.md` (page sections), `docs/PAGES.md` (kit 2: navigation) and open `design/v2/pages/02-fleet.html`, `design/v2/pages/04-services.html`, `design/v2/pages/05-vip-security.html`, `design/v2/pages/07-contact.html` at 390 px and 1440 px first. Match them; tokens only; every label through `t()` (keys in areas `site` and `forms`).
 
 1. `Header.astro`: links `nav.fleet`, `nav.services`, `nav.vipSecurity`, `nav.about`, `nav.contact` with `aria-current="page"` on the active section (a route page counts as Services, a vehicle page as Fleet); `nav.book` button → `/book`, replaced by "Request a quote" → `/request-a-transfer` when `PUBLIC_BOOKING_OPEN` is false. Below 960 px a `<details>` menu (`nav.menu`) with the same links: works without JavaScript; a tiny script closes it on Escape and on link click and returns focus to the summary.
 2. `Footer.astro`: add the same five links above the legal links.

@@ -6,9 +6,9 @@ Needs: 20, 21. Produces: the three forms rendered in `FormBlock`, working with a
 
 --- PROMPT ---
 
-Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; the older `design/screens/` wireframes only show structure and string keys.
+Design target: the V2 pages for these routes listed in `docs/DESIGN-V2.md` (in `design/v2/pages/`, screenshots in `design/v2/screenshots/`), built with the components from prompt 30; match those V2 pages exactly.
 
-Read `AGENTS.md`, `docs/FORMS.md`, `docs/PAGES.md` (kit 2), `.cursor/rules/40-scripts-a11y.mdc` and open `design/screens/vip-security.html`, `contact.html`, `request-a-transfer.html`, `thank-you.html` at 390 px and 1440 px first. Tokens only; all labels via `t()`.
+Read `AGENTS.md`, `docs/FORMS.md`, `docs/PAGES.md` (kit 2), `.cursor/rules/40-scripts-a11y.mdc` and open `design/v2/pages/05-vip-security.html`, `design/v2/pages/07-contact.html`, `design/v2/pages/12-request-transfer.html`, `design/v2/pages/13-request-received.html` at 390 px and 1440 px first. Tokens only; all labels via `t()`.
 
 1. `FormBlock.astro` renders the form by `form.key` with a per-form field component: `TransferRequestFields.astro`, `VipSecurityFields.astro`, `ContactFields.astro` — exactly the fields in `docs/FORMS.md` with visible labels, `(optional)` marks (`form.optional`), `autocomplete` attributes, the honeypot (`.hp`, `tabindex="-1"`, `aria-hidden`), consent checkbox linking `/privacy`, the Turnstile widget, and the submit button (`form.submitLabel` or `form.submit`).
    - Zones and classes for the request form come from the build-time catalog and `getPublishableClasses()`; contact topics from `form.topics`.
