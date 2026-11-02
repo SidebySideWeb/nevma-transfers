@@ -95,6 +95,11 @@ describe('emails (prompt 08)', () => {
     expect(conf.html).toContain('Price analysis');
     expect(conf.html).toContain('€ 177.42');
     expect(conf.html).toContain('VAT 24%');
+    expect(conf.html).toContain('/images/v2/logo-white.png');
+    expect(conf.html).toContain('/legal#terms');
+    expect(conf.html).toContain('/legal#privacy');
+    expect(conf.html).toContain('/legal#cookies');
+    expect(conf.html).toContain('/legal#cancellation');
 
     const office = officeNewEmail({
       ...baseConfirm,

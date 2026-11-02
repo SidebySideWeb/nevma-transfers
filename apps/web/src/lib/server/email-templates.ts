@@ -76,19 +76,72 @@ export type LateRefundInput = {
   companyEmail: string;
 };
 
+function siteBaseUrl(): string {
+  return (
+    import.meta.env.PUBLIC_SITE_URL ||
+    process.env.PUBLIC_SITE_URL ||
+    'http://localhost:4321'
+  ).replace(/\/$/, '');
+}
+
+function accentLink(href: string, label: string): string {
+  return `<a href="${escapeHtml(href)}" style="color:${th.accent};text-decoration:none;">${escapeHtml(label)}</a>`;
+}
+
 function wrapHtml(title: string, bodyHtml: string, company: { name: string; phone: string; email: string }): string {
+  const base = siteBaseUrl();
+  const logoUrl = `${base}${th.logoPath}`;
+  const telHref = `tel:${company.phone.replace(/[^\d+]/g, '')}`;
+  const mailHref = `mailto:${company.email}`;
+  const legal = [
+    { href: `${base}/legal#terms`, label: t('site.footer.terms') },
+    { href: `${base}/legal#privacy`, label: t('site.footer.privacy') },
+    { href: `${base}/legal#cookies`, label: t('site.footer.cookies') },
+    { href: `${base}/legal#cancellation`, label: t('site.legal.cancellation') },
+  ];
+  const legalHtml = legal.map((l) => accentLink(l.href, l.label)).join(
+    `<span style="color:${th.borderMuted};padding:0 8px;">·</span>`,
+  );
+
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(title)}</title></head>
-<body style="margin:0;padding:0;background:${th.bg};color:${th.text};font-family:${th.font};">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>${escapeHtml(title)}</title>
+</head>
+<body style="margin:0;padding:0;background:${th.bg};color:${th.text};font-family:${th.font};-webkit-font-smoothing:antialiased;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${th.bg};">
-    <tr><td align="center" style="padding:24px 12px;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:${th.maxWidth};background:${th.surface};border:1px solid ${th.border};border-radius:10px;">
-        <tr><td style="padding:24px;font-size:16px;line-height:1.55;color:${th.text};">
-          <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${th.accent};">${escapeHtml(company.name)}</p>
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:${th.maxWidth};background:${th.surface};border:1px solid ${th.border};border-radius:12px;overflow:hidden;">
+        <tr><td style="height:3px;line-height:3px;font-size:0;background:linear-gradient(90deg,${th.border},${th.accent},${th.border});">&nbsp;</td></tr>
+        <tr><td align="center" style="padding:28px 28px 20px;background:${th.surfaceRaised};">
+          <a href="${escapeHtml(base)}/" style="text-decoration:none;">
+            <img src="${escapeHtml(logoUrl)}" width="200" alt="${escapeHtml(company.name)}" style="display:block;width:200px;max-width:70%;height:auto;border:0;outline:none;">
+          </a>
+        </td></tr>
+        <tr><td style="height:1px;line-height:1px;font-size:0;background:${th.borderMuted};">&nbsp;</td></tr>
+        <tr><td style="padding:28px 28px 8px;font-size:16px;line-height:1.6;color:${th.text};">
           ${bodyHtml}
-          <p style="margin:24px 0 0;font-size:14px;color:${th.muted};">
-            ${escapeHtml(company.name)} · ${escapeHtml(company.phone)} · ${escapeHtml(company.email)}
+        </td></tr>
+        <tr><td style="padding:8px 28px 0;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
+            <td style="height:1px;line-height:1px;font-size:0;background:${th.borderMuted};">&nbsp;</td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:20px 28px 28px;font-size:13px;line-height:1.55;color:${th.muted};text-align:center;">
+          <p style="margin:0 0 10px;font-size:14px;color:${th.text};">
+            ${escapeHtml(company.name)}
+          </p>
+          <p style="margin:0 0 14px;">
+            ${accentLink(telHref, company.phone)}
+            <span style="color:${th.borderMuted};padding:0 8px;">·</span>
+            ${accentLink(mailHref, company.email)}
+          </p>
+          <p style="margin:0 0 12px;">${legalHtml}</p>
+          <p style="margin:0;font-size:12px;color:${th.muted};">
+            <a href="${escapeHtml(base)}/" style="color:${th.muted};text-decoration:underline;">${escapeHtml(base.replace(/^https?:\/\//, ''))}</a>
           </p>
         </td></tr>
       </table>
@@ -584,17 +637,33 @@ function answersText(answers: FormAnswerLine[]): string {
   return answers.map((a) => `${a.label}: ${a.value}`).join('\n');
 }
 
+function formatAnswerValueHtml(key: string, value: string): string {
+  const escaped = escapeHtml(value).replace(/\n/g, '<br>');
+  const lower = key.toLowerCase();
+  if (lower.includes('email') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+    return accentLink(`mailto:${value.trim()}`, value.trim());
+  }
+  if (lower.includes('phone') && /[\d+]/.test(value)) {
+    return accentLink(`tel:${value.replace(/[^\d+]/g, '')}`, value);
+  }
+  return escaped;
+}
+
 function answersTable(answers: FormAnswerLine[]): string {
   const rows = answers
     .map(
-      (a) =>
+      (a, i) =>
         `<tr>
-          <td style="padding:6px 12px 6px 0;vertical-align:top;color:${th.muted};white-space:nowrap;">${escapeHtml(a.label)}</td>
-          <td style="padding:6px 0;vertical-align:top;">${escapeHtml(a.value).replace(/\n/g, '<br>')}</td>
+          <td style="padding:12px 16px 12px 0;vertical-align:top;width:38%;color:${th.muted};font-size:13px;letter-spacing:0.04em;text-transform:uppercase;border-top:${i === 0 ? 'none' : `1px solid ${th.borderMuted}`};">${escapeHtml(a.label)}</td>
+          <td style="padding:12px 0;vertical-align:top;color:${th.text};border-top:${i === 0 ? 'none' : `1px solid ${th.borderMuted}`};">${formatAnswerValueHtml(a.key, a.value)}</td>
         </tr>`,
     )
     .join('');
-  return `<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">${rows}</table>`;
+  return `<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;background:${th.surfaceRaised};border:1px solid ${th.borderMuted};border-radius:8px;">
+    <tr><td style="padding:4px 16px;">
+      <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">${rows}</table>
+    </td></tr>
+  </table>`;
 }
 
 export function formOffice(input: FormOfficeInput): EmailParts {
@@ -609,10 +678,14 @@ export function formOffice(input: FormOfficeInput): EmailParts {
     companyFooter(input),
   ].join('\n');
   const htmlBody = `
-    <p style="margin:0 0 16px;">${escapeHtml(subject)}</p>
+    <p style="margin:0 0 8px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:${th.accent};">${escapeHtml(input.formTitle)}</p>
+    <p style="margin:0 0 20px;font-size:17px;line-height:1.55;color:${th.text};">${escapeHtml(subject)}</p>
     ${answersTable(input.answers)}
-    <p style="margin:16px 0 0;">
-      <a href="${escapeHtml(input.studioUrl)}" style="color:${th.accent};">Open in Studio</a>
+    <p style="margin:20px 0 0;">
+      <a href="${escapeHtml(input.studioUrl)}"
+         style="display:inline-block;padding:12px 20px;background:${th.accent};color:${th.onAccent};text-decoration:none;border-radius:6px;font-weight:600;">
+        Open in Studio
+      </a>
     </p>
   `;
   return {
@@ -631,7 +704,8 @@ export function formConfirm(input: FormConfirmInput): EmailParts {
   const body = t('email.form.confirm.body', { name: input.name });
   const text = [body, '', answersText(input.answers), '', companyFooter(input)].join('\n');
   const htmlBody = `
-    <p style="margin:0 0 16px;">${escapeHtml(body)}</p>
+    <p style="margin:0 0 8px;font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:${th.accent};">${escapeHtml(input.formTitle)}</p>
+    <p style="margin:0 0 20px;font-size:17px;line-height:1.55;color:${th.text};">${escapeHtml(body)}</p>
     ${answersTable(input.answers)}
   `;
   return {
