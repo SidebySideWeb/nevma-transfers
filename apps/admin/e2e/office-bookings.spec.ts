@@ -14,7 +14,7 @@ async function login(page: Page) {
   await page.getByLabel('Email').fill(STAFF_EMAIL);
   await page.getByLabel('Password').fill(STAFF_PASS);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/bookings/);
+  await expect(page).toHaveURL(/\/(today|bookings)/);
 }
 
 /** Set a brand-dropdown native <select> (aria-hidden) and fire change. */

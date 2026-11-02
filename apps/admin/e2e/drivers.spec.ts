@@ -79,7 +79,7 @@ test.beforeEach(({}, testInfo) => {
 test('DR-03 invite + driver welcome only; DR-02 overlap; timeline; shift', async ({ page }) => {
   test.setTimeout(240_000);
   await login(page, STAFF_EMAIL, STAFF_PASS);
-  await expect(page).toHaveURL(/\/bookings/);
+  await expect(page).toHaveURL(/\/(today|bookings)/);
 
   await page.goto('/drivers');
   await expect(page.getByRole('heading', { name: 'Drivers' })).toBeVisible();
@@ -142,7 +142,7 @@ test('DR-03 invite + driver welcome only; DR-02 overlap; timeline; shift', async
     await fetch('/logout', { method: 'POST', credentials: 'same-origin' });
   });
   await login(page, STAFF_EMAIL, STAFF_PASS);
-  await expect(page).toHaveURL(/\/bookings/);
+  await expect(page).toHaveURL(/\/(today|bookings)/);
 
   // Assign to first booking.
   await page.goto(`/bookings/${refA}`);

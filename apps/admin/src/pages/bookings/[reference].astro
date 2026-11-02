@@ -95,6 +95,7 @@ let toName: string | undefined;
 let classKey = '-';
 let vehicleError: string | null = null;
 let driverError: string | null = null;
+let tripError: string | null = null;
 let pageError: string | null = null;
 let refundConfirm = '';
 let cancelConfirm = '';
@@ -235,6 +236,7 @@ if (found && booking) {
 
   vehicleError = actionErr(Astro.getActionResult?.(actions.assignVehicle));
   driverError = actionErr(Astro.getActionResult?.(actions.assignDriver));
+  tripError = actionErr(Astro.getActionResult?.(actions.setTripStatus));
   pageError =
     actionErr(Astro.getActionResult?.(actions.saveNotesInvoice)) ||
     actionErr(Astro.getActionResult?.(actions.refundBooking)) ||
@@ -422,6 +424,74 @@ if (found && booking) {
                       </div>
                     </form>
                   )
+                }
+                {
+                  showDrivers &&
+                    ['confirmed', 'assigned', 'completed'].includes(booking.status) && (
+                      <form
+                        method="POST"
+                        action={actions.setTripStatus}
+                        class="stack-sm"
+                        aria-label="Trip status"
+                      >
+                        <input type="hidden" name="reference" value={reference} />
+                        <div class="field">
+                          <label for="trip-st">Trip status</label>
+                          <Select
+                            id="trip-st"
+                            name="status"
+                            aria-invalid={tripError ? 'true' : undefined}
+                            aria-describedby={tripError ? 'trip-err' : undefined}
+                            options={[
+                              {
+                                value: 'scheduled',
+                                label: 'Scheduled',
+                                selected: booking.trip_status === 'scheduled',
+                              },
+                              {
+                                value: 'on_way',
+                                label: 'On the way',
+                                selected: booking.trip_status === 'on_way',
+                              },
+                              {
+                                value: 'arrived',
+                                label: 'Arrived',
+                                selected: booking.trip_status === 'arrived',
+                              },
+                              {
+                                value: 'on_board',
+                                label: 'Passenger on board',
+                                selected: booking.trip_status === 'on_board',
+                              },
+                              {
+                                value: 'completed',
+                                label: 'Completed',
+                                selected: booking.trip_status === 'completed',
+                              },
+                              {
+                                value: 'no_show',
+                                label: 'No-show',
+                                selected: booking.trip_status === 'no_show',
+                              },
+                            ]}
+                          />
+                          {tripError && (
+                            <p class="error-text" id="trip-err" role="alert">
+                              {tripError}
+                            </p>
+                          )}
+                        </div>
+                        <div class="field">
+                          <label for="trip-note">Note (optional)</label>
+                          <input id="trip-note" class="input" name="note" />
+                        </div>
+                        <div class="row">
+                          <button class="btn" type="submit">
+                            Update trip status
+                          </button>
+                        </div>
+                      </form>
+                    )
                 }
                 {booking.status === 'assigned' && (
                   <form method="POST" action={actions.markCompleted}>

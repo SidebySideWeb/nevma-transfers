@@ -7,6 +7,7 @@ import Banner from '../components/Banner.astro';
 import Select from '../components/Select.astro';
 import { athensTime } from '../lib/athens-day';
 import { logListError, resolveListLoad } from '../lib/bookings-list';
+import { buildDriverDayTracks, type DriverTrack } from '../lib/calendar-drivers';
 import { dayBar, parseItems, type BarView } from '../lib/calendar-items';
 import {
   athensDateKey,
@@ -21,14 +22,18 @@ import {
   shiftDate,
   weekDays,
 } from '../lib/calendar-position';
+import { driversEnabled } from '../lib/drivers';
 import { rangeLiteral } from '../lib/office-trip';
+import { parseTstzRange } from '../lib/range';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const q = Astro.url.searchParams;
 
-const view = q.get('view') === 'week' ? 'week' : 'day';
+const showDriversBoard = driversEnabled();
+const board = showDriversBoard && q.get('view') === 'drivers' ? 'drivers' : 'vehicles';
+const view = board === 'drivers' ? 'day' : q.get('view') === 'week' ? 'week' : 'day';
 const nowDate = new Date();
 const today = athensDateKey(nowDate);
 const dateParam = q.get('date') ?? '';
@@ -98,7 +103,12 @@ const dateLabel =
 
 function href(over: Record<string, string | null>): string {
   const p = new URLSearchParams();
-  const base: Record<string, string> = { view, date, ...(classKey ? { class: classKey } : {}) };
+  const viewParam = over.view !== undefined ? over.view : board === 'drivers' ? 'drivers' : view;
+  const base: Record<string, string> = {
+    view: viewParam || view,
+    date,
+    ...(classKey && board === 'vehicles' ? { class: classKey } : {}),
+  };
   for (const [k, v] of Object.entries({ ...base, ...over })) if (v) p.set(k, v);
   return `/calendar?${p}`;
 }
@@ -106,6 +116,59 @@ const step = view === 'week' ? 7 : 1;
 const unit = view === 'week' ? 'week' : 'day';
 const thisDate = view === 'week' ? weekDays(today)[0]! : today;
 const isCurrent = view === 'week' ? weekDays(date)[0] === weekDays(today)[0] : date === today;
+
+let driverTracks: DriverTrack[] = [];
+if (board === 'drivers') {
+  const grid0 = grids[0]!;
+  const [{ data: driverRows }, { data: bookingRows }, { data: shiftRows }] = await Promise.all([
+    supabase.from('drivers').select('id, full_name').eq('active', true).order('full_name'),
+    supabase
+      .from('bookings')
+      .select(
+        'reference, driver_id, pickup_at, duration_minutes, blocked_range, status, booking_type, vip_security, source, vehicle_auto_assigned',
+      )
+      .in('status', ['pending', 'confirmed', 'assigned', 'completed'])
+      .filter('blocked_range', 'ov', rangeLiteral(grid0.start, grid0.end)),
+    supabase
+      .from('driver_shifts')
+      .select('driver_id, started_at, ended_at')
+      .lt('started_at', grid0.end.toISOString())
+      .or(`ended_at.is.null,ended_at.gt.${grid0.start.toISOString()}`),
+  ]);
+  const bookings = (bookingRows ?? [])
+    .map((b) => {
+      const range = parseTstzRange(b.blocked_range);
+      if (!range || !b.pickup_at) return null;
+      const endMs = b.pickup_at
+        ? new Date(b.pickup_at).getTime() + (b.duration_minutes || 45) * 60_000
+        : range.end.getTime();
+      return {
+        reference: b.reference,
+        driverId: b.driver_id as string | null,
+        startMs: new Date(b.pickup_at).getTime(),
+        endMs,
+        rangeStartMs: range.start.getTime(),
+        rangeEndMs: range.end.getTime(),
+        status: b.status,
+        bookingType: b.booking_type as string | null,
+        vip: Boolean(b.vip_security),
+        source: b.source as string | null,
+        vehicleAutoAssigned: Boolean(b.vehicle_auto_assigned),
+      };
+    })
+    .filter((b): b is NonNullable<typeof b> => Boolean(b));
+  const shifts = (shiftRows ?? []).map((s) => ({
+    driverId: s.driver_id as string,
+    startMs: new Date(s.started_at).getTime(),
+    endMs: s.ended_at ? new Date(s.ended_at).getTime() : null,
+  }));
+  driverTracks = buildDriverDayTracks(
+    grid0,
+    (driverRows ?? []).map((d) => ({ id: d.id, fullName: d.full_name })),
+    bookings,
+    shifts,
+  );
+}
 
 // ---------- day view model ----------
 type Track = {
@@ -248,7 +311,7 @@ const regionLabel =
   }
 
   <form class="cal-toolbar" method="get" aria-label="Calendar controls">
-    <input type="hidden" name="view" value={view} />
+    <input type="hidden" name="view" value={board === 'drivers' ? 'drivers' : view} />
     <input type="hidden" name="date" value={date} />
     <div class="row">
       <a class="btn btn-secondary btn-sm" href={href({ date: shiftDate(date, -step) })} aria-label={`Previous ${unit}`}>‹</a>
@@ -261,37 +324,56 @@ const regionLabel =
       <p class="cal-date" id="cal-date">{dateLabel}</p>
     </div>
     <div class="row">
-      <div class="field" style="min-width:180px">
-        <label for="cal-cls" class="sr-only">Vehicle class</label>
-        <Select
-          id="cal-cls"
-          name="class"
-          class="input input-sm"
-          autoSubmit
-          options={[
-            { value: '', label: 'All classes', selected: !classKey },
-            ...allClasses.map((c) => {
-              const n = vehicles.filter((v) => v.class_id === c.id).length;
-              return {
-                value: c.key,
-                label: c.name,
-                meta: `${n} vehicle${n === 1 ? '' : 's'}`,
-                selected: c.key === classKey,
-              };
-            }),
-          ]}
-        />
-      </div>
-      <nav class="seg" aria-label="View">
-        <a href={href({ view: 'day' })} aria-current={view === 'day' ? 'page' : undefined}>Day</a>
-        <a href={href({ view: 'week' })} aria-current={view === 'week' ? 'page' : undefined}>Week</a>
-      </nav>
+      {
+        board === 'vehicles' && (
+          <div class="field" style="min-width:180px">
+            <label for="cal-cls" class="sr-only">Vehicle class</label>
+            <Select
+              id="cal-cls"
+              name="class"
+              class="input input-sm"
+              autoSubmit
+              options={[
+                { value: '', label: 'All classes', selected: !classKey },
+                ...allClasses.map((c) => {
+                  const n = vehicles.filter((v) => v.class_id === c.id).length;
+                  return {
+                    value: c.key,
+                    label: c.name,
+                    meta: `${n} vehicle${n === 1 ? '' : 's'}`,
+                    selected: c.key === classKey,
+                  };
+                }),
+              ]}
+            />
+          </div>
+        )
+      }
+      {
+        showDriversBoard && (
+          <nav class="seg" aria-label="Board">
+            <a
+              href={href({ view: board === 'drivers' ? 'day' : view })}
+              aria-current={board === 'vehicles' ? 'page' : undefined}>Vehicles</a
+            >
+            <a href={href({ view: 'drivers' })} aria-current={board === 'drivers' ? 'page' : undefined}>Drivers</a>
+          </nav>
+        )
+      }
+      {
+        board === 'vehicles' && (
+          <nav class="seg" aria-label="View">
+            <a href={href({ view: 'day' })} aria-current={view === 'day' ? 'page' : undefined}>Day</a>
+            <a href={href({ view: 'week' })} aria-current={view === 'week' ? 'page' : undefined}>Week</a>
+          </nav>
+        )
+      }
       <noscript><button class="btn btn-secondary btn-sm" type="submit">Apply</button></noscript>
     </div>
   </form>
 
   {
-    view === 'day' && (
+    view === 'day' && board === 'vehicles' && (
       <ul class="cal-legend" aria-label="Legend">
         <li><i style="background:var(--color-surface-2);border-left:3px solid var(--color-accent);border:1px solid var(--color-accent-deep)"></i>Booking on a vehicle</li>
         <li><i style="border-left:3px solid var(--color-warning);background:var(--color-surface-2)"></i>Needs a vehicle</li>
@@ -302,9 +384,71 @@ const regionLabel =
       </ul>
     )
   }
+  {
+    board === 'drivers' && (
+      <ul class="cal-legend" aria-label="Legend">
+        <li><i style="background:var(--color-surface-2);border-left:3px solid var(--color-accent);border:1px solid var(--color-accent-deep)"></i>Booking with a driver</li>
+        <li><i style="border-left:3px solid var(--color-warning);background:var(--color-surface-2)"></i>Needs a driver</li>
+        <li><i style="background:var(--color-accent);height:3px;width:24px;align-self:center"></i>Shift</li>
+        <li><i style="background:var(--color-danger);width:2px"></i>Now</li>
+      </ul>
+    )
+  }
 
   {
-    classes.length === 0 ? (
+    board === 'drivers' ? (
+      <div
+        class="cal-scroll"
+        id="cal-scroll"
+        role="region"
+        tabindex="0"
+        aria-label={`Drivers calendar, ${longDate(date)}, scroll sideways for more hours`}
+        data-scroll-left={scrollLeft}
+        data-view="day"
+        data-day-px={DAY_PX}
+        data-dates={date}
+        data-default-ms={defaultMs}
+      >
+        <div class="cal" style={`--hours:${grid.hours}`}>
+          <div class="cal-corner">Driver</div>
+          <div class="cal-hours" aria-hidden="true">
+            {grid.hourStarts.map((_, i) => <span>{hourLabel(grid, i)}</span>)}
+          </div>
+          {driverTracks.map((t) => (
+            <>
+              <div class="cal-label">
+                {t.lane ? (
+                  t.label && <strong style="font-weight:500">{t.label}</strong>
+                ) : (
+                  <a href={`/drivers/${t.key}`}>{t.label}</a>
+                )}
+                {t.sub && <span class="sub">{t.sub}</span>}
+              </div>
+              <div class:list={['cal-track', { 'is-off': t.lane }]}>
+                {t.shifts.map((s) => (
+                  <span class="cal-shift" style={`left:${s.left}px;width:${s.width}px`} aria-hidden="true"></span>
+                ))}
+                {t.buffers.map((b) => (
+                  <span class="bar-buffer" style={`left:${b.left}px;width:${b.width}px`} aria-hidden="true"></span>
+                ))}
+                {t.bars.map((b) =>
+                  b.tag === 'a' ? (
+                    <a class={b.cls} href={b.href} style={`left:${b.left}px;width:${b.width}px`} aria-label={b.name} title={b.name}>
+                      <b>{b.code}</b>{b.sub && <> <small>{b.sub}</small></>}
+                    </a>
+                  ) : (
+                    <span class={b.cls} role="img" style={`left:${b.left}px;width:${b.width}px`} aria-label={b.name} title={b.name}>
+                      <b>{b.code}</b>
+                    </span>
+                  ),
+                )}
+              </div>
+            </>
+          ))}
+          {showNow && <span class="cal-now" style={`left:${nowLeft}px`} data-time={nowTime} aria-hidden="true"></span>}
+        </div>
+      </div>
+    ) : classes.length === 0 ? (
       <p class="muted">No active vehicle classes.</p>
     ) : (
       <div

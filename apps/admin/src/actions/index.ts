@@ -1274,6 +1274,28 @@ export const server = {
     },
   }),
 
+  setTripStatus: defineAction({
+    accept: 'form',
+    input: z.object({
+      reference: z.string().min(1),
+      status: z.enum(['scheduled', 'on_way', 'arrived', 'on_board', 'completed', 'no_show']),
+      note: z.string().optional().nullable(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const note = input.note?.trim();
+      const { error } = await supabase.rpc('set_trip_status', {
+        p_reference: input.reference,
+        p_status: input.status,
+        ...(note ? { p_note: note } : {}),
+      });
+      if (error) throwDb(error);
+      return { ok: true, status: input.status };
+    },
+  }),
+
   /** AC-10: deliberately reject attempts to patch price_cents from the admin. */
   forgePriceCents: defineAction({
 

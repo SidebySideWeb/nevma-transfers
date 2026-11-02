@@ -1,0 +1,186 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../layouts/AdminLayout.astro';
+import Banner from '../components/Banner.astro';
+import { athensDateKey, athensLocalMs, shiftDate } from '../lib/calendar-position';
+import { driversNotFound } from '../lib/drivers';
+import {
+  computeTodayStats,
+  needsActionSentence,
+  renderDriversNowTbody,
+  renderFleetNowTbody,
+  renderTodayPartial,
+  type DriversNowRow,
+  type FleetNowRow,
+  type NeedsBooking,
+} from '../lib/today-board';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+const denied = driversNotFound();
+if (denied) return denied;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+const todayKey = athensDateKey(new Date());
+const dayStart = new Date(athensLocalMs(todayKey, '00:00')).toISOString();
+const dayEnd = new Date(athensLocalMs(shiftDate(todayKey, 1), '00:00')).toISOString();
+
+const [{ data: fleetRaw }, { data: driversRaw }, { data: todayBookings }] = await Promise.all([
+  supabase.from('fleet_now').select('*').order('vehicle_label'),
+  supabase.from('drivers_now').select('*').order('full_name'),
+  supabase
+    .from('bookings')
+    .select('reference, pickup_at, status, trip_status, driver_id, vehicle_id')
+    .gte('pickup_at', dayStart)
+    .lt('pickup_at', dayEnd)
+    .in('status', ['pending', 'confirmed', 'assigned', 'completed']),
+]);
+
+const fleet = (fleetRaw ?? []) as FleetNowRow[];
+const drivers = (driversRaw ?? []) as DriversNowRow[];
+
+const liveStatuses = new Set(['pending', 'confirmed', 'assigned']);
+const needs: NeedsBooking[] = [];
+let jobsClosed = 0;
+let jobsTotal = 0;
+for (const b of todayBookings ?? []) {
+  if (['confirmed', 'assigned', 'completed'].includes(b.status)) {
+    jobsTotal += 1;
+    if (b.status === 'completed' || b.trip_status === 'completed' || b.trip_status === 'no_show') {
+      jobsClosed += 1;
+    }
+  }
+  if (!liveStatuses.has(b.status)) continue;
+  const noDriver = !b.driver_id;
+  const noVehicle = !b.vehicle_id;
+  if (noDriver || noVehicle) {
+    needs.push({
+      reference: b.reference,
+      pickup_at: b.pickup_at,
+      missing: noDriver && noVehicle ? 'both' : noDriver ? 'driver' : 'vehicle',
+    });
+  }
+}
+needs.sort((a, b) => a.pickup_at.localeCompare(b.pickup_at));
+
+const stats = computeTodayStats({
+  driversNow: drivers,
+  fleetNow: fleet,
+  jobsClosed,
+  jobsTotal,
+  needs,
+});
+
+const updatedLabel = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/Athens',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+}).format(new Date());
+
+const longDate = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/Athens',
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+}).format(new Date());
+
+if (Astro.url.searchParams.get('partial') === '1') {
+  return new Response(
+    renderTodayPartial({ fleet, drivers, updatedLabel }),
+    {
+      status: 200,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+      },
+    },
+  );
+}
+
+const needsHtml = needsActionSentence(needs);
+---
+
+<AdminLayout title="Today" current="today" staffEmail={staff.email}>
+  <div class="row" slot="actions">
+    <a class="btn btn-secondary" href="/calendar">Fleet calendar</a>
+    <a class="btn" href="/bookings/new">New booking</a>
+  </div>
+
+  <p class="crumbs" style="margin:0 0 .25rem">{longDate}</p>
+
+  <dl class="stats" aria-label="Today">
+    <div class="stat">
+      <dt>On shift</dt>
+      <dd>{stats.onShift}<small>of {stats.activeDrivers} drivers</small></dd>
+    </div>
+    <div class="stat">
+      <dt>Vehicles out</dt>
+      <dd>{stats.vehiclesOut}<small>of {stats.vehiclesTotal}</small></dd>
+    </div>
+    <div class="stat">
+      <dt>Jobs today</dt>
+      <dd>{stats.jobsClosed} / {stats.jobsTotal}<small>closed / total</small></dd>
+    </div>
+    <div class="stat">
+      <dt>Need a driver or vehicle</dt>
+      <dd>{stats.needsCount}<small>today</small></dd>
+    </div>
+  </dl>
+
+  {
+    needs.length > 0 && (
+      <Banner tone="warning" tag="Needs action" role="note">
+        <span set:html={needsHtml} />
+        <a class="btn btn-secondary btn-sm" href="/bookings" slot="action">Open bookings</a>
+      </Banner>
+    )
+  }
+
+  <section class="panel" aria-labelledby="t-v" style="margin-top:1.25rem">
+    <div class="panel-head">
+      <h2 id="t-v">Vehicles now</h2>
+      <span class="muted small" id="today-updated">Updated {updatedLabel} · refreshes every minute</span>
+    </div>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Vehicles now, table" style="border:0">
+      <table class="table table-cards">
+        <thead>
+          <tr>
+            <th scope="col">Vehicle</th>
+            <th scope="col">Driver</th>
+            <th scope="col">Now</th>
+            <th scope="col">Next job</th>
+            <th scope="col">Last update</th>
+          </tr>
+        </thead>
+        <tbody id="fleet-now-body" set:html={renderFleetNowTbody(fleet)} />
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="t-d" style="margin-top:1.25rem">
+    <div class="panel-head">
+      <h2 id="t-d">Drivers now</h2>
+    </div>
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Drivers now, table" style="border:0">
+      <table class="table table-cards">
+        <thead>
+          <tr>
+            <th scope="col">Driver</th>
+            <th scope="col">Shift</th>
+            <th scope="col">Now</th>
+            <th scope="col">Next job</th>
+            <th scope="col" class="num">Jobs today</th>
+          </tr>
+        </thead>
+        <tbody id="drivers-now-body" set:html={renderDriversNowTbody(drivers)} />
+      </table>
+    </div>
+  </section>
+
+  <script>
+    import '../scripts/today-refresh';
+  </script>
+</AdminLayout>

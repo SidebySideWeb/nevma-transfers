@@ -44,7 +44,7 @@ test('AC-18 non-staff user is signed out to login', async ({ page }) => {
 
 test('AC-18 staff sees bookings and VIP filter', async ({ page }) => {
   await login(page, STAFF_EMAIL, STAFF_PASS);
-  await expect(page).toHaveURL(/\/bookings/);
+  await expect(page).toHaveURL(/\/(today|bookings)/);
   await expect(page.getByRole('heading', { name: 'Bookings' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'TEM-ADAAAA' })).toBeVisible();
   await expect(page.getByRole('note')).toContainText(/DEMO/i);
@@ -195,7 +195,7 @@ test('admin menu opens at 390px; refund dialog Escape; no Google Fonts', async (
 
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page, STAFF_EMAIL, STAFF_PASS);
-  await expect(page).toHaveURL(/\/bookings/);
+  await expect(page).toHaveURL(/\/(today|bookings)/);
   const menu = page.locator('#menu-btn');
   await expect(menu).toBeVisible();
   await expect(menu).toHaveAttribute('aria-expanded', 'false');

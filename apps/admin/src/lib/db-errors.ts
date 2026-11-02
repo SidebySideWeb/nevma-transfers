@@ -30,6 +30,8 @@ const PREFIX_CODES = [
   'invalid_transition',
   'statement_locked',
   'forbidden',
+  'not_found',
+  'invalid_request',
 ] as const;
 
 const PREFIX_RE = new RegExp(

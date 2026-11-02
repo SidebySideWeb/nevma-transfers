@@ -197,6 +197,16 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .s-completed { color: var(--status-completed); }
 .s-cancelled { color: var(--status-cancelled); }
 .s-info { color: var(--status-info); }
+.trip-scheduled { color: var(--color-muted); }
+.trip-on_way { color: var(--status-info); }
+.trip-arrived { color: var(--status-assigned); }
+.trip-on_board { color: var(--status-confirmed); }
+.trip-completed { color: var(--status-completed); }
+.trip-no_show { color: var(--status-cancelled); }
+.dot-on, .dot-off { display: inline-flex; align-items: center; gap: .375rem; }
+.dot-on::before, .dot-off::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+.dot-on::before { background: var(--status-confirmed); }
+.dot-off::before { background: var(--color-border-strong); }
 .flag-vip { color: var(--color-accent-text); background: var(--color-accent); border-color: var(--color-accent); }
 .flag-vip::before { display: none; }
 .flag { color: var(--color-text-soft); border-color: var(--color-border-strong); }
@@ -375,6 +385,7 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
   background-image: linear-gradient(90deg, rgb(207 164 95 / .1) 1px, transparent 1px); background-size: var(--hour) 100%; }
 .cal.week .cal-track { background-size: var(--day) 100%; }
 .cal-track.is-off { background-color: rgb(255 255 255 / .015); }
+.cal-shift { position: absolute; left: 0; right: auto; bottom: 4px; height: 3px; background: var(--color-accent); opacity: .85; pointer-events: none; }
 .cal-class { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
 .cal-class .cal-label { background: var(--color-bg); min-height: 40px; align-items: flex-start; gap: 0; }
 .cal-class .cal-label strong { font-size: .6875rem; font-weight: 500; letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--color-label); }
