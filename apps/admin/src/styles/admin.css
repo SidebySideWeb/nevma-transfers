@@ -291,6 +291,69 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .banner-danger .tag { color: var(--color-danger); }
 .banner-success .tag { color: var(--color-success); }
 
+.checks-banner { gap: .75rem; }
+.checks-summary {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.checks-summary:hover { color: var(--color-text); }
+.checks-summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.drawer {
+  width: min(420px, 100vw);
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-2);
+}
+.drawer::backdrop { background: var(--color-overlay); }
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.drawer-head h2 { margin: 0; font: 500 1.375rem/1.2 var(--font-display); }
+.drawer-body { padding: 1.25rem; overflow-y: auto; max-height: calc(100vh - 8rem); }
+.drawer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: flex-end;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.checks-group + .checks-group { margin-top: 1.25rem; }
+.checks-group-title {
+  margin: 0 0 .625rem;
+  font: 500 var(--admin-h2)/1.3 var(--font-text);
+  letter-spacing: var(--tracking-ui);
+}
+.checks-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.checks-list li {
+  padding: .75rem .875rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.checks-item-msg { margin: 0 0 .5rem; font-size: var(--admin-text-sm); color: var(--color-text-soft); }
+.checks-item-actions { margin: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+
 .toast { position: fixed; right: 1rem; bottom: 1rem; z-index: 20; max-width: min(420px, calc(100vw - 2rem)); padding: .875rem 1rem; background: var(--color-surface-2); border: 1px solid var(--color-border-strong); border-left: 3px solid var(--color-success); box-shadow: var(--shadow-2); font-size: var(--admin-text-sm); }
 .toast.static { position: static; box-shadow: none; }
 .toast.is-error { border-left-color: var(--color-danger); }

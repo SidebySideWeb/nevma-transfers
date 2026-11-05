@@ -1,0 +1,132 @@
+---
+import type { BannerResult } from '../lib/banner';
+
+interface Props {
+  banner: BannerResult;
+}
+
+const { banner } = Astro.props;
+const { count, groups, summary } = banner;
+---
+
+{
+  count > 0 && (
+    <div
+      class="banner banner-warning checks-banner"
+      role="status"
+      data-checks-banner
+      data-check-count={count}
+    >
+      <p>
+        <span class="tag">Checks</span>
+        <button type="button" class="checks-summary" data-checks-open>
+          {summary}
+        </button>
+      </p>
+      <button type="button" class="btn btn-quiet btn-sm" data-checks-dismiss>
+        Dismiss
+      </button>
+    </div>
+  )
+}
+
+{
+  count > 0 && (
+    <dialog class="drawer" data-checks-drawer aria-labelledby="checks-drawer-title">
+      <div class="drawer-head">
+        <h2 id="checks-drawer-title">Setup checks</h2>
+        <button type="button" class="btn btn-quiet btn-sm" data-checks-close>
+          Close
+        </button>
+      </div>
+      <div class="drawer-body">
+        <p class="muted small" style="margin:0 0 1rem">
+          {count} item{count === 1 ? '' : 's'} need attention. Sanity DEMO documents can be opened in
+          Studio and unpublished or replaced when live content is ready.
+        </p>
+        {
+          groups.map((g) => (
+            <section class="checks-group" aria-labelledby={`checks-${g.id}`}>
+              <h3 id={`checks-${g.id}`} class="checks-group-title">
+                {g.label}
+                <span class="muted"> · {g.checks.length}</span>
+              </h3>
+              <ul class="checks-list">
+                {g.checks.map((c) => (
+                  <li>
+                    <p class="checks-item-msg">{c.message}</p>
+                    <p class="checks-item-actions">
+                      {c.studioUrl ? (
+                        <a class="btn btn-secondary btn-sm" href={c.studioUrl} target="_blank" rel="noreferrer">
+                          Open in Studio
+                        </a>
+                      ) : null}
+                      {c.href ? (
+                        <a class="btn btn-quiet btn-sm" href={c.href}>
+                          Open in admin
+                        </a>
+                      ) : null}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        }
+      </div>
+      <div class="drawer-foot">
+        <button type="button" class="btn btn-quiet" data-checks-close>
+          Close
+        </button>
+        <button type="button" class="btn btn-secondary" data-checks-dismiss-close>
+          Dismiss for this session
+        </button>
+      </div>
+    </dialog>
+  )
+}
+
+<script is:inline>
+  (function () {
+    var STORAGE_KEY = 'ep-setup-checks-dismissed-count';
+    var banner = document.querySelector('[data-checks-banner]');
+    var drawer = document.querySelector('[data-checks-drawer]');
+    if (!banner || !drawer) return;
+
+    var count = Number(banner.getAttribute('data-check-count') || '0');
+    var dismissed = Number(sessionStorage.getItem(STORAGE_KEY) || '');
+    if (dismissed === count && count > 0) {
+      banner.hidden = true;
+    }
+
+    function openDrawer() {
+      if (typeof drawer.showModal === 'function') drawer.showModal();
+      else drawer.setAttribute('open', '');
+    }
+    function closeDrawer() {
+      if (typeof drawer.close === 'function') drawer.close();
+      else drawer.removeAttribute('open');
+    }
+    function dismiss() {
+      sessionStorage.setItem(STORAGE_KEY, String(count));
+      banner.hidden = true;
+      closeDrawer();
+    }
+
+    banner.querySelectorAll('[data-checks-open]').forEach(function (el) {
+      el.addEventListener('click', openDrawer);
+    });
+    drawer.querySelectorAll('[data-checks-close]').forEach(function (el) {
+      el.addEventListener('click', closeDrawer);
+    });
+    banner.querySelectorAll('[data-checks-dismiss]').forEach(function (el) {
+      el.addEventListener('click', dismiss);
+    });
+    drawer.querySelectorAll('[data-checks-dismiss-close]').forEach(function (el) {
+      el.addEventListener('click', dismiss);
+    });
+    drawer.addEventListener('click', function (e) {
+      if (e.target === drawer) closeDrawer();
+    });
+  })();
+</script>

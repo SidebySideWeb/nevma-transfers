@@ -1,9 +1,41 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 import { readinessBannerLine } from './readiness';
+import { studioBaseUrl } from './sanity-class';
 
-type SanityClass = { key: string; photos?: number };
-type SanityRoute = { title?: string; slug?: string; fromZone?: string; toZone?: string };
+export type CheckGroupId = 'classes' | 'routes' | 'settings';
+
+export type BannerCheck = {
+  group: CheckGroupId;
+  message: string;
+  /** Admin page to fix Postgres / ops issues. */
+  href?: string;
+  /** Sanity Studio edit URL when the issue is a content document. */
+  studioUrl?: string | null;
+};
+
+export type BannerGroup = {
+  id: CheckGroupId;
+  label: string;
+  checks: BannerCheck[];
+};
+
+export type BannerResult = {
+  count: number;
+  groups: BannerGroup[];
+  checks: BannerCheck[];
+  /** One-line summary for the collapsed banner. */
+  summary: string;
+};
+
+type SanityClass = { _id?: string; key: string; photos?: number };
+type SanityRoute = {
+  _id?: string;
+  title?: string;
+  slug?: string;
+  fromZone?: string;
+  toZone?: string;
+};
 
 let sanityClassCache: { rows: SanityClass[]; expiresAt: number } | null = null;
 let sanityRouteCache: { routes: SanityRoute[]; expiresAt: number } | null = null;
@@ -22,6 +54,13 @@ export function setSanityRoutesForBanner(routes: SanityRoute[] | null): void {
 export function setSanityClassesForBanner(rows: SanityClass[] | null): void {
   classesOverride = rows;
   sanityClassCache = null;
+}
+
+function studioEditUrl(id: string | undefined, type: string): string | null {
+  if (!id) return null;
+  const base = studioBaseUrl();
+  if (!base) return null;
+  return `${base}/intent/edit/id=${encodeURIComponent(id)};type=${encodeURIComponent(type)}`;
 }
 
 async function sanityClient() {
@@ -49,7 +88,7 @@ async function fetchSanityClasses(): Promise<SanityClass[]> {
       return [];
     }
     const rows = await client.fetch<SanityClass[]>(
-      '*[_type == "vehicleClass"]{key, "photos": count(photos)}',
+      '*[_type == "vehicleClass"]{_id, key, "photos": count(photos)}',
     );
     const cleaned = (rows ?? []).filter((r) => r.key);
     sanityClassCache = { rows: cleaned, expiresAt: Date.now() + CACHE_MS };
@@ -70,7 +109,7 @@ async function fetchSanityRoutes(): Promise<SanityRoute[]> {
       return [];
     }
     const rows = await client.fetch<SanityRoute[]>(
-      '*[_type == "route"]{title, "slug": slug.current, fromZone, toZone}',
+      '*[_type == "route"]{_id, title, "slug": slug.current, fromZone, toZone}',
     );
     const routes = rows ?? [];
     sanityRouteCache = { routes, expiresAt: Date.now() + CACHE_MS };
@@ -103,20 +142,41 @@ const DEMO_HREF: Record<string, string> = {
   settings: '/settings',
 };
 
-const DEMO_LINK_ORDER = [
-  'vehicle_classes',
-  'vehicles',
-  'zones',
-  'zone_prices',
-  'zone_routes',
-  'hourly_rates',
-  'extras',
-  'settings',
-] as const;
+const DEMO_GROUP: Record<string, CheckGroupId> = {
+  vehicle_classes: 'classes',
+  vehicles: 'classes',
+  zones: 'routes',
+  zone_routes: 'routes',
+  zone_prices: 'routes',
+  hourly_rates: 'settings',
+  extras: 'settings',
+  settings: 'settings',
+};
 
-export type BannerResult = { text: string; href: string };
+const GROUP_LABEL: Record<CheckGroupId, string> = {
+  classes: 'Classes',
+  routes: 'Routes',
+  settings: 'Settings',
+};
 
-/** Build the cross-check banner (empty text when nothing to report). */
+export function checksSummary(count: number): string {
+  if (count <= 0) return '';
+  const noun = count === 1 ? 'setup check needs' : 'setup checks need';
+  return `⚠ ${count} ${noun} attention · Review`;
+}
+
+function groupChecks(checks: BannerCheck[]): BannerGroup[] {
+  const order: CheckGroupId[] = ['classes', 'routes', 'settings'];
+  return order
+    .map((id) => ({
+      id,
+      label: GROUP_LABEL[id],
+      checks: checks.filter((c) => c.group === id),
+    }))
+    .filter((g) => g.checks.length > 0);
+}
+
+/** Build setup checks for the collapsed banner + drawer (empty when nothing to report). */
 export async function buildBanner(
   supabase: SupabaseClient<Database>,
 ): Promise<BannerResult> {
@@ -166,34 +226,36 @@ export async function buildBanner(
     ...(hourlyRates ?? []).map((r) => r.class_id),
   ]);
 
-  const parts: string[] = [];
-  let href = '/settings';
+  const checks: BannerCheck[] = [];
 
   const demoActive = (demoRows ?? []).filter((r) => (r.n ?? 0) > 0);
-  if (demoActive.length > 0) {
-    const bits = demoActive.map((r) => {
-      const table = r.table_name ?? '';
-      const label = DEMO_LABEL[table] ?? table;
-      return `${r.n} ${label}`;
+  for (const r of demoActive) {
+    const table = r.table_name ?? '';
+    const label = DEMO_LABEL[table] ?? table;
+    checks.push({
+      group: DEMO_GROUP[table] ?? 'settings',
+      message: `${r.n} ${label} still DEMO.`,
+      href: DEMO_HREF[table] ?? '/settings',
     });
-    parts.push(`${bits.join(', ')} still DEMO.`);
-    for (const key of DEMO_LINK_ORDER) {
-      if (demoActive.some((r) => r.table_name === key)) {
-        href = DEMO_HREF[key] ?? '/settings';
-        break;
-      }
-    }
   }
 
   for (const key of activeClassKeys) {
     if (!sanityByKey.has(key)) {
-      parts.push(`Vehicle class "${key}" exists in the database but has no Sanity content.`);
+      checks.push({
+        group: 'classes',
+        message: `Vehicle class "${key}" exists in the database but has no Sanity content.`,
+        href: `/fleet/${encodeURIComponent(key)}`,
+        studioUrl: studioCreateUrl(key),
+      });
     }
   }
-  for (const key of sanityKeys) {
-    if (!pgSet.has(key)) {
-      parts.push(`Sanity vehicle class "${key}" has no matching Postgres row.`);
-    }
+  for (const row of sanityClasses) {
+    if (pgSet.has(row.key)) continue;
+    checks.push({
+      group: 'classes',
+      message: `Sanity vehicle class "${row.key}" has no matching Postgres row.`,
+      studioUrl: studioEditUrl(row._id, 'vehicleClass'),
+    });
   }
 
   for (const cls of classes ?? []) {
@@ -206,7 +268,14 @@ export async function buildBanner(
       hasSanityPhotos: (sanity?.photos ?? 0) > 0,
       online: true,
     });
-    if (line) parts.push(line);
+    if (line) {
+      checks.push({
+        group: 'classes',
+        message: line,
+        href: `/fleet/${encodeURIComponent(cls.key)}`,
+        studioUrl: studioEditUrl(sanity?._id, 'vehicleClass'),
+      });
+    }
   }
 
   for (const route of sanityRoutes) {
@@ -214,20 +283,39 @@ export async function buildBanner(
     const from = route.fromZone || '';
     const to = route.toZone || '';
     const label = route.title || slug;
+    const studioUrl = studioEditUrl(route._id, 'route');
     if (!from || !to || !zoneCodes.has(from) || !zoneCodes.has(to)) {
-      parts.push(
-        `Sanity route "${label}" (${slug}) uses unknown zones ${from || '?'} → ${to || '?'}.`,
-      );
+      checks.push({
+        group: 'routes',
+        message: `Sanity route "${label}" (${slug}) uses unknown zones ${from || '?'} → ${to || '?'}.`,
+        studioUrl,
+      });
       continue;
     }
     if (!routePairs.has(`${from}->${to}`)) {
-      parts.push(
-        `Sanity route "${label}" (${slug}) has no zone_routes row for ${from} → ${to}.`,
-      );
+      checks.push({
+        group: 'routes',
+        message: `Sanity route "${label}" (${slug}) has no zone_routes row for ${from} → ${to}.`,
+        href: '/prices',
+        studioUrl,
+      });
     }
   }
 
-  return { text: parts.join(' '), href };
+  const groups = groupChecks(checks);
+  const count = checks.length;
+  return {
+    count,
+    checks,
+    groups,
+    summary: checksSummary(count),
+  };
+}
+
+function studioCreateUrl(key: string): string | null {
+  const base = studioBaseUrl();
+  if (!base) return null;
+  return `${base}/intent/create/template=vehicleClass;key=${encodeURIComponent(key)}`;
 }
 
 /** Test helper. */

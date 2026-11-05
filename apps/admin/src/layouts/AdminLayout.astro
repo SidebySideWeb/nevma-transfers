@@ -4,6 +4,7 @@ import '../styles/fonts.css';
 import '../styles/tokens.css';
 import '../styles/admin.css';
 import Banner from '../components/Banner.astro';
+import ChecksBanner from '../components/ChecksBanner.astro';
 import { buildBanner } from '../lib/banner';
 import { driversEnabled } from '../lib/drivers';
 import { countNeedsVehicle } from '../lib/nav-count';
@@ -39,8 +40,6 @@ const [banner, needsVehicle] = await Promise.all([
   buildBanner(supabase),
   countNeedsVehicle(supabase),
 ]);
-const bannerText = banner.text;
-const bannerHref = banner.href;
 
 const pricesChanged = hasPricesChanged(Astro.cookies);
 const cooldownMs = rebuildCooldownRemainingMs(Astro.cookies);
@@ -169,16 +168,7 @@ const groups: NavGroup[] = [
         </div>
       </header>
       <main class="main" id="main">
-        {
-          bannerText && (
-            <Banner tone="warning" tag="Checks">
-              {bannerText}
-              <a class="btn btn-secondary btn-sm" slot="action" href={bannerHref}>
-                Review
-              </a>
-            </Banner>
-          )
-        }
+        <ChecksBanner banner={banner} />
         {
           (pricesChanged || rebuildDisabled || rebuildError) && (
             <Banner tone="info" tag="Website" role="status">
