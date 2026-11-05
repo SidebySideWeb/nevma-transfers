@@ -24,10 +24,6 @@ const todayKey = athensDateKey(new Date());
 const dayStart = new Date(athensLocalMs(todayKey, '00:00')).toISOString();
 const dayEnd = new Date(athensLocalMs(shiftDate(todayKey, 1), '00:00')).toISOString();
 
-const bookingSelect = showDrivers
-  ? 'reference, pickup_at, status, trip_status, driver_id, vehicle_id'
-  : 'reference, pickup_at, status, vehicle_id';
-
 const [{ data: fleetRaw }, { data: driversRaw }, { data: todayBookings }] = await Promise.all([
   supabase.from('fleet_now').select('*').order('vehicle_label'),
   showDrivers
@@ -35,7 +31,7 @@ const [{ data: fleetRaw }, { data: driversRaw }, { data: todayBookings }] = awai
     : Promise.resolve({ data: [] as DriversNowRow[] }),
   supabase
     .from('bookings')
-    .select(bookingSelect)
+    .select('reference, pickup_at, status, trip_status, driver_id, vehicle_id')
     .gte('pickup_at', dayStart)
     .lt('pickup_at', dayEnd)
     .in('status', ['pending', 'confirmed', 'assigned', 'completed']),
@@ -52,8 +48,7 @@ for (const b of todayBookings ?? []) {
   if (['confirmed', 'assigned', 'completed'].includes(b.status)) {
     jobsTotal += 1;
     if (showDrivers) {
-      const trip = (b as { trip_status?: string | null }).trip_status;
-      if (b.status === 'completed' || trip === 'completed' || trip === 'no_show') {
+      if (b.status === 'completed' || b.trip_status === 'completed' || b.trip_status === 'no_show') {
         jobsClosed += 1;
       }
     } else if (b.status === 'completed') {
@@ -63,7 +58,7 @@ for (const b of todayBookings ?? []) {
   if (!liveStatuses.has(b.status)) continue;
   const noVehicle = !b.vehicle_id;
   if (showDrivers) {
-    const noDriver = !(b as { driver_id?: string | null }).driver_id;
+    const noDriver = !b.driver_id;
     if (noDriver || noVehicle) {
       needs.push({
         reference: b.reference,

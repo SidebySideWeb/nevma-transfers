@@ -2,7 +2,7 @@
 
 import { isDriversEnabled } from './features';
 
-/** @deprecated Prefer `isDriversEnabled` from `./features`. Kept for call-site compatibility. */
+/** Alias of `isDriversEnabled` for older call sites. */
 export function driversEnabled(raw?: string | boolean | undefined): boolean {
   return isDriversEnabled(raw);
 }

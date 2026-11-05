@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { driversEnabled, driversNotFound } from './drivers';
+import { driversNotFound } from './drivers';
+import { isDriversEnabled } from './features';
 import { handleMe } from './driver-api/handler';
 import type { APIContext } from 'astro';
 
-describe('driversEnabled', () => {
+describe('isDriversEnabled', () => {
   const prev = process.env.FEATURE_DRIVERS;
 
   afterEach(() => {
@@ -13,15 +14,15 @@ describe('driversEnabled', () => {
 
   it('defaults to false', () => {
     delete process.env.FEATURE_DRIVERS;
-    expect(driversEnabled(undefined)).toBe(false);
-    expect(driversEnabled('')).toBe(false);
-    expect(driversEnabled('false')).toBe(false);
+    expect(isDriversEnabled(undefined)).toBe(false);
+    expect(isDriversEnabled('')).toBe(false);
+    expect(isDriversEnabled('false')).toBe(false);
   });
 
   it('is true only for true / "true"', () => {
-    expect(driversEnabled(true)).toBe(true);
-    expect(driversEnabled('true')).toBe(true);
-    expect(driversEnabled('TRUE')).toBe(false);
+    expect(isDriversEnabled(true)).toBe(true);
+    expect(isDriversEnabled('true')).toBe(true);
+    expect(isDriversEnabled('TRUE')).toBe(false);
   });
 });
 
