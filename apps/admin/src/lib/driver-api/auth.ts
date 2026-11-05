@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import type { Database } from '../database.types';
-import { driversEnabled } from '../drivers';
+import { isDriversEnabled } from '../features';
 import { unauthorized } from './errors';
 
 export type DriverClient = SupabaseClient<Database>;
@@ -33,7 +33,7 @@ export type DriverAuthFail = { ok: false; response: Response };
 
 /** FEATURE_DRIVERS gate + Bearer auth. Does not check driver_me. */
 export async function requireDriverAuth(request: Request): Promise<DriverAuthOk | DriverAuthFail> {
-  if (!driversEnabled()) {
+  if (!isDriversEnabled()) {
     return { ok: false, response: new Response(null, { status: 404 }) };
   }
   const token = readBearer(request);

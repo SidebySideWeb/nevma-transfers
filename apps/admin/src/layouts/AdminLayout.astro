@@ -7,7 +7,8 @@ import Banner from '../components/Banner.astro';
 import ChecksBanner from '../components/ChecksBanner.astro';
 import PageHeader from '../components/PageHeader.astro';
 import { buildBanner } from '../lib/banner';
-import { driversEnabled } from '../lib/drivers';
+import { isDriversEnabled } from '../lib/features';
+import { buildAdminNav } from '../lib/nav';
 import { countNeedsVehicle } from '../lib/nav-count';
 import {
   hasPricesChanged,
@@ -51,52 +52,8 @@ const cooldownSeconds = Math.ceil(cooldownMs / 1000);
 const rebuildError =
   Astro.getActionResult?.(actions.requestWebsiteRebuild)?.error?.message ?? null;
 
-const showDrivers = driversEnabled();
-
-type NavItem = { href: string; id: string; label: string; count?: number };
-type NavGroup = { id: string; label: string; items: NavItem[] };
-
-const operationsItems: NavItem[] = [
-  ...(showDrivers ? [{ href: '/today', id: 'today', label: 'Today' }] : []),
-  { href: '/bookings', id: 'bookings', label: 'Bookings', count: needsVehicle },
-  { href: '/calendar', id: 'calendar', label: 'Fleet calendar' },
-  { href: '/customers', id: 'customers', label: 'Customers' },
-  { href: '/blocked-slots', id: 'blocked-slots', label: 'Blocked slots' },
-];
-
-const groups: NavGroup[] = [
-  { id: 'operations', label: 'Operations', items: operationsItems },
-  ...(showDrivers
-    ? [
-        {
-          id: 'drivers',
-          label: 'Drivers',
-          items: [
-            { href: '/drivers', id: 'drivers', label: 'Drivers' },
-            { href: '/reports', id: 'reports', label: 'Reports' },
-          ],
-        },
-      ]
-    : []),
-  {
-    id: 'pricing',
-    label: 'Pricing',
-    items: [
-      { href: '/prices', id: 'prices', label: 'Zone prices' },
-      { href: '/hourly-rates', id: 'hourly-rates', label: 'Hourly rates' },
-      { href: '/extras', id: 'extras', label: 'Extras' },
-    ],
-  },
-  {
-    id: 'setup',
-    label: 'Setup',
-    items: [
-      { href: '/fleet', id: 'fleet', label: 'Fleet' },
-      { href: '/zones', id: 'zones', label: 'Zones' },
-      { href: '/settings', id: 'settings', label: 'Settings' },
-    ],
-  },
-];
+const showDrivers = isDriversEnabled();
+const groups = buildAdminNav({ needsVehicle, drivers: showDrivers });
 ---
 
 <!doctype html>
@@ -120,7 +77,7 @@ const groups: NavGroup[] = [
     <div class="shell">
       <header class="sidebar" id="admin-sidebar">
         <div class="nav-toggle">
-          <a class="brand" href={showDrivers ? '/today' : '/bookings'}>
+          <a class="brand" href="/today">
             <span class="brand-mark" aria-hidden="true">EP</span>
             <span class="brand-name">Elite Protection<small>Office</small></span>
           </a>

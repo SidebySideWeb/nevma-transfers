@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Banner from '../components/Banner.astro';
 import { athensDateKey, athensLocalMs, shiftDate } from '../lib/calendar-position';
-import { driversNotFound } from '../lib/drivers';
+import { isDriversEnabled } from '../lib/features';
 import {
   computeTodayStats,
   needsActionSentence,
@@ -17,28 +17,32 @@ import {
 } from '../lib/today-board';
 import { createSupabaseServerClient } from '../lib/supabase';
 
-const denied = driversNotFound();
-if (denied) return denied;
-
+const showDrivers = isDriversEnabled();
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const todayKey = athensDateKey(new Date());
 const dayStart = new Date(athensLocalMs(todayKey, '00:00')).toISOString();
 const dayEnd = new Date(athensLocalMs(shiftDate(todayKey, 1), '00:00')).toISOString();
 
+const bookingSelect = showDrivers
+  ? 'reference, pickup_at, status, trip_status, driver_id, vehicle_id'
+  : 'reference, pickup_at, status, vehicle_id';
+
 const [{ data: fleetRaw }, { data: driversRaw }, { data: todayBookings }] = await Promise.all([
   supabase.from('fleet_now').select('*').order('vehicle_label'),
-  supabase.from('drivers_now').select('*').order('full_name'),
+  showDrivers
+    ? supabase.from('drivers_now').select('*').order('full_name')
+    : Promise.resolve({ data: [] as DriversNowRow[] }),
   supabase
     .from('bookings')
-    .select('reference, pickup_at, status, trip_status, driver_id, vehicle_id')
+    .select(bookingSelect)
     .gte('pickup_at', dayStart)
     .lt('pickup_at', dayEnd)
     .in('status', ['pending', 'confirmed', 'assigned', 'completed']),
 ]);
 
 const fleet = (fleetRaw ?? []) as FleetNowRow[];
-const drivers = (driversRaw ?? []) as DriversNowRow[];
+const drivers = (showDrivers ? (driversRaw ?? []) : []) as DriversNowRow[];
 
 const liveStatuses = new Set(['pending', 'confirmed', 'assigned']);
 const needs: NeedsBooking[] = [];
@@ -47,18 +51,31 @@ let jobsTotal = 0;
 for (const b of todayBookings ?? []) {
   if (['confirmed', 'assigned', 'completed'].includes(b.status)) {
     jobsTotal += 1;
-    if (b.status === 'completed' || b.trip_status === 'completed' || b.trip_status === 'no_show') {
+    if (showDrivers) {
+      const trip = (b as { trip_status?: string | null }).trip_status;
+      if (b.status === 'completed' || trip === 'completed' || trip === 'no_show') {
+        jobsClosed += 1;
+      }
+    } else if (b.status === 'completed') {
       jobsClosed += 1;
     }
   }
   if (!liveStatuses.has(b.status)) continue;
-  const noDriver = !b.driver_id;
   const noVehicle = !b.vehicle_id;
-  if (noDriver || noVehicle) {
+  if (showDrivers) {
+    const noDriver = !(b as { driver_id?: string | null }).driver_id;
+    if (noDriver || noVehicle) {
+      needs.push({
+        reference: b.reference,
+        pickup_at: b.pickup_at,
+        missing: noDriver && noVehicle ? 'both' : noDriver ? 'driver' : 'vehicle',
+      });
+    }
+  } else if (noVehicle) {
     needs.push({
       reference: b.reference,
       pickup_at: b.pickup_at,
-      missing: noDriver && noVehicle ? 'both' : noDriver ? 'driver' : 'vehicle',
+      missing: 'vehicle',
     });
   }
 }
@@ -70,6 +87,7 @@ const stats = computeTodayStats({
   jobsClosed,
   jobsTotal,
   needs,
+  hideDrivers: !showDrivers,
 });
 
 const updatedLabel = new Intl.DateTimeFormat('en-GB', {
@@ -89,7 +107,7 @@ const longDate = new Intl.DateTimeFormat('en-GB', {
 
 if (Astro.url.searchParams.get('partial') === '1') {
   return new Response(
-    renderTodayPartial({ fleet, drivers, updatedLabel }),
+    renderTodayPartial({ fleet, drivers, updatedLabel, hideDrivers: !showDrivers }),
     {
       status: 200,
       headers: {
@@ -101,6 +119,7 @@ if (Astro.url.searchParams.get('partial') === '1') {
 }
 
 const needsHtml = needsActionSentence(needs);
+const fleetHtml = renderFleetNowTbody(fleet, { hideDrivers: !showDrivers });
 ---
 
 <AdminLayout title="Today" current="today" staffEmail={staff.email}>
@@ -112,13 +131,23 @@ const needsHtml = needsActionSentence(needs);
   <p class="crumbs" style="margin:0 0 .25rem">{longDate}</p>
 
   <dl class="stats" aria-label="Today">
-    <div class="stat">
-      <dt>On shift</dt>
-      <dd>{stats.onShift}<small>of {stats.activeDrivers} drivers</small></dd>
-    </div>
+    {
+      showDrivers && (
+        <div class="stat">
+          <dt>On shift</dt>
+          <dd>
+            {stats.onShift}
+            <small>of {stats.activeDrivers} drivers</small>
+          </dd>
+        </div>
+      )
+    }
     <div class="stat">
       <dt>Vehicles out</dt>
-      <dd>{stats.vehiclesOut}<small>of {stats.vehiclesTotal}</small></dd>
+      <dd>
+        {stats.vehiclesOut}
+        <small>of {stats.vehiclesTotal}</small>
+      </dd>
     </div>
     <div class="stat">
       <dt>Trips today</dt>
@@ -126,11 +155,17 @@ const needsHtml = needsActionSentence(needs);
     </div>
     <div class="stat">
       <dt>Completed</dt>
-      <dd>{stats.jobsClosed}<small>of {stats.jobsTotal}</small></dd>
+      <dd>
+        {stats.jobsClosed}
+        <small>of {stats.jobsTotal}</small>
+      </dd>
     </div>
     <div class="stat">
-      <dt>Need a driver or vehicle</dt>
-      <dd>{stats.needsCount}<small>today</small></dd>
+      <dt>{showDrivers ? 'Need a driver or vehicle' : 'Need a vehicle'}</dt>
+      <dd>
+        {stats.needsCount}
+        <small>today</small>
+      </dd>
     </div>
   </dl>
 
@@ -153,36 +188,40 @@ const needsHtml = needsActionSentence(needs);
         <thead>
           <tr>
             <th scope="col">Vehicle</th>
-            <th scope="col">Driver</th>
+            {showDrivers && <th scope="col">Driver</th>}
             <th scope="col">Now</th>
             <th scope="col">Next job</th>
             <th scope="col">Status changed</th>
           </tr>
         </thead>
-        <tbody id="fleet-now-body" set:html={renderFleetNowTbody(fleet)} />
+        <tbody id="fleet-now-body" set:html={fleetHtml} />
       </table>
     </div>
   </section>
 
-  <section class="panel" aria-labelledby="t-d" style="margin-top:1.25rem">
-    <div class="panel-head">
-      <h2 id="t-d">Drivers now</h2>
-    </div>
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Drivers now, table" style="border:0">
-      <table class="table table-cards">
-        <thead>
-          <tr>
-            <th scope="col">Driver</th>
-            <th scope="col">Shift</th>
-            <th scope="col">Now</th>
-            <th scope="col">Next job</th>
-            <th scope="col" class="num">Jobs today</th>
-          </tr>
-        </thead>
-        <tbody id="drivers-now-body" set:html={renderDriversNowTbody(drivers)} />
-      </table>
-    </div>
-  </section>
+  {
+    showDrivers && (
+      <section class="panel" aria-labelledby="t-d" style="margin-top:1.25rem">
+        <div class="panel-head">
+          <h2 id="t-d">Drivers now</h2>
+        </div>
+        <div class="table-wrap" role="region" tabindex="0" aria-label="Drivers now, table" style="border:0">
+          <table class="table table-cards">
+            <thead>
+              <tr>
+                <th scope="col">Driver</th>
+                <th scope="col">Shift</th>
+                <th scope="col">Now</th>
+                <th scope="col">Next job</th>
+                <th scope="col" class="num">Jobs today</th>
+              </tr>
+            </thead>
+            <tbody id="drivers-now-body" set:html={renderDriversNowTbody(drivers)} />
+          </table>
+        </div>
+      </section>
+    )
+  }
 
   <script>
     import '../scripts/today-refresh';

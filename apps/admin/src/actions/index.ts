@@ -10,7 +10,7 @@ import {
   callInternalPayment,
   callInternalRefund,
 } from '../lib/internal';
-import { driversEnabled } from '../lib/drivers';
+import { isDriversEnabled } from '../lib/features';
 import {
   classAvailabilityForTrip as tripClassAvailability,
   freeVehiclesForClass as tripFreeVehicles,
@@ -78,7 +78,7 @@ export const server = {
       const supabase = createSupabaseServerClient(ctx.cookies);
       const vehicleId = input.vehicleId || null;
       const driverId = input.driverId === undefined ? undefined : input.driverId || null;
-      if (driverId !== undefined && !driversEnabled()) {
+      if (driverId !== undefined && !isDriversEnabled()) {
         throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       }
 
@@ -1135,7 +1135,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       const { data, error } = await supabase
         .from('drivers')
@@ -1187,7 +1187,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       const { error } = await supabase
         .from('drivers')
@@ -1213,7 +1213,7 @@ export const server = {
     input: z.object({ id: z.string().uuid() }),
     async handler(input, ctx) {
       const staff = requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const result = await callInternalDriverInvite({ driverId: input.id }, staff.userId);
       if (!result.ok) throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
       return result.data;
@@ -1244,7 +1244,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       let startedAt: Date;
       try {
@@ -1294,7 +1294,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       const staff = requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       const driverId = input.driverId || null;
       const { data: booking, error: bErr } = await supabase
@@ -1365,7 +1365,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       const note = input.note?.trim();
       const { error } = await supabase.rpc('set_trip_status', {
@@ -1394,7 +1394,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       let monthly: number;
       let daily: number;
       let hourly: number;
@@ -1474,7 +1474,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       let amount: number;
       try {
         amount = eurosToCents(input.amountEuros);
@@ -1515,7 +1515,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       const { error } = await supabase.from('driver_pay_rates').delete().eq('id', input.id);
       if (error) throwDb(error);
@@ -1535,7 +1535,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       const staff = requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       let amountCents: number;
       try {
         amountCents = adjustmentAmountCents(input.kind, input.amountEuros);
@@ -1574,7 +1574,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       let period: { from: string; to: string };
       try {
         period = resolveStatementPeriod(
@@ -1604,7 +1604,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       const { data: st, error: sErr } = await supabase
         .from('driver_statements')
@@ -1633,7 +1633,7 @@ export const server = {
     input: z.object({ statementId: z.string().uuid() }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       const { error } = await supabase.rpc('driver_statement_approve', { p_id: input.statementId });
       if (error) throwDb(error);
@@ -1649,7 +1649,7 @@ export const server = {
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
-      if (!driversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      if (!isDriversEnabled()) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
       const supabase = createSupabaseServerClient(ctx.cookies);
       const { error } = await supabase.rpc('driver_statement_mark_paid', {
         p_id: input.statementId,

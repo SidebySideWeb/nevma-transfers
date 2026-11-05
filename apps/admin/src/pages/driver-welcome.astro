@@ -5,9 +5,9 @@ import '../styles/fonts.css';
 import '../styles/tokens.css';
 import '../styles/admin.css';
 import { createSupabaseServerClient } from '../lib/supabase';
-import { driversEnabled } from '../lib/drivers';
+import { isDriversEnabled } from '../lib/features';
 
-if (!driversEnabled()) {
+if (!isDriversEnabled()) {
   return new Response(null, { status: 404 });
 }
 

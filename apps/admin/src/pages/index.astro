@@ -1,5 +1,3 @@
 ---
-import { driversEnabled } from '../lib/drivers';
-
-return Astro.redirect(driversEnabled() ? '/today' : '/bookings');
+return Astro.redirect('/today');
 ---

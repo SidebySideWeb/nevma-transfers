@@ -22,7 +22,7 @@ import {
   shiftDate,
   weekDays,
 } from '../lib/calendar-position';
-import { driversEnabled } from '../lib/drivers';
+import { isDriversEnabled } from '../lib/features';
 import { rangeLiteral } from '../lib/office-trip';
 import { parseTstzRange } from '../lib/range';
 import { createSupabaseServerClient } from '../lib/supabase';
@@ -31,7 +31,7 @@ const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const q = Astro.url.searchParams;
 
-const showDriversBoard = driversEnabled();
+const showDriversBoard = isDriversEnabled();
 const board = showDriversBoard && q.get('view') === 'drivers' ? 'drivers' : 'vehicles';
 const view = board === 'drivers' ? 'day' : q.get('view') === 'week' ? 'week' : 'day';
 const nowDate = new Date();

@@ -16,7 +16,7 @@ async function refresh(): Promise<void> {
   const fleet = document.getElementById('fleet-now-body');
   const drivers = document.getElementById('drivers-now-body');
   const updated = document.getElementById('today-updated');
-  if (!fleet || !drivers) return;
+  if (!fleet) return;
 
   const active = document.activeElement as HTMLElement | null;
   const focusId = active?.id || null;
@@ -37,7 +37,7 @@ async function refresh(): Promise<void> {
     const nextDrivers = doc.getElementById('drivers-now-body');
     const root = doc.getElementById('today-partial');
     if (nextFleet) fleet.innerHTML = nextFleet.innerHTML;
-    if (nextDrivers) drivers.innerHTML = nextDrivers.innerHTML;
+    if (drivers && nextDrivers) drivers.innerHTML = nextDrivers.innerHTML;
     const label = root?.getAttribute('data-updated') || stamp();
     if (updated) updated.textContent = `Updated ${label} · refreshes every minute`;
 

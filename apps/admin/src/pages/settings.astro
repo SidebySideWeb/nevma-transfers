@@ -4,11 +4,13 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Select from '../components/Select.astro';
+import { isDriversEnabled } from '../lib/features';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const { data: settings } = await supabase.from('settings').select('*').order('key');
+const showDrivers = isDriversEnabled();
 
 const META: Record<string, { label: string; group: string; unit?: string }> = {
   hold_minutes: { label: 'Online hold', group: 'Bookings', unit: 'minutes' },
@@ -23,6 +25,13 @@ const META: Record<string, { label: string; group: string; unit?: string }> = {
 const groups = ['Bookings', 'Payments', 'Notifications', 'Company'];
 const grouped = new Map(groups.map((group) => [group, [] as NonNullable<typeof settings>]));
 for (const setting of settings ?? []) {
+  if (
+    !showDrivers &&
+    (/driver|statement|pay_plan|earnings/i.test(setting.key) ||
+      /driver|statement|pay plan|earnings/i.test(setting.description ?? ''))
+  ) {
+    continue;
+  }
   const meta = META[setting.key];
   grouped.get(meta?.group ?? (typeof setting.value === 'string' ? 'Company' : 'Bookings'))!.push(setting);
 }

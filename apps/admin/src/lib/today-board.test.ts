@@ -104,6 +104,17 @@ describe('today board partial rendering', () => {
     expect(html).toContain('id="drivers-now-body"');
   });
 
+  it('hides driver column and drivers partial when hideDrivers', () => {
+    const fleetHtml = renderFleetNowTbody(fleet, { hideDrivers: true, nowMs: Date.parse('2026-12-01T10:00:00Z') });
+    expect(fleetHtml).not.toContain('Alex Driver');
+    expect(fleetHtml).not.toContain('no driver');
+    expect(fleetHtml).not.toContain('Not on shift');
+    expect(fleetHtml).toContain('V-Class #1');
+    const html = renderTodayPartial({ fleet, drivers, updatedLabel: '10:53', hideDrivers: true });
+    expect(html).toContain('id="fleet-now-body"');
+    expect(html).not.toContain('id="drivers-now-body"');
+  });
+
   it('computes stats and needs-action copy', () => {
     const needs: NeedsBooking[] = [
       { reference: 'ELP-NEED1', pickup_at: '2026-12-01T14:00:00Z', missing: 'driver' },

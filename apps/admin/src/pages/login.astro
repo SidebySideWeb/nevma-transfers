@@ -7,7 +7,7 @@ import '../styles/admin.css';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { assertLoginRateLimit } from '../lib/login-rate-limit';
 import { getStaffSession, signOut } from '../lib/auth';
-import { driversEnabled } from '../lib/drivers';
+import { isDriversEnabled } from '../lib/features';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex');
@@ -15,7 +15,7 @@ Astro.response.headers.set('X-Frame-Options', 'DENY');
 
 const existing = await getStaffSession(Astro.cookies);
 if (existing) {
-  return Astro.redirect(driversEnabled() ? '/today' : '/bookings');
+  return Astro.redirect('/today');
 }
 
 let formError: string | null = null;
@@ -38,9 +38,9 @@ if (Astro.request.method === 'POST') {
     } else {
       const staff = await getStaffSession(Astro.cookies);
       if (staff) {
-        return Astro.redirect(driversEnabled() ? '/today' : '/bookings');
+        return Astro.redirect('/today');
       }
-      if (driversEnabled()) {
+      if (isDriversEnabled()) {
         const {
           data: { user },
         } = await supabase.auth.getUser();

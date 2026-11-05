@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { driversEnabled } from '../../lib/drivers';
+import { isDriversEnabled } from '../../lib/features';
 import {
   bookingsDayExcel,
   driverPayExcel,
@@ -16,7 +16,10 @@ import { createSupabaseServerClient } from '../../lib/supabase';
 export const prerender = false;
 
 export const GET: APIRoute = async ({ locals, cookies, url }) => {
-  if (!locals.staff || !driversEnabled()) {
+  if (!isDriversEnabled()) {
+    return new Response(null, { status: 404, statusText: 'Not Found' });
+  }
+  if (!locals.staff) {
     return new Response('Unauthorized', { status: 401 });
   }
   const tab = (url.searchParams.get('tab') ?? 'pay') as ReportTab;

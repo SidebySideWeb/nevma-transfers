@@ -88,11 +88,15 @@ export function computeTodayStats(input: {
   jobsClosed: number;
   jobsTotal: number;
   needs: NeedsBooking[];
+  hideDrivers?: boolean;
 }): TodayStats {
+  const hideDrivers = Boolean(input.hideDrivers);
   return {
-    onShift: input.driversNow.filter((d) => d.shift_id).length,
-    activeDrivers: input.driversNow.length,
-    vehiclesOut: input.fleetNow.filter((v) => v.shift_id).length,
+    onShift: hideDrivers ? 0 : input.driversNow.filter((d) => d.shift_id).length,
+    activeDrivers: hideDrivers ? 0 : input.driversNow.length,
+    vehiclesOut: hideDrivers
+      ? input.fleetNow.filter((v) => Boolean(v.current_reference)).length
+      : input.fleetNow.filter((v) => v.shift_id).length,
     vehiclesTotal: input.fleetNow.length,
     jobsClosed: input.jobsClosed,
     jobsTotal: input.jobsTotal,
@@ -153,10 +157,20 @@ function statusChangedCell(iso: string | null, nowMs = Date.now()): string {
   return `<span title="${esc(exact)}">${esc(rel)}</span>`;
 }
 
+export type FleetNowRenderOpts = { nowMs?: number; hideDrivers?: boolean };
+
 /** Table body HTML for Vehicles now (partial refresh). */
-export function renderFleetNowTbody(rows: FleetNowRow[], nowMs = Date.now()): string {
+export function renderFleetNowTbody(
+  rows: FleetNowRow[],
+  nowMsOrOpts: number | FleetNowRenderOpts = Date.now(),
+): string {
+  const opts: FleetNowRenderOpts =
+    typeof nowMsOrOpts === 'number' ? { nowMs: nowMsOrOpts } : nowMsOrOpts;
+  const nowMs = opts.nowMs ?? Date.now();
+  const hideDrivers = Boolean(opts.hideDrivers);
+  const cols = hideDrivers ? 4 : 5;
   if (!rows.length) {
-    return `<tr><td colspan="5" class="muted">No vehicles.</td></tr>`;
+    return `<tr><td colspan="${cols}" class="muted">No vehicles.</td></tr>`;
   }
   return rows
     .map((r) => {
@@ -167,14 +181,20 @@ export function renderFleetNowTbody(rows: FleetNowRow[], nowMs = Date.now()): st
         : r.vehicle_status === 'maintenance'
           ? `<span class="badge s-completed">In service</span>`
           : `<span class="dot-off">Not on shift</span>`;
-      const now =
-        r.shift_id || r.current_reference
+      const now = hideDrivers
+        ? r.current_reference
+          ? nowCell(r.current_reference, null)
+          : `<span class="muted">Free</span>`
+        : r.shift_id || r.current_reference
           ? nowCell(r.current_reference, r.current_trip_status)
           : '—';
-      const nextExtra = !r.driver_id && r.next_reference ? ' <span class="badge s-pending">no driver</span>' : '';
+      const nextExtra =
+        !hideDrivers && !r.driver_id && r.next_reference
+          ? ' <span class="badge s-pending">no driver</span>'
+          : '';
+      const driverTd = hideDrivers ? '' : `\n  <td data-label="Driver">${driver}</td>`;
       return `<tr>
-  <td class="card-title" data-label="Vehicle">${esc(r.vehicle_label)}<span class="sub">${esc(r.class_name)}</span></td>
-  <td data-label="Driver">${driver}</td>
+  <td class="card-title" data-label="Vehicle">${esc(r.vehicle_label)}<span class="sub">${esc(r.class_name)}</span></td>${driverTd}
   <td data-label="Now">${now}</td>
   <td data-label="Next job">${nextCell(r.next_reference, r.next_pickup_at, nextExtra, nowMs)}</td>
   <td data-label="Status changed">${statusChangedCell(r.last_update_at, nowMs)}</td>
@@ -221,9 +241,14 @@ export function renderTodayPartial(input: {
   fleet: FleetNowRow[];
   drivers: DriversNowRow[];
   updatedLabel: string;
+  hideDrivers?: boolean;
 }): string {
+  const hideDrivers = Boolean(input.hideDrivers);
+  const driversBody = hideDrivers
+    ? ''
+    : `<table hidden><tbody id="drivers-now-body">${renderDriversNowTbody(input.drivers)}</tbody></table>`;
   return `<div id="today-partial" data-updated="${esc(input.updatedLabel)}">
-<table hidden><tbody id="fleet-now-body">${renderFleetNowTbody(input.fleet)}</tbody></table>
-<table hidden><tbody id="drivers-now-body">${renderDriversNowTbody(input.drivers)}</tbody></table>
+<table hidden><tbody id="fleet-now-body">${renderFleetNowTbody(input.fleet, { hideDrivers })}</tbody></table>
+${driversBody}
 </div>`;
 }

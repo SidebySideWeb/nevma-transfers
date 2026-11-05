@@ -1,12 +1,15 @@
 import type { APIRoute } from 'astro';
-import { driversEnabled } from '../../../../../lib/drivers';
+import { isDriversEnabled } from '../../../../../lib/features';
 import { statementExcel } from '../../../../../lib/report-export';
 import { createSupabaseServerClient } from '../../../../../lib/supabase';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ locals, cookies, params }) => {
-  if (!locals.staff || !driversEnabled()) {
+  if (!isDriversEnabled()) {
+    return new Response(null, { status: 404, statusText: 'Not Found' });
+  }
+  if (!locals.staff) {
     return new Response('Unauthorized', { status: 401 });
   }
   const driverId = params.id!;
