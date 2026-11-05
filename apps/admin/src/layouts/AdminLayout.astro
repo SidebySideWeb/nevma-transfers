@@ -118,7 +118,7 @@ const groups: NavGroup[] = [
   <body class="ep-admin">
     <a class="skip" href="#main">Skip to content</a>
     <div class="shell">
-      <header class="sidebar">
+      <header class="sidebar" id="admin-sidebar">
         <div class="nav-toggle">
           <a class="brand" href={showDrivers ? '/today' : '/bookings'}>
             <span class="brand-mark" aria-hidden="true">EP</span>
@@ -129,45 +129,54 @@ const groups: NavGroup[] = [
             type="button"
             id="menu-btn"
             aria-expanded="false"
-            aria-controls="adminnav"
+            aria-controls="adminnav-drawer"
           >
             Menu
           </button>
         </div>
-        <nav class="navlist" id="adminnav" aria-label="Admin">
-          {
-            groups.map((g) => (
-              <>
-                <p class="nav-label" id={`g-${g.id}`}>
-                  {g.label}
-                </p>
-                <ul class="nav-group" aria-labelledby={`g-${g.id}`}>
-                  {g.items.map((item) => (
-                    <li>
-                      <a href={item.href} aria-current={current === item.id ? 'page' : undefined}>
-                        <span>{item.label}</span>
-                        {item.count != null && item.count > 0 ? (
-                          <span class="nav-count" aria-label={`${item.count} need a vehicle`}>
-                            {item.count}
-                          </span>
-                        ) : null}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ))
-          }
-        </nav>
-        <div class="sidebar-foot">
-          {staffEmail && (
-            <span class="who" title={staffEmail}>
-              {staffEmail}
-            </span>
-          )}
-          <form method="POST" action="/logout">
-            <button class="btn btn-quiet btn-sm" type="submit">Sign out</button>
-          </form>
+        <div
+          class="nav-backdrop"
+          id="nav-backdrop"
+          hidden
+          tabindex="-1"
+          aria-hidden="true"
+        ></div>
+        <div class="nav-drawer" id="adminnav-drawer">
+          <nav class="navlist" id="adminnav" aria-label="Admin">
+            {
+              groups.map((g) => (
+                <>
+                  <p class="nav-label" id={`g-${g.id}`}>
+                    {g.label}
+                  </p>
+                  <ul class="nav-group" aria-labelledby={`g-${g.id}`}>
+                    {g.items.map((item) => (
+                      <li>
+                        <a href={item.href} aria-current={current === item.id ? 'page' : undefined}>
+                          <span>{item.label}</span>
+                          {item.count != null && item.count > 0 ? (
+                            <span class="nav-count" aria-label={`${item.count} need a vehicle`}>
+                              {item.count}
+                            </span>
+                          ) : null}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ))
+            }
+          </nav>
+          <div class="sidebar-foot">
+            {staffEmail && (
+              <span class="who" title={staffEmail}>
+                {staffEmail}
+              </span>
+            )}
+            <form method="POST" action="/logout">
+              <button class="btn btn-quiet btn-sm" type="submit">Sign out</button>
+            </form>
+          </div>
         </div>
       </header>
       <main class="main" id="main">
@@ -211,17 +220,52 @@ const groups: NavGroup[] = [
     <script is:inline>
       (function () {
         const btn = document.getElementById('menu-btn');
-        const nav = document.getElementById('adminnav');
-        if (!btn || !nav) return;
-        btn.addEventListener('click', function () {
-          const open = nav.classList.toggle('open');
+        const drawer = document.getElementById('adminnav-drawer');
+        const backdrop = document.getElementById('nav-backdrop');
+        const sidebar = document.getElementById('admin-sidebar');
+        if (!btn || !drawer) return;
+
+        function setOpen(open) {
+          drawer.classList.toggle('open', open);
+          sidebar && sidebar.classList.toggle('nav-open', open);
           btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (backdrop) {
+            backdrop.hidden = !open;
+            backdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+          }
+          document.documentElement.classList.toggle('nav-drawer-open', open);
+          if (open) {
+            const first = drawer.querySelector('a, button');
+            if (first) first.focus();
+          } else {
+            btn.focus();
+          }
+        }
+
+        btn.addEventListener('click', function () {
+          setOpen(!drawer.classList.contains('open'));
+        });
+        backdrop &&
+          backdrop.addEventListener('click', function () {
+            setOpen(false);
+          });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && drawer.classList.contains('open')) {
+            e.preventDefault();
+            setOpen(false);
+          }
+        });
+        drawer.querySelectorAll('a').forEach(function (link) {
+          link.addEventListener('click', function () {
+            if (window.matchMedia('(max-width: 767px)').matches) setOpen(false);
+          });
         });
       })();
     </script>
     <script>
       import '../scripts/enhance-selects';
       import '../scripts/live-filters';
+      import '../scripts/dialogs';
     </script>
   </body>
 </html>
