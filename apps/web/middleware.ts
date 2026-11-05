@@ -10,12 +10,15 @@ export const config = {
   matcher: '/:path*',
 };
 
-/** Machine callers that cannot prompt for Basic Auth. */
+/** Paths that must stay reachable without a browser password prompt. */
 function isExcluded(pathname: string): boolean {
   return (
     pathname === '/api/webhooks/viva' ||
     pathname.startsWith('/api/cron/') ||
-    pathname.startsWith('/api/internal/')
+    pathname.startsWith('/api/internal/') ||
+    // Email clients (and Gmail's image proxy) cannot send Basic Auth.
+    pathname === '/images/v2/logo-white.png' ||
+    pathname === '/logo-white.png'
   );
 }
 

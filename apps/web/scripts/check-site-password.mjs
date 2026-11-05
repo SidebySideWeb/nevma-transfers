@@ -68,5 +68,20 @@ process.env.SITE_PASSWORD = 'test';
   assert.equal(res.status, 401, 'public api still protected');
 }
 
+{
+  const res = middleware(req('/images/v2/logo-white.png'));
+  assert.notEqual(res.status, 401, 'email logo must be public');
+}
+
+{
+  const res = middleware(req('/logo-white.png'));
+  assert.notEqual(res.status, 401, 'legacy logo must be public');
+}
+
+{
+  const res = middleware(req('/images/v2/other.png'));
+  assert.equal(res.status, 401, 'other images stay protected');
+}
+
 delete process.env.SITE_PASSWORD;
 console.log('check-site-password: ok');
