@@ -2,18 +2,15 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import AutoBadge from '../../components/AutoBadge.astro';
 import Banner from '../../components/Banner.astro';
 import ClassName from '../../components/ClassName.astro';
 import DataTable from '../../components/DataTable.astro';
 import DateField from '../../components/DateField.astro';
 import EmptyState from '../../components/EmptyState.astro';
-import Flag from '../../components/Flag.astro';
 import Money from '../../components/Money.astro';
 import Select from '../../components/Select.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
-import VehicleLabel from '../../components/VehicleLabel.astro';
-import { athensDay, athensTime } from '../../lib/athens-day';
+import { athensDay } from '../../lib/athens-day';
 import {
   applyBookingsTab,
   BOOKINGS_TAB_LABEL,
@@ -24,6 +21,7 @@ import {
   type BookingsTab,
 } from '../../lib/bookings-list';
 import { createSupabaseServerClient } from '../../lib/supabase';
+import { formatAthensShort } from '../../lib/time';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
@@ -43,11 +41,10 @@ const invoices = ['not_required', 'requested', 'issued'] as const;
 
 const selectCols = `
     reference, pickup_at, booking_type, duration_minutes, price_cents, status, payment_status,
-    vip_security, invoice_status, customer_name, vehicle_id, vehicle_auto_assigned, source,
+    customer_name,
     from_zone:zones!bookings_from_zone_id_fkey(name),
     to_zone:zones!bookings_to_zone_id_fkey(name),
-    class:vehicle_classes!bookings_class_id_fkey(key, name),
-    vehicle:vehicles!bookings_vehicle_id_fkey(label)
+    class:vehicle_classes!bookings_class_id_fkey(key, name)
   `;
 
 function baseListQuery() {
@@ -85,16 +82,10 @@ type BookingRow = {
   price_cents: number;
   status: string;
   payment_status: string;
-  vip_security: boolean;
-  invoice_status: string;
   customer_name: string;
-  vehicle_id: string | null;
-  vehicle_auto_assigned: boolean;
-  source: string | null;
   from_zone: { name?: string } | null;
   to_zone: { name?: string } | null;
   class: { key?: string; name?: string } | null;
-  vehicle: { label?: string } | null;
 };
 
 const load = resolveListLoad('bookings', rows as BookingRow[] | null, error);
@@ -184,26 +175,7 @@ function qs(overrides: Record<string, string | null>): string {
     <a class="btn" href="/bookings/new">New booking</a>
   </div>
 
-  <dl class="stats" aria-label="Booking counts">
-    <div class="stat">
-      <dt>Upcoming</dt>
-      <dd>{tabCounts.upcoming}<small>confirmed &amp; assigned</small></dd>
-    </div>
-    <div class="stat">
-      <dt>Need a vehicle</dt>
-      <dd>{tabCounts.need_vehicle}<small>confirmed, unassigned</small></dd>
-    </div>
-    <div class="stat">
-      <dt>Pending payment</dt>
-      <dd>{tabCounts.pending}<small>live hold</small></dd>
-    </div>
-    <div class="stat">
-      <dt>All</dt>
-      <dd>{tabCounts.all}<small>every booking</small></dd>
-    </div>
-  </dl>
-
-  <nav class="tabs" aria-label="Quick views" style="margin-top:1.25rem">
+  <nav class="tabs" aria-label="Quick views">
     {
       BOOKINGS_TABS.map((t) => (
         <a href={qs({ tab: t })} aria-current={tab === t ? 'page' : undefined}>
@@ -300,23 +272,21 @@ function qs(overrides: Record<string, string | null>): string {
             <th scope="col" aria-sort={applied.ascending ? 'ascending' : 'descending'}>
               Pick-up
             </th>
-            <th scope="col">Trip</th>
+            <th scope="col">Route</th>
             <th scope="col">Class</th>
-            <th scope="col">Vehicle</th>
             <th scope="col">Customer</th>
             <th scope="col" class="num">
               Total
             </th>
-            <th scope="col">Status</th>
             <th scope="col">Payment</th>
-            <th scope="col">Flags</th>
+            <th scope="col">Status</th>
           </tr>
         </thead>
         <tbody>
           {groups.map((g) => (
             <>
               <tr class="day-row">
-                <td colspan="10">
+                <td colspan="8">
                   {g.label} · {g.rows.length} booking{g.rows.length === 1 ? '' : 's'}
                 </td>
               </tr>
@@ -324,13 +294,11 @@ function qs(overrides: Record<string, string | null>): string {
                 const fromName = (b.from_zone as { name?: string } | null)?.name;
                 const toName = (b.to_zone as { name?: string } | null)?.name;
                 const className = (b.class as { name?: string } | null)?.name;
-                const vehicleLabel = (b.vehicle as { label?: string } | null)?.label;
                 const trip =
                   b.booking_type === 'hourly'
                     ? `${fromName ?? '—'} · ${Math.round((b.duration_minutes || 0) / 60)} h`
                     : `${fromName ?? '—'} → ${toName ?? '—'}`;
                 const sub = `${b.booking_type === 'hourly' ? 'Hourly' : 'Transfer'}`;
-                const showAssign = b.status === 'confirmed' && !b.vehicle_id;
                 return (
                   <tr
                     class:list={[
@@ -345,47 +313,25 @@ function qs(overrides: Record<string, string | null>): string {
                         {b.reference}
                       </a>
                     </td>
-                    <td data-label="Pick-up">{athensTime(b.pickup_at)}</td>
-                    <td data-label="Trip">
+                    <td data-label="Pick-up">
+                      {formatAthensShort(b.pickup_at).replace(/ (?=\d{2}:\d{2}$)/, ' · ')}
+                    </td>
+                    <td data-label="Route">
                       {trip}
                       <span class="sub">{sub}</span>
                     </td>
                     <td data-label="Class">
                       <ClassName name={className} />
                     </td>
-                    <td data-label="Vehicle">
-                      {showAssign ? (
-                        <a href={`/bookings/${b.reference}#assign`}>Assign</a>
-                      ) : (
-                        <>
-                          <VehicleLabel label={vehicleLabel} />{' '}
-                          <AutoBadge show={Boolean(b.vehicle_auto_assigned && vehicleLabel)} />
-                        </>
-                      )}
-                    </td>
                     <td data-label="Customer">{b.customer_name}</td>
                     <td class="num" data-label="Total">
                       <Money cents={b.price_cents} />
                     </td>
-                    <td data-label="Status">
-                      <StatusBadge status={b.status} />
-                    </td>
                     <td data-label="Payment">
                       <StatusBadge kind="payment" status={b.payment_status} />
                     </td>
-                    <td
-                      data-label="Flags"
-                      data-hide-phone={
-                        !(b.source === 'office' || b.vip_security || b.invoice_status === 'requested' || b.invoice_status === 'issued') ||
-                        undefined
-                      }
-                    >
-                      {b.source === 'office' && <Flag kind="office" />}{' '}
-                      {b.vip_security && <Flag kind="vip" />}{' '}
-                      {(b.invoice_status === 'requested' || b.invoice_status === 'issued') && (
-                        <Flag kind="invoice" />
-                      )}{' '}
-                      {b.booking_type === 'hourly' && <Flag kind="hourly" />}
+                    <td data-label="Status">
+                      <StatusBadge status={b.status} />
                     </td>
                   </tr>
                 );

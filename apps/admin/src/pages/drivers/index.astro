@@ -142,6 +142,7 @@ function appBadge(userId: string | null) {
                 <td class="card-title" data-label="Driver">
                   <a href={`/drivers/${d.id}`}>{d.full_name}</a>
                   {warn && <span class="badge s-pending">Expires soon</span>}
+                  <span class="sub email-full" title={d.email}>{d.email}</span>
                   <span class="sub"><Phone value={d.phone} /></span>
                 </td>
                 <td data-label="Type">{d.employment === 'freelancer' ? 'Freelancer' : 'Employee'}</td>
@@ -177,6 +178,10 @@ function appBadge(userId: string | null) {
     )
   }
 </AdminLayout>
+
+<style>
+  .email-full { display: block; white-space: normal; overflow-wrap: anywhere; max-width: 18rem; }
+</style>
 
 <dialog class="dialog" id="add-driver" aria-labelledby="ad-h">
   <form method="POST" action={actions.addDriver}>

@@ -90,9 +90,8 @@ const hasUnconfirmed = extraList.rows.some((e) => e.is_demo);
                   <td class="card-title" data-label="Extra">
                     <ConfirmDot confirmed={!e.is_demo} />
                     <input class="input name" aria-label={`${e.code} name`} value={e.name} />
-                    {builtin && <span class="badge plain">Built in</span>}
                   </td>
-                  <td data-label="Code" class="mono">
+                  <td data-label="Code" class="mono muted code">
                     {e.code}
                   </td>
                   <td class="num" data-label="Price">
@@ -144,9 +143,15 @@ const hasUnconfirmed = extraList.rows.some((e) => e.is_demo);
                         checked={e.active}
                         aria-label={`${e.code} online`}
                       />
+                      <span class="switch-label">{e.active ? 'On' : 'Off'}</span>
                     </label>
                   </td>
                   <td class="actions" data-label="">
+                    {
+                      !canDelete && (
+                        <span class="badge plain usage-badge">{builtin ? 'Built in' : 'In use'}</span>
+                      )
+                    }
                     {
                       e.is_demo && (
                         <button
@@ -173,11 +178,7 @@ const hasUnconfirmed = extraList.rows.some((e) => e.is_demo);
                         >
                           Delete
                         </button>
-                      ) : builtin ? (
-                        <span class="muted small">Built in</span>
-                      ) : (
-                        <span class="muted small">In use</span>
-                      )
+                      ) : null
                     }
                   </td>
                 </tr>
@@ -278,4 +279,15 @@ const hasUnconfirmed = extraList.rows.some((e) => e.is_demo);
       document.getElementById(btn.getAttribute('data-close'))?.close();
     });
   });
+  document.querySelectorAll('.switch input').forEach((input) => {
+    input.addEventListener('change', () => {
+      const label = input.closest('.switch')?.querySelector('.switch-label');
+      if (label) label.textContent = input.checked ? 'On' : 'Off';
+    });
+  });
 </script>
+
+<style>
+  .code { white-space: nowrap; }
+  .usage-badge { margin-inline: 0 .5rem; }
+</style>

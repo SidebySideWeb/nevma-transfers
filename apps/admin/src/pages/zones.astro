@@ -39,9 +39,12 @@ const [{ data: zones }, { data: routes }, { data: bookings }] = await Promise.al
 ]);
 
 const usedIds = new Set<string>();
+const routeCounts = new Map<string, number>();
 for (const r of routes ?? []) {
   usedIds.add(r.from_zone_id);
   usedIds.add(r.to_zone_id);
+  routeCounts.set(r.from_zone_id, (routeCounts.get(r.from_zone_id) ?? 0) + 1);
+  routeCounts.set(r.to_zone_id, (routeCounts.get(r.to_zone_id) ?? 0) + 1);
 }
 for (const b of bookings ?? []) {
   usedIds.add(b.from_zone_id);
@@ -73,19 +76,16 @@ const zoneList = withDemoOfflineLast(zones ?? []);
       <caption id="z-cap" class="sr-only">Zones</caption>
       <thead>
         <tr>
-          <th scope="col">Order</th>
-          <th scope="col">Zone</th>
-          <th scope="col">Code</th>
+          <th scope="col">Name</th>
+          <th scope="col">Key</th>
           <th scope="col">Kind</th>
-          <th scope="col">Online</th>
+          <th scope="col">Routes</th>
           <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
         </tr>
       </thead>
       <tbody>
         {
           zoneList.rows.map((z) => {
-            const codeFixed = usedIds.has(z.id);
-            const canDelete = !bookedIds.has(z.id);
             const bury = isDemoOrOffline(z);
             return (
               <tr
@@ -93,81 +93,12 @@ const zoneList = withDemoOfflineLast(zones ?? []);
                 data-demo-offline={bury ? 'zones' : undefined}
                 hidden={bury || undefined}
               >
-                <td colspan="6">
-                  <form method="POST" action={actions.saveZone} class="row" style="align-items:end;gap:var(--space-2);flex-wrap:wrap">
-                    <input type="hidden" name="id" value={z.id} />
-                    <div class="field">
-                      <label for={`zo-${z.id}`}>Order</label>
-                      <input class="input" id={`zo-${z.id}`} name="sortOrder" type="number" value={z.sort_order} style="width:5rem" />
-                    </div>
-                    <div class="field" style="flex:1;min-width:10rem">
-                      <label for={`zn-${z.id}`}>Zone</label>
-                      <input class="input" id={`zn-${z.id}`} name="name" value={z.name} required />
-                      {z.is_demo && <Flag kind="demo" />}
-                    </div>
-                    <div class="field">
-                      <label for={`zc-${z.id}`}>Code</label>
-                      {
-                        codeFixed ? (
-                          <input class="input mono" id={`zc-${z.id}`} value={z.code} readonly aria-describedby={`zc-help-${z.id}`} />
-                        ) : (
-                          <input
-                            class="input mono"
-                            id={`zc-${z.id}`}
-                            name="code"
-                            value={z.code}
-                            required
-                            pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
-                          />
-                        )
-                      }
-                      {codeFixed && (
-                        <p class="help" id={`zc-help-${z.id}`}>
-                          Fixed once used by a route or booking.
-                        </p>
-                      )}
-                    </div>
-                    <div class="field">
-                      <label for={`zk-${z.id}`}>Kind</label>
-                      <Select
-                        id={`zk-${z.id}`}
-                        name="kind"
-                        options={ZONE_KINDS.map((k) => ({
-                          value: k.value,
-                          label: k.label,
-                          selected: (z.kind ?? 'area') === k.value,
-                        }))}
-                      />
-                    </div>
-                    <label class="switch">
-                      <input type="checkbox" name="active" value="true" checked={z.active} />
-                      <span class="sr-only">Online</span>
-                    </label>
-                    <button class="btn btn-quiet btn-sm" type="submit">Save</button>
-                    {
-                      z.is_demo && (
-                        <button
-                          class="btn btn-secondary btn-sm"
-                          type="submit"
-                          formaction={actions.clearDemo}
-                          name="clear"
-                          value={`zones|${z.id}`}
-                          formnovalidate
-                        >
-                          Confirmed
-                        </button>
-                      )
-                    }
-                    {
-                      canDelete ? (
-                        <button class="btn btn-danger-solid btn-sm" type="submit" formaction={actions.deleteZone}>
-                          Delete
-                        </button>
-                      ) : (
-                        <span class="muted small">Switch off instead of delete</span>
-                      )
-                    }
-                  </form>
+                <td class="card-title" data-label="Name">{z.name} {z.is_demo && <Flag kind="demo" />}</td>
+                <td data-label="Key" class="mono">{z.code}</td>
+                <td data-label="Kind">{ZONE_KINDS.find((k) => k.value === (z.kind ?? 'area'))?.label}</td>
+                <td data-label="Routes">Used by {routeCounts.get(z.id) ?? 0} routes</td>
+                <td class="actions" data-label="">
+                  <button class="btn btn-quiet btn-sm" type="button" data-open={`edit-${z.id}`}>Edit</button>
                 </td>
               </tr>
             );
@@ -178,6 +109,44 @@ const zoneList = withDemoOfflineLast(zones ?? []);
   </div>
   <ShowDemoOffline group="zones" count={zoneList.hiddenCount} />
 </AdminLayout>
+
+{
+  zoneList.rows.map((z) => {
+    const codeFixed = usedIds.has(z.id);
+    const canDelete = !bookedIds.has(z.id);
+    return (
+      <dialog class="dialog" id={`edit-${z.id}`} aria-labelledby={`edit-h-${z.id}`}>
+        <form method="POST" action={actions.saveZone}>
+          <input type="hidden" name="id" value={z.id} />
+          <div class="dialog-head"><p class="eyebrow">Zones</p><h2 id={`edit-h-${z.id}`}>Edit {z.name}</h2></div>
+          <div class="dialog-body stack-sm">
+            <div class="grid-fields">
+              <div class="field"><label for={`zn-${z.id}`}>Name</label><input class="input" id={`zn-${z.id}`} name="name" value={z.name} required /></div>
+              <div class="field">
+                <label for={`zc-${z.id}`}>Key</label>
+                <input class="input mono" id={`zc-${z.id}`} name={codeFixed ? undefined : 'code'} value={z.code} readonly={codeFixed || undefined} required />
+              </div>
+              <div class="field"><label for={`zo-${z.id}`}>Order</label><input class="input" id={`zo-${z.id}`} name="sortOrder" type="number" value={z.sort_order} /></div>
+              <div class="field"><label for={`zk-${z.id}`}>Kind</label><Select id={`zk-${z.id}`} name="kind" options={ZONE_KINDS.map((k) => ({ value: k.value, label: k.label, selected: (z.kind ?? 'area') === k.value }))} /></div>
+            </div>
+            <label class="switch"><input type="checkbox" name="active" value="true" checked={z.active} /> {z.active ? 'On' : 'Off'}</label>
+          </div>
+          <div class="dialog-foot">
+            {canDelete ? <button class="btn btn-quiet btn-sm btn-delete-muted" type="submit" formaction={actions.deleteZone} data-confirm={`Delete ${z.name}? This cannot be undone.`}>Delete</button> : <span class="muted small">In use by bookings</span>}
+            {z.is_demo && <button class="btn btn-secondary btn-sm" type="submit" formaction={actions.clearDemo} name="clear" value={`zones|${z.id}`} formnovalidate>Mark confirmed</button>}
+            <button class="btn btn-quiet" type="button" data-close={`edit-${z.id}`}>Back</button>
+            <button class="btn" type="submit">Save zone</button>
+          </div>
+        </form>
+      </dialog>
+    );
+  })
+}
+
+<style>
+  .btn-delete-muted { color: var(--color-danger); opacity: .85; }
+  .btn-delete-muted:hover { color: var(--color-danger); opacity: 1; background: var(--tint-danger); }
+</style>
 
 <dialog class="dialog" id="add-zone" aria-labelledby="d-az">
   <form method="POST" action={actions.addZone}>
@@ -232,6 +201,11 @@ const zoneList = withDemoOfflineLast(zones ?? []);
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.getElementById(btn.getAttribute('data-close'))?.close();
+    });
+  });
+  document.querySelectorAll('[data-confirm]').forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      if (!window.confirm(btn.getAttribute('data-confirm'))) event.preventDefault();
     });
   });
 </script>

@@ -28,6 +28,7 @@ if (scroller) {
 
   const pop = document.getElementById('cal-pop');
   const quarter = 15 * 60_000;
+  const hourPx = Number(scroller.dataset.hourPx || 72);
   let opener: HTMLElement | null = null;
 
   const close = () => {
@@ -61,7 +62,7 @@ if (scroller) {
     const ms =
       e.detail === 0
         ? Number(scroller.dataset.defaultMs)
-        : dayStart + Math.floor(((e.clientX - rect.left) / 56) * 60 * 60_000 / quarter) * quarter;
+        : dayStart + Math.floor(((e.clientX - rect.left) / hourPx) * 60 * 60_000 / quarter) * quarter;
 
     const busy = (JSON.parse(track.dataset.busy || '[]') as [number, number][]).sort((a, b) => a[0] - b[0]);
     const inside = busy.find(([s, en]) => s <= ms && ms < en);

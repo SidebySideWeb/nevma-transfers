@@ -4,6 +4,7 @@ import {
   athensLocalMs,
   barPosition,
   dayGrid,
+  HOUR_PX,
   hourLabel,
   minutesSinceMidnight,
   packLanes,
@@ -26,8 +27,8 @@ describe('calendar position (Europe/Athens)', () => {
     expect(g.hourStarts).toHaveLength(25);
     // 04:00 EET (UTC+2) after the clocks went back = 02:00Z
     const p = barPosition(g, at('2026-10-25T02:00:00Z'), at('2026-10-25T03:00:00Z'))!;
-    expect(p.left).toBe(5 * 56);
-    expect(p.width).toBe(56);
+    expect(p.left).toBe(5 * HOUR_PX);
+    expect(p.width).toBe(HOUR_PX);
     // the repeated 03:00 hour is labelled
     expect([hourLabel(g, 3), hourLabel(g, 4)]).toEqual(['03:00', '03:00²']);
     // the day still ends at local midnight
@@ -40,8 +41,8 @@ describe('calendar position (Europe/Athens)', () => {
     expect(g.minutes).toBe(1380);
     // 04:00 EEST (UTC+3) = 01:00Z
     const p = barPosition(g, at('2026-03-29T01:00:00Z'), at('2026-03-29T02:30:00Z'))!;
-    expect(p.left).toBe(3 * 56);
-    expect(p.width).toBe(84);
+    expect(p.left).toBe(3 * HOUR_PX);
+    expect(p.width).toBe(1.5 * HOUR_PX);
     expect(hourLabel(g, 2)).toBe('02:00');
     expect(hourLabel(g, 3)).toBe('04:00');
   });
@@ -49,8 +50,8 @@ describe('calendar position (Europe/Athens)', () => {
   it('clips a bar that crosses midnight and ignores one outside the day', () => {
     const g = dayGrid('2026-12-01');
     const late = barPosition(g, at('2026-12-01T21:15:00Z'), at('2026-12-01T23:00:00Z'))!; // 23:15 → 01:00
-    expect(late.left).toBeCloseTo((23.25) * 56);
-    expect(late.left + late.width).toBeCloseTo(24 * 56);
+    expect(late.left).toBeCloseTo(23.25 * HOUR_PX);
+    expect(late.left + late.width).toBeCloseTo(24 * HOUR_PX);
     expect(barPosition(g, at('2026-11-30T10:00:00Z'), at('2026-11-30T11:00:00Z'))).toBeNull();
     expect(barPosition(g, at('2026-12-01T22:00:00Z'), at('2026-12-01T23:00:00Z'))).toBeNull();
   });

@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import ClassName from '../components/ClassName.astro';
 import ConfirmDot from '../components/ConfirmDot.astro';
 import Select from '../components/Select.astro';
 import ShowDemoOffline from '../components/ShowDemoOffline.astro';
@@ -101,10 +102,10 @@ const hasUnconfirmed = classes.some((c) => c.is_demo) || vehicles.some((v) => v.
 const classList = withDemoOfflineLast(classes);
 const vehicleList = withDemoOfflineLast(vehicles);
 
-function statusBadge(status: string) {
-  if (status === 'active') return { cls: 's-confirmed', label: 'Active' };
-  if (status === 'maintenance') return { cls: 's-pending', label: 'In service' };
-  return { cls: 's-completed', label: 'Retired' };
+function statusDot(status: string) {
+  if (status === 'active') return { on: true, label: 'Active' };
+  if (status === 'maintenance') return { on: false, label: 'In service' };
+  return { on: false, label: 'Retired' };
 }
 
 function fmtNext(iso: string) {
@@ -174,7 +175,7 @@ function fmtNext(iso: string) {
                 >
                   <td class="card-title" data-label="Class">
                     <ConfirmDot confirmed={!c.is_demo} />
-                    {c.name}
+                    <ClassName name={c.name} />
                     {noSanity && <span class="badge s-pending">No Sanity page</span>}
                     {
                       c.is_demo && (
@@ -202,9 +203,7 @@ function fmtNext(iso: string) {
                     {vehicleCount.get(c.id) ?? 0}
                   </td>
                   <td data-label="Online">
-                    <span class={`badge ${c.active ? 's-confirmed' : 's-completed'}`}>
-                      {c.active ? 'On' : 'Off'}
-                    </span>
+                    <span class={c.active ? 'dot-on' : 'dot-off'}>{c.active ? 'On' : 'Off'}</span>
                   </td>
                   <td class="actions" data-label="">
                     <a class="btn btn-quiet btn-sm" href={`/fleet/${c.key}`}>
@@ -242,7 +241,7 @@ function fmtNext(iso: string) {
           {
             vehicleList.rows.map((v) => {
               const cls = classById.get(v.class_id);
-              const badge = statusBadge(v.status);
+              const status = statusDot(v.status);
               const next = nextByVehicle.get(v.id);
               const bury = isDemoOrOffline(v);
               return (
@@ -277,11 +276,11 @@ function fmtNext(iso: string) {
                       )
                     }
                   </td>
-                  <td data-label="Class">{cls?.name ?? '—'}</td>
+                  <td data-label="Class"><ClassName name={cls?.name} /></td>
                   <td data-label="Model">{v.note || '—'}</td>
                   <td data-label="Plate" class="mono">{v.plate || '—'}</td>
                   <td data-label="Status">
-                    <span class={`badge ${badge.cls}`}>{badge.label}</span>
+                    <span class={status.on ? 'dot-on' : 'dot-off'}>{status.label}</span>
                   </td>
                   <td data-label="Next">
                     {next ? `${fmtNext(next.pickup_at)} · ${next.reference}` : '—'}

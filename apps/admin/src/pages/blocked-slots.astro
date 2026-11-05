@@ -47,13 +47,17 @@ const rows = (slots ?? []).map((s) => {
 ---
 
 <AdminLayout title="Blocked slots" current="blocked-slots" staffEmail={staff.email}>
-  <a class="btn" href="#block-vehicle" slot="actions">Block a vehicle</a>
+  <button class="btn" type="button" data-open="block-vehicle" slot="actions">Block a vehicle</button>
 
-  <section class="panel stack" id="block-vehicle" aria-labelledby="c-h">
-    <h2 id="c-h">Block a vehicle</h2>
-    <form method="POST" action={actions.createBlockedSlot} class="stack" id="block-form">
+  <dialog class="dialog" id="block-vehicle" aria-labelledby="c-h">
+    <form method="POST" action={actions.createBlockedSlot} id="block-form">
       <input type="hidden" name="fromLocal" id="fromLocal" value={preFromOk ? rawFrom : ''} />
       <input type="hidden" name="toLocal" id="toLocal" value="" />
+      <div class="dialog-head">
+        <p class="eyebrow">Blocked slots</p>
+        <h2 id="c-h">Block a vehicle</h2>
+      </div>
+      <div class="dialog-body stack-sm">
       <div class="field">
         <label for="vehicleId">Vehicle</label>
         <Select
@@ -100,15 +104,19 @@ const rows = (slots ?? []).map((s) => {
         <label for="reason">Reason</label>
         <input class="input" id="reason" name="reason" maxlength="200" />
       </div>
-      <button class="btn" type="submit">Create</button>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn btn-quiet" type="button" data-close="block-vehicle">Back</button>
+        <button class="btn" type="submit">Block vehicle</button>
+      </div>
     </form>
-  </section>
+  </dialog>
 
   <section class="stack" aria-labelledby="l-h">
     <h2 id="l-h">Existing</h2>
     {
       rows.length === 0 ? (
-        <EmptyState title="No blocked slots" actionHref="#block-vehicle" actionLabel="Block a vehicle">
+        <EmptyState title="No blocked slots">
           No vehicles are blocked right now.
         </EmptyState>
       ) : (
@@ -161,15 +169,24 @@ const rows = (slots ?? []).map((s) => {
 
 <script is:inline>
   (function () {
-    var form = document.getElementById('block-form');
+    document.querySelector('[data-open="block-vehicle"]')?.addEventListener('click', function () {
+      document.getElementById('block-vehicle')?.showModal();
+    });
+    document.querySelector('[data-close="block-vehicle"]')?.addEventListener('click', function () {
+      document.getElementById('block-vehicle')?.close();
+    });
+    const form = document.getElementById('block-form');
     if (!form) return;
     form.addEventListener('submit', function () {
-      var fd = document.getElementById('from-date').value;
-      var ft = document.getElementById('from-time').value;
-      var td = document.getElementById('to-date').value;
-      var tt = document.getElementById('to-time').value;
+      const fd = document.getElementById('from-date').value;
+      const ft = document.getElementById('from-time').value;
+      const td = document.getElementById('to-date').value;
+      const tt = document.getElementById('to-time').value;
       document.getElementById('fromLocal').value = fd && ft ? fd + 'T' + ft : '';
       document.getElementById('toLocal').value = td && tt ? td + 'T' + tt : '';
     });
+    if (document.getElementById('fromLocal')?.value) {
+      document.getElementById('block-vehicle')?.showModal();
+    }
   })();
 </script>

@@ -76,18 +76,23 @@ const drivers: DriversNowRow[] = [
 
 describe('today board partial rendering', () => {
   it('renders fleet and drivers tbody HTML with trip badges and links', () => {
-    const fleetHtml = renderFleetNowTbody(fleet);
+    const nowMs = Date.parse('2026-12-01T10:00:00Z');
+    const fleetHtml = renderFleetNowTbody(fleet, nowMs);
     expect(fleetHtml).toContain('V-Class #1');
     expect(fleetHtml).toContain('Alex Driver');
     expect(fleetHtml).toContain('trip-on_board');
     expect(fleetHtml).toContain('/bookings/ELP-AAAAAA');
     expect(fleetHtml).toContain('Not on shift');
     expect(fleetHtml).toContain('no driver');
+    expect(fleetHtml).toContain('Next');
+    expect(fleetHtml).toMatch(/title="/);
+    expect(fleetHtml).toMatch(/ago|just now/);
 
-    const driversHtml = renderDriversNowTbody(drivers);
+    const driversHtml = renderDriversNowTbody(drivers, nowMs);
     expect(driversHtml).toContain('/drivers/d1');
     expect(driversHtml).toContain('Passenger on board');
-    expect(driversHtml).toContain('Off');
+    expect(driversHtml).toContain('Off today');
+    expect(driversHtml).toContain('data-href="/drivers/d2"');
     expect(driversHtml).toContain('>4<');
   });
 

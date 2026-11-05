@@ -447,15 +447,16 @@ const usageBits = [
       <section class="panel" aria-labelledby="fc-r">
         <div class="panel-head"><h2 id="fc-r">Ready for customers?</h2></div>
         <div class="panel-body">
-          <ol class="timeline">
+          <ul class="ready-list">
             {
               checklist.map((item) => (
-                <li class={item.done ? 'done' : cls.active ? 'miss' : undefined} data-ready={item.id}>
-                  {item.label}
+                <li class={item.done ? 'ready-ok' : 'ready-miss'} data-ready={item.id}>
+                  <span aria-hidden="true">{item.done ? '✓' : '✕'}</span>
+                  <span>{item.done ? item.label : `Missing: ${item.label.toLowerCase()}`}</span>
                 </li>
               ))
             }
-          </ol>
+          </ul>
         </div>
       </section>
     </div>
@@ -563,12 +564,12 @@ const usageBits = [
 </dialog>
 
 <style>
-  .timeline li.miss {
-    color: var(--color-danger);
-  }
-  .timeline li.miss::after {
-    border-color: var(--color-danger);
-  }
+  #fc-d .grid-fields { align-items: start; }
+  #fc-d .input { min-height: var(--admin-control); }
+  .ready-list { display: grid; gap: .625rem; list-style: none; margin: 0; padding: 0; }
+  .ready-list li { display: flex; gap: .625rem; align-items: baseline; }
+  .ready-ok { color: var(--color-success); }
+  .ready-miss { color: var(--color-danger); }
 </style>
 
 <script type="application/json" id="fleet-class-data" set:html={JSON.stringify({ pageError })} />

@@ -45,7 +45,7 @@ const grids = days.map(dayGrid);
 const rangeStart = grids[0]!.start;
 const rangeEnd = grids[grids.length - 1]!.end;
 
-const [classesRes, vehiclesRes, itemsRes] = await Promise.all([
+const [classesRes, vehiclesRes, itemsRes, bookingsRes] = await Promise.all([
   supabase
     .from('vehicle_classes')
     .select('id, key, name, sort_order')
@@ -54,22 +54,42 @@ const [classesRes, vehiclesRes, itemsRes] = await Promise.all([
     .order('name'),
   supabase.from('vehicles').select('id, label, class_id').eq('status', 'active').order('label'),
   supabase.from('calendar_items').select('*').filter('range', 'ov', rangeLiteral(rangeStart, rangeEnd)),
+  supabase
+    .from('bookings')
+    .select(
+      'reference, customer_name, pickup_at, duration_minutes, booking_type, from_zone:zones!bookings_from_zone_id_fkey(name), to_zone:zones!bookings_to_zone_id_fkey(name)',
+    )
+    .filter('blocked_range', 'ov', rangeLiteral(rangeStart, rangeEnd)),
 ]);
 const classesLoad = resolveListLoad('fleet classes', classesRes.data, classesRes.error);
 const vehiclesLoad = resolveListLoad('vehicles', vehiclesRes.data, vehiclesRes.error);
 const itemsLoad = resolveListLoad('calendar', itemsRes.data, itemsRes.error);
+const bookingsLoad = resolveListLoad('calendar booking details', bookingsRes.data, bookingsRes.error);
 const listError =
   (!classesLoad.ok && classesLoad.message) ||
   (!vehiclesLoad.ok && vehiclesLoad.message) ||
   (!itemsLoad.ok && itemsLoad.message) ||
+  (!bookingsLoad.ok && bookingsLoad.message) ||
   null;
 if (classesRes.error) logListError('calendar_classes', classesRes.error.message);
 if (vehiclesRes.error) logListError('calendar_vehicles', vehiclesRes.error.message);
 if (itemsRes.error) logListError('calendar_items', itemsRes.error.message);
+if (bookingsRes.error) logListError('calendar_booking_details', bookingsRes.error.message);
 const allClasses = classesLoad.ok ? classesLoad.rows : [];
 const classes = classKey ? allClasses.filter((c) => c.key === classKey) : allClasses;
 const vehicles = vehiclesLoad.ok ? vehiclesLoad.rows : [];
 const items = parseItems(itemsLoad.ok ? itemsLoad.rows : []);
+const bookingTooltips = new Map(
+  (bookingsLoad.ok ? bookingsLoad.rows : []).map((b) => {
+    const from = (b.from_zone as { name?: string } | null)?.name ?? 'Unknown zone';
+    const to = (b.to_zone as { name?: string } | null)?.name;
+    const route = b.booking_type === 'hourly' ? `${from} · Hourly` : `${from} → ${to ?? 'Unknown zone'}`;
+    const start = new Date(b.pickup_at);
+    const end = new Date(start.getTime() + b.duration_minutes * 60_000);
+    return [b.reference, `${b.customer_name} · ${route} · ${athensTime(start)}–${athensTime(end)}`];
+  }),
+);
+const barName = (b: BarView) => bookingTooltips.get(b.code) ?? b.name;
 
 // Free vehicles per hour (day) or lowest per day (week), from the database function.
 const freeByClass = new Map<string, number[]>();
@@ -283,12 +303,13 @@ if (view === 'week') {
 const showNow = view === 'day' && date === today;
 const nowMin = minutesSinceMidnight(grid, nowDate);
 const nowLeft = (nowMin / 60) * HOUR_PX;
-const scrollLeft = view === 'day' ? (minutesSinceMidnight(grid, new Date(athensLocalMs(date, '06:00'))) / 60) * HOUR_PX : 0;
+const scrollLeft = showNow ? Math.floor(nowMin / 60) * HOUR_PX : 0;
 const quarter = 15 * 60_000;
 const defaultMs = showNow
   ? Math.min(Math.ceil(nowDate.getTime() / quarter) * quarter, grid.end.getTime() - quarter)
   : athensLocalMs(date, '09:00');
-const freeClass = (free: number, total: number) => (free === 0 ? 'full' : free === 1 && total > 1 ? 'tight' : '');
+const freeClass = (free: number, total: number) => (free === 0 ? 'full' : free < total ? 'reduced' : '');
+const freeText = (free: number, total: number) => (free === 0 || free < total ? free : '');
 const nowTime = athensTime(nowDate);
 const regionLabel =
   view === 'day'
@@ -404,6 +425,7 @@ const regionLabel =
         tabindex="0"
         aria-label={`Drivers calendar, ${longDate(date)}, scroll sideways for more hours`}
         data-scroll-left={scrollLeft}
+        data-hour-px={HOUR_PX}
         data-view="day"
         data-day-px={DAY_PX}
         data-dates={date}
@@ -433,11 +455,11 @@ const regionLabel =
                 ))}
                 {t.bars.map((b) =>
                   b.tag === 'a' ? (
-                    <a class={b.cls} href={b.href} style={`left:${b.left}px;width:${b.width}px`} aria-label={b.name} title={b.name}>
+                    <a class={b.cls} href={b.href} style={`left:${b.left}px;width:${b.width}px`} aria-label={barName(b)} title={barName(b)}>
                       <b>{b.code}</b>{b.sub && <> <small>{b.sub}</small></>}
                     </a>
                   ) : (
-                    <span class={b.cls} role="img" style={`left:${b.left}px;width:${b.width}px`} aria-label={b.name} title={b.name}>
+                    <span class={b.cls} role="img" style={`left:${b.left}px;width:${b.width}px`} aria-label={barName(b)} title={barName(b)}>
                       <b>{b.code}</b>
                     </span>
                   ),
@@ -458,6 +480,7 @@ const regionLabel =
         tabindex="0"
         aria-label={regionLabel}
         data-scroll-left={scrollLeft}
+        data-hour-px={HOUR_PX}
         data-view={view}
         data-day-px={DAY_PX}
         data-dates={days.join(',')}
@@ -478,13 +501,13 @@ const regionLabel =
                   <div class="cal-class">
                     <div class="cal-label">
                       <strong>{c.name}</strong>
-                      <span class="sub">{total} vehicle{total === 1 ? '' : 's'} · free per hour</span>
+                      <span class="sub">{total} vehicle{total === 1 ? '' : 's'}</span>
                     </div>
                     <div class="cal-free">
                       {grid.hourStarts.map((_, i) => (
                         <span
                           class={freeClass(free[i] ?? total, total)}
-                          title={`${hourLabel(grid, i)} · ${free[i] ?? '?'} free`}>{free[i] ?? '–'}</span>
+                          title={`${hourLabel(grid, i)} · ${free[i] ?? '?'} free`}>{freeText(free[i] ?? total, total)}</span>
                       ))}
                     </div>
                   </div>
@@ -512,11 +535,11 @@ const regionLabel =
                         ))}
                         {t.bars.map((b) =>
                           b.tag === 'a' ? (
-                            <a class={b.cls} href={b.href} style={`left:${b.left}px;width:${b.width}px`} aria-label={b.name} title={b.name}>
+                            <a class={b.cls} href={b.href} style={`left:${b.left}px;width:${b.width}px`} aria-label={barName(b)} title={barName(b)}>
                               <b>{b.code}</b>{b.sub && <> <small>{b.sub}</small></>}
                             </a>
                           ) : (
-                            <span class={b.cls} role="img" style={`left:${b.left}px;width:${b.width}px`} aria-label={b.name} title={b.name}>
+                            <span class={b.cls} role="img" style={`left:${b.left}px;width:${b.width}px`} aria-label={barName(b)} title={barName(b)}>
                               <b>{b.code}</b>
                             </span>
                           ),
@@ -549,13 +572,13 @@ const regionLabel =
                   <div class="cal-class">
                     <div class="cal-label">
                       <strong>{c.name}</strong>
-                      <span class="sub">lowest free per day</span>
+                      <span class="sub">{total} vehicle{total === 1 ? '' : 's'}</span>
                     </div>
                     <div class="cal-free">
                       {days.map((d, i) => (
                         <span
                           class={freeClass(free[i] ?? total, total)}
-                          title={`${shortDay(d)}: lowest free ${free[i] ?? '?'}`}>{free[i] ?? '–'}</span>
+                          title={`${shortDay(d)}: lowest free ${free[i] ?? '?'}`}>{freeText(free[i] ?? total, total)}</span>
                       ))}
                     </div>
                   </div>

@@ -22,6 +22,7 @@ function actionErr(result: { error?: { message?: string } | Error } | undefined)
 
 const pageError = actionErr(Astro.getActionResult?.(actions.saveCustomer));
 const saved = Astro.getActionResult?.(actions.saveCustomer)?.data?.ok === true;
+const bookingTab = Astro.url.searchParams.get('tab') === 'past' ? 'past' : 'upcoming';
 
 const { data: summary } = await supabase
   .from('customer_summaries')
@@ -49,6 +50,17 @@ const { data: bookings } = await supabase
   .eq('customer_id', id)
   .order('pickup_at', { ascending: false });
 
+const now = Date.now();
+const visibleBookings = (bookings ?? []).filter((b) =>
+  bookingTab === 'past'
+    ? new Date(b.pickup_at).getTime() < now
+    : new Date(b.pickup_at).getTime() >= now,
+).sort((a, b) =>
+  bookingTab === 'past'
+    ? new Date(b.pickup_at).getTime() - new Date(a.pickup_at).getTime()
+    : new Date(a.pickup_at).getTime() - new Date(b.pickup_at).getTime(),
+);
+
 const firstName = customer.name.trim().split(/\s+/)[0] || customer.name;
 
 function fmtWhen(iso: string) {
@@ -56,10 +68,9 @@ function fmtWhen(iso: string) {
     timeZone: 'Europe/Athens',
     day: 'numeric',
     month: 'short',
-    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
   }).format(new Date(iso));
 }
 
@@ -125,15 +136,25 @@ function tripLabel(b: {
             New booking for {firstName}
           </a>
         </div>
+        <nav class="tabs" aria-label="Customer bookings">
+          <a href={`/customers/${id}`} aria-current={bookingTab === 'upcoming' ? 'page' : undefined}>
+            Upcoming
+          </a>
+          <a href={`/customers/${id}?tab=past`} aria-current={bookingTab === 'past' ? 'page' : undefined}>
+            Past
+          </a>
+        </nav>
         {
-          (bookings ?? []).length === 0 ? (
+          visibleBookings.length === 0 ? (
             <div class="panel-body">
               <EmptyState
-                title="No bookings yet"
+                title={bookingTab === 'upcoming' ? 'No upcoming bookings' : 'No past bookings'}
                 actionHref={`/bookings/new?customer=${customer.id}`}
                 actionLabel={`New booking for ${firstName}`}
               >
-                This customer has no bookings on file.
+                {bookingTab === 'upcoming'
+                  ? 'This customer has no upcoming bookings.'
+                  : 'This customer has no past bookings.'}
               </EmptyState>
             </div>
           ) : (
@@ -158,7 +179,7 @@ function tripLabel(b: {
             </thead>
             <tbody>
               {
-                  (bookings ?? []).map((b) => {
+                  visibleBookings.map((b) => {
                     const cls = b.class as { key?: string; name?: string } | null;
                     return (
                       <tr

@@ -71,15 +71,20 @@ export const server = {
     input: z.object({
       reference: z.string().min(1),
       vehicleId: z.string().uuid().optional().or(z.literal('')),
+      driverId: z.string().uuid().optional().or(z.literal('')),
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
       const supabase = createSupabaseServerClient(ctx.cookies);
       const vehicleId = input.vehicleId || null;
+      const driverId = input.driverId === undefined ? undefined : input.driverId || null;
+      if (driverId !== undefined && !driversEnabled()) {
+        throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      }
 
       const { data: booking, error: bErr } = await supabase
         .from('bookings')
-        .select('id, class_id, blocked_range, status')
+        .select('id, class_id, blocked_range, status, driver_id, pickup_at, reference')
         .eq('reference', input.reference)
         .single();
       if (bErr || !booking) {
@@ -108,17 +113,31 @@ export const server = {
         .from('bookings')
         .update(
           nextStatus
-            ? { vehicle_id: vehicleId, status: nextStatus }
-            : { vehicle_id: vehicleId },
+            ? { vehicle_id: vehicleId, status: nextStatus, ...(driverId !== undefined ? { driver_id: driverId } : {}) }
+            : { vehicle_id: vehicleId, ...(driverId !== undefined ? { driver_id: driverId } : {}) },
         )
         .eq('id', booking.id);
       if (error) {
         throw new ActionError({
           code: 'BAD_REQUEST',
           message: error.message.includes('exclusion') || error.code === '23P01'
-            ? 'That vehicle overlaps another booking or block for this time.'
+            ? driverId !== undefined
+              ? 'That vehicle or driver overlaps another booking or block for this time.'
+              : 'That vehicle overlaps another booking or block for this time.'
             : error.message,
         });
+      }
+      if (driverId !== undefined && driverId !== booking.driver_id) {
+        const pickupMs = new Date(booking.pickup_at).getTime();
+        const within48h = pickupMs - Date.now() <= 48 * 3600_000;
+        const kind = driverId
+          ? booking.driver_id
+            ? 'changed'
+            : 'assigned'
+          : 'removed';
+        if (kind === 'assigned' || within48h) {
+          await callInternalDriverNotify({ reference: booking.reference, kind }, requireStaff(ctx.locals).userId);
+        }
       }
       return { ok: true };
     },

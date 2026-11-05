@@ -125,6 +125,7 @@ h1.title em { font-style: italic; color: var(--color-accent); }
 .between { justify-content: space-between; }
 .cols { display: grid; gap: var(--admin-gap); grid-template-columns: 1fr; }
 @media (min-width: 1100px) { .cols-main { grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); } .cols-2 { grid-template-columns: 1fr 1fr; } }
+.col-sticky { position: sticky; top: 1rem; align-self: start; }
 .grid-fields { display: grid; gap: .875rem 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .muted { color: var(--color-muted); }
 .small { font-size: var(--admin-text-sm); }
@@ -202,6 +203,13 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .input-money { position: relative; }
 .input-money::before { content: "€"; position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; }
 .input-money .input { padding-left: 1.625rem; text-align: right; }
+.trip-counts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.number-stepper { display: grid; grid-template-columns: var(--admin-row) minmax(0, 1fr) var(--admin-row); }
+.number-stepper button { min-height: var(--admin-row); padding: 0; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-accent); font: 500 1.125rem/1 var(--font-text); cursor: pointer; }
+.number-stepper button:hover { border-color: var(--color-accent); background: var(--tint-accent); }
+.number-stepper .input { min-height: var(--admin-row); border-inline: 0; text-align: center; appearance: textfield; }
+.number-stepper .input::-webkit-inner-spin-button { appearance: none; }
+@media (max-width: 719px) { .trip-counts { grid-template-columns: 1fr; } }
 .help { font-size: var(--admin-text-sm); color: var(--color-muted); margin: 0; }
 .error-text { font-size: var(--admin-text-sm); color: var(--color-danger); margin: 0; }
 .check { display: inline-flex; align-items: center; gap: .5rem; min-height: var(--admin-control); cursor: pointer; }
@@ -284,6 +292,9 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .table tbody tr.is-link:hover td { background: rgb(255 255 255 / .045); }
 .table tr.is-muted td { color: var(--color-muted); }
 .table td.card-title { white-space: nowrap; }
+.table td.card-title > a + .badge,
+.table td.card-title > a + .flag-vip,
+.table td.card-title .badge { margin-inline-start: .5rem; }
 .table .ref { font-family: var(--font-mono); font-size: .875rem; letter-spacing: .03em; white-space: nowrap; }
 .table .sub { display: block; font-size: var(--admin-text-sm); color: var(--color-muted); }
 .vehicle-label { font-variant-numeric: tabular-nums; }
@@ -324,7 +335,32 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 /* price matrix */
 .matrix td { padding: .375rem .5rem; }
 .matrix td .input { min-height: 36px; min-width: 96px; }
-.matrix th[scope="row"] { position: sticky; left: 0; z-index: 1; background: var(--color-surface-2); text-transform: none; letter-spacing: 0; font-size: var(--admin-text); font-weight: 400; color: var(--color-text); }
+.matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--admin-text-sm);
+  font-weight: 500;
+  color: var(--color-text-soft);
+}
+.matrix thead th:first-child { left: 0; z-index: 4; }
+.matrix th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-surface-2);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--admin-text);
+  font-weight: 400;
+  color: var(--color-text);
+}
+.matrix .changed .input-money {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 1px;
+}
 .matrix .empty .input { border-style: dashed; }
 .matrix td.is-dashed .input { border-style: dashed; border-color: var(--status-pending); }
 .matrix .changed .input { border-color: var(--color-accent); background: var(--tint-accent); }
@@ -521,6 +557,34 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .seg label + label, .seg a + a { border-left: 1px solid var(--color-border-strong); }
 .seg input:checked + label, .seg a[aria-current="page"] { background: var(--color-accent); color: var(--color-accent-text); }
 .seg input:focus-visible + label { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.trip-status { display: flex; flex-wrap: wrap; }
+.trip-status button {
+  min-height: var(--admin-control);
+  padding: 0 .75rem;
+  border: 0;
+  border-left: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-muted);
+  font: 500 var(--admin-text-sm)/1 var(--font-text);
+  cursor: pointer;
+}
+.trip-status button:first-child { border-left: 0; }
+.trip-status button[aria-current="step"] { background: var(--color-accent); color: var(--color-accent-text); }
+
+.map-link { display: inline-grid; place-items: center; width: 1.5rem; min-height: 1.5rem; margin-left: .25rem; text-decoration: none; }
+.payment-history { list-style: none; margin: 0; padding: 0; }
+.payment-history li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .25rem .375rem;
+  padding: .625rem 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--admin-text-sm);
+}
+.payment-history li:last-child { border-bottom: 0; }
+.payment-history time, .payment-history span { color: var(--color-muted); }
+.payment-history strong { font-weight: 500; color: var(--color-text); }
 
 .filters-period { grid-template-columns: auto auto; align-items: end; }
 .filters-period .filters-custom {
@@ -566,7 +630,7 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .cal-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin: 0 0 1rem; padding: 0; list-style: none; font-size: var(--admin-text-sm); color: var(--color-muted); }
 .cal-legend i { display: inline-block; width: 22px; height: 10px; margin-right: .375rem; vertical-align: middle; }
 .cal-scroll { overflow-x: auto; position: relative; border: 1px solid var(--color-border); background: var(--color-surface); }
-.cal { --hour: 56px; --hours: 24; --label: 168px; display: grid; grid-template-columns: var(--label) calc(var(--hour) * var(--hours)); min-width: calc(var(--label) + var(--hour) * var(--hours)); position: relative; }
+.cal { --hour: 72px; --hours: 24; --label: 220px; display: grid; grid-template-columns: var(--label) calc(var(--hour) * var(--hours)); min-width: calc(var(--label) + var(--hour) * var(--hours)); position: relative; }
 .cal.week { --day: 150px; grid-template-columns: var(--label) repeat(7, var(--day)); min-width: calc(var(--label) + var(--day) * 7); }
 .cal > * { min-width: 0; }
 .cal-corner, .cal-hours, .cal-days { position: sticky; top: 0; z-index: 3; background: var(--color-surface-2); border-bottom: 1px solid var(--color-border); }
@@ -584,12 +648,22 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .cal-track.is-off { background-color: rgb(255 255 255 / .015); }
 .cal-shift { position: absolute; left: 0; right: auto; bottom: 4px; height: 3px; background: var(--color-accent); opacity: .85; pointer-events: none; }
 .cal-class { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
-.cal-class .cal-label { background: var(--color-bg); min-height: 40px; align-items: flex-start; gap: 0; }
-.cal-class .cal-label strong { font-size: .6875rem; font-weight: 500; letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--color-label); }
+.cal-class .cal-label { background: var(--color-bg); min-height: 40px; align-items: flex-start; gap: .125rem; }
+.cal-class .cal-label strong {
+  font-size: var(--admin-text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-text);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .cal-free { display: grid; grid-template-columns: repeat(var(--hours), var(--hour)); align-items: center; }
 .cal.week .cal-free { grid-template-columns: repeat(7, var(--day)); }
 .cal-free span { font-size: .75rem; text-align: center; color: var(--color-muted); border-left: 1px solid rgb(207 164 95 / .1); line-height: 40px; }
-.cal-free .tight { color: var(--color-warning); }
+.cal-free .reduced { color: var(--color-warning); font-weight: 600; }
 .cal-free .full { color: var(--color-danger); background: var(--tint-danger); font-weight: 600; }
 .cal-empty { position: absolute; inset: 0; display: block; }
 .cal-empty:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }

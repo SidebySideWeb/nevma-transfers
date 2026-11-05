@@ -85,6 +85,10 @@ const listError =
   (routesRes.error ? `Could not load routes: ${routesRes.error.message}` : null);
 
 const hasUnconfirmed = [...priceMap.values()].some((c) => c.isDemo);
+const shortName = (name: string) =>
+  name
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\s+(Airport|Port|Area|Zone)$/i, '');
 ---
 
 <AdminLayout title="Zone prices" current="prices" staffEmail={staff.email}>
@@ -126,7 +130,7 @@ const hasUnconfirmed = [...priceMap.values()].some((c) => c.isDemo);
 
   {
     selected && (
-      <form method="POST" action={actions.saveZonePrices} class="stack">
+      <form method="POST" action={actions.saveZonePrices} class="stack" id="prices-form">
         <input type="hidden" name="classId" value={selected.id} />
         <input type="hidden" name="cellsJson" id="cellsJson" value="{}" />
         <div class="table-wrap" role="region" tabindex="0" aria-label="Zone price matrix">
@@ -135,14 +139,14 @@ const hasUnconfirmed = [...priceMap.values()].some((c) => c.isDemo);
               <tr>
                 <th scope="col">From \ To</th>
                 {zones.map((z) => (
-                  <th scope="col">{z.name}</th>
+                  <th scope="col" title={z.name}>{shortName(z.name)}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {zones.map((fromZ) => (
                 <tr>
-                  <th scope="row">{fromZ.name}</th>
+                  <th scope="row" title={fromZ.name}>{shortName(fromZ.name)}</th>
                   {zones.map((toZ) => {
                     if (fromZ.id === toZ.id) return <td>-</td>;
                     const cell = priceMap.get(`${fromZ.id}:${toZ.id}`);
@@ -185,7 +189,13 @@ const hasUnconfirmed = [...priceMap.values()].some((c) => c.isDemo);
             </tbody>
           </table>
         </div>
-        <button class="btn" type="submit" id="save-prices">Save transfer prices</button>
+        <div class="save-bar" id="price-save-bar" hidden>
+          <strong><span id="price-change-count">0</span> unsaved changes</strong>
+          <span aria-hidden="true">·</span>
+          <button class="btn btn-quiet btn-sm" type="button" id="discard-prices">Discard</button>
+          <span aria-hidden="true">·</span>
+          <button class="btn btn-sm" type="submit" id="save-prices">Save</button>
+        </div>
       </form>
     )
   }
@@ -224,14 +234,51 @@ const hasUnconfirmed = [...priceMap.values()].some((c) => c.isDemo);
 </AdminLayout>
 
 <script>
-  const form = document.querySelector('form[action]') as HTMLFormElement | null;
+  const form = document.getElementById('prices-form') as HTMLFormElement | null;
   const hidden = document.getElementById('cellsJson') as HTMLInputElement | null;
+  const bar = document.getElementById('price-save-bar');
+  const count = document.getElementById('price-change-count');
+  const cells = [...document.querySelectorAll<HTMLInputElement>('.price-cell')];
+  function refresh() {
+    let changed = 0;
+    cells.forEach((el) => {
+      const dirty = el.value !== el.defaultValue;
+      el.closest('td')?.classList.toggle('changed', dirty);
+      if (dirty) changed += 1;
+    });
+    if (count) count.textContent = String(changed);
+    if (bar) bar.hidden = changed === 0;
+  }
+  cells.forEach((el) => el.addEventListener('input', refresh));
+  document.getElementById('discard-prices')?.addEventListener('click', () => {
+    cells.forEach((el) => (el.value = el.defaultValue));
+    refresh();
+  });
   form?.addEventListener('submit', () => {
-    const cells: Record<string, string> = {};
+    const values: Record<string, string> = {};
     document.querySelectorAll<HTMLInputElement>('.price-cell').forEach((el) => {
       const key = el.dataset.key;
-      if (key) cells[key] = el.value;
+      if (key) values[key] = el.value;
     });
-    if (hidden) hidden.value = JSON.stringify(cells);
+    if (hidden) hidden.value = JSON.stringify(values);
   });
 </script>
+
+<style>
+  .matrix .input-money { width: 7rem; }
+  .matrix .input-money .input { width: 100%; }
+  .matrix th:first-child { position: sticky; left: 0; z-index: 3; background: var(--color-surface-2); }
+  .save-bar {
+    position: sticky;
+    bottom: 1rem;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    border: 1px solid var(--color-accent);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-2);
+  }
+  .save-bar[hidden] { display: none; }
+</style>

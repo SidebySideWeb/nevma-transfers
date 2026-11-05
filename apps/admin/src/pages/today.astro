@@ -121,8 +121,12 @@ const needsHtml = needsActionSentence(needs);
       <dd>{stats.vehiclesOut}<small>of {stats.vehiclesTotal}</small></dd>
     </div>
     <div class="stat">
-      <dt>Jobs today</dt>
-      <dd>{stats.jobsClosed} / {stats.jobsTotal}<small>closed / total</small></dd>
+      <dt>Trips today</dt>
+      <dd>{stats.jobsTotal}</dd>
+    </div>
+    <div class="stat">
+      <dt>Completed</dt>
+      <dd>{stats.jobsClosed}<small>of {stats.jobsTotal}</small></dd>
     </div>
     <div class="stat">
       <dt>Need a driver or vehicle</dt>
@@ -152,7 +156,7 @@ const needsHtml = needsActionSentence(needs);
             <th scope="col">Driver</th>
             <th scope="col">Now</th>
             <th scope="col">Next job</th>
-            <th scope="col">Last update</th>
+            <th scope="col">Status changed</th>
           </tr>
         </thead>
         <tbody id="fleet-now-body" set:html={renderFleetNowTbody(fleet)} />

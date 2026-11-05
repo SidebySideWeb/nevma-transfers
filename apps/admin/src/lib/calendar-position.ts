@@ -2,7 +2,7 @@ import { Temporal } from '@js-temporal/polyfill';
 import { ATHENS } from './time';
 
 /** Width of one hour in the day view (matches `--hour` in admin.css). */
-export const HOUR_PX = 56;
+export const HOUR_PX = 72;
 /** Width of one day in the week view (matches `--day` in admin.css). */
 export const DAY_PX = 150;
 

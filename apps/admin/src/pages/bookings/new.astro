@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import DateField from '../../components/DateField.astro';
 import Flag from '../../components/Flag.astro';
+import MoneyInput from '../../components/MoneyInput.astro';
 import Select from '../../components/Select.astro';
 import TimeField from '../../components/TimeField.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
@@ -263,14 +264,22 @@ const pageData = {
               <input id="nb-fl" class="input" />
             </div>
           </div>
-          <div class="grid-fields">
+          <div class="grid-fields trip-counts">
             <div class="field">
               <label for="nb-px">Passengers</label>
-              <input id="nb-px" class="input" type="number" min="1" value="2" />
+              <div class="number-stepper">
+                <button type="button" data-step-for="nb-px" data-step="-1" aria-label="Decrease passengers">−</button>
+                <input id="nb-px" class="input" type="number" min="1" value="2" />
+                <button type="button" data-step-for="nb-px" data-step="1" aria-label="Increase passengers">+</button>
+              </div>
             </div>
             <div class="field">
               <label for="nb-lg">Suitcases</label>
-              <input id="nb-lg" class="input" type="number" min="0" value="2" />
+              <div class="number-stepper">
+                <button type="button" data-step-for="nb-lg" data-step="-1" aria-label="Decrease suitcases">−</button>
+                <input id="nb-lg" class="input" type="number" min="0" value="2" />
+                <button type="button" data-step-for="nb-lg" data-step="1" aria-label="Increase suitcases">+</button>
+              </div>
             </div>
           </div>
         </div>
@@ -351,12 +360,11 @@ const pageData = {
               <span>Confirmed now; record the payment later on the booking.</span>
             </label>
           </fieldset>
-          <div class="grid-fields">
+          <div class="grid-fields" id="nb-meth-field" hidden>
             <div class="field">
               <label for="nb-meth">Offline method</label>
               <Select
                 id="nb-meth"
-                disabled
                 options={[
                   { value: 'cash', label: 'Cash', selected: true },
                   { value: 'bank_transfer', label: 'Bank transfer' },
@@ -393,9 +401,7 @@ const pageData = {
             <div class="grid-fields">
               <div class="field">
                 <label for="nb-ov">Price to charge</label>
-                <div class="input-money">
-                  <input id="nb-ov" class="input" inputmode="decimal" aria-describedby="nb-ov-err" />
-                </div>
+                <MoneyInput id="nb-ov" describedBy="nb-ov-err" />
                 <p class="error-text" id="nb-ov-err" hidden></p>
               </div>
             </div>

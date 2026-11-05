@@ -409,10 +409,10 @@ function renderSummary() {
   pays.replaceChildren();
   const strong = document.createElement('strong');
   strong.style.cssText = 'font:500 1.25rem/1 var(--font-display);color:var(--color-accent)';
-  if (ovr != null && total != null && ovr !== total) {
+  if ($('nb-ovr').checked && total != null) {
     const was = document.createElement('s');
     was.textContent = formatEuro(total);
-    strong.textContent = formatEuro(ovr);
+    strong.textContent = ovr == null ? '-' : formatEuro(ovr);
     pays.append(was, ' ', strong);
   } else {
     strong.textContent = ovr != null ? formatEuro(ovr) : total == null ? '-' : formatEuro(total);
@@ -420,20 +420,13 @@ function renderSummary() {
   }
 }
 function renderPayment() {
-  const meth = $<HTMLSelectElement>('nb-meth');
-  const offline = payment() !== 'link';
-  if (meth.disabled === offline) {
-    meth.disabled = !offline;
-    refreshSelect(meth);
-  }
+  $('nb-meth-field').hidden = payment() === 'link';
   $('nb-submit').textContent =
     payment() === 'link'
-      ? $('nb-email').checked
-        ? 'Create and send payment link'
-        : 'Create payment link'
+      ? 'Create and send payment link'
       : payment() === 'offline_paid'
-        ? 'Create booking, paid offline'
-        : 'Create booking, to collect offline';
+        ? 'Create booking (paid offline)'
+        : 'Create booking (collect later)';
 }
 function renderType() {
   const hourly = type() === 'hourly';
@@ -465,6 +458,14 @@ form.querySelectorAll('input[name="nb-extra"], #nb-ovr, #nb-ov').forEach((el) =>
 form.querySelectorAll('input[name="nb-pay"], #nb-email').forEach((el) =>
   el.addEventListener('change', renderPayment),
 );
+form.querySelectorAll<HTMLButtonElement>('[data-step-for]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const input = $<HTMLInputElement>(button.dataset.stepFor!);
+    if (Number(button.dataset.step) < 0) input.stepDown();
+    else input.stepUp();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+});
 
 // ---------- submit ----------
 const FIELD: Record<string, string> = {

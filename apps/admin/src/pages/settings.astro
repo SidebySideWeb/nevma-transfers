@@ -3,126 +3,162 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
-import {
-  autoAssignSettingValue,
-  parseAutoAssignSetting,
-} from '../components/auto-badge';
+import Select from '../components/Select.astro';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const { data: settings } = await supabase.from('settings').select('*').order('key');
 
-function valueForInput(value: unknown): string {
-  return JSON.stringify(value);
+const META: Record<string, { label: string; group: string; unit?: string }> = {
+  hold_minutes: { label: 'Online hold', group: 'Bookings', unit: 'minutes' },
+  min_lead_minutes: { label: 'Minimum lead time', group: 'Bookings', unit: 'minutes' },
+  cancel_window_hours: { label: 'Cancellation window', group: 'Bookings', unit: 'hours' },
+  max_active_holds_per_visitor: { label: 'Maximum active holds per visitor', group: 'Bookings', unit: 'holds' },
+  office_link_hold_minutes: { label: 'Office payment-link hold', group: 'Payments', unit: 'minutes' },
+  vat_rate_bp: { label: 'VAT rate', group: 'Payments', unit: 'basis points' },
+  auto_assign_single_vehicle: { label: 'Auto-assign a sole vehicle', group: 'Bookings' },
+  timezone: { label: 'Time zone', group: 'Company' },
+};
+const groups = ['Bookings', 'Payments', 'Notifications', 'Company'];
+const grouped = new Map(groups.map((group) => [group, [] as NonNullable<typeof settings>]));
+for (const setting of settings ?? []) {
+  const meta = META[setting.key];
+  grouped.get(meta?.group ?? (typeof setting.value === 'string' ? 'Company' : 'Bookings'))!.push(setting);
 }
-
-const autoKey = 'auto_assign_single_vehicle';
+const humanize = (key: string) => key.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 ---
 
 <AdminLayout title="Settings" current="settings" staffEmail={staff.email}>
-  <p class="muted">Saving a value clears the DEMO flag for that row. Enter JSON (e.g. 20 or "Europe/Athens").</p>
-  <div class="stack">
-    {
-      (settings ?? []).map((s) => {
-        if (s.key === autoKey) {
-          const on = parseAutoAssignSetting(s.value);
-          return (
-            <form
-              method="POST"
-              action={actions.saveSetting}
-              class:list={['panel', 'stack', { demo: s.is_demo }]}
-              data-auto-assign-form
-            >
-              <div class="row" style="justify-content:space-between">
-                <strong>Assign the vehicle automatically when a class has one vehicle</strong>
-                {s.is_demo ? <span class="badge s-pending">DEMO</span> : null}
-              </div>
-              {s.description ? <p class="muted">{s.description}</p> : null}
-              <input type="hidden" name="key" value={s.key} />
-              <input type="hidden" name="value" value={autoAssignSettingValue(on)} data-auto-assign-value />
-              <label class="switch">
-                <input
-                  type="checkbox"
-                  checked={on || undefined}
-                  data-auto-assign-switch
-                />
-                On
-              </label>
-              <div class="row" style="gap:0.5rem">
-                <button class="btn btn-quiet" type="submit">Save</button>
-                {
-                  s.is_demo ? (
-                    <button
-                      class="btn btn-secondary btn-sm"
-                      type="submit"
-                      formaction={actions.clearDemo}
-                      name="clear"
-                      value={`settings|${s.key}`}
-                      formnovalidate
-                    >
-                      Confirmed
-                    </button>
-                  ) : null
-                }
-              </div>
-            </form>
-          );
-        }
-        return (
-          <form
-            method="POST"
-            action={actions.saveSetting}
-            class:list={['panel', 'stack', { demo: s.is_demo }]}
-          >
-            <div class="row" style="justify-content:space-between">
-              <strong>{s.key}</strong>
-              {s.is_demo ? <span class="badge s-pending">DEMO</span> : null}
-            </div>
-            {s.description ? <p class="muted">{s.description}</p> : null}
-            <input type="hidden" name="key" value={s.key} />
-            <div class="field">
-              <label for={`v-${s.key}`}>Value</label>
-              <input class="input" id={`v-${s.key}`} name="value" value={valueForInput(s.value)} />
-            </div>
-            <div class="row" style="gap:0.5rem">
-              <button class="btn btn-quiet" type="submit">Save</button>
-              {
-                s.is_demo ? (
-                  <button
-                    class="btn btn-secondary btn-sm"
-                    type="submit"
-                    formaction={actions.clearDemo}
-                    name="clear"
-                    value={`settings|${s.key}`}
-                    formnovalidate
-                  >
-                    Confirmed
-                  </button>
-                ) : null
-              }
-            </div>
-          </form>
-        );
-      })
-    }
+  <p class="muted">Changes apply to new bookings. Saving also confirms a DEMO value.</p>
+  <div class="settings-grid">
+    {groups.map((group) => (
+      <section class="panel settings-panel" aria-labelledby={`settings-${group.toLowerCase()}`}>
+        <div class="panel-head"><h2 id={`settings-${group.toLowerCase()}`}>{group}</h2></div>
+        <div class="panel-body settings-list">
+          {grouped.get(group)!.length === 0 ? <p class="muted small">No settings in this group.</p> : grouped.get(group)!.map((s) => {
+            const meta = META[s.key];
+            const primitive = typeof s.value;
+            const advanced = primitive === 'object';
+            return (
+              <form method="POST" action={actions.saveSetting} id={`setting-${s.key}`} class:list={['setting-row', { demo: s.is_demo }]} data-setting-form>
+                <input type="hidden" name="key" value={s.key} />
+                <input type="hidden" name="value" value={JSON.stringify(s.value)} data-json-value />
+                <div class="setting-copy">
+                  <label for={`v-${s.key}`}>{meta?.label ?? humanize(s.key)}</label>
+                  {s.description && <p class="help">{s.description}</p>}
+                  <small class="muted mono">{s.key}</small>
+                </div>
+                <div class="setting-control">
+                  {s.key === 'timezone' ? (
+                    <Select id={`v-${s.key}`} options={[{ value: 'Europe/Athens', label: 'Europe/Athens', selected: s.value === 'Europe/Athens' }]} />
+                  ) : primitive === 'boolean' ? (
+                    <label class="switch">
+                      <input id={`v-${s.key}`} type="checkbox" checked={s.value || undefined} />
+                      <span data-switch-label>{s.value ? 'On' : 'Off'}</span>
+                    </label>
+                  ) : advanced ? (
+                    <details>
+                      <summary>Advanced</summary>
+                      <textarea id={`v-${s.key}`} class="input mono" rows="3">{JSON.stringify(s.value, null, 2)}</textarea>
+                    </details>
+                  ) : (
+                    <div class="unit-control">
+                      <input id={`v-${s.key}`} class="input" type={primitive === 'number' ? 'number' : 'text'} value={String(s.value)} />
+                      {meta?.unit && <span class="muted small">{meta.unit}</span>}
+                    </div>
+                  )}
+                  {s.is_demo && <span class="badge s-pending">DEMO</span>}
+                </div>
+              </form>
+            );
+          })}
+        </div>
+      </section>
+    ))}
+  </div>
+  <div class="settings-save" id="settings-save" hidden>
+    <span id="settings-dirty-count">Unsaved changes</span>
+    <button class="btn" type="button" id="settings-save-button">Save settings</button>
   </div>
 </AdminLayout>
 
 <script>
-  document.querySelectorAll('[data-auto-assign-form]').forEach((form) => {
-    const sw = form.querySelector('[data-auto-assign-switch]');
-    const val = form.querySelector('[data-auto-assign-value]');
-    if (!(sw instanceof HTMLInputElement) || !(val instanceof HTMLInputElement)) return;
-    sw.addEventListener('change', () => {
-      val.value = sw.checked ? 'true' : 'false';
-    });
+  import { actions } from 'astro:actions';
+
+  const saveBar = document.getElementById('settings-save');
+  const saveButton = document.getElementById('settings-save-button');
+  const dirtyCount = document.getElementById('settings-dirty-count');
+  const dirty = new Set<HTMLFormElement>();
+
+  function refreshBar() {
+    if (dirtyCount) {
+      dirtyCount.textContent =
+        dirty.size === 1 ? '1 unsaved change' : `${dirty.size} unsaved changes`;
+    }
+    if (saveBar) saveBar.hidden = dirty.size === 0;
+  }
+
+  document.querySelectorAll<HTMLFormElement>('[data-setting-form]').forEach((form) => {
+    const control = form.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      '.setting-control input, .setting-control textarea, .setting-control select',
+    );
+    const json = form.querySelector<HTMLInputElement>('[data-json-value]');
+    if (!control || !json) return;
+    const sync = () => {
+      if (control instanceof HTMLInputElement && control.type === 'checkbox') {
+        json.value = String(control.checked);
+        const label = form.querySelector('[data-switch-label]');
+        if (label) label.textContent = control.checked ? 'On' : 'Off';
+      } else if (control instanceof HTMLInputElement && control.type === 'number') {
+        json.value = String(Number(control.value));
+      } else if (control instanceof HTMLTextAreaElement) {
+        json.value = control.value;
+      } else {
+        json.value = JSON.stringify(control.value);
+      }
+      dirty.add(form);
+      refreshBar();
+    };
+    control.addEventListener('change', sync);
+    control.addEventListener('input', sync);
+  });
+
+  saveButton?.addEventListener('click', async () => {
+    if (!dirty.size) return;
+    saveButton.setAttribute('disabled', 'true');
+    const forms = [...dirty];
+    for (const form of forms) {
+      const { error } = await actions.saveSetting(new FormData(form));
+      if (error) {
+        saveButton.removeAttribute('disabled');
+        alert(error.message || 'Could not save settings.');
+        return;
+      }
+      dirty.delete(form);
+    }
+    refreshBar();
+    location.reload();
   });
 </script>
 
 <style>
-  .panel.demo {
-    border-color: var(--color-warning, #c9a227);
-    background: color-mix(in srgb, var(--color-warning, #c9a227) 8%, transparent);
+  .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr)); gap: 1rem; }
+  .settings-panel .panel-body { padding: .75rem 1rem; }
+  .settings-list { display: grid; }
+  .setting-row { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(12rem, .75fr); gap: 1rem; align-items: center; padding: .75rem 0; border-bottom: 1px solid var(--color-border); }
+  .setting-row:last-child { border-bottom: 0; }
+  .setting-copy label { display: block; font-weight: 500; }
+  .setting-copy .help { margin-top: .2rem; }
+  .setting-control { display: flex; justify-content: flex-end; align-items: center; gap: .5rem; }
+  .unit-control { display: flex; align-items: center; gap: .5rem; }
+  .unit-control .input { max-width: 10rem; }
+  .setting-control details { width: 100%; }
+  .settings-save { position: sticky; bottom: 1rem; margin-top: 1rem; padding: .75rem 1rem; border: 1px solid var(--color-accent); background: var(--color-surface); box-shadow: var(--shadow-2); display: flex; justify-content: flex-end; align-items: center; gap: 1rem; }
+  .settings-save[hidden] { display: none; }
+  @media (max-width: 719px) {
+    .settings-grid { grid-template-columns: 1fr; }
+    .setting-row { grid-template-columns: 1fr; }
+    .setting-control { justify-content: flex-start; }
   }
 </style>

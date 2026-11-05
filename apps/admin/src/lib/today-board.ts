@@ -1,3 +1,4 @@
+import { formatExactAthens, formatRelativeTime } from './relative-time';
 import { tripStatusClass, tripStatusWord } from './trip-status';
 
 export type FleetNowRow = {
@@ -121,20 +122,48 @@ function nowCell(reference: string | null, trip: string | null, freeLabel = 'Fre
   return `<span class="muted">${esc(freeLabel)}</span>`;
 }
 
-function nextCell(reference: string | null, pickup: string | null, extra = ''): string {
-  if (!reference) return '—';
-  return `${athensHm(pickup)} · <a class="ref" href="/bookings/${esc(reference)}">${esc(reference)}</a>${extra}`;
+function athensDayKey(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Athens',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+function isAthensToday(iso: string | null | undefined, now = new Date()): boolean {
+  if (!iso) return false;
+  return athensDayKey(new Date(iso)) === athensDayKey(now);
+}
+
+function nextCell(
+  reference: string | null,
+  pickup: string | null,
+  extra = '',
+  nowMs = Date.now(),
+): string {
+  if (!reference || !isAthensToday(pickup, new Date(nowMs))) return '—';
+  return `Next ${athensHm(pickup)} · <a class="ref" href="/bookings/${esc(reference)}">${esc(reference)}</a>${extra}`;
+}
+
+function statusChangedCell(iso: string | null, nowMs = Date.now()): string {
+  if (!iso) return '—';
+  const rel = formatRelativeTime(iso, nowMs);
+  const exact = formatExactAthens(iso);
+  return `<span title="${esc(exact)}">${esc(rel)}</span>`;
 }
 
 /** Table body HTML for Vehicles now (partial refresh). */
-export function renderFleetNowTbody(rows: FleetNowRow[]): string {
+export function renderFleetNowTbody(rows: FleetNowRow[], nowMs = Date.now()): string {
   if (!rows.length) {
     return `<tr><td colspan="5" class="muted">No vehicles.</td></tr>`;
   }
   return rows
     .map((r) => {
       const driver = r.shift_id
-        ? `<span class="dot-on">${esc(r.driver_name ?? 'On shift')}</span>`
+        ? r.driver_id
+          ? `<a href="/drivers/${esc(r.driver_id)}"><span class="dot-on">${esc(r.driver_name ?? 'On shift')}</span></a>`
+          : `<span class="dot-on">${esc(r.driver_name ?? 'On shift')}</span>`
         : r.vehicle_status === 'maintenance'
           ? `<span class="badge s-completed">In service</span>`
           : `<span class="dot-off">Not on shift</span>`;
@@ -147,8 +176,8 @@ export function renderFleetNowTbody(rows: FleetNowRow[]): string {
   <td class="card-title" data-label="Vehicle">${esc(r.vehicle_label)}<span class="sub">${esc(r.class_name)}</span></td>
   <td data-label="Driver">${driver}</td>
   <td data-label="Now">${now}</td>
-  <td data-label="Next job">${nextCell(r.next_reference, r.next_pickup_at, nextExtra)}</td>
-  <td data-label="Last update">${athensHm(r.last_update_at)}</td>
+  <td data-label="Next job">${nextCell(r.next_reference, r.next_pickup_at, nextExtra, nowMs)}</td>
+  <td data-label="Status changed">${statusChangedCell(r.last_update_at, nowMs)}</td>
 </tr>`;
     })
     .join('\n');
@@ -162,16 +191,21 @@ export function renderDriversNowTbody(rows: DriversNowRow[], nowMs = Date.now())
   return rows
     .map((r) => {
       const warn = expiresSoonBadge(r.licence_expires_on, r.permit_expires_on, nowMs);
-      const shift = r.shift_id
+      const onShift = Boolean(r.shift_id);
+      const shift = onShift
         ? `<span class="dot-on">Since ${athensHm(r.shift_started_at)}${r.vehicle_label ? ` · ${esc(r.vehicle_label)}` : ''}</span>`
-        : `<span class="dot-off">Off</span>`;
-      const now = r.shift_id
+        : `<span class="dot-off">Off today</span>`;
+      const now = onShift
         ? r.current_trip_status
           ? `<span class="badge ${tripStatusClass(r.current_trip_status)}">${esc(tripStatusWord(r.current_trip_status))}</span>`
           : `<span class="muted">Free</span>`
         : '—';
-      const next = r.next_pickup_at ? athensHm(r.next_pickup_at) : '—';
-      return `<tr>
+      const next = onShift && isAthensToday(r.next_pickup_at, new Date(nowMs))
+        ? `Next ${athensHm(r.next_pickup_at)}`
+        : onShift
+          ? '—'
+          : 'Off today';
+      return `<tr class="is-link" data-href="/drivers/${esc(r.driver_id)}" tabindex="0">
   <td class="card-title" data-label="Driver"><a href="/drivers/${esc(r.driver_id)}">${esc(r.full_name)}</a> ${warn}</td>
   <td data-label="Shift">${shift}</td>
   <td data-label="Now">${now}</td>

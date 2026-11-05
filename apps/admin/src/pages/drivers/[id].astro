@@ -257,7 +257,7 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
                       </td>
                       <td data-label="Pick-up">{formatAthensShort(j.pickup_at)}</td>
                       <td data-label="Trip">{trip}</td>
-                      <td data-label="Vehicle">{vLabel}</td>
+                      <td data-label="Vehicle" class="vehicle-nowrap"><VehicleLabel label={vLabel} /></td>
                       <td data-label="Status">
                         <span class={`badge ${tripStatusClass(j.trip_status)}`}>{tripStatusWord(j.trip_status)}</span>
                       </td>
@@ -303,7 +303,7 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
                   return (
                     <tr>
                       <td class="card-title" data-label="Day">{formatAthensShort(s.started_at).split(',')[0]}</td>
-                      <td data-label="Vehicle"><VehicleLabel label={v?.label} /></td>
+                      <td data-label="Vehicle" class="vehicle-nowrap"><VehicleLabel label={v?.label} /></td>
                       <td data-label="Start">{formatAthens(s.started_at).slice(-5)}</td>
                       <td data-label="End">{s.ended_at ? formatAthens(s.ended_at).slice(-5) : '—'}</td>
                       <td class="num" data-label="Hours">{hoursBetween(s.started_at, s.ended_at)}</td>
@@ -593,7 +593,7 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
             </div>
             <div class="field">
               <label for="dp-e">E-mail</label>
-              <input id="dp-e" class="input" name="email" type="email" value={driver.email} required />
+              <input id="dp-e" class="input email-full" name="email" type="email" value={driver.email} title={driver.email} required />
             </div>
           </div>
           <div class="field">
@@ -894,3 +894,8 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
     });
   });
 </script>
+
+<style>
+  .vehicle-nowrap { white-space: nowrap; }
+  .email-full { white-space: normal; overflow-wrap: anywhere; }
+</style>

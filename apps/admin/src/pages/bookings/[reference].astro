@@ -6,7 +6,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import AutoBadge from '../../components/AutoBadge.astro';
 import Banner from '../../components/Banner.astro';
 import ClassName from '../../components/ClassName.astro';
-import DataTable from '../../components/DataTable.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
 import Phone from '../../components/Phone.astro';
@@ -98,7 +97,6 @@ let fromName: string | undefined;
 let toName: string | undefined;
 let className: string | undefined;
 let vehicleError: string | null = null;
-let driverError: string | null = null;
 let tripError: string | null = null;
 let pageError: string | null = null;
 let refundConfirm = '';
@@ -241,7 +239,6 @@ if (found && booking) {
   className = (booking.class as { name?: string } | null)?.name;
 
   vehicleError = actionErr(Astro.getActionResult?.(actions.assignVehicle));
-  driverError = actionErr(Astro.getActionResult?.(actions.assignDriver));
   tripError = actionErr(Astro.getActionResult?.(actions.setTripStatus));
   pageError =
     actionErr(Astro.getActionResult?.(actions.saveNotesInvoice)) ||
@@ -280,12 +277,18 @@ if (found && booking) {
     <>
       <AdminLayout
         title={reference}
+        subtitle={`${formatAthensShort(booking.pickup_at).replace(/ (?=\d{2}:\d{2}$)/, ' · ')} · ${
+          booking.booking_type === 'hourly'
+            ? `${fromName ?? '—'} · ${Math.round((booking.duration_minutes || 0) / 60)} h`
+            : `${fromName ?? '—'} → ${toName ?? '—'}`
+        }`}
         current="bookings"
         staffEmail={staff.email}
         crumbs={[{ href: '/bookings', label: 'Bookings' }, { label: reference }]}
       >
         <div class="row" slot="actions">
           <StatusBadge status={booking.status} />
+          <StatusBadge kind="payment" status={booking.payment_status} />
           {booking.source === 'office' && <Flag kind="office" />}
           {booking.vip_security && <Flag kind="vip" />}
           {booking.booking_type === 'hourly' && <Flag kind="hourly" />}
@@ -309,7 +312,7 @@ if (found && booking) {
 
         <div class="cols cols-main">
           <div class="stack">
-            <section class="panel" aria-labelledby="t-h" id="assign">
+            <section class="panel" aria-labelledby="t-h">
               <div class="panel-head">
                 <h2 id="t-h">Trip</h2>
               </div>
@@ -321,12 +324,12 @@ if (found && booking) {
                   <dd>{formatAthens(booking.pickup_at)} (Athens)</dd>
                   <dt>From</dt>
                   <dd>
-                    {fromName ?? '-'}
+                    {fromName ?? '—'}
                     {booking.pickup_address ? ` · ${booking.pickup_address}` : ''}
                     {
                       booking.pickup_address && (
                         <a
-                          class="muted"
+                          class="map-link"
                           href={mapsDirectionsUrl({
                             address: booking.pickup_address,
                             placeId: booking.pickup_place_id,
@@ -336,8 +339,8 @@ if (found && booking) {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          {' '}
-                          Open in Google Maps
+                          <span aria-hidden="true">⌖</span>
+                          <span class="sr-only">Open pick-up address in Google Maps</span>
                         </a>
                       )
                     }
@@ -346,12 +349,12 @@ if (found && booking) {
                     <>
                       <dt>To</dt>
                       <dd>
-                        {toName ?? '-'}
+                        {toName ?? '—'}
                         {booking.dropoff_address ? ` · ${booking.dropoff_address}` : ''}
                         {
                           booking.dropoff_address && (
                             <a
-                              class="muted"
+                              class="map-link"
                               href={mapsDirectionsUrl({
                                 address: booking.dropoff_address,
                                 placeId: booking.dropoff_place_id,
@@ -361,8 +364,8 @@ if (found && booking) {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              {' '}
-                              Open in Google Maps
+                              <span aria-hidden="true">⌖</span>
+                              <span class="sr-only">Open drop-off address in Google Maps</span>
                             </a>
                           )
                         }
@@ -376,7 +379,7 @@ if (found && booking) {
                     </>
                   )}
                   <dt>Flight</dt>
-                  <dd>{booking.flight_number || '-'}</dd>
+                  <dd>{booking.flight_number || '—'}</dd>
                   <dt>Passengers</dt>
                   <dd>
                     {booking.passengers} · {booking.luggage} bags
@@ -386,7 +389,14 @@ if (found && booking) {
                     <ClassName name={className} />
                   </dd>
                 </dl>
+              </div>
+            </section>
 
+            <section class="panel" aria-labelledby="a-h" id="assign">
+              <div class="panel-head">
+                <h2 id="a-h">Assignment</h2>
+              </div>
+              <div class="panel-body stack-sm">
                 <form
                   method="POST"
                   action={actions.assignVehicle}
@@ -424,28 +434,15 @@ if (found && booking) {
                       </p>
                     )}
                   </div>
-                  <div class="row">
-                    <button class="btn" type="submit">
-                      Assign vehicle
-                    </button>
-                  </div>
-                </form>
-                {
-                  showDrivers && (
-                    <form
-                      method="POST"
-                      action={actions.assignDriver}
-                      class="stack-sm"
-                      aria-label="Assign driver"
-                    >
-                      <input type="hidden" name="reference" value={reference} />
+                  {
+                    showDrivers && (
                       <div class="field">
                         <label for="drv">Driver</label>
                         <Select
                           id="drv"
                           name="driverId"
-                          aria-invalid={driverError ? 'true' : undefined}
-                          aria-describedby={driverError ? 'drv-err' : undefined}
+                          aria-invalid={vehicleError ? 'true' : undefined}
+                          aria-describedby={vehicleError ? 'veh-err' : undefined}
                           options={[
                             {
                               value: '',
@@ -455,84 +452,55 @@ if (found && booking) {
                             ...driverOffers,
                           ]}
                         />
-                        {driverError && (
-                          <p class="error-text" id="drv-err" role="alert">
-                            {driverError}
-                          </p>
-                        )}
                       </div>
-                      <div class="row">
-                        <button class="btn" type="submit">
-                          Assign driver
-                        </button>
-                      </div>
-                    </form>
-                  )
-                }
+                    )
+                  }
+                  <div class="row">
+                    <button class="btn" type="submit">
+                      Save assignment
+                    </button>
+                  </div>
+                </form>
                 {
                   showDrivers &&
                     ['confirmed', 'assigned', 'completed'].includes(booking.status) && (
-                      <form
-                        method="POST"
-                        action={actions.setTripStatus}
-                        class="stack-sm"
-                        aria-label="Trip status"
-                      >
+                      <form method="POST" action={actions.setTripStatus} class="stack-sm">
                         <input type="hidden" name="reference" value={reference} />
                         <div class="field">
-                          <label for="trip-st">Trip status</label>
-                          <Select
-                            id="trip-st"
-                            name="status"
-                            aria-invalid={tripError ? 'true' : undefined}
-                            aria-describedby={tripError ? 'trip-err' : undefined}
-                            options={[
-                              {
-                                value: 'scheduled',
-                                label: 'Scheduled',
-                                selected: booking.trip_status === 'scheduled',
-                              },
-                              {
-                                value: 'on_way',
-                                label: 'On the way',
-                                selected: booking.trip_status === 'on_way',
-                              },
-                              {
-                                value: 'arrived',
-                                label: 'Arrived',
-                                selected: booking.trip_status === 'arrived',
-                              },
-                              {
-                                value: 'on_board',
-                                label: 'Passenger on board',
-                                selected: booking.trip_status === 'on_board',
-                              },
-                              {
-                                value: 'completed',
-                                label: 'Completed',
-                                selected: booking.trip_status === 'completed',
-                              },
-                              {
-                                value: 'no_show',
-                                label: 'No-show',
-                                selected: booking.trip_status === 'no_show',
-                              },
-                            ]}
-                          />
+                          <span class="label">Trip status</span>
+                          <div class="seg trip-status" aria-label="Trip status">
+                            {[
+                              ['scheduled', 'Scheduled'],
+                              ['on_way', 'On the way'],
+                              ['on_board', 'Picked up'],
+                              ['completed', 'Completed'],
+                            ].map(([value, label]) => (
+                              <button
+                                type="submit"
+                                name="status"
+                                value={value}
+                                aria-current={booking.trip_status === value ? 'step' : undefined}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          <div class="row" style="margin-top:.5rem">
+                            <button
+                              class="btn btn-quiet btn-sm"
+                              type="submit"
+                              name="status"
+                              value="no_show"
+                              aria-current={booking.trip_status === 'no_show' ? 'true' : undefined}
+                            >
+                              No-show
+                            </button>
+                          </div>
                           {tripError && (
                             <p class="error-text" id="trip-err" role="alert">
                               {tripError}
                             </p>
                           )}
-                        </div>
-                        <div class="field">
-                          <label for="trip-note">Note (optional)</label>
-                          <input id="trip-note" class="input" name="note" />
-                        </div>
-                        <div class="row">
-                          <button class="btn" type="submit">
-                            Update trip status
-                          </button>
                         </div>
                       </form>
                     )
@@ -548,32 +516,184 @@ if (found && booking) {
               </div>
             </section>
 
+            {
+              showDrivers && (
+                <section class="panel" aria-labelledby="trip-tl-h">
+                  <div class="panel-head">
+                    <h2 id="trip-tl-h">Trip timeline</h2>
+                  </div>
+                  <div class="panel-body">
+                    {bookingEvents.length === 0 ? (
+                      <EmptyState title="No trip events">No driver or trip events yet.</EmptyState>
+                    ) : (
+                      <ol class="timeline">
+                        {bookingEvents.map((ev) => {
+                          const name =
+                            (ev.driver as { full_name?: string } | null)?.full_name ?? '';
+                          let label = ev.kind;
+                          if (ev.kind === 'driver_assigned') {
+                            label = name ? `Driver assigned · ${name}` : 'Driver assigned';
+                          } else if (ev.kind === 'driver_removed') {
+                            label = name ? `Driver removed · ${name}` : 'Driver removed';
+                          } else {
+                            label = tripStatusWord(ev.kind);
+                          }
+                          const note = ev.note ? ` — ${ev.note}` : '';
+                          return (
+                            <li class="done">
+                              <time datetime={ev.at}>{formatAthensShort(ev.at)}</time>
+                              {label}
+                              <span class="muted small"> · {ev.source}{note}</span>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+                  </div>
+                </section>
+              )
+            }
+          </div>
+
+          <div class="stack col-sticky">
+            <section class="panel" aria-labelledby="p-h">
+              <div class="panel-head">
+                <h2 id="p-h">Payment</h2>
+              </div>
+              <div class="panel-body stack-sm">
+                {addedBy && <p class="muted small" id="added-by">{addedBy}</p>}
+                {
+                  booking.price_override_reason && (
+                    <p class="muted small">
+                      Price differs from the list ({formatEuro(booking.list_price_cents ?? 0)}):{' '}
+                      {booking.price_override_reason}
+                    </p>
+                  )
+                }
+                <dl class="totals">
+                  <div>
+                    <dt>Vehicle</dt>
+                    <dd>{formatEuro(booking.base_price_cents)}</dd>
+                  </div>
+                  {extras.map((e) => {
+                    const ex = e.extras as { name?: string } | null;
+                    return (
+                      <div>
+                        <dt>{ex?.name ?? 'Extra'}</dt>
+                        <dd>{formatEuro(e.price_cents * e.quantity)}</dd>
+                      </div>
+                    );
+                  })}
+                  <div>
+                    <dt>Price before VAT</dt>
+                    <dd>{formatEuro(booking.price_cents - (booking.vat_cents ?? 0))}</dd>
+                  </div>
+                  <div>
+                    <dt>{`VAT ${formatVatRate(booking.vat_rate_bp ?? 0)}%`}</dt>
+                    <dd>{formatEuro(booking.vat_cents ?? 0)}</dd>
+                  </div>
+                  <div class="grand">
+                    <dt>Total</dt>
+                    <dd>{formatEuro(booking.price_cents)}</dd>
+                  </div>
+                </dl>
+                <p class="refundable-line muted small">
+                  Refundable {formatEuro(refundable)}
+                </p>
+                <p id="payment-status">
+                  <StatusBadge kind="payment" status={booking.payment_status} />
+                </p>
+                <div class="row">
+                  {
+                    canRecordOffline && (
+                      <button class="btn" type="button" id="open-offline">
+                        Record offline payment…
+                      </button>
+                    )
+                  }
+                  <button
+                    class="btn btn-secondary"
+                    type="button"
+                    id="open-refund"
+                    disabled={refundable <= 0}
+                  >
+                    Refund…
+                  </button>
+                  <button
+                    class="btn btn-danger"
+                    type="button"
+                    id="open-cancel"
+                    disabled={booking.status === 'cancelled' || booking.status === 'completed'}
+                  >
+                    Cancel booking…
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="pay-h">
+              <div class="panel-head">
+                <h2 id="pay-h">Payment history</h2>
+              </div>
+              <div class="panel-body">
+                {payments.length === 0 ? (
+                  <EmptyState title="No payments">No payments yet.</EmptyState>
+                ) : (
+                  <ol class="payment-history">
+                    {payments.map((p) => (
+                      <li>
+                        <time datetime={p.created_at}>{formatAthensShort(p.created_at)}</time>
+                        <span aria-hidden="true">·</span>
+                        <strong>{formatEuro(p.amount_cents)}</strong>
+                        <span aria-hidden="true">·</span>
+                        <span>{METHOD_LABEL[p.method] ?? p.method}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{p.status}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </section>
+
             <section class="panel" aria-labelledby="c-h">
               <div class="panel-head">
                 <h2 id="c-h">Customer</h2>
               </div>
-              <div class="panel-body stack-sm">
+              <div class="panel-body">
                 <dl class="facts">
                   <dt>Name</dt>
                   <dd>
-                    {
-                      booking.customer_id ? (
-                        <a href={`/customers/${booking.customer_id}`}>{booking.customer_name}</a>
-                      ) : (
-                        booking.customer_name
-                      )
-                    }
+                    {booking.customer_id ? (
+                      <a href={`/customers/${booking.customer_id}`}>{booking.customer_name}</a>
+                    ) : (
+                      booking.customer_name
+                    )}
                   </dd>
                   <dt>Email</dt>
-                  <dd>{booking.customer_email}</dd>
+                  <dd>{booking.customer_email || '—'}</dd>
                   <dt>Phone</dt>
-                  <dd><Phone value={booking.customer_phone} /></dd>
+                  <dd>{booking.customer_phone ? <Phone value={booking.customer_phone} /> : '—'}</dd>
                   <dt>Notes</dt>
-                  <dd>{booking.notes || '-'}</dd>
+                  <dd>{booking.notes || '—'}</dd>
+                  {booking.vip_security && (
+                    <>
+                      <dt>VIP security</dt>
+                      <dd>Yes</dd>
+                    </>
+                  )}
                 </dl>
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="office-h">
+              <div class="panel-head">
+                <h2 id="office-h">Office notes &amp; invoice</h2>
+              </div>
+              <div class="panel-body">
                 <form method="POST" action={actions.saveNotesInvoice} class="stack-sm">
                   <input type="hidden" name="reference" value={reference} />
-                  <p class="eyebrow">VIP security</p>
+                  {booking.vip_security && <p class="eyebrow">VIP security</p>}
                   <div class="field">
                     <label for="sec">Security notes (agents or partner)</label>
                     <textarea id="sec" class="input" name="securityNotes" rows="3">
@@ -630,165 +750,6 @@ if (found && booking) {
                     Save notes and invoice
                   </button>
                 </form>
-              </div>
-            </section>
-          </div>
-
-          <div class="stack">
-            <section class="panel" aria-labelledby="p-h">
-              <div class="panel-head">
-                <h2 id="p-h">Payment</h2>
-              </div>
-              <div class="panel-body stack-sm">
-                {addedBy && <p class="muted small" id="added-by">{addedBy}</p>}
-                {
-                  booking.price_override_reason && (
-                    <p class="muted small">
-                      Price differs from the list ({formatEuro(booking.list_price_cents ?? 0)}):{' '}
-                      {booking.price_override_reason}
-                    </p>
-                  )
-                }
-                <dl class="totals">
-                  <div>
-                    <dt>Vehicle</dt>
-                    <dd>{formatEuro(booking.base_price_cents)}</dd>
-                  </div>
-                  {extras.map((e) => {
-                    const ex = e.extras as { name?: string } | null;
-                    return (
-                      <div>
-                        <dt>{ex?.name ?? 'Extra'}</dt>
-                        <dd>{formatEuro(e.price_cents * e.quantity)}</dd>
-                      </div>
-                    );
-                  })}
-                  <div class="grand">
-                    <dt>Total paid (VAT included)</dt>
-                    <dd>{formatEuro(booking.price_cents)}</dd>
-                  </div>
-                  <div>
-                    <dt>Price before VAT</dt>
-                    <dd>{formatEuro(booking.price_cents - (booking.vat_cents ?? 0))}</dd>
-                  </div>
-                  <div>
-                    <dt>{`VAT ${formatVatRate(booking.vat_rate_bp ?? 0)}%`}</dt>
-                    <dd>{formatEuro(booking.vat_cents ?? 0)}</dd>
-                  </div>
-                  <div>
-                    <dt>Refundable</dt>
-                    <dd>{formatEuro(refundable)}</dd>
-                  </div>
-                  <div>
-                    <dt>Payment status</dt>
-                    <dd id="payment-status">
-                      <StatusBadge kind="payment" status={booking.payment_status} />
-                    </dd>
-                  </div>
-                </dl>
-                <div class="row">
-                  {
-                    canRecordOffline && (
-                      <button class="btn" type="button" id="open-offline">
-                        Record offline payment…
-                      </button>
-                    )
-                  }
-                  <button
-                    class="btn btn-secondary"
-                    type="button"
-                    id="open-refund"
-                    disabled={refundable <= 0}
-                  >
-                    Refund…
-                  </button>
-                  <button
-                    class="btn btn-danger"
-                    type="button"
-                    id="open-cancel"
-                    disabled={booking.status === 'cancelled' || booking.status === 'completed'}
-                  >
-                    Cancel booking…
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            {
-              showDrivers && (
-                <section class="panel" aria-labelledby="trip-tl-h">
-                  <div class="panel-head">
-                    <h2 id="trip-tl-h">Trip timeline</h2>
-                  </div>
-                  <div class="panel-body">
-                    {bookingEvents.length === 0 ? (
-                      <EmptyState title="No trip events">No driver or trip events yet.</EmptyState>
-                    ) : (
-                      <ol class="timeline">
-                        {bookingEvents.map((ev) => {
-                          const name =
-                            (ev.driver as { full_name?: string } | null)?.full_name ?? '';
-                          let label = ev.kind;
-                          if (ev.kind === 'driver_assigned') {
-                            label = name ? `Driver assigned · ${name}` : 'Driver assigned';
-                          } else if (ev.kind === 'driver_removed') {
-                            label = name ? `Driver removed · ${name}` : 'Driver removed';
-                          } else {
-                            label = tripStatusWord(ev.kind);
-                          }
-                          const note = ev.note ? ` — ${ev.note}` : '';
-                          return (
-                            <li class="done">
-                              <time datetime={ev.at}>{formatAthensShort(ev.at)}</time>
-                              {label}
-                              <span class="muted small"> · {ev.source}{note}</span>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    )}
-                  </div>
-                </section>
-              )
-            }
-
-            <section class="panel" aria-labelledby="pay-h">
-              <div class="panel-head">
-                <h2 id="pay-h">Payment history</h2>
-              </div>
-              <div class="panel-body">
-                {payments.length === 0 ? (
-                  <EmptyState title="No payments">No payments yet.</EmptyState>
-                ) : (
-                  <DataTable label="Payment history" cards>
-                    <thead>
-                      <tr>
-                        <th scope="col">When</th>
-                        <th scope="col">Kind</th>
-                        <th scope="col" class="num">
-                          Amount
-                        </th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Method</th>
-                        <th scope="col">By</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payments.map((p) => (
-                        <tr>
-                          <td data-label="When">{formatAthensShort(p.created_at)}</td>
-                          <td data-label="Kind">{p.kind}</td>
-                          <td class="num" data-label="Amount">
-                            {formatEuro(p.amount_cents)}
-                          </td>
-                          <td data-label="Status">{p.status}</td>
-                          <td data-label="Method">{METHOD_LABEL[p.method] ?? p.method}</td>
-                          <td data-label="By">{p.created_by ? 'Staff' : 'Viva'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </DataTable>
-                )}
               </div>
             </section>
           </div>
