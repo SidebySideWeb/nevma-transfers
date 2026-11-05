@@ -465,7 +465,7 @@ export const server = {
 
   clearDemo: defineAction({
     accept: 'form',
-    // Single field so Confirmed can sit inside another form (formaction + name/value).
+    // Single field so Mark confirmed can sit inside another form (formaction + name/value).
     input: z.object({
       clear: z
         .string()
@@ -515,6 +515,44 @@ export const server = {
         return { ok: true };
       }
       const { error } = await supabase.from(table).update({ is_demo: false }).eq('id', id);
+      if (error) throwDb(error);
+      return { ok: true };
+    },
+  }),
+
+  clearDemoAll: defineAction({
+    accept: 'form',
+    input: z.object({
+      scope: z.enum(['fleet', 'zone_prices', 'hourly_rates', 'extras']),
+      classId: z.string().uuid().optional(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      if (input.scope === 'fleet') {
+        const classes = await supabase
+          .from('vehicle_classes')
+          .update({ is_demo: false })
+          .eq('is_demo', true);
+        if (classes.error) throwDb(classes.error);
+        const vehicles = await supabase
+          .from('vehicles')
+          .update({ is_demo: false })
+          .eq('is_demo', true);
+        if (vehicles.error) throwDb(vehicles.error);
+        return { ok: true };
+      }
+      if (input.scope === 'zone_prices') {
+        let q = supabase.from('zone_prices').update({ is_demo: false }).eq('is_demo', true);
+        if (input.classId) q = q.eq('class_id', input.classId);
+        const { error } = await q;
+        if (error) throwDb(error);
+        return { ok: true };
+      }
+      const { error } = await supabase
+        .from(input.scope)
+        .update({ is_demo: false })
+        .eq('is_demo', true);
       if (error) throwDb(error);
       return { ok: true };
     },

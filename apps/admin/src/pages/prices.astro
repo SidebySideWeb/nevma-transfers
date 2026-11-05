@@ -4,7 +4,7 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Banner from '../components/Banner.astro';
-import Flag from '../components/Flag.astro';
+import ConfirmDot from '../components/ConfirmDot.astro';
 import Select from '../components/Select.astro';
 import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { centsToEuroInput } from '../lib/money';
@@ -13,6 +13,15 @@ import { createSupabaseServerClient } from '../lib/supabase';
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const classKey = Astro.url.searchParams.get('class') || '';
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const clearError =
+  actionErr(Astro.getActionResult?.(actions.clearDemo)) ||
+  actionErr(Astro.getActionResult?.(actions.clearDemoAll));
 
 const classesRes = await supabase
   .from('vehicle_classes')
@@ -74,13 +83,24 @@ const listError =
   (!zonesLoad.ok && zonesLoad.message) ||
   (!pricesLoad.ok && pricesLoad.message) ||
   (routesRes.error ? `Could not load routes: ${routesRes.error.message}` : null);
+
+const hasUnconfirmed = [...priceMap.values()].some((c) => c.isDemo);
 ---
 
 <AdminLayout title="Zone prices" current="prices" staffEmail={staff.email}>
   {
-    listError && (
+    hasUnconfirmed && selected && (
+      <form method="POST" action={actions.clearDemoAll} slot="actions">
+        <input type="hidden" name="scope" value="zone_prices" />
+        <input type="hidden" name="classId" value={selected.id} />
+        <button class="btn btn-secondary" type="submit">Confirm all</button>
+      </form>
+    )
+  }
+  {
+    (listError || clearError) && (
       <Banner tone="danger" role="alert">
-        {listError}
+        {listError || clearError}
       </Banner>
     )
   }
@@ -128,7 +148,12 @@ const listError =
                     const cell = priceMap.get(`${fromZ.id}:${toZ.id}`);
                     const cellId = `${fromZ.id}:${toZ.id}:${selected.id}`;
                     return (
-                      <td class:list={[{ 'is-dashed': cell?.isDemo }]} title={cell?.isDemo ? 'DEMO price' : undefined}>
+                      <td class:list={[{ 'is-dashed': cell?.isDemo }]}>
+                        {
+                          cell != null && (
+                            <ConfirmDot confirmed={!cell.isDemo} />
+                          )
+                        }
                         <input
                           class="input price-cell"
                           data-key={`${fromZ.id}:${toZ.id}`}
@@ -138,19 +163,16 @@ const listError =
                         />
                         {
                           cell?.isDemo && (
-                            <>
-                              <Flag kind="demo" />
-                              <button
-                                class="btn btn-secondary btn-sm"
-                                type="submit"
-                                formaction={actions.clearDemo}
-                                name="clear"
-                                value={`zone_prices|${cellId}`}
-                                formnovalidate
-                              >
-                                Confirmed
-                              </button>
-                            </>
+                            <button
+                              class="btn btn-secondary btn-sm"
+                              type="submit"
+                              formaction={actions.clearDemo}
+                              name="clear"
+                              value={`zone_prices|${cellId}`}
+                              formnovalidate
+                            >
+                              Mark confirmed
+                            </button>
                           )
                         }
                       </td>

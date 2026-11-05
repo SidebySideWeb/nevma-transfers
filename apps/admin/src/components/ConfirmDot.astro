@@ -1,0 +1,16 @@
+---
+interface Props {
+  /** False while `is_demo` is still set. */
+  confirmed: boolean;
+}
+
+const { confirmed } = Astro.props;
+const tip = confirmed ? 'Confirmed' : 'DEMO — not confirmed';
+---
+
+<span
+  class:list={['confirm-dot', confirmed ? 'is-ok' : 'is-demo']}
+  title={tip}
+  aria-label={tip}
+  role="img"
+></span>

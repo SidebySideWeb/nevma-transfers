@@ -3,7 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
-import Flag from '../components/Flag.astro';
+import ConfirmDot from '../components/ConfirmDot.astro';
 import Select from '../components/Select.astro';
 import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { createSupabaseServerClient } from '../lib/supabase';
@@ -22,7 +22,9 @@ const pageError =
   actionErr(Astro.getActionResult?.(actions.addVehicle)) ||
   actionErr(Astro.getActionResult?.(actions.updateVehicle)) ||
   actionErr(Astro.getActionResult?.(actions.deleteVehicle)) ||
-  actionErr(Astro.getActionResult?.(actions.deleteClass));
+  actionErr(Astro.getActionResult?.(actions.deleteClass)) ||
+  actionErr(Astro.getActionResult?.(actions.clearDemo)) ||
+  actionErr(Astro.getActionResult?.(actions.clearDemoAll));
 
 const [classesRes, vehiclesRes, bookingsRes, sanityKeys] = await Promise.all([
   supabase
@@ -92,6 +94,8 @@ for (const b of bookings) {
   waitingByClass.set(b.class_id, (waitingByClass.get(b.class_id) ?? 0) + 1);
 }
 
+const hasUnconfirmed = classes.some((c) => c.is_demo) || vehicles.some((v) => v.is_demo);
+
 function statusBadge(status: string) {
   if (status === 'active') return { cls: 's-confirmed', label: 'Active' };
   if (status === 'maintenance') return { cls: 's-pending', label: 'In service' };
@@ -115,6 +119,14 @@ function fmtNext(iso: string) {
 ---
 
 <AdminLayout title="Fleet" current="fleet" staffEmail={staff.email}>
+  {
+    hasUnconfirmed && (
+      <form method="POST" action={actions.clearDemoAll} slot="actions">
+        <input type="hidden" name="scope" value="fleet" />
+        <button class="btn btn-secondary" type="submit">Confirm all</button>
+      </form>
+    )
+  }
   {
     (pageError || listError) && (
       <div class="banner banner-danger" role="alert">
@@ -149,14 +161,14 @@ function fmtNext(iso: string) {
               return (
                 <tr class:list={[{ 'is-muted': !c.active, 'is-flag': c.is_demo }]}>
                   <td class="card-title" data-label="Class">
+                    <ConfirmDot confirmed={!c.is_demo} />
                     {c.name}
-                    {c.is_demo && <Flag kind="demo" />}
                     {noSanity && <span class="badge s-pending">No Sanity page</span>}
                     {
                       c.is_demo && (
                         <form method="POST" action={actions.clearDemo} style="display:inline">
                           <button class="btn btn-secondary btn-sm" type="submit" name="clear" value={`vehicle_classes|${c.id}`}>
-                            Confirmed
+                            Mark confirmed
                           </button>
                         </form>
                       )
@@ -222,6 +234,7 @@ function fmtNext(iso: string) {
               return (
                 <tr class:list={[{ 'is-flag': v.is_demo }]}>
                   <td class="card-title" data-label="Label">
+                    <ConfirmDot confirmed={!v.is_demo} />
                     <button
                       class="btn btn-quiet btn-sm"
                       type="button"
@@ -237,12 +250,11 @@ function fmtNext(iso: string) {
                     >
                       {v.label}
                     </button>
-                    {v.is_demo && <Flag kind="demo" />}
                     {
                       v.is_demo && (
                         <form method="POST" action={actions.clearDemo} style="display:inline">
                           <button class="btn btn-secondary btn-sm" type="submit" name="clear" value={`vehicles|${v.id}`}>
-                            Confirmed
+                            Mark confirmed
                           </button>
                         </form>
                       )

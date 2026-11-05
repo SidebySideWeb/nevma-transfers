@@ -239,6 +239,21 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .dot-on::before, .dot-off::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
 .dot-on::before { background: var(--status-confirmed); }
 .dot-off::before { background: var(--color-border-strong); }
+.confirm-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  vertical-align: middle;
+  margin-right: .4rem;
+}
+.confirm-dot.is-ok { background: var(--color-accent); }
+.confirm-dot.is-demo {
+  background: transparent;
+  border: 1px solid var(--color-muted);
+  box-sizing: border-box;
+}
 .flag-vip { color: var(--color-accent-text); background: var(--color-accent); border-color: var(--color-accent); }
 .flag-vip::before { display: none; }
 .flag { color: var(--color-text-soft); border-color: var(--color-border-strong); }

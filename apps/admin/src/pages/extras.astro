@@ -3,7 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
-import Flag from '../components/Flag.astro';
+import ConfirmDot from '../components/ConfirmDot.astro';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 
@@ -22,19 +22,30 @@ const pageError =
   actionErr(Astro.getActionResult?.(actions.saveExtras)) ||
   actionErr(Astro.getActionResult?.(actions.addExtra)) ||
   actionErr(Astro.getActionResult?.(actions.deleteExtra)) ||
-  actionErr(Astro.getActionResult?.(actions.clearDemo));
+  actionErr(Astro.getActionResult?.(actions.clearDemo)) ||
+  actionErr(Astro.getActionResult?.(actions.clearDemoAll));
 
 const [{ data: extras }, { data: usedExtras }] = await Promise.all([
   supabase.from('extras').select('*').order('code'),
   supabase.from('booking_extras').select('extra_id'),
 ]);
 const usedIds = new Set((usedExtras ?? []).map((r) => r.extra_id));
+const extraRows = extras ?? [];
+const hasUnconfirmed = extraRows.some((e) => e.is_demo);
 ---
 
 <AdminLayout title="Extras" current="extras" staffEmail={staff.email}>
-  <button class="btn btn-secondary" type="button" data-open="add-extra" slot="actions">
-    Add extra
-  </button>
+  <div class="row" slot="actions">
+    {
+      hasUnconfirmed && (
+        <form method="POST" action={actions.clearDemoAll}>
+          <input type="hidden" name="scope" value="extras" />
+          <button class="btn btn-secondary" type="submit">Confirm all</button>
+        </form>
+      )
+    }
+    <button class="btn btn-secondary" type="button" data-open="add-extra">Add extra</button>
+  </div>
 
   {
     pageError && (
@@ -62,16 +73,16 @@ const usedIds = new Set((usedExtras ?? []).map((r) => r.extra_id));
         </thead>
         <tbody>
           {
-            (extras ?? []).map((e) => {
+            extraRows.map((e) => {
               const builtin = BUILTIN.has(e.code);
               const canDelete = !builtin && !usedIds.has(e.id);
               const applies = e.applies_to ?? ['transfer', 'hourly'];
               return (
                 <tr data-id={e.id} class:list={[{ 'is-flag': builtin || e.is_demo }]}>
                   <td class="card-title" data-label="Extra">
+                    <ConfirmDot confirmed={!e.is_demo} />
                     <input class="input name" aria-label={`${e.code} name`} value={e.name} />
                     {builtin && <span class="badge plain">Built in</span>}
-                    {e.is_demo && <Flag kind="demo" />}
                   </td>
                   <td data-label="Code" class="mono">
                     {e.code}
@@ -138,7 +149,7 @@ const usedIds = new Set((usedExtras ?? []).map((r) => r.extra_id));
                           value={`extras|${e.id}`}
                           formnovalidate
                         >
-                          Confirmed
+                          Mark confirmed
                         </button>
                       )
                     }

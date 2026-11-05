@@ -4,7 +4,7 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import ClassName from '../components/ClassName.astro';
-import Flag from '../components/Flag.astro';
+import ConfirmDot from '../components/ConfirmDot.astro';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 
@@ -16,18 +16,32 @@ function actionErr(result: { error?: { message?: string } | Error } | undefined)
   const e = result.error;
   return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
 }
-const pageError = actionErr(Astro.getActionResult?.(actions.saveHourlyRates));
-
-const pageErrorClear = actionErr(Astro.getActionResult?.(actions.clearDemo));
-const pageErrorAll = pageError || pageErrorClear;
+const pageErrorAll =
+  actionErr(Astro.getActionResult?.(actions.saveHourlyRates)) ||
+  actionErr(Astro.getActionResult?.(actions.clearDemo)) ||
+  actionErr(Astro.getActionResult?.(actions.clearDemoAll));
 
 const { data: classes } = await supabase
   .from('vehicle_classes')
   .select('id, key, name, active, hourly_rates(price_per_hour_cents, min_hours, max_hours, is_demo)')
   .order('sort_order');
+
+const classRows = classes ?? [];
+const hasUnconfirmed = classRows.some((c) => {
+  const rate = Array.isArray(c.hourly_rates) ? c.hourly_rates[0] : c.hourly_rates;
+  return Boolean(rate && 'is_demo' in rate && rate.is_demo);
+});
 ---
 
 <AdminLayout title="Hourly rates" current="hourly-rates" staffEmail={staff.email}>
+  {
+    hasUnconfirmed && (
+      <form method="POST" action={actions.clearDemoAll} slot="actions">
+        <input type="hidden" name="scope" value="hourly_rates" />
+        <button class="btn btn-secondary" type="submit">Confirm all</button>
+      </form>
+    )
+  }
   {
     pageErrorAll && (
       <div class="banner banner-danger" role="alert">
@@ -50,14 +64,14 @@ const { data: classes } = await supabase
         </thead>
         <tbody>
           {
-            (classes ?? []).map((c) => {
+            classRows.map((c) => {
               const rate = Array.isArray(c.hourly_rates) ? c.hourly_rates[0] : c.hourly_rates;
               const isDemo = Boolean(rate && 'is_demo' in rate && rate.is_demo);
               return (
                 <tr data-class-id={c.id} class:list={[{ 'is-flag': isDemo }]}>
                   <th scope="row">
+                    <ConfirmDot confirmed={!isDemo} />
                     <ClassName name={c.name} />
-                    {isDemo && <Flag kind="demo" />}
                     {!c.active && <span class="badge s-completed">Off</span>}
                   </th>
                   <td class="num">
@@ -84,7 +98,7 @@ const { data: classes } = await supabase
                           value={`hourly_rates|${c.id}`}
                           formnovalidate
                         >
-                          Confirmed
+                          Mark confirmed
                         </button>
                       )
                     }
