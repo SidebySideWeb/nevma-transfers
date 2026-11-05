@@ -123,12 +123,12 @@ const periodLabel = formatPeriodRange(from, to);
   </form>
   <script is:inline>
     (function () {
-      var form = document.getElementById('report-period');
-      var custom = document.getElementById('report-custom');
+      const form = document.getElementById('report-period');
+      const custom = document.getElementById('report-custom');
       if (!form || !custom) return;
       form.querySelectorAll('input[name="period"]').forEach(function (el) {
         el.addEventListener('change', function () {
-          var checked = form.querySelector('input[name="period"]:checked');
+          const checked = form.querySelector('input[name="period"]:checked');
           custom.hidden = !checked || checked.value !== 'custom';
         });
       });

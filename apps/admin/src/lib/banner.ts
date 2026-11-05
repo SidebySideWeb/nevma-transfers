@@ -203,7 +203,6 @@ export async function buildBanner(
   ]);
 
   const sanityByKey = new Map(sanityClasses.map((r) => [r.key, r]));
-  const sanityKeys = sanityClasses.map((r) => r.key);
   const activeClassKeys = (classes ?? []).filter((c) => c.active).map((c) => c.key);
   const pgSet = new Set((classes ?? []).map((c) => c.key));
   const zoneCodes = new Set((zones ?? []).map((z) => z.code));

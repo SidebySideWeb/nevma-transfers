@@ -54,8 +54,8 @@ const humanize = (key: string) => key.replaceAll('_', ' ').replace(/\b\w/g, (c) 
                     <Select id={`v-${s.key}`} options={[{ value: 'Europe/Athens', label: 'Europe/Athens', selected: s.value === 'Europe/Athens' }]} />
                   ) : primitive === 'boolean' ? (
                     <label class="switch">
-                      <input id={`v-${s.key}`} type="checkbox" checked={s.value || undefined} />
-                      <span data-switch-label>{s.value ? 'On' : 'Off'}</span>
+                      <input id={`v-${s.key}`} type="checkbox" checked={s.value === true} />
+                      <span data-switch-label>{s.value === true ? 'On' : 'Off'}</span>
                     </label>
                   ) : advanced ? (
                     <details>

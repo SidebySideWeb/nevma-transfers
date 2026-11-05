@@ -88,13 +88,13 @@ const { count, groups, summary } = banner;
 
 <script is:inline>
   (function () {
-    var STORAGE_KEY = 'ep-setup-checks-dismissed-count';
-    var banner = document.querySelector('[data-checks-banner]');
-    var drawer = document.querySelector('[data-checks-drawer]');
+    const STORAGE_KEY = 'ep-setup-checks-dismissed-count';
+    const banner = document.querySelector('[data-checks-banner]');
+    const drawer = document.querySelector('[data-checks-drawer]');
     if (!banner || !drawer) return;
 
-    var count = Number(banner.getAttribute('data-check-count') || '0');
-    var dismissed = Number(sessionStorage.getItem(STORAGE_KEY) || '');
+    const count = Number(banner.getAttribute('data-check-count') || '0');
+    const dismissed = Number(sessionStorage.getItem(STORAGE_KEY) || '');
     if (dismissed === count && count > 0) {
       banner.hidden = true;
     }
