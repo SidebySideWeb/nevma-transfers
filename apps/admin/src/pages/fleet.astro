@@ -5,7 +5,9 @@ import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import ConfirmDot from '../components/ConfirmDot.astro';
 import Select from '../components/Select.astro';
+import ShowDemoOffline from '../components/ShowDemoOffline.astro';
 import { logListError, resolveListLoad } from '../lib/bookings-list';
+import { isDemoOrOffline, withDemoOfflineLast } from '../lib/demo-offline';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -95,6 +97,8 @@ for (const b of bookings) {
 }
 
 const hasUnconfirmed = classes.some((c) => c.is_demo) || vehicles.some((v) => v.is_demo);
+const classList = withDemoOfflineLast(classes);
+const vehicleList = withDemoOfflineLast(vehicles);
 
 function statusBadge(status: string) {
   if (status === 'active') return { cls: 's-confirmed', label: 'Active' };
@@ -156,10 +160,15 @@ function fmtNext(iso: string) {
         </thead>
         <tbody>
           {
-            classes.map((c) => {
+            classList.rows.map((c) => {
               const noSanity = !sanityKeys.has(c.key);
+              const bury = isDemoOrOffline(c);
               return (
-                <tr class:list={[{ 'is-muted': !c.active, 'is-flag': c.is_demo }]}>
+                <tr
+                  class:list={[{ 'is-muted': !c.active, 'is-flag': c.is_demo }]}
+                  data-demo-offline={bury ? 'fleet-classes' : undefined}
+                  hidden={bury || undefined}
+                >
                   <td class="card-title" data-label="Class">
                     <ConfirmDot confirmed={!c.is_demo} />
                     {c.name}
@@ -206,6 +215,7 @@ function fmtNext(iso: string) {
         </tbody>
       </table>
     </div>
+    <ShowDemoOffline group="fleet-classes" count={classList.hiddenCount} />
   </section>
 
   <section class="panel" aria-labelledby="h-veh" style="margin-top:1.25rem">
@@ -227,12 +237,17 @@ function fmtNext(iso: string) {
         </thead>
         <tbody>
           {
-            vehicles.map((v) => {
+            vehicleList.rows.map((v) => {
               const cls = classById.get(v.class_id);
               const badge = statusBadge(v.status);
               const next = nextByVehicle.get(v.id);
+              const bury = isDemoOrOffline(v);
               return (
-                <tr class:list={[{ 'is-flag': v.is_demo }]}>
+                <tr
+                  class:list={[{ 'is-flag': v.is_demo }]}
+                  data-demo-offline={bury ? 'fleet-vehicles' : undefined}
+                  hidden={bury || undefined}
+                >
                   <td class="card-title" data-label="Label">
                     <ConfirmDot confirmed={!v.is_demo} />
                     <button
@@ -276,6 +291,7 @@ function fmtNext(iso: string) {
         </tbody>
       </table>
     </div>
+    <ShowDemoOffline group="fleet-vehicles" count={vehicleList.hiddenCount} />
   </section>
 </AdminLayout>
 

@@ -4,6 +4,8 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import ConfirmDot from '../components/ConfirmDot.astro';
+import ShowDemoOffline from '../components/ShowDemoOffline.astro';
+import { isDemoOrOffline, withDemoOfflineLast } from '../lib/demo-offline';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 
@@ -30,8 +32,8 @@ const [{ data: extras }, { data: usedExtras }] = await Promise.all([
   supabase.from('booking_extras').select('extra_id'),
 ]);
 const usedIds = new Set((usedExtras ?? []).map((r) => r.extra_id));
-const extraRows = extras ?? [];
-const hasUnconfirmed = extraRows.some((e) => e.is_demo);
+const extraList = withDemoOfflineLast(extras ?? []);
+const hasUnconfirmed = extraList.rows.some((e) => e.is_demo);
 ---
 
 <AdminLayout title="Extras" current="extras" staffEmail={staff.email}>
@@ -73,12 +75,18 @@ const hasUnconfirmed = extraRows.some((e) => e.is_demo);
         </thead>
         <tbody>
           {
-            extraRows.map((e) => {
+            extraList.rows.map((e) => {
               const builtin = BUILTIN.has(e.code);
               const canDelete = !builtin && !usedIds.has(e.id);
               const applies = e.applies_to ?? ['transfer', 'hourly'];
+              const bury = isDemoOrOffline(e);
               return (
-                <tr data-id={e.id} class:list={[{ 'is-flag': builtin || e.is_demo }]}>
+                <tr
+                  data-id={e.id}
+                  class:list={[{ 'is-flag': builtin || e.is_demo, 'is-muted': !e.active }]}
+                  data-demo-offline={bury ? 'extras' : undefined}
+                  hidden={bury || undefined}
+                >
                   <td class="card-title" data-label="Extra">
                     <ConfirmDot confirmed={!e.is_demo} />
                     <input class="input name" aria-label={`${e.code} name`} value={e.name} />
@@ -179,6 +187,7 @@ const hasUnconfirmed = extraRows.some((e) => e.is_demo);
         </tbody>
       </table>
     </div>
+    <ShowDemoOffline group="extras" count={extraList.hiddenCount} />
     <div class="row" style="margin-top:1rem;justify-content:flex-end">
       <button class="btn" type="submit">Save extras</button>
     </div>

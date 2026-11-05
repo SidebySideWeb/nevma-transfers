@@ -5,6 +5,8 @@ import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Flag from '../components/Flag.astro';
 import Select from '../components/Select.astro';
+import ShowDemoOffline from '../components/ShowDemoOffline.astro';
+import { isDemoOrOffline, withDemoOfflineLast } from '../lib/demo-offline';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const ZONE_KINDS = [
@@ -50,6 +52,7 @@ for (const b of bookings ?? []) {
   bookedIds.add(b.from_zone_id);
   if (b.to_zone_id) bookedIds.add(b.to_zone_id);
 }
+const zoneList = withDemoOfflineLast(zones ?? []);
 ---
 
 <AdminLayout title="Zones" current="zones" staffEmail={staff.email}>
@@ -80,11 +83,16 @@ for (const b of bookings ?? []) {
       </thead>
       <tbody>
         {
-          (zones ?? []).map((z) => {
+          zoneList.rows.map((z) => {
             const codeFixed = usedIds.has(z.id);
             const canDelete = !bookedIds.has(z.id);
+            const bury = isDemoOrOffline(z);
             return (
-              <tr class:list={[{ 'is-flag': z.is_demo }]}>
+              <tr
+                class:list={[{ 'is-flag': z.is_demo, 'is-muted': !z.active }]}
+                data-demo-offline={bury ? 'zones' : undefined}
+                hidden={bury || undefined}
+              >
                 <td colspan="6">
                   <form method="POST" action={actions.saveZone} class="row" style="align-items:end;gap:var(--space-2);flex-wrap:wrap">
                     <input type="hidden" name="id" value={z.id} />
@@ -168,6 +176,7 @@ for (const b of bookings ?? []) {
       </tbody>
     </table>
   </div>
+  <ShowDemoOffline group="zones" count={zoneList.hiddenCount} />
 </AdminLayout>
 
 <dialog class="dialog" id="add-zone" aria-labelledby="d-az">

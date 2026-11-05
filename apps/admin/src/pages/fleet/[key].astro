@@ -4,6 +4,8 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Select from '../../components/Select.astro';
+import ShowDemoOffline from '../../components/ShowDemoOffline.astro';
+import { isDemoOrOffline, withDemoOfflineLast } from '../../lib/demo-offline';
 import { formatEuro } from '../../lib/money';
 import { readinessChecklist } from '../../lib/readiness';
 import {
@@ -96,6 +98,7 @@ const bookedVehicleIds = new Set(
   (bookingRows ?? []).map((b) => b.vehicle_id).filter((id): id is string => Boolean(id)),
 );
 
+const vehicleList = withDemoOfflineLast(vehicles ?? []);
 const activeVehicles = (vehicles ?? []).filter((v) => v.status === 'active');
 const hasActiveVehicle = activeVehicles.length > 0;
 const waitingUnassigned = (bookingRows ?? []).filter(
@@ -323,11 +326,16 @@ const usageBits = [
             </thead>
             <tbody>
               {
-                (vehicles ?? []).map((v) => {
+                vehicleList.rows.map((v) => {
                   const badge = statusBadge(v.status);
                   const future = futureByVehicle.get(v.id) ?? 0;
+                  const bury = isDemoOrOffline(v);
                   return (
-                    <tr>
+                    <tr
+                      class:list={[{ 'is-flag': v.is_demo, 'is-muted': v.status !== 'active' }]}
+                      data-demo-offline={bury ? 'class-vehicles' : undefined}
+                      hidden={bury || undefined}
+                    >
                       <td class="card-title" data-label="Label">
                         {v.label}
                       </td>
@@ -361,6 +369,7 @@ const usageBits = [
             </tbody>
           </table>
         </div>
+        <ShowDemoOffline group="class-vehicles" count={vehicleList.hiddenCount} />
       </section>
     </div>
 

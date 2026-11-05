@@ -121,6 +121,7 @@ h1.title em { font-style: italic; color: var(--color-accent); }
 .stack > * + * { margin-top: var(--admin-gap); }
 .stack-sm > * + * { margin-top: .625rem; }
 .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.demo-offline-bar { margin: .75rem 0 0; }
 .between { justify-content: space-between; }
 .cols { display: grid; gap: var(--admin-gap); grid-template-columns: 1fr; }
 @media (min-width: 1100px) { .cols-main { grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); } .cols-2 { grid-template-columns: 1fr 1fr; } }

@@ -1,0 +1,47 @@
+---
+interface Props {
+  /** Matches `data-demo-offline` on the hidden rows. */
+  group: string;
+  count: number;
+}
+
+const { group, count } = Astro.props;
+---
+
+{
+  count > 0 && (
+    <p class="demo-offline-bar">
+      <button
+        type="button"
+        class="btn btn-quiet btn-sm"
+        data-demo-offline-btn={group}
+        aria-expanded="false"
+      >
+        Show demo &amp; offline ({count})
+      </button>
+    </p>
+  )
+}
+
+<script>
+  function bindDemoOffline() {
+    document.querySelectorAll<HTMLButtonElement>('[data-demo-offline-btn]').forEach((btn) => {
+      if (btn.dataset.bound === '1') return;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', () => {
+        const group = btn.getAttribute('data-demo-offline-btn');
+        if (!group) return;
+        const rows = document.querySelectorAll<HTMLElement>(`[data-demo-offline="${group}"]`);
+        const open = btn.getAttribute('aria-expanded') === 'true';
+        const next = !open;
+        btn.setAttribute('aria-expanded', next ? 'true' : 'false');
+        rows.forEach((row) => {
+          if (next) row.removeAttribute('hidden');
+          else row.setAttribute('hidden', '');
+        });
+        btn.textContent = `${next ? 'Hide' : 'Show'} demo & offline (${rows.length})`;
+      });
+    });
+  }
+  bindDemoOffline();
+</script>
