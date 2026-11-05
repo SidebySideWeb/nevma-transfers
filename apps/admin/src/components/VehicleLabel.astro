@@ -1,0 +1,11 @@
+---
+import { displayVehicleLabel } from '../lib/vehicle-label';
+
+interface Props {
+  label: string | null | undefined;
+}
+
+const { label } = Astro.props;
+---
+
+<span class="vehicle-label">{displayVehicleLabel(label)}</span>

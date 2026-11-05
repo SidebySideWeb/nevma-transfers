@@ -5,8 +5,9 @@ import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import ClassName from '../../components/ClassName.astro';
 import Flag from '../../components/Flag.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import Money from '../../components/Money.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
-import { formatEuro } from '../../lib/money';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -111,7 +112,7 @@ function tripLabel(b: {
     <span class="muted small">
       Customer since {fmtSince(customer.first_booking_at ?? customer.created_at)} ·{' '}
       {summary.bookings_count ?? 0} booking{(summary.bookings_count ?? 0) === 1 ? '' : 's'} ·{' '}
-      {formatEuro(summary.paid_cents ?? 0)} paid
+      <Money cents={summary.paid_cents ?? 0} /> paid
     </span>
   </div>
 
@@ -124,6 +125,18 @@ function tripLabel(b: {
             New booking for {firstName}
           </a>
         </div>
+        {
+          (bookings ?? []).length === 0 ? (
+            <div class="panel-body">
+              <EmptyState
+                title="No bookings yet"
+                actionHref={`/bookings/new?customer=${customer.id}`}
+                actionLabel={`New booking for ${firstName}`}
+              >
+                This customer has no bookings on file.
+              </EmptyState>
+            </div>
+          ) : (
         <div
           class="table-wrap"
           role="region"
@@ -140,19 +153,22 @@ function tripLabel(b: {
                 <th scope="col">Class</th>
                 <th scope="col" class="num">Total</th>
                 <th scope="col">Status</th>
+                <th scope="col">Payment</th>
               </tr>
             </thead>
             <tbody>
               {
-                (bookings ?? []).length === 0 ? (
-                  <tr>
-                    <td colspan="6">No bookings yet.</td>
-                  </tr>
-                ) : (
                   (bookings ?? []).map((b) => {
                     const cls = b.class as { key?: string; name?: string } | null;
                     return (
-                      <tr class={b.vip_security ? 'is-flag' : b.status === 'cancelled' ? 'is-muted' : undefined}>
+                      <tr
+                        class:list={[
+                          'is-link',
+                          { 'is-muted': b.status === 'cancelled' || b.status === 'expired' },
+                        ]}
+                        data-href={`/bookings/${b.reference}`}
+                        tabindex="0"
+                      >
                         <td class="card-title" data-label="Reference">
                           <a class="ref" href={`/bookings/${b.reference}`}>
                             {b.reference}
@@ -171,22 +187,23 @@ function tripLabel(b: {
                           <ClassName name={cls?.name} />
                         </td>
                         <td class="num" data-label="Total">
-                          {formatEuro(b.price_cents)}
+                          <Money cents={b.price_cents} />
                         </td>
                         <td data-label="Status">
                           <StatusBadge status={b.status} />
-                          {b.payment_status === 'refunded' && (
-                            <span class="small muted"> refunded</span>
-                          )}
+                        </td>
+                        <td data-label="Payment">
+                          <StatusBadge kind="payment" status={b.payment_status} />
                         </td>
                       </tr>
                     );
                   })
-                )
               }
             </tbody>
           </table>
         </div>
+          )
+        }
       </section>
     </div>
 

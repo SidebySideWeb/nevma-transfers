@@ -6,10 +6,13 @@ import AutoBadge from '../../components/AutoBadge.astro';
 import Banner from '../../components/Banner.astro';
 import ClassName from '../../components/ClassName.astro';
 import DataTable from '../../components/DataTable.astro';
+import DateField from '../../components/DateField.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
+import Money from '../../components/Money.astro';
 import Select from '../../components/Select.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
+import VehicleLabel from '../../components/VehicleLabel.astro';
 import { athensDay, athensTime } from '../../lib/athens-day';
 import {
   applyBookingsTab,
@@ -20,7 +23,6 @@ import {
   resolveListLoad,
   type BookingsTab,
 } from '../../lib/bookings-list';
-import { formatEuro } from '../../lib/money';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -211,15 +213,15 @@ function qs(overrides: Record<string, string | null>): string {
     }
   </nav>
 
-  <form class="filters" aria-label="Filters" method="get">
+  <form class="filters" aria-label="Filters" method="get" data-live>
     <input type="hidden" name="tab" value={tab} />
     <div class="field">
       <label for="fr">From</label>
-      <input id="fr" class="input" type="date" name="from" value={from} />
+      <DateField id="fr" name="from" value={from} />
     </div>
     <div class="field">
       <label for="tt">To</label>
-      <input id="tt" class="input" type="date" name="to" value={to} />
+      <DateField id="tt" name="to" value={to} />
     </div>
     <div class="field">
       <label for="ty">Type</label>
@@ -261,7 +263,6 @@ function qs(overrides: Record<string, string | null>): string {
       <input type="checkbox" name="vip" value="1" checked={vipOnly} /> VIP security only
     </label>
     <div class="actions">
-      <button class="btn btn-sm" type="submit">Apply</button>
       <a class="btn btn-quiet btn-sm" href="/bookings">Clear</a>
     </div>
   </form>
@@ -287,7 +288,9 @@ function qs(overrides: Record<string, string | null>): string {
         {listError}
       </Banner>
     ) : bookings.length === 0 ? (
-      <EmptyState title="No bookings">No bookings match these filters.</EmptyState>
+      <EmptyState title="No bookings" actionHref="/bookings/new" actionLabel="New booking">
+        No bookings match these filters.
+      </EmptyState>
     ) : (
       <DataTable label="Bookings, sorted by pick-up time" cards>
         <caption class="sr-only">Bookings, sorted by pick-up time</caption>
@@ -331,9 +334,11 @@ function qs(overrides: Record<string, string | null>): string {
                 return (
                   <tr
                     class:list={[
-                      { 'is-flag': b.vip_security },
+                      'is-link',
                       { 'is-muted': b.status === 'cancelled' || b.status === 'expired' },
                     ]}
+                    data-href={`/bookings/${b.reference}`}
+                    tabindex="0"
                   >
                     <td class="card-title" data-label="Reference">
                       <a class="ref" href={`/bookings/${b.reference}`}>
@@ -353,19 +358,21 @@ function qs(overrides: Record<string, string | null>): string {
                         <a href={`/bookings/${b.reference}#assign`}>Assign</a>
                       ) : (
                         <>
-                          {vehicleLabel ?? '-'}{' '}
+                          <VehicleLabel label={vehicleLabel} />{' '}
                           <AutoBadge show={Boolean(b.vehicle_auto_assigned && vehicleLabel)} />
                         </>
                       )}
                     </td>
                     <td data-label="Customer">{b.customer_name}</td>
                     <td class="num" data-label="Total">
-                      {formatEuro(b.price_cents)}
+                      <Money cents={b.price_cents} />
                     </td>
                     <td data-label="Status">
                       <StatusBadge status={b.status} />
                     </td>
-                    <td data-label="Payment">{b.payment_status}</td>
+                    <td data-label="Payment">
+                      <StatusBadge kind="payment" status={b.payment_status} />
+                    </td>
                     <td
                       data-label="Flags"
                       data-hide-phone={

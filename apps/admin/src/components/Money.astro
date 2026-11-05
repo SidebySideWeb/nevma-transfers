@@ -1,0 +1,11 @@
+---
+import { formatEuro } from '../lib/money';
+
+interface Props {
+  cents: number;
+}
+
+const { cents } = Astro.props;
+---
+
+<span class="money">{formatEuro(cents)}</span>

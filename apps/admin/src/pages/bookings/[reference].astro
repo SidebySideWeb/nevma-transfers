@@ -9,11 +9,13 @@ import ClassName from '../../components/ClassName.astro';
 import DataTable from '../../components/DataTable.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
+import Phone from '../../components/Phone.astro';
 import Select from '../../components/Select.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import Toast from '../../components/Toast.astro';
 import { confirmActionLabel } from '../../components/confirm-label';
 import { formatEuro } from '../../lib/money';
+import { displayVehicleLabel } from '../../lib/vehicle-label';
 
 function formatVatRate(bp: number): string {
   return String(Number((bp / 100).toFixed(2)));
@@ -170,7 +172,9 @@ if (found && booking) {
 
     classVehicles = (vehicles ?? []).map((v) => ({
       id: v.id,
-      label: busy.has(v.id) && v.id !== booking.vehicle_id ? `${v.label} (busy)` : v.label,
+      label: busy.has(v.id) && v.id !== booking.vehicle_id
+        ? `${displayVehicleLabel(v.label)} (busy)`
+        : displayVehicleLabel(v.label),
       busy: busy.has(v.id) && v.id !== booking.vehicle_id,
     }));
   }
@@ -408,7 +412,7 @@ if (found && booking) {
                         },
                         ...classVehicles.map((v) => ({
                           value: v.id,
-                          label: v.label,
+                          label: displayVehicleLabel(v.label),
                           selected: booking.vehicle_id === v.id,
                           meta: v.busy ? 'busy' : undefined,
                         })),
@@ -563,7 +567,7 @@ if (found && booking) {
                   <dt>Email</dt>
                   <dd>{booking.customer_email}</dd>
                   <dt>Phone</dt>
-                  <dd>{booking.customer_phone}</dd>
+                  <dd><Phone value={booking.customer_phone} /></dd>
                   <dt>Notes</dt>
                   <dd>{booking.notes || '-'}</dd>
                 </dl>
@@ -677,7 +681,9 @@ if (found && booking) {
                   </div>
                   <div>
                     <dt>Payment status</dt>
-                    <dd id="payment-status">{booking.payment_status}</dd>
+                    <dd id="payment-status">
+                      <StatusBadge kind="payment" status={booking.payment_status} />
+                    </dd>
                   </div>
                 </dl>
                 <div class="row">

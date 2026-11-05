@@ -5,6 +5,7 @@ import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Select from '../../components/Select.astro';
 import ShowDemoOffline from '../../components/ShowDemoOffline.astro';
+import VehicleLabel from '../../components/VehicleLabel.astro';
 import { isDemoOrOffline, withDemoOfflineLast } from '../../lib/demo-offline';
 import { formatEuro } from '../../lib/money';
 import { readinessChecklist } from '../../lib/readiness';
@@ -332,12 +333,12 @@ const usageBits = [
                   const bury = isDemoOrOffline(v);
                   return (
                     <tr
-                      class:list={[{ 'is-flag': v.is_demo, 'is-muted': v.status !== 'active' }]}
+                      class:list={[{ 'is-muted': v.status !== 'active' }]}
                       data-demo-offline={bury ? 'class-vehicles' : undefined}
                       hidden={bury || undefined}
                     >
                       <td class="card-title" data-label="Label">
-                        {v.label}
+                        <VehicleLabel label={v.label} />
                       </td>
                       <td data-label="Model">{v.note || '—'}</td>
                       <td data-label="Status">

@@ -3,7 +3,10 @@ export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Banner from '../../components/Banner.astro';
+import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
+import Money from '../../components/Money.astro';
+import Phone from '../../components/Phone.astro';
 import Select from '../../components/Select.astro';
 import { logListError, resolveListLoad } from '../../lib/bookings-list';
 import {
@@ -12,7 +15,6 @@ import {
   customerSortColumn,
   parseCustomerSort,
 } from '../../lib/customer-list';
-import { formatEuro } from '../../lib/money';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -88,7 +90,7 @@ const exportHref = `/customers/export.csv${qs({ page: undefined })}`;
     )
   }
 
-  <form class="filters" aria-label="Find customers" method="get" id="cu-filters">
+  <form class="filters" aria-label="Find customers" method="get" id="cu-filters" data-live>
     <div class="field" style="grid-column: span 2">
       <label for="cu-q">Search</label>
       <input
@@ -118,13 +120,14 @@ const exportHref = `/customers/export.csv${qs({ page: undefined })}`;
       <input type="checkbox" name="vip" value="1" checked={vipOnly} /> With VIP security bookings
     </label>
     <div class="actions">
-      <button class="btn btn-sm" type="submit">Apply</button>
       <a class="btn btn-quiet btn-sm" href="/customers">Clear</a>
     </div>
   </form>
 
   {
-    !listError && (
+    !listError && customers.length === 0 ? (
+      <EmptyState title="No customers">No customers match these filters.</EmptyState>
+    ) : !listError ? (
       <div class="table-wrap" role="region" tabindex="0" aria-labelledby="cu-cap">
         <table class="table table-cards">
           <caption id="cu-cap" class="sr-only">Customers</caption>
@@ -139,34 +142,32 @@ const exportHref = `/customers/export.csv${qs({ page: undefined })}`;
             </tr>
           </thead>
           <tbody>
-            {customers.length === 0 ? (
-              <tr>
-                <td colspan="6">No customers match.</td>
-              </tr>
-            ) : (
+            {
               customers.map((c) => (
-                <tr>
+                <tr class="is-link" data-href={`/customers/${c.id}`} tabindex="0">
                   <td class="card-title" data-label="Customer">
                     <a href={`/customers/${c.id}`}>{c.name}</a>
                     {c.has_vip_security && <Flag kind="vip" />}
                     <span class="sub">{c.email}</span>
                   </td>
-                  <td data-label="Phone">{c.phone || '—'}</td>
+                  <td data-label="Phone">
+                    <Phone value={c.phone} />
+                  </td>
                   <td data-label="Company">{c.company || '—'}</td>
                   <td class="num" data-label="Bookings">
                     {c.bookings_count ?? 0}
                   </td>
                   <td data-label="Last booking">{fmtDay(c.last_pickup_at)}</td>
                   <td class="num" data-label="Paid in total">
-                    {formatEuro(c.paid_cents ?? 0)}
+                    <Money cents={c.paid_cents ?? 0} />
                   </td>
                 </tr>
               ))
-            )}
+            }
           </tbody>
         </table>
       </div>
-    )
+    ) : null
   }
 
   <div class="pager">

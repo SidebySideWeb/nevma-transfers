@@ -1,0 +1,17 @@
+---
+import {
+  isPaymentStatus,
+  paymentStatusClass,
+  paymentStatusWord,
+  type PaymentStatus,
+} from './payment-status';
+
+interface Props {
+  status: string;
+}
+
+const raw = Astro.props.status;
+const status: PaymentStatus = isPaymentStatus(raw) ? raw : 'unpaid';
+---
+
+<span class={`badge ${paymentStatusClass(status)}`}>{paymentStatusWord(status)}</span>

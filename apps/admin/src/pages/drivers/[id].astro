@@ -4,9 +4,13 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Banner from '../../components/Banner.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import Phone from '../../components/Phone.astro';
 import Select from '../../components/Select.astro';
+import VehicleLabel from '../../components/VehicleLabel.astro';
 import { driversNotFound } from '../../lib/drivers';
 import { formatEuro } from '../../lib/money';
+import { displayVehicleLabel } from '../../lib/vehicle-label';
 import { bpToPercentInput } from '../../lib/pay-convert';
 import { formatPeriodRange, formatSignedEuro, kindLabel, statementStatusBadge } from '../../lib/pay-format';
 import { athensTodayKey, athensYesterdayKey } from '../../lib/report-period';
@@ -203,12 +207,19 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
     {
       nowRow?.shift_id ? (
         <span class="dot-on">
-          On shift{nowRow.vehicle_label ? ` with ${nowRow.vehicle_label}` : ''}
+          On shift
+          {nowRow.vehicle_label ? (
+            <>
+              {' with '}
+              <VehicleLabel label={nowRow.vehicle_label} />
+            </>
+          ) : null}
         </span>
       ) : (
         <span class="dot-off">Off shift</span>
       )
     }
+    <Phone value={driver.phone} />
   </div>
 
   <div class="cols cols-main" style="align-items:start">
@@ -264,6 +275,14 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
           <h2 id="d-s">Shifts</h2>
           <button class="btn btn-secondary btn-sm" type="button" data-open="shift-dialog">Add a shift</button>
         </div>
+        {
+          (shifts ?? []).length === 0 ? (
+            <div class="panel-body">
+              <EmptyState title="No shifts" actionHref="#shift-dialog" actionLabel="Add a shift">
+                No shifts recorded for this driver yet.
+              </EmptyState>
+            </div>
+          ) : (
         <div class="table-wrap" role="region" tabindex="0" aria-label={`Shifts of ${driver.full_name}`} style="border:0">
           <table class="table table-cards">
             <thead>
@@ -284,7 +303,7 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
                   return (
                     <tr>
                       <td class="card-title" data-label="Day">{formatAthensShort(s.started_at).split(',')[0]}</td>
-                      <td data-label="Vehicle">{v?.label ?? '—'}</td>
+                      <td data-label="Vehicle"><VehicleLabel label={v?.label} /></td>
                       <td data-label="Start">{formatAthens(s.started_at).slice(-5)}</td>
                       <td data-label="End">{s.ended_at ? formatAthens(s.ended_at).slice(-5) : '—'}</td>
                       <td class="num" data-label="Hours">{hoursBetween(s.started_at, s.ended_at)}</td>
@@ -299,6 +318,8 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
             </tbody>
           </table>
         </div>
+          )
+        }
       </section>
 
       <section class="panel" aria-labelledby="d-p">
@@ -653,7 +674,7 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
           required
           options={(vehicles ?? []).map((v) => ({
             value: v.id,
-            label: v.label,
+            label: displayVehicleLabel(v.label),
             meta: v.status === 'active' ? undefined : v.status,
             selected: editing ? (editing.vehicle as { id?: string } | null)?.id === v.id : false,
           }))}

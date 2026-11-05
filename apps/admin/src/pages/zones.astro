@@ -89,7 +89,7 @@ const zoneList = withDemoOfflineLast(zones ?? []);
             const bury = isDemoOrOffline(z);
             return (
               <tr
-                class:list={[{ 'is-flag': z.is_demo, 'is-muted': !z.active }]}
+                class:list={[{ 'is-muted': !z.active }]}
                 data-demo-offline={bury ? 'zones' : undefined}
                 hidden={bury || undefined}
               >

@@ -4,7 +4,10 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Banner from '../../components/Banner.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import Phone from '../../components/Phone.astro';
 import Select from '../../components/Select.astro';
+import VehicleLabel from '../../components/VehicleLabel.astro';
 import { driversNotFound } from '../../lib/drivers';
 import { expiresWithinDays } from '../../lib/free-drivers';
 import { createSupabaseServerClient } from '../../lib/supabase';
@@ -83,7 +86,7 @@ function appBadge(userId: string | null) {
   {pageError && <Banner tone="danger" role="alert">{pageError}</Banner>}
   {error && <Banner tone="danger" role="alert">Could not load drivers.</Banner>}
 
-  <form class="filters" aria-label="Find drivers" method="get">
+  <form class="filters" aria-label="Find drivers" method="get" data-live>
     <div class="field" style="grid-column: span 2">
       <label for="dr-q">Search</label>
       <input id="dr-q" class="input" type="search" name="q" value={q} placeholder="Name, phone or e-mail" />
@@ -103,9 +106,14 @@ function appBadge(userId: string | null) {
     <label class="check">
       <input type="checkbox" name="inactive" value="1" checked={showInactive || undefined} /> Show inactive
     </label>
-    <div class="actions"><button class="btn btn-sm" type="submit">Apply</button></div>
   </form>
 
+  {
+    !error && (drivers ?? []).length === 0 ? (
+      <EmptyState title="No drivers" actionHref="#add-driver" actionLabel="Add driver">
+        No drivers match these filters.
+      </EmptyState>
+    ) : (
   <div class="table-wrap" role="region" tabindex="0" aria-label="Drivers">
     <table class="table table-cards">
       <thead>
@@ -126,16 +134,28 @@ function appBadge(userId: string | null) {
             const warn =
               expiresWithinDays(d.licence_expires_on, 30) || expiresWithinDays(d.permit_expires_on, 30);
             return (
-              <tr class:list={[{ 'is-muted': !d.active }]}>
+              <tr
+                class:list={['is-link', { 'is-muted': !d.active }]}
+                data-href={`/drivers/${d.id}`}
+                tabindex="0"
+              >
                 <td class="card-title" data-label="Driver">
                   <a href={`/drivers/${d.id}`}>{d.full_name}</a>
                   {warn && <span class="badge s-pending">Expires soon</span>}
-                  <span class="sub">{d.phone}</span>
+                  <span class="sub"><Phone value={d.phone} /></span>
                 </td>
                 <td data-label="Type">{d.employment === 'freelancer' ? 'Freelancer' : 'Employee'}</td>
                 <td data-label="Now">
                   {now?.shift_id ? (
-                    <span class="dot-on">On shift{now.vehicle_label ? ` · ${now.vehicle_label}` : ''}</span>
+                    <span class="dot-on">
+                      On shift
+                      {now.vehicle_label ? (
+                        <>
+                          {' · '}
+                          <VehicleLabel label={now.vehicle_label} />
+                        </>
+                      ) : null}
+                    </span>
                   ) : (
                     <span class="dot-off">Off</span>
                   )}
@@ -154,6 +174,8 @@ function appBadge(userId: string | null) {
       </tbody>
     </table>
   </div>
+    )
+  }
 </AdminLayout>
 
 <dialog class="dialog" id="add-driver" aria-labelledby="ad-h">

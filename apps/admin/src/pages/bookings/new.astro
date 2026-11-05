@@ -2,8 +2,10 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import DateField from '../../components/DateField.astro';
 import Flag from '../../components/Flag.astro';
 import Select from '../../components/Select.astro';
+import TimeField from '../../components/TimeField.astro';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -230,27 +232,20 @@ const pageData = {
               />
               <p class="error-text" id="nb-hours-err" hidden></p>
             </div>
-            <div class="field">
-              <label for="nb-date">Pick-up date</label>
-              <input
-                id="nb-date"
-                class="input"
-                type="date"
-                value={at.slice(0, 10)}
-                aria-describedby="nb-date-err"
-              />
-              <p class="error-text" id="nb-date-err" hidden></p>
-            </div>
-            <div class="field">
-              <label for="nb-time">Pick-up time (Athens)</label>
-              <input
-                id="nb-time"
-                class="input"
-                type="time"
-                value={at.slice(11, 16)}
-                aria-describedby="nb-time-err"
-              />
-              <p class="error-text" id="nb-time-err" hidden></p>
+            <div class="field" style="grid-column: 1 / -1">
+              <span class="label-text" id="nb-pickup-lab">Pick-up (Athens)</span>
+              <div class="field-pair" role="group" aria-labelledby="nb-pickup-lab">
+                <div class="field">
+                  <label for="nb-date">Date</label>
+                  <DateField id="nb-date" value={at.slice(0, 10)} describedBy="nb-date-err" />
+                  <p class="error-text" id="nb-date-err" hidden></p>
+                </div>
+                <div class="field">
+                  <label for="nb-time">Time</label>
+                  <TimeField id="nb-time" value={at.slice(11, 16)} describedBy="nb-time-err" />
+                  <p class="error-text" id="nb-time-err" hidden></p>
+                </div>
+              </div>
             </div>
           </div>
           <div class="grid-fields">

@@ -6,6 +6,7 @@ import AdminLayout from '../layouts/AdminLayout.astro';
 import ConfirmDot from '../components/ConfirmDot.astro';
 import Select from '../components/Select.astro';
 import ShowDemoOffline from '../components/ShowDemoOffline.astro';
+import VehicleLabel from '../components/VehicleLabel.astro';
 import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { isDemoOrOffline, withDemoOfflineLast } from '../lib/demo-offline';
 import { createSupabaseServerClient } from '../lib/supabase';
@@ -165,7 +166,9 @@ function fmtNext(iso: string) {
               const bury = isDemoOrOffline(c);
               return (
                 <tr
-                  class:list={[{ 'is-muted': !c.active, 'is-flag': c.is_demo }]}
+                  class:list={['is-link', { 'is-muted': !c.active }]}
+                  data-href={`/fleet/${c.key}`}
+                  tabindex="0"
                   data-demo-offline={bury ? 'fleet-classes' : undefined}
                   hidden={bury || undefined}
                 >
@@ -244,14 +247,13 @@ function fmtNext(iso: string) {
               const bury = isDemoOrOffline(v);
               return (
                 <tr
-                  class:list={[{ 'is-flag': v.is_demo }]}
                   data-demo-offline={bury ? 'fleet-vehicles' : undefined}
                   hidden={bury || undefined}
                 >
                   <td class="card-title" data-label="Label">
                     <ConfirmDot confirmed={!v.is_demo} />
                     <button
-                      class="btn btn-quiet btn-sm"
+                      class="btn btn-quiet btn-sm btn-label"
                       type="button"
                       data-edit-vehicle={JSON.stringify({
                         id: v.id,
@@ -263,7 +265,7 @@ function fmtNext(iso: string) {
                         used: bookedVehicleIds.has(v.id),
                       })}
                     >
-                      {v.label}
+                      <VehicleLabel label={v.label} />
                     </button>
                     {
                       v.is_demo && (

@@ -1,16 +1,32 @@
 ---
+import PaymentBadge from './PaymentBadge.astro';
 import { statusClass, statusWord, type BookingStatus } from './status';
 
 interface Props {
   status: BookingStatus | string;
+  /** Payment statuses: unpaid → Pending, paid, refunded, failed. */
+  kind?: 'booking' | 'payment';
 }
 
-const raw = Astro.props.status;
-const status = (
-  ['pending', 'confirmed', 'assigned', 'completed', 'cancelled', 'expired'].includes(raw)
-    ? raw
-    : 'pending'
-) as BookingStatus;
+const { status: raw, kind = 'booking' } = Astro.props;
 ---
 
-<span class={`badge ${statusClass(status)}`}>{statusWord(status)}</span>
+{
+  kind === 'payment' ? (
+    <PaymentBadge status={raw} />
+  ) : (
+    <span
+      class={`badge ${statusClass(
+        (['pending', 'confirmed', 'assigned', 'completed', 'cancelled', 'expired'].includes(raw)
+          ? raw
+          : 'pending') as BookingStatus,
+      )}`}
+    >
+      {statusWord(
+        (['pending', 'confirmed', 'assigned', 'completed', 'cancelled', 'expired'].includes(raw)
+          ? raw
+          : 'pending') as BookingStatus,
+      )}
+    </span>
+  )
+}

@@ -154,13 +154,15 @@ const hasUnconfirmed = [...priceMap.values()].some((c) => c.isDemo);
                             <ConfirmDot confirmed={!cell.isDemo} />
                           )
                         }
-                        <input
-                          class="input price-cell"
-                          data-key={`${fromZ.id}:${toZ.id}`}
-                          aria-label={`${fromZ.name} to ${toZ.name}`}
-                          value={cell != null ? centsToEuroInput(cell.cents) : ''}
-                          inputmode="decimal"
-                        />
+                        <div class="input-money">
+                          <input
+                            class="input price-cell"
+                            data-key={`${fromZ.id}:${toZ.id}`}
+                            aria-label={`${fromZ.name} to ${toZ.name}`}
+                            value={cell != null ? centsToEuroInput(cell.cents) : ''}
+                            inputmode="decimal"
+                          />
+                        </div>
                         {
                           cell?.isDemo && (
                             <button

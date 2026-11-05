@@ -78,7 +78,7 @@ const hasUnconfirmed = rateList.rows.some((c) => {
               return (
                 <tr
                   data-class-id={c.id}
-                  class:list={[{ 'is-flag': isDemo, 'is-muted': !c.active }]}
+                  class:list={[{ 'is-muted': !c.active }]}
                   data-demo-offline={bury ? 'hourly-rates' : undefined}
                   hidden={bury || undefined}
                 >
@@ -88,11 +88,14 @@ const hasUnconfirmed = rateList.rows.some((c) => {
                     {!c.active && <span class="badge s-completed">Off</span>}
                   </th>
                   <td class="num">
-                    <input
-                      class="input rate"
-                      aria-label={`${c.name || 'Class'} rate`}
-                      value={rate ? centsToEuroInput(rate.price_per_hour_cents) : ''}
-                    />
+                    <div class="input-money">
+                      <input
+                        class="input rate"
+                        aria-label={`${c.name || 'Class'} rate`}
+                        value={rate ? centsToEuroInput(rate.price_per_hour_cents) : ''}
+                        inputmode="decimal"
+                      />
+                    </div>
                   </td>
                   <td class="num">
                     <input class="input min" aria-label={`${c.name || 'Class'} min hours`} value={rate?.min_hours ?? 3} />

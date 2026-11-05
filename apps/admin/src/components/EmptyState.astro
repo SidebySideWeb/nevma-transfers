@@ -1,12 +1,24 @@
 ---
 interface Props {
   title: string;
+  actionHref?: string;
+  actionLabel?: string;
 }
 
-const { title } = Astro.props;
+const { title, actionHref, actionLabel } = Astro.props;
 ---
 
 <div class="empty">
+  <span class="empty-icon" aria-hidden="true"></span>
   <h2>{title}</h2>
   <p><slot /></p>
+  {
+    actionHref && actionLabel ? (
+      <p class="empty-action">
+        <a class="btn btn-secondary" href={actionHref}>
+          {actionLabel}
+        </a>
+      </p>
+    ) : null
+  }
 </div>

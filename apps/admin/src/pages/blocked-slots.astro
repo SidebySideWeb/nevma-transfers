@@ -3,10 +3,15 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import DateField from '../components/DateField.astro';
+import EmptyState from '../components/EmptyState.astro';
 import Select from '../components/Select.astro';
+import TimeField from '../components/TimeField.astro';
+import VehicleLabel from '../components/VehicleLabel.astro';
 import { formatAthens } from '../lib/time';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { parseTstzRange } from '../lib/range';
+import { displayVehicleLabel } from '../lib/vehicle-label';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
@@ -14,7 +19,9 @@ const nowMs = Date.now();
 // Prefill from the fleet calendar: ?vehicle=<uuid>&from=YYYY-MM-DDTHH:mm (Athens local).
 const preVehicle = Astro.url.searchParams.get('vehicle') ?? '';
 const rawFrom = Astro.url.searchParams.get('from') ?? '';
-const preFrom = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(rawFrom) ? rawFrom : '';
+const preFromOk = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(rawFrom);
+const preDate = preFromOk ? rawFrom.slice(0, 10) : '';
+const preTime = preFromOk ? rawFrom.slice(11, 16) : '';
 
 const { data: vehicles } = await supabase
   .from('vehicles')
@@ -44,7 +51,9 @@ const rows = (slots ?? []).map((s) => {
 
   <section class="panel stack" id="block-vehicle" aria-labelledby="c-h">
     <h2 id="c-h">Block a vehicle</h2>
-    <form method="POST" action={actions.createBlockedSlot} class="stack">
+    <form method="POST" action={actions.createBlockedSlot} class="stack" id="block-form">
+      <input type="hidden" name="fromLocal" id="fromLocal" value={preFromOk ? rawFrom : ''} />
+      <input type="hidden" name="toLocal" id="toLocal" value="" />
       <div class="field">
         <label for="vehicleId">Vehicle</label>
         <Select
@@ -55,20 +64,36 @@ const rows = (slots ?? []).map((s) => {
             { value: '', label: 'Select…', selected: !(vehicles ?? []).some((v) => v.id === preVehicle) },
             ...(vehicles ?? []).map((v) => ({
               value: v.id,
-              label: v.label,
+              label: displayVehicleLabel(v.label),
               selected: v.id === preVehicle,
             })),
           ]}
         />
       </div>
-      <div class="grid grid-2">
-        <div class="field">
-          <label for="fromLocal">From (Athens)</label>
-          <input class="input" id="fromLocal" name="fromLocal" type="datetime-local" value={preFrom} required />
+      <div class="field">
+        <span class="label-text" id="from-lab">From (Athens)</span>
+        <div class="field-pair" role="group" aria-labelledby="from-lab">
+          <div class="field">
+            <label for="from-date">Date</label>
+            <DateField id="from-date" value={preDate} required />
+          </div>
+          <div class="field">
+            <label for="from-time">Time</label>
+            <TimeField id="from-time" value={preTime} required />
+          </div>
         </div>
-        <div class="field">
-          <label for="toLocal">To (Athens)</label>
-          <input class="input" id="toLocal" name="toLocal" type="datetime-local" required />
+      </div>
+      <div class="field">
+        <span class="label-text" id="to-lab">To (Athens)</span>
+        <div class="field-pair" role="group" aria-labelledby="to-lab">
+          <div class="field">
+            <label for="to-date">Date</label>
+            <DateField id="to-date" required />
+          </div>
+          <div class="field">
+            <label for="to-time">Time</label>
+            <TimeField id="to-time" required />
+          </div>
         </div>
       </div>
       <div class="field">
@@ -81,45 +106,70 @@ const rows = (slots ?? []).map((s) => {
 
   <section class="stack" aria-labelledby="l-h">
     <h2 id="l-h">Existing</h2>
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
-      <table class="table table-cards">
-        <thead>
-          <tr>
-            <th scope="col">Vehicle</th>
-            <th scope="col">From</th>
-            <th scope="col">To</th>
-            <th scope="col">Reason</th>
-            <th scope="col">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            rows.map((s) => {
-              const future = s.endsAt != null && s.endsAt.getTime() > nowMs;
-              return (
-                <tr>
-                  <td>{s.label}</td>
-                  <td>{s.startsAt ? formatAthens(s.startsAt) : '-'}</td>
-                  <td>{s.endsAt ? formatAthens(s.endsAt) : '-'}</td>
-                  <td>{s.reason ?? '-'}</td>
-                  <td>
-                    {future ? (
-                      <form method="POST" action={actions.deleteBlockedSlot}>
-                        <input type="hidden" name="id" value={s.id} />
-                        <button class="btn btn-quiet" type="submit">
-                          Delete
-                        </button>
-                      </form>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                </tr>
-              );
-            })
-          }
-        </tbody>
-      </table>
-    </div>
+    {
+      rows.length === 0 ? (
+        <EmptyState title="No blocked slots" actionHref="#block-vehicle" actionLabel="Block a vehicle">
+          No vehicles are blocked right now.
+        </EmptyState>
+      ) : (
+        <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
+          <table class="table table-cards">
+            <thead>
+              <tr>
+                <th scope="col">Vehicle</th>
+                <th scope="col">From</th>
+                <th scope="col">To</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                rows.map((s) => {
+                  const future = s.endsAt != null && s.endsAt.getTime() > nowMs;
+                  return (
+                    <tr>
+                      <td class="card-title" data-label="Vehicle">
+                        <VehicleLabel label={s.label} />
+                      </td>
+                      <td data-label="From">{s.startsAt ? formatAthens(s.startsAt) : '—'}</td>
+                      <td data-label="To">{s.endsAt ? formatAthens(s.endsAt) : '—'}</td>
+                      <td data-label="Reason">{s.reason ?? '—'}</td>
+                      <td class="actions" data-label="">
+                        {future ? (
+                          <form method="POST" action={actions.deleteBlockedSlot}>
+                            <input type="hidden" name="id" value={s.id} />
+                            <button class="btn btn-quiet btn-sm" type="submit">
+                              Delete
+                            </button>
+                          </form>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              }
+            </tbody>
+          </table>
+        </div>
+      )
+    }
   </section>
 </AdminLayout>
+
+<script is:inline>
+  (function () {
+    var form = document.getElementById('block-form');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+      var fd = document.getElementById('from-date').value;
+      var ft = document.getElementById('from-time').value;
+      var td = document.getElementById('to-date').value;
+      var tt = document.getElementById('to-time').value;
+      document.getElementById('fromLocal').value = fd && ft ? fd + 'T' + ft : '';
+      document.getElementById('toLocal').value = td && tt ? td + 'T' + tt : '';
+    });
+  })();
+</script>

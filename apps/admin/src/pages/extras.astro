@@ -83,7 +83,7 @@ const hasUnconfirmed = extraList.rows.some((e) => e.is_demo);
               return (
                 <tr
                   data-id={e.id}
-                  class:list={[{ 'is-flag': builtin || e.is_demo, 'is-muted': !e.active }]}
+                  class:list={[{ 'is-muted': !e.active }]}
                   data-demo-offline={bury ? 'extras' : undefined}
                   hidden={bury || undefined}
                 >

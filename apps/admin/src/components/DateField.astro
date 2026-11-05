@@ -1,0 +1,29 @@
+---
+interface Props {
+  id: string;
+  name?: string;
+  value?: string;
+  required?: boolean;
+  describedBy?: string;
+  invalid?: boolean;
+}
+
+const { id, name, value = '', required = false, describedBy, invalid = false } = Astro.props;
+const hintId = `${id}-fmt`;
+const described = [hintId, describedBy].filter(Boolean).join(' ') || undefined;
+---
+
+<div class="field-control">
+  <input
+    id={id}
+    class="input"
+    type="date"
+    lang="el-GR"
+    name={name}
+    value={value}
+    required={required || undefined}
+    aria-describedby={described}
+    aria-invalid={invalid || undefined}
+  />
+  <p class="help" id={hintId}>dd/mm/yyyy</p>
+</div>

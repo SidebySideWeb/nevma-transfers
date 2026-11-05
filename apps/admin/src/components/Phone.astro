@@ -1,0 +1,21 @@
+---
+import { formatPhone, phoneTelHref } from '../lib/phone';
+
+interface Props {
+  value: string | null | undefined;
+}
+
+const { value } = Astro.props;
+const display = formatPhone(value);
+const href = phoneTelHref(value);
+---
+
+{
+  display && href ? (
+    <a class="phone" href={href}>
+      {display}
+    </a>
+  ) : (
+    <span class="muted">—</span>
+  )
+}
