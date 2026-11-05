@@ -604,10 +604,14 @@ const editing = (shifts ?? []).find((s) => s.id === editShiftId) ?? null;
             <label for="dp-no">Notes for the office</label>
             <textarea id="dp-no" class="input" name="notes">{driver.notes ?? ''}</textarea>
           </div>
-          <label class="switch">
-            <input type="checkbox" name="active" value="true" checked={driver.active || undefined} /> Active
-          </label>
-          <button class="btn" type="submit">Save driver</button>
+          <div class="field">
+            <label class="switch">
+              <input type="checkbox" name="active" value="true" checked={driver.active || undefined} /> Active
+            </label>
+          </div>
+          <div class="form-footer">
+            <button class="btn" type="submit">Save driver</button>
+          </div>
         </form>
       </section>
 

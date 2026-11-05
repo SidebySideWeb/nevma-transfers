@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
+import ClassName from '../components/ClassName.astro';
 import Flag from '../components/Flag.astro';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
@@ -22,7 +23,7 @@ const pageErrorAll = pageError || pageErrorClear;
 
 const { data: classes } = await supabase
   .from('vehicle_classes')
-  .select('id, key, active, hourly_rates(price_per_hour_cents, min_hours, max_hours, is_demo)')
+  .select('id, key, name, active, hourly_rates(price_per_hour_cents, min_hours, max_hours, is_demo)')
   .order('sort_order');
 ---
 
@@ -55,22 +56,22 @@ const { data: classes } = await supabase
               return (
                 <tr data-class-id={c.id} class:list={[{ 'is-flag': isDemo }]}>
                   <th scope="row">
-                    {c.key}
+                    <ClassName name={c.name} />
                     {isDemo && <Flag kind="demo" />}
                     {!c.active && <span class="badge s-completed">Off</span>}
                   </th>
                   <td class="num">
                     <input
                       class="input rate"
-                      aria-label={`${c.key} rate`}
+                      aria-label={`${c.name || 'Class'} rate`}
                       value={rate ? centsToEuroInput(rate.price_per_hour_cents) : ''}
                     />
                   </td>
                   <td class="num">
-                    <input class="input min" aria-label={`${c.key} min hours`} value={rate?.min_hours ?? 3} />
+                    <input class="input min" aria-label={`${c.name || 'Class'} min hours`} value={rate?.min_hours ?? 3} />
                   </td>
                   <td class="num">
-                    <input class="input max" aria-label={`${c.key} max hours`} value={rate?.max_hours ?? 12} />
+                    <input class="input max" aria-label={`${c.name || 'Class'} max hours`} value={rate?.max_hours ?? 12} />
                   </td>
                   <td class="actions">
                     {

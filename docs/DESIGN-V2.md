@@ -59,7 +59,7 @@ These are the only allowed differences; the fidelity test knows them.
 
 1. **Final prices (1 Nov).** Every price is shown VAT included. "excl. 24% VAT" / "Prices exclusive of 24% VAT" become "VAT included" / "Prices include 24% VAT" (the seed and `uiStrings` already say so). The sticky summary on steps 1–3 shows only the lines and the total with `booking.priceNote`; the VAT share appears only on the review step (price analysis) and in the confirmation email (`docs/BOOKING-RULES.md` §2). Prices come from the booking database.
 2. **Hourly hire.** A Transfer / By the hour switch above the zones on the journey step and in the home widget, drawn as `extra/08b-book-hourly` and built from the same classes as the zone fields.
-3. **Booking references** look like `ELP-7K3QX2`, not `ELP-2026-0417`.
+3. **Booking references** look like `EP-7K3QX2`, not `EP-2026-0417`.
 4. **Viva hand-off.** `08-book-4-viva` without the "Prototype: choose the Viva outcome" part: a short interstitial while the order is created, then the browser goes to Viva.
 5. **Placeholders** ("[price]" for VIP security, "[year]", refund amounts, office address, legal wording) come from Sanity or the admin and stay as written until the client supplies them.
 6. **Contact numbers** from `siteSettings.phone`, `siteSettings.mobilePhone`, `siteSettings.email`.

@@ -5,6 +5,7 @@ import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import AutoBadge from '../../components/AutoBadge.astro';
 import Banner from '../../components/Banner.astro';
+import ClassName from '../../components/ClassName.astro';
 import DataTable from '../../components/DataTable.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Flag from '../../components/Flag.astro';
@@ -36,7 +37,7 @@ const { data: booking, error } = await supabase
     *,
     from_zone:zones!bookings_from_zone_id_fkey(name),
     to_zone:zones!bookings_to_zone_id_fkey(name),
-    class:vehicle_classes!bookings_class_id_fkey(id, key, buffer_minutes),
+    class:vehicle_classes!bookings_class_id_fkey(id, key, name, buffer_minutes),
     vehicle:vehicles!bookings_vehicle_id_fkey(id, label)
   `,
   )
@@ -93,7 +94,7 @@ let bookingEvents: {
 }[] = [];
 let fromName: string | undefined;
 let toName: string | undefined;
-let classKey = '-';
+let className: string | undefined;
 let vehicleError: string | null = null;
 let driverError: string | null = null;
 let tripError: string | null = null;
@@ -233,7 +234,7 @@ if (found && booking) {
 
   fromName = (booking.from_zone as { name?: string } | null)?.name;
   toName = (booking.to_zone as { name?: string } | null)?.name;
-  classKey = (booking.class as { key?: string } | null)?.key ?? '-';
+  className = (booking.class as { name?: string } | null)?.name;
 
   vehicleError = actionErr(Astro.getActionResult?.(actions.assignVehicle));
   driverError = actionErr(Astro.getActionResult?.(actions.assignDriver));
@@ -377,7 +378,9 @@ if (found && booking) {
                     {booking.passengers} · {booking.luggage} bags
                   </dd>
                   <dt>Class</dt>
-                  <dd>{classKey}</dd>
+                  <dd>
+                    <ClassName name={className} />
+                  </dd>
                 </dl>
 
                 <form

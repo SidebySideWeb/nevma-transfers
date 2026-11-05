@@ -71,7 +71,7 @@ test('one-vehicle class: office booking shows Auto; change clears it', async ({ 
   await expect(page.locator('#nb-veh-auto')).toContainText(/assigned automatically/i);
   await page.getByRole('radio', { name: /Paid offline/ }).check();
   await page.locator('#nb-submit').click();
-  await expect(page).toHaveURL(/\/bookings\/ELP-/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/bookings\/EP-/, { timeout: 30_000 });
   await expect(page.getByLabel('Assigned automatically: the only active vehicle in this class')).toBeVisible();
   await expect(page.locator('.badge.plain', { hasText: 'Auto' })).toBeVisible();
   await expect(page.locator('.badge', { hasText: /confirmed/i }).first()).toBeVisible();
@@ -108,7 +108,7 @@ test('two-vehicle class stays unassigned; switch off skips auto-assign; Assign n
   await expect(page.locator('#nb-veh-auto')).toBeHidden();
   await page.getByRole('radio', { name: /Paid offline/ }).check();
   await page.locator('#nb-submit').click();
-  await expect(page).toHaveURL(/\/bookings\/ELP-/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/bookings\/EP-/, { timeout: 30_000 });
   await expect(page.locator('.badge.plain', { hasText: 'Auto' })).toHaveCount(0);
   await expect(page.locator('#veh')).toHaveValue('');
 
@@ -135,7 +135,7 @@ test('two-vehicle class stays unassigned; switch off skips auto-assign; Assign n
   await setNativeSelect(page, 'nb-cls', 'e2e-solo');
   await page.getByRole('radio', { name: /Paid offline/ }).check();
   await page.locator('#nb-submit').click();
-  await expect(page).toHaveURL(/\/bookings\/ELP-/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/bookings\/EP-/, { timeout: 30_000 });
   await expect(page.locator('#veh')).toHaveValue('');
   await expect(page.locator('.badge.plain', { hasText: 'Auto' })).toHaveCount(0);
 

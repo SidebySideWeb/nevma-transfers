@@ -1,0 +1,18 @@
+---
+/**
+ * Short public class name for staff UI. Never print a vehicle_classes.key.
+ * Prefer Postgres/Sanity short name; optional fullName for the tooltip.
+ */
+interface Props {
+  name?: string | null;
+  fullName?: string | null;
+}
+
+const short = (Astro.props.name ?? '').trim();
+const full = (Astro.props.fullName ?? '').trim();
+const label = short || '—';
+const title = full && full !== short ? full : short || undefined;
+const muted = !short;
+---
+
+<span class:list={['class-name', { muted }]} title={title}>{label}</span>

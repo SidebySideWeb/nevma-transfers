@@ -6,7 +6,7 @@ D = decided by the user (date). P = proposed in this kit, change if needed. O = 
 
 | # | Decision | Status |
 | --- | --- | --- |
-| 1 | The site's brand is **Elite Protection** (decided by the user 1 Nov; "TEM Protection" was the working name). Internal names stay: repo `tem-platform`, packages `@tem/*`, Vercel `tem-web`/`tem-admin`, headers `X-TEM-*`, env `TEM_WEB_DEPLOY_HOOK_URL`. Booking references start with `ELP-` (migration 0017; was `EP-` in 0009, `TEM-` before that). Separate company, its own design style, no NEVMA branding, English only. | D 31 Oct, 1 Nov; updated 2 Nov |
+| 1 | The site's brand is **Elite Protection** (decided by the user 1 Nov; "TEM Protection" was the working name). Internal names stay: repo `tem-platform`, packages `@tem/*`, Vercel `tem-web`/`tem-admin`, headers `X-TEM-*`, env `TEM_WEB_DEPLOY_HOOK_URL`. Booking references start with `EP-` (migration 0023; was `ELP-` in 0017, `EP-` in 0009, `TEM-` before that). Separate company, its own design style, no NEVMA branding, English only. | D 31 Oct, 1 Nov; updated 5 Nov |
 | 2 | The booking engine is built first (kit 1); content pages and fuller CMS follow in kit 2, in the same repo and the same Sanity Studio. | D 31 Oct |
 | 3 | Kit 1 scope: site shell, booking flow, API, Supabase, holds, Viva, emails, admin. | D 31 Oct |
 | 4 | Architecture: Astro public app, standalone admin app connected to Supabase, one Sanity Studio for the project. | D 31 Oct |
@@ -34,7 +34,7 @@ D = decided by the user (date). P = proposed in this kit, change if needed. O = 
 | P5 | At most 2 active holds per visitor (`settings.max_active_holds_per_visitor`) | stops one visitor blocking the fleet |
 | P6 | Pick-up time sent as local Athens time and converted on the server; non-existent times rejected, repeated times take the earlier | DST nights are handled once, on the server |
 | P7 | Minimum lead time 120 minutes (`settings.min_lead_minutes`, DEMO) | the office needs time to plan |
-| P8 | Booking reference `ELP-` + 6 characters (no 0/O/1/I); cancel token stored only as SHA-256 | readable on the phone; leaked database cannot cancel bookings |
+| P8 | Booking reference `EP-` + 6 characters (no 0/O/1/I); cancel token stored only as SHA-256 | readable on the phone; leaked database cannot cancel bookings |
 | P9 | Reminder email by Vercel Cron every 15 min, 23–25 h before pick-up, claimed once | no double sends |
 | P10 | Sanity dataset private from the start | kit 2 form submissions need no change |
 | P11 | Booking island budget under 100 KB gzip; other pages ship no framework JS | performance targets |

@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import ClassName from '../../components/ClassName.astro';
 import Flag from '../../components/Flag.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import { formatEuro } from '../../lib/money';
@@ -166,7 +167,9 @@ function tripLabel(b: {
                             to_zone: b.to_zone as { name?: string } | null,
                           })}
                         </td>
-                        <td data-label="Class">{cls?.name || cls?.key || '—'}</td>
+                        <td data-label="Class">
+                          <ClassName name={cls?.name} />
+                        </td>
                         <td class="num" data-label="Total">
                           {formatEuro(b.price_cents)}
                         </td>

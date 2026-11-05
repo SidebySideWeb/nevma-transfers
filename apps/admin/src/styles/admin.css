@@ -50,7 +50,16 @@ body.ep-admin {
 
 .sidebar { background: var(--color-bg-deep); border-bottom: 1px solid var(--color-border); }
 @media (min-width: 1024px) {
-  .sidebar { border-bottom: 0; border-right: 1px solid var(--color-border); position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+  .sidebar {
+    border-bottom: 0;
+    border-right: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
 }
 .brand { display: flex; align-items: center; gap: .75rem; padding: 1rem 1.25rem; text-decoration: none; color: var(--color-text); }
 .ep-admin .brand { color: var(--color-text); }
@@ -72,8 +81,14 @@ body.ep-admin {
 .nav-group a:hover { color: var(--color-text); background: var(--color-surface); }
 .nav-group a[aria-current="page"] { color: var(--color-text); background: var(--tint-accent); border-left-color: var(--color-accent); }
 .nav-count { min-width: 22px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; font-size: .75rem; font-weight: 600; color: var(--color-accent-text); background: var(--color-accent); }
-.sidebar-foot { padding: 1rem 1.25rem; border-top: 1px solid var(--color-border); font-size: var(--admin-text-sm); color: var(--color-muted); }
-.sidebar-foot .who { color: var(--color-text); display: block; overflow-wrap: anywhere; }
+.sidebar-foot { padding: 1rem 1.25rem; border-top: 1px solid var(--color-border); font-size: var(--admin-text-sm); color: var(--color-muted); flex: none; }
+.sidebar-foot .who {
+  color: var(--color-text);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .main { min-width: 0; padding: 1.25rem 1rem 3rem; }
 @media (min-width: 768px) { .main { padding: 1.75rem 2rem 4rem; } }
@@ -354,12 +369,56 @@ select.input { appearance: none; padding-right: 2rem; background-image: linear-g
 .lookup-list .new { border-top: 1px solid var(--color-border); color: var(--color-accent); }
 
 /* segmented choice (Transfer / Hourly, Day / Week) */
-.seg { display: inline-flex; border: 1px solid var(--color-border-strong); }
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--color-border-strong);
+  padding: 0;
+  margin: 0;
+  align-self: end;
+}
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
-.seg label, .seg a { min-height: var(--admin-control); display: inline-flex; align-items: center; padding: 0 1rem; cursor: pointer; color: var(--color-muted); text-decoration: none; font-size: var(--admin-text-sm); letter-spacing: .1em; text-transform: uppercase; }
+.seg label, .seg a {
+  min-height: var(--admin-control);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 1rem;
+  cursor: pointer;
+  color: var(--color-muted);
+  text-decoration: none;
+  font-size: var(--admin-text-sm);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .seg label + label, .seg a + a { border-left: 1px solid var(--color-border-strong); }
 .seg input:checked + label, .seg a[aria-current="page"] { background: var(--color-accent); color: var(--color-accent-text); }
 .seg input:focus-visible + label { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.filters-period { grid-template-columns: auto auto; align-items: end; }
+.filters-period .filters-custom {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .75rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.filters-period .filters-custom[hidden] { display: none; }
+
+.form-footer { display: flex; justify-content: flex-end; gap: .5rem; margin-top: var(--admin-gap); }
+
+.extra-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .375rem; }
+.extra-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: .75rem;
+  min-height: var(--admin-control);
+  cursor: pointer;
+}
+.extra-row input { width: 18px; height: 18px; accent-color: var(--color-accent); margin: 0; }
+.extra-name { min-width: 0; }
+.extra-price { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.class-name.muted { color: var(--color-muted); }
 
 /* choice cards (payment method on New booking) */
 .choices { display: grid; gap: .625rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 0; padding: 0; border: 0; }

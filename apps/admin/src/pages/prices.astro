@@ -16,7 +16,7 @@ const classKey = Astro.url.searchParams.get('class') || '';
 
 const classesRes = await supabase
   .from('vehicle_classes')
-  .select('id, key')
+  .select('id, key, name')
   .eq('active', true)
   .order('sort_order');
 const classesLoad = resolveListLoad('vehicle classes', classesRes.data, classesRes.error);
@@ -56,11 +56,17 @@ const priceMap = new Map(
   ]),
 );
 
-const routesRes = await supabase
-  .from('zone_routes')
-  .select('from_zone_id, to_zone_id, duration_minutes');
+type RouteRow = {
+  duration_minutes: number;
+  from_zone: { name: string } | null;
+  to_zone: { name: string } | null;
+};
+
+const routesRes = await supabase.from('zone_routes').select(
+  'duration_minutes, from_zone:zones!zone_routes_from_zone_id_fkey(name), to_zone:zones!zone_routes_to_zone_id_fkey(name)',
+);
 if (routesRes.error) logListError('prices_routes', routesRes.error.message);
-const routes = routesRes.error ? [] : (routesRes.data ?? []);
+const routes = (routesRes.error ? [] : (routesRes.data ?? [])) as RouteRow[];
 const zones = zonesLoad.ok ? zonesLoad.rows : [];
 
 const listError =
@@ -91,7 +97,7 @@ const listError =
         autoSubmit
         options={classes.map((c) => ({
           value: c.key,
-          label: c.key,
+          label: c.name || '—',
           selected: selected?.id === c.id,
         }))}
       />
@@ -166,21 +172,23 @@ const listError =
       <table class="table table-cards">
         <thead>
           <tr>
-            <th scope="col">From</th>
-            <th scope="col">To</th>
+            <th scope="col">Route</th>
             <th scope="col" class="num">Minutes</th>
           </tr>
         </thead>
         <tbody>
           {
             routes.map((r) => {
-              const from = zones.find((z) => z.id === r.from_zone_id)?.name ?? r.from_zone_id;
-              const to = zones.find((z) => z.id === r.to_zone_id)?.name ?? r.to_zone_id;
+              const from = r.from_zone?.name?.trim() || '—';
+              const to = r.to_zone?.name?.trim() || '—';
               return (
                 <tr>
-                  <td>{from}</td>
-                  <td>{to}</td>
-                  <td class="num">{r.duration_minutes}</td>
+                  <td data-label="Route">
+                    {from} <span class="muted" aria-hidden="true">→</span> {to}
+                  </td>
+                  <td class="num" data-label="Minutes">
+                    {r.duration_minutes}
+                  </td>
                 </tr>
               );
             })

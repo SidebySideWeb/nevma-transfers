@@ -158,7 +158,11 @@ const groups: NavGroup[] = [
           }
         </nav>
         <div class="sidebar-foot">
-          {staffEmail && <span class="who">{staffEmail}</span>}
+          {staffEmail && (
+            <span class="who" title={staffEmail}>
+              {staffEmail}
+            </span>
+          )}
           <form method="POST" action="/logout">
             <button class="btn btn-quiet btn-sm" type="submit">Sign out</button>
           </form>

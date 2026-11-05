@@ -96,9 +96,9 @@ const periodLabel = formatPeriodRange(from, to);
     )
   }
 
-  <form class="filters" aria-label="Period" method="get">
+  <form class="filters filters-period" aria-label="Period" method="get" id="report-period">
     <input type="hidden" name="tab" value={tab} />
-    <fieldset class="seg" style="border:0;padding:0;margin:0;align-self:end">
+    <fieldset class="seg">
       <legend class="sr-only">Period</legend>
       <input type="radio" name="period" id="p-w" value="week" checked={periodKind === 'week' || undefined} />
       <label for="p-w">Week</label>
@@ -109,16 +109,31 @@ const periodLabel = formatPeriodRange(from, to);
       <input type="radio" name="period" id="p-c" value="custom" checked={periodKind === 'custom' || undefined} />
       <label for="p-c">Custom</label>
     </fieldset>
-    <div class="field">
-      <label for="r-from">From</label>
-      <input id="r-from" class="input" type="date" name="from" value={from} />
-    </div>
-    <div class="field">
-      <label for="r-to">To</label>
-      <input id="r-to" class="input" type="date" name="to" value={to} />
-    </div>
     <div class="actions"><button class="btn btn-sm" type="submit">Show</button></div>
+    <div class="filters-custom" id="report-custom" hidden={periodKind !== 'custom' || undefined}>
+      <div class="field">
+        <label for="r-from">From</label>
+        <input id="r-from" class="input" type="date" name="from" value={from} />
+      </div>
+      <div class="field">
+        <label for="r-to">To</label>
+        <input id="r-to" class="input" type="date" name="to" value={to} />
+      </div>
+    </div>
   </form>
+  <script is:inline>
+    (function () {
+      var form = document.getElementById('report-period');
+      var custom = document.getElementById('report-custom');
+      if (!form || !custom) return;
+      form.querySelectorAll('input[name="period"]').forEach(function (el) {
+        el.addEventListener('change', function () {
+          var checked = form.querySelector('input[name="period"]:checked');
+          custom.hidden = !checked || checked.value !== 'custom';
+        });
+      });
+    })();
+  </script>
 
   <nav class="tabs" aria-label="Report">
     <a href={`/reports?${new URLSearchParams({ ...Object.fromEntries(q), tab: 'pay' })}`} aria-current={tab === 'pay' ? 'page' : undefined}>Driver pay</a>

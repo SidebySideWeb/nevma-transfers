@@ -115,6 +115,11 @@ const checklist = readinessChecklist({
 const studioUrl = sanity
   ? studioEditClassUrl(sanity._id)
   : studioCreateClassUrl(key);
+if (!studioUrl) {
+  console.warn(
+    '[fleet] PUBLIC_SANITY_STUDIO_URL (or PUBLIC_STUDIO_URL) is not set; Studio link hidden for staff.',
+  );
+}
 
 function statusBadge(status: string) {
   if (status === 'active') return { cls: 's-confirmed', label: 'Active' };
@@ -400,9 +405,7 @@ const usageBits = [
               <a class="btn btn-secondary" href={studioUrl} target="_blank" rel="noreferrer">
                 Open in Sanity Studio
               </a>
-            ) : (
-              <p class="help">Set PUBLIC_SANITY_STUDIO_URL to link to the Studio.</p>
-            )
+            ) : null
           }
         </div>
       </section>

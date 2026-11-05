@@ -4,7 +4,6 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Flag from '../../components/Flag.astro';
 import Select from '../../components/Select.astro';
-import { formatEuro } from '../../lib/money';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -316,14 +315,21 @@ const pageData = {
               <p class="error-text" id="nb-veh-err" hidden></p>
             </div>
           </div>
-          {
-            extras.map((e) => (
-              <label class="check">
-                <input type="checkbox" name="nb-extra" value={e.code} />
-                {e.name} <span class="muted">+ {formatEuro(e.price_cents)}</span>
-              </label>
-            ))
-          }
+          <ul class="extra-list">
+            {
+              extras.map((e) => (
+                <li>
+                  <label class="extra-row">
+                    <input type="checkbox" name="nb-extra" value={e.code} />
+                    <span class="extra-name">{e.name}</span>
+                    <span class="extra-price muted">
+                      {e.price_cents === 0 ? 'Included' : `+ €${(e.price_cents / 100).toFixed(2)}`}
+                    </span>
+                  </label>
+                </li>
+              ))
+            }
+          </ul>
         </div>
       </section>
 
