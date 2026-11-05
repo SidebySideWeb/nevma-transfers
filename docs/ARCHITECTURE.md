@@ -104,6 +104,7 @@ Every variable is listed in `.env.example`. Where each is used:
 | `ADMIN_TO_WEB_SIGNING_SECRET` | server | server | | same value in both |
 | `CRON_SECRET` | server | | | Vercel sends it as a Bearer token |
 | `PUBLIC_SITE_URL`, `PUBLIC_ADMIN_URL` | yes | yes | | |
+| `SITE_PASSWORD` | Vercel Routing Middleware (`apps/web/middleware.ts`) | | | optional HTTP Basic Auth; unset = site open; Preview-only is typical |
 | `PUBLIC_BOOKING_OPEN` | yes | | | `false` until the Viva live account is approved (prompt 13) |
 | `SANITY_WRITE_TOKEN` | server only | | | kit 2: Editor robot token, form submissions only (`docs/FORMS.md`) |
 | `PUBLIC_STUDIO_URL` | server | | | kit 2: links to submissions in office emails |
