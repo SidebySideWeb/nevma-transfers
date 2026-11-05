@@ -78,9 +78,7 @@ function appBadge(userId: string | null) {
 ---
 
 <AdminLayout title="Drivers" current="drivers" staffEmail={staff.email}>
-  <div class="page-head" style="padding:0 0 1rem;display:flex;justify-content:flex-end;gap:.5rem">
-    <button class="btn" type="button" data-open="add-driver">Add driver</button>
-  </div>
+  <button class="btn" type="button" data-open="add-driver" slot="actions">Add driver</button>
 
   {pageError && <Banner tone="danger" role="alert">{pageError}</Banner>}
   {error && <Banner tone="danger" role="alert">Could not load drivers.</Banner>}

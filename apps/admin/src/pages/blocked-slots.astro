@@ -40,8 +40,10 @@ const rows = (slots ?? []).map((s) => {
 ---
 
 <AdminLayout title="Blocked slots" current="blocked-slots" staffEmail={staff.email}>
-  <section class="panel stack" aria-labelledby="c-h">
-    <h2 id="c-h">Create block</h2>
+  <a class="btn" href="#block-vehicle" slot="actions">Block a vehicle</a>
+
+  <section class="panel stack" id="block-vehicle" aria-labelledby="c-h">
+    <h2 id="c-h">Block a vehicle</h2>
     <form method="POST" action={actions.createBlockedSlot} class="stack">
       <div class="field">
         <label for="vehicleId">Vehicle</label>

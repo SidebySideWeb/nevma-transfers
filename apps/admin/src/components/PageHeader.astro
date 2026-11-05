@@ -1,0 +1,36 @@
+---
+interface Crumb {
+  href?: string;
+  label: string;
+}
+
+interface Props {
+  title: string;
+  subtitle?: string;
+  crumbs?: Crumb[];
+}
+
+const { title, subtitle, crumbs = [] } = Astro.props;
+---
+
+<div class="page-head">
+  <div class="page-head-copy">
+    {
+      crumbs.length > 0 && (
+        <p class="crumbs">
+          {crumbs.map((c, i) => (
+            <>
+              {i > 0 && ' / '}
+              {c.href ? <a href={c.href}>{c.label}</a> : <span>{c.label}</span>}
+            </>
+          ))}
+        </p>
+      )
+    }
+    <h1 class="title">{title}</h1>
+    {subtitle ? <p class="page-subtitle">{subtitle}</p> : null}
+  </div>
+  <div class="page-actions">
+    <slot name="actions" />
+  </div>
+</div>

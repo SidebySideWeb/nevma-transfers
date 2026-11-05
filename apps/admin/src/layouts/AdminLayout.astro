@@ -5,6 +5,7 @@ import '../styles/tokens.css';
 import '../styles/admin.css';
 import Banner from '../components/Banner.astro';
 import ChecksBanner from '../components/ChecksBanner.astro';
+import PageHeader from '../components/PageHeader.astro';
 import { buildBanner } from '../lib/banner';
 import { driversEnabled } from '../lib/drivers';
 import { countNeedsVehicle } from '../lib/nav-count';
@@ -21,6 +22,7 @@ interface Crumb {
 
 interface Props {
   title: string;
+  subtitle?: string;
   current?: string;
   staffEmail?: string;
   crumbs?: Crumb[];
@@ -29,6 +31,7 @@ interface Props {
 
 const {
   title,
+  subtitle,
   current = 'bookings',
   staffEmail,
   crumbs = [],
@@ -199,26 +202,9 @@ const groups: NavGroup[] = [
             </Banner>
           )
         }
-        <div class="page-head">
-          <div>
-            {
-              crumbs.length > 0 && (
-                <p class="crumbs">
-                  {crumbs.map((c, i) => (
-                    <>
-                      {i > 0 && ' / '}
-                      {c.href ? <a href={c.href}>{c.label}</a> : <span>{c.label}</span>}
-                    </>
-                  ))}
-                </p>
-              )
-            }
-            <h1 class="title">{title}</h1>
-          </div>
-          <div class="page-actions">
-            <slot name="actions" />
-          </div>
-        </div>
+        <PageHeader title={title} subtitle={subtitle} crumbs={crumbs}>
+          <slot name="actions" slot="actions" />
+        </PageHeader>
         <slot />
       </main>
     </div>

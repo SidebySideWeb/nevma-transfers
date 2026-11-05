@@ -32,6 +32,10 @@ const usedIds = new Set((usedExtras ?? []).map((r) => r.extra_id));
 ---
 
 <AdminLayout title="Extras" current="extras" staffEmail={staff.email}>
+  <button class="btn btn-secondary" type="button" data-open="add-extra" slot="actions">
+    Add extra
+  </button>
+
   {
     pageError && (
       <div class="banner banner-danger" role="alert">
@@ -39,10 +43,6 @@ const usedIds = new Set((usedExtras ?? []).map((r) => r.extra_id));
       </div>
     )
   }
-
-  <div class="page-head" style="padding:0 0 1rem;display:flex;justify-content:flex-end">
-    <button class="btn btn-secondary" type="button" data-open="add-extra">Add extra</button>
-  </div>
 
   <form method="POST" action={actions.saveExtras} class="stack">
     <input type="hidden" name="rowsJson" id="rowsJson" value="[]" />

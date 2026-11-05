@@ -78,9 +78,7 @@ const exportHref = `/customers/export.csv${qs({ page: undefined })}`;
 ---
 
 <AdminLayout title="Customers" current="customers" staffEmail={staff.email}>
-  <div class="page-head" style="padding:0 0 1rem;display:flex;justify-content:flex-end">
-    <a class="btn btn-secondary" href={exportHref}>Export CSV</a>
-  </div>
+  <a class="btn btn-secondary" href={exportHref} slot="actions">Export CSV</a>
 
   {
     listError && (

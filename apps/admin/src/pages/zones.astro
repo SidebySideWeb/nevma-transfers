@@ -53,6 +53,10 @@ for (const b of bookings ?? []) {
 ---
 
 <AdminLayout title="Zones" current="zones" staffEmail={staff.email}>
+  <button class="btn btn-secondary" type="button" data-open="add-zone" slot="actions">
+    Add zone
+  </button>
+
   {
     pageError && (
       <div class="banner banner-danger" role="alert">
@@ -60,10 +64,6 @@ for (const b of bookings ?? []) {
       </div>
     )
   }
-
-  <div class="page-head" style="padding:0 0 1rem;display:flex;justify-content:flex-end">
-    <button class="btn btn-secondary" type="button" data-open="add-zone">Add zone</button>
-  </div>
 
   <div class="table-wrap" role="region" tabindex="0" aria-labelledby="z-cap">
     <table class="table table-cards">
