@@ -110,7 +110,21 @@ Every variable is listed in `.env.example`. Where each is used:
 | `PUBLIC_STUDIO_URL` | server | | | kit 2: links to submissions in office emails |
 | `PUBLIC_SANITY_STUDIO_URL` | | yes | | fleet class page: Open in Sanity Studio (falls back to `PUBLIC_STUDIO_URL`) |
 | `TEM_WEB_DEPLOY_HOOK_URL` | | server only | | kit 2: admin triggers a site rebuild after price changes (debounced 2 min) |
-| `FEATURE_DRIVERS` | server | server | | drivers / dispatch module (`docs/DRIVERS.md`); default `false`. Exact `"true"` enables Drivers/Reports nav, `/api/driver/v1`, trip status and statements. When off, those routes return 404; Today remains without driver UI. Elite leaves this unset/`false`; other clients set `true`. |
+| `PRICING_MODE` | server | server | read-only via `@tem/features` | `zones` (default) \| `distance` \| `hybrid`; unknown → `zones` (`docs/FEATURES.md`) |
+| `FEATURE_DISTANCE_PRICING` | server | server | read-only | exact `"true"`; needs `GOOGLE_MAPS_SERVER_KEY` + `QUOTE_SIGNING_SECRET` |
+| `FEATURE_DEMAND_PRICING` | server | server | read-only | exact `"true"`; needs distance pricing |
+| `SERVICE_AREA` | server | server | read-only | default `attica`; polygon name for B2 |
+| `FEATURE_PLACES` | server | server | read-only | formal Places autocomplete switch |
+| `FEATURE_RETURN_TRIP` | server | server | read-only | linked return bookings |
+| `FEATURE_FLIGHT_TRACKING` | server | server | read-only | needs `FLIGHT_PROVIDER` (+ key unless `manual`) |
+| `FEATURE_CORPORATE` | server | server | read-only | company accounts |
+| `FEATURE_DRIVERS` | server | server | read-only | drivers / dispatch (`docs/DRIVERS.md`); default off |
+| `FEATURE_WHATSAPP` | server | server | read-only | needs valid `WHATSAPP_NUMBER` |
+| `WHATSAPP_NUMBER` | server | server | read-only | international digits only; exposed in `publicFeatures` when WhatsApp is on |
+| `GOOGLE_MAPS_SERVER_KEY` | server only | server only | | Routes / distance pricing; never `PUBLIC_` |
+| `QUOTE_SIGNING_SECRET` | server only | server only | | signed quotes; never `PUBLIC_` |
+| `FLIGHT_PROVIDER` | server | server | | `aerodatabox` \| `flightaware` \| `manual` |
+| `FLIGHT_PROVIDER_KEY` | server only | server only | | required except for `manual` |
 | `DRIVER_APP_ORIGIN` | | server | | CORS allow-list for `/api/driver/v1` (exact origin); empty = no CORS headers |
 | `DRIVER_EARNINGS_VISIBLE` | | server | | `true` to expose `GET /api/driver/v1/earnings`; default `false` |
 | `DRIVER_APP_URL` | | server | | public URL of the drivers’ web app (links / future deep links) |

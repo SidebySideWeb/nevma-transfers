@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Banner from '../components/Banner.astro';
 import { athensDateKey, athensLocalMs, shiftDate } from '../lib/calendar-position';
-import { isDriversEnabled } from '../lib/features';
+import { features } from '@tem/features';
 import {
   computeTodayStats,
   needsActionSentence,
@@ -17,7 +17,7 @@ import {
 } from '../lib/today-board';
 import { createSupabaseServerClient } from '../lib/supabase';
 
-const showDrivers = isDriversEnabled();
+const showDrivers = features().drivers;
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const todayKey = athensDateKey(new Date());

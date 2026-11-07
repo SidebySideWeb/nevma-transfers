@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { isDriversEnabled } from '../../lib/features';
+import { features } from '@tem/features';
 import {
   bookingsDayExcel,
   driverPayExcel,
@@ -16,7 +16,7 @@ import { createSupabaseServerClient } from '../../lib/supabase';
 export const prerender = false;
 
 export const GET: APIRoute = async ({ locals, cookies, url }) => {
-  if (!isDriversEnabled()) {
+  if (!features().drivers) {
     return new Response(null, { status: 404, statusText: 'Not Found' });
   }
   if (!locals.staff) {

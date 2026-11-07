@@ -20,7 +20,7 @@ function formatVatRate(bp: number): string {
   return String(Number((bp / 100).toFixed(2)));
 }
 import { mapsDirectionsUrl } from '@tem/places';
-import { isDriversEnabled } from '../../lib/features';
+import { features } from '@tem/features';
 import { classifyDriverOffer, type DriverBookingSlice } from '../../lib/free-drivers';
 import { parseTstzRange, rangesOverlap } from '../../lib/range';
 import { createSupabaseServerClient } from '../../lib/supabase';
@@ -101,7 +101,7 @@ let tripError: string | null = null;
 let pageError: string | null = null;
 let refundConfirm = '';
 let cancelConfirm = '';
-const showDrivers = isDriversEnabled();
+const showDrivers = features().drivers;
 
 if (found && booking) {
   const extrasRes = await supabase

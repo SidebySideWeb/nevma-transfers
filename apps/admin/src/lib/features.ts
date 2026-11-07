@@ -1,10 +1,18 @@
 /**
- * Feature flags for the admin app.
- * Drivers / dispatch is for other deployments; Elite leaves FEATURE_DRIVERS unset or false.
+ * Admin feature flags — re-export `@tem/features` (docs/FEATURES.md).
+ * Prefer `features().drivers` / `notFoundUnless(features().drivers)` at call sites.
  */
+export {
+  features,
+  publicFeatures,
+  notFoundUnless,
+  filterAdminNav,
+  ADMIN_NAV,
+  type Features,
+} from '@tem/features';
 
-/** True only when FEATURE_DRIVERS is the exact string `"true"` (or boolean true in tests). */
+/** @deprecated Use `features().drivers`. Kept for a few tests and thin wrappers. */
 export function isDriversEnabled(raw?: string | boolean | undefined): boolean {
-  const v = raw ?? import.meta.env.FEATURE_DRIVERS ?? process.env.FEATURE_DRIVERS;
-  return v === true || v === 'true';
+  if (raw !== undefined) return raw === true || raw === 'true';
+  return features().drivers;
 }

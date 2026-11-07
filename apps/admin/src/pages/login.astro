@@ -7,7 +7,7 @@ import '../styles/admin.css';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { assertLoginRateLimit } from '../lib/login-rate-limit';
 import { getStaffSession, signOut } from '../lib/auth';
-import { isDriversEnabled } from '../lib/features';
+import { features } from '@tem/features';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('X-Robots-Tag', 'noindex');
@@ -40,7 +40,7 @@ if (Astro.request.method === 'POST') {
       if (staff) {
         return Astro.redirect('/today');
       }
-      if (isDriversEnabled()) {
+      if (features().drivers) {
         const {
           data: { user },
         } = await supabase.auth.getUser();

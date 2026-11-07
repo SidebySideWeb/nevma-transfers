@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { defineMiddleware } from 'astro:middleware';
 import { getStaffSession, signOut } from './lib/auth';
 import { createSupabaseServerClient } from './lib/supabase';
-import { isDriversEnabled } from './lib/features';
+import { features } from '@tem/features';
 
 const PUBLIC = new Set(['/login', '/logout']);
 const DRIVER_WELCOME = '/driver-welcome';
@@ -54,7 +54,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  if (pathname === DRIVER_WELCOME && isDriversEnabled()) {
+  if (pathname === DRIVER_WELCOME && features().drivers) {
     const supabase = createSupabaseServerClient(context.cookies);
     const {
       data: { user },
@@ -95,7 +95,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const staff = await getStaffSession(context.cookies);
     if (!staff) {
       // Active driver may only use /driver-welcome — check before signing out.
-      if (isDriversEnabled()) {
+      if (features().drivers) {
         const supabase = createSupabaseServerClient(context.cookies);
         const {
           data: { user },

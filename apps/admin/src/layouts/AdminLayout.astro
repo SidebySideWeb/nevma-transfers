@@ -7,7 +7,6 @@ import Banner from '../components/Banner.astro';
 import ChecksBanner from '../components/ChecksBanner.astro';
 import PageHeader from '../components/PageHeader.astro';
 import { buildBanner } from '../lib/banner';
-import { isDriversEnabled } from '../lib/features';
 import { buildAdminNav } from '../lib/nav';
 import { countNeedsVehicle } from '../lib/nav-count';
 import {
@@ -52,8 +51,7 @@ const cooldownSeconds = Math.ceil(cooldownMs / 1000);
 const rebuildError =
   Astro.getActionResult?.(actions.requestWebsiteRebuild)?.error?.message ?? null;
 
-const showDrivers = isDriversEnabled();
-const groups = buildAdminNav({ needsVehicle, drivers: showDrivers });
+const groups = buildAdminNav({ needsVehicle });
 ---
 
 <!doctype html>

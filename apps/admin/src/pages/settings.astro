@@ -4,13 +4,13 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Select from '../components/Select.astro';
-import { isDriversEnabled } from '../lib/features';
+import { features } from '@tem/features';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 const { data: settings } = await supabase.from('settings').select('*').order('key');
-const showDrivers = isDriversEnabled();
+const showDrivers = features().drivers;
 
 const META: Record<string, { label: string; group: string; unit?: string }> = {
   hold_minutes: { label: 'Online hold', group: 'Bookings', unit: 'minutes' },

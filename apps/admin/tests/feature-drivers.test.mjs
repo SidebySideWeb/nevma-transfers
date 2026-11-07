@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { isDriversEnabled } from '../src/lib/features.ts';
+import { features, notFoundUnless } from '@tem/features';
 import { driversNotFound } from '../src/lib/drivers.ts';
 import { buildAdminNav } from '../src/lib/nav.ts';
 import { handleMe } from '../src/lib/driver-api/handler.ts';
@@ -12,15 +12,15 @@ describe('FEATURE_DRIVERS unset', () => {
     else process.env.FEATURE_DRIVERS = prev;
   });
 
-  it('isDriversEnabled() returns false', () => {
+  it('features().drivers returns false', () => {
     delete process.env.FEATURE_DRIVERS;
-    expect(isDriversEnabled(undefined)).toBe(false);
-    expect(isDriversEnabled()).toBe(false);
+    expect(features({}).drivers).toBe(false);
+    expect(features().drivers).toBe(false);
   });
 
   it('nav config has no Drivers or Reports', () => {
     delete process.env.FEATURE_DRIVERS;
-    const groups = buildAdminNav({ drivers: false, needsVehicle: 0 });
+    const groups = buildAdminNav({ f: features({}), needsVehicle: 0 });
     const labels = groups.flatMap((g) => [g.label, ...g.items.map((i) => i.label)]);
     expect(labels).not.toContain('Drivers');
     expect(labels).not.toContain('Reports');
@@ -33,6 +33,7 @@ describe('FEATURE_DRIVERS unset', () => {
     const denied = driversNotFound();
     expect(denied).not.toBeNull();
     expect(denied.status).toBe(404);
+    expect(notFoundUnless(false)?.status).toBe(404);
 
     const res = await handleMe({
       request: new Request('http://127.0.0.1:4322/api/driver/v1/me'),
@@ -51,13 +52,15 @@ describe('FEATURE_DRIVERS=true', () => {
     else process.env.FEATURE_DRIVERS = prev;
   });
 
-  it('isDriversEnabled() returns true for exact "true"', () => {
-    expect(isDriversEnabled('true')).toBe(true);
-    expect(isDriversEnabled(true)).toBe(true);
+  it('features().drivers is true for exact "true"', () => {
+    expect(features({ FEATURE_DRIVERS: 'true' }).drivers).toBe(true);
   });
 
   it('nav config includes Drivers and Reports', () => {
-    const groups = buildAdminNav({ drivers: true, needsVehicle: 0 });
+    const groups = buildAdminNav({
+      f: features({ FEATURE_DRIVERS: 'true' }),
+      needsVehicle: 0,
+    });
     const labels = groups.flatMap((g) => g.items.map((i) => i.label));
     expect(labels).toContain('Drivers');
     expect(labels).toContain('Reports');

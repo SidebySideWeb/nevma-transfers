@@ -17,6 +17,7 @@
     "import:v2": "sanity exec scripts/import-v2-content.mjs --with-user-token"
   },
   "dependencies": {
+    "@tem/features": "workspace:*",
     "@sanity/vision": "^6.21.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

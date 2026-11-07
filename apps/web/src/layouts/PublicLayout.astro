@@ -1,4 +1,5 @@
 ---
+import { features, publicFeatures } from '@tem/features';
 import SiteFooter from '../components/v2/SiteFooter.astro';
 import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
 import { responsiveImage, type SanityImage } from '../lib/sanity/image';
@@ -25,6 +26,7 @@ interface Props {
 
 await loadUiStrings();
 const settings = await getSiteSettings();
+const publicFeatureFlags = publicFeatures(features());
 
 const {
   designPage,
@@ -110,7 +112,7 @@ const bodyClass = `pg-${designPage}`;
       )
     }
   </head>
-  <body class={bodyClass}>
+  <body class={bodyClass} data-features={JSON.stringify(publicFeatureFlags)}>
     <a class="js-skip" href="#main">Skip to content</a>
     <div id="dc-root">
       <main id="main" class={rootClass}>
