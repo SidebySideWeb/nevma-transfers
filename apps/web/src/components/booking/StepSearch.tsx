@@ -12,6 +12,12 @@ import { joinLocal, requestQuoteHref, splitLocal } from './v2/journey';
 import { AddressField } from './AddressField';
 import type { BookingStrings, DetailsState, OptionsData, SearchState } from './types';
 
+type FlightLookupResult = {
+  found: boolean;
+  suggestedPickupAt?: string | null;
+  warning?: string | null;
+};
+
 type Props = {
   strings: BookingStrings;
   options: OptionsData;
@@ -171,11 +177,63 @@ export function StepSearch({
   const flightTracking = options.flightTracking === true;
   const returnTrip = options.returnTrip === true;
   const hideZones = distancePricing;
+  const [flightHint, setFlightHint] = useState<string | null>(null);
 
   const setType = (type: 'transfer' | 'hourly') => {
     if (search.type === type) return;
     onChange({ type });
   };
+
+  async function lookupFlightNumber(number: string) {
+    if (!flightTracking || !number.trim() || !date) {
+      setFlightHint(null);
+      return;
+    }
+    try {
+      const res = await fetch('/api/flights/lookup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ number, date }),
+      });
+      if (!res.ok) {
+        setFlightHint(null);
+        return;
+      }
+      const data = (await res.json()) as FlightLookupResult;
+      if (data.warning) {
+        setFlightHint(data.warning);
+        return;
+      }
+      if (data.found && data.suggestedPickupAt) {
+        const suggested = new Date(data.suggestedPickupAt);
+        const hm = new Intl.DateTimeFormat('en-GB', {
+          timeZone: options.timezone || 'Europe/Athens',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(suggested);
+        setFlightHint(`Suggested pick-up ${hm} (after scheduled arrival).`);
+        const localParts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: options.timezone || 'Europe/Athens',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).formatToParts(suggested);
+        const get = (t: string) => localParts.find((p) => p.type === t)?.value ?? '00';
+        const local = `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+        if (!search.pickupLocal || search.pickupLocal.slice(0, 10) === date) {
+          onChange({ pickupLocal: local });
+        }
+        return;
+      }
+      setFlightHint(null);
+    } catch {
+      setFlightHint(null);
+    }
+  }
 
   return (
     <form className="s8f7a6 ep-book-bar" onSubmit={handleSubmit} noValidate>
@@ -342,12 +400,21 @@ export function StepSearch({
               autoComplete="off"
               placeholder={strings['form.placeholder.flight'] ?? 'e.g. A3 603, LH1284'}
               value={details.flightNumber}
-              onChange={(e) =>
-                onChangeDetails({ flightNumber: normaliseFlightNumber(e.target.value) })
-              }
+              onChange={(e) => {
+                setFlightHint(null);
+                onChangeDetails({ flightNumber: normaliseFlightNumber(e.target.value) });
+              }}
+              onBlur={(e) => {
+                void lookupFlightNumber(normaliseFlightNumber(e.target.value));
+              }}
               {...invalid('flightNumber', 'b-flight')}
             />
             {err('flightNumber', 'b-flight')}
+            {flightHint ? (
+              <p className="muted small" role="status" style={{ marginTop: '0.35rem' }}>
+                {flightHint}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

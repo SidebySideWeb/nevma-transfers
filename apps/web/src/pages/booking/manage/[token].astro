@@ -43,7 +43,9 @@ const addressLine =
     ? [
         view.pickupAddress,
         view.dropoffAddress ? `→ ${view.dropoffAddress}` : null,
-        view.flightNumber ? `Flight ${view.flightNumber}` : null,
+        view.flightNumber
+          ? `Flight ${view.flightNumber}${view.flightStatus ? ` (${view.flightStatus})` : ''}`
+          : null,
       ]
         .filter(Boolean)
         .join(' · ')

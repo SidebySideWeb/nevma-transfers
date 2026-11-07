@@ -24,12 +24,29 @@ import { features } from '@tem/features';
 import { classifyDriverOffer, type DriverBookingSlice } from '../../lib/free-drivers';
 import { parseTstzRange, rangesOverlap } from '../../lib/range';
 import { createSupabaseServerClient } from '../../lib/supabase';
-import { formatAthens, formatAthensShort } from '../../lib/time';
+import { formatAthens, formatAthensShort, toAthensInputValue } from '../../lib/time';
 import { tripStatusWord } from '../../lib/trip-status';
 
 const staff = Astro.locals.staff!;
 const reference = Astro.params.reference!;
 const supabase = createSupabaseServerClient(Astro.cookies);
+const flightTrackingOn = features().flightTracking;
+const flightProvider = (
+  import.meta.env.FLIGHT_PROVIDER ||
+  process.env.FLIGHT_PROVIDER ||
+  ''
+).toLowerCase();
+const flightManual = flightProvider === 'manual';
+
+function athensHm(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Athens',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso));
+}
 
 const { data: booking, error } = await supabase
   .from('bookings')
@@ -77,6 +94,14 @@ let addedBy = '';
 let canRecordOffline = false;
 const toast = Astro.url.searchParams.get('toast');
 const toastCapped = Astro.url.searchParams.get('capped') === '1';
+const flightCheckErr = actionErr(Astro.getActionResult?.(actions.checkFlightNow));
+const flightDelayErr = actionErr(Astro.getActionResult?.(actions.setFlightDelay));
+const flightCheckOk = Astro.getActionResult?.(actions.checkFlightNow)?.data as
+  | { alert?: string | null; shifted?: boolean; conflict?: boolean }
+  | undefined;
+const flightDelayOk = Astro.getActionResult?.(actions.setFlightDelay)?.data as
+  | { alert?: string | null; shifted?: boolean; conflict?: boolean }
+  | undefined;
 const METHOD_LABEL: Record<string, string> = {
   viva: 'Viva',
   cash: 'Cash',
@@ -463,8 +488,14 @@ if (found && booking) {
                       <dd>{Math.round((booking.duration_minutes || 0) / 60)}</dd>
                     </>
                   )}
-                  <dt>Flight</dt>
-                  <dd>{booking.flight_number || '—'}</dd>
+                  {
+                    !(flightTrackingOn && booking.flight_number) && (
+                      <>
+                        <dt>Flight</dt>
+                        <dd>{booking.flight_number || '—'}</dd>
+                      </>
+                    )
+                  }
                   <dt>Passengers</dt>
                   <dd>
                     {booking.passengers} · {booking.luggage} bags
@@ -476,6 +507,93 @@ if (found && booking) {
                 </dl>
               </div>
             </section>
+
+            {
+              flightTrackingOn && booking.flight_number && (
+                <section class="panel" aria-labelledby="flight-h" id="flight">
+                  <div class="panel-head">
+                    <h2 id="flight-h">Flight</h2>
+                    {booking.flight_status ? (
+                      <span class={`badge s-${booking.flight_status === 'delayed' ? 'pending' : booking.flight_status === 'cancelled' || booking.flight_status === 'diverted' ? 'cancelled' : 'confirmed'}`}>
+                        {String(booking.flight_status)}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div class="panel-body">
+                    {(flightCheckErr || flightDelayErr) && (
+                      <Banner tone="danger" role="alert">
+                        {flightCheckErr || flightDelayErr}
+                      </Banner>
+                    )}
+                    {(flightCheckOk?.alert || flightDelayOk?.alert) && (
+                      <Banner
+                        tone={flightCheckOk?.conflict || flightDelayOk?.conflict ? 'warning' : 'success'}
+                        role="status"
+                      >
+                        {flightCheckOk?.alert || flightDelayOk?.alert}
+                      </Banner>
+                    )}
+                    <dl class="kv">
+                      <dt>Number</dt>
+                      <dd>{booking.flight_number}</dd>
+                      <dt>Route</dt>
+                      <dd>
+                        {[booking.flight_origin, booking.flight_airline].filter(Boolean).join(' · ') ||
+                          '—'}
+                      </dd>
+                      <dt>Scheduled arrival</dt>
+                      <dd>{booking.flight_sched_arr ? formatAthens(booking.flight_sched_arr) : '—'}</dd>
+                      <dt>Estimated arrival</dt>
+                      <dd>{booking.flight_eta ? formatAthens(booking.flight_eta) : '—'}</dd>
+                      <dt>Terminal</dt>
+                      <dd>{booking.flight_terminal || '—'}</dd>
+                      <dt>Last check</dt>
+                      <dd>
+                        {booking.flight_checked_at ? formatAthens(booking.flight_checked_at) : '—'}
+                      </dd>
+                      {
+                        booking.pickup_shift_min > 0 && booking.original_pickup_at && (
+                          <>
+                            <dt>Pick-up moved</dt>
+                            <dd>
+                              {athensHm(booking.original_pickup_at)} → {athensHm(booking.pickup_at)}
+                              <span class="badge s-pending" style="margin-left:.5rem">
+                                +{booking.pickup_shift_min} min
+                              </span>
+                            </dd>
+                          </>
+                        )
+                      }
+                    </dl>
+                    <div class="row" style="margin-top:1rem;gap:.5rem;flex-wrap:wrap">
+                      <form method="POST" action={actions.checkFlightNow}>
+                        <input type="hidden" name="reference" value={reference} />
+                        <button type="submit" class="btn btn-secondary">Check now</button>
+                      </form>
+                      {
+                        flightManual && (
+                          <form method="POST" action={actions.setFlightDelay} class="row" style="gap:.5rem;align-items:end">
+                            <input type="hidden" name="reference" value={reference} />
+                            <div class="field" style="margin:0">
+                              <label for="flight-arr">Set delay (new arrival)</label>
+                              <input
+                                id="flight-arr"
+                                class="input"
+                                type="datetime-local"
+                                name="arrivalLocal"
+                                required
+                                value={toAthensInputValue(booking.flight_eta || booking.pickup_at)}
+                              />
+                            </div>
+                            <button type="submit" class="btn">Apply</button>
+                          </form>
+                        )
+                      }
+                    </div>
+                  </div>
+                </section>
+              )
+            }
 
             <section class="panel panel-assign" aria-labelledby="a-h" id="assign">
               <div class="panel-head">

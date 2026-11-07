@@ -31,11 +31,17 @@ const [{ data: fleetRaw }, { data: driversRaw }, { data: todayBookings }] = awai
     : Promise.resolve({ data: [] as DriversNowRow[] }),
   supabase
     .from('bookings')
-    .select('reference, pickup_at, status, trip_status, driver_id, vehicle_id')
+    .select(
+      'reference, pickup_at, status, trip_status, driver_id, vehicle_id, pickup_shift_min, original_pickup_at, flight_number',
+    )
     .gte('pickup_at', dayStart)
     .lt('pickup_at', dayEnd)
     .in('status', ['pending', 'confirmed', 'assigned', 'completed']),
 ]);
+
+const delayedFlights = (todayBookings ?? []).filter(
+  (b) => (b.pickup_shift_min ?? 0) > 0 && b.original_pickup_at && b.flight_number,
+);
 
 const fleet = (fleetRaw ?? []) as FleetNowRow[];
 const drivers = (showDrivers ? (driversRaw ?? []) : []) as DriversNowRow[];
@@ -169,6 +175,36 @@ const fleetHtml = renderFleetNowTbody(fleet, { hideDrivers: !showDrivers });
       <Banner tone="warning" tag="Needs action" role="note">
         <span set:html={needsHtml} />
         <a class="btn btn-secondary btn-sm" href="/bookings" slot="action">Open bookings</a>
+      </Banner>
+    )
+  }
+
+  {
+    delayedFlights.length > 0 && (
+      <Banner tone="warning" tag="Flight delays" role="note">
+        {delayedFlights.map((b, i) => {
+          const from = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Europe/Athens',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }).format(new Date(b.original_pickup_at!));
+          const to = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Europe/Athens',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }).format(new Date(b.pickup_at));
+          return (
+            <>
+              {i > 0 ? ' · ' : null}
+              <a href={`/bookings/${b.reference}`}>{b.reference}</a>
+              <span class="badge s-pending">+{b.pickup_shift_min} min</span>
+              {' '}
+              Pick-up moved {from} → {to}
+            </>
+          );
+        })}
       </Banner>
     )
   }

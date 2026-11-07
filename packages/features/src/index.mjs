@@ -230,6 +230,12 @@ export const ADMIN_NAV = Object.freeze([
         feature: 'distancePricing',
       }),
       Object.freeze({
+        href: '/pricing/flights',
+        id: 'pricing-flights',
+        label: 'Flights',
+        feature: 'flightTracking',
+      }),
+      Object.freeze({
         href: '/pricing/return',
         id: 'pricing-return',
         label: 'Return',

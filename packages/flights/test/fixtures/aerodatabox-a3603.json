@@ -1,0 +1,16 @@
+[
+  {
+    "number": "A3 603",
+    "status": 7,
+    "airline": { "name": "Aegean Airlines", "iata": "A3", "icao": "AEE" },
+    "departure": {
+      "airport": { "iata": "SKG", "icao": "LGTS", "countryCode": "GR" }
+    },
+    "arrival": {
+      "airport": { "iata": "ATH", "icao": "LGAV" },
+      "scheduledTimeUtc": "2026-11-08T16:30:00Z",
+      "revisedTimeUtc": "2026-11-08T17:10:00Z",
+      "terminal": "1"
+    }
+  }
+]

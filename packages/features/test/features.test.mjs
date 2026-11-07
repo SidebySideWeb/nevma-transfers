@@ -221,5 +221,15 @@ describe('filterAdminNav()', () => {
     assert.ok(labels.includes('Hourly'));
     assert.ok(labels.includes('Simulator'));
     assert.ok(!labels.includes('Zone prices'));
+    assert.ok(!labels.includes('Flights'));
+  });
+
+  it('flightTracking shows Flights nav item', () => {
+    const f = features(
+      { FEATURE_FLIGHT_TRACKING: 'true', FLIGHT_PROVIDER: 'manual' },
+      silentLog().log,
+    );
+    const labels = filterAdminNav(f).flatMap((g) => g.items.map((i) => i.label));
+    assert.ok(labels.includes('Flights'));
   });
 });

@@ -42,7 +42,7 @@ const invoices = ['not_required', 'requested', 'issued'] as const;
 
 const selectCols = `
     reference, pickup_at, booking_type, duration_minutes, price_cents, status, payment_status,
-    customer_name, trip_group_id, leg,
+    customer_name, trip_group_id, leg, pickup_shift_min, original_pickup_at, flight_status,
     from_zone:zones!bookings_from_zone_id_fkey(name),
     to_zone:zones!bookings_to_zone_id_fkey(name),
     class:vehicle_classes!bookings_class_id_fkey(key, name)
@@ -87,10 +87,22 @@ type BookingRow = {
   customer_name: string;
   trip_group_id: string | null;
   leg: number | null;
+  pickup_shift_min: number | null;
+  original_pickup_at: string | null;
+  flight_status: string | null;
   from_zone: { name?: string } | null;
   to_zone: { name?: string } | null;
   class: { key?: string; name?: string } | null;
 };
+
+function athensHmOnly(iso: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Athens',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso));
+}
 
 const load = resolveListLoad('bookings', rows as BookingRow[] | null, error);
 if (!load.ok) logListError('bookings_list', error!.message);
@@ -334,6 +346,16 @@ function qs(overrides: Record<string, string | null>): string {
                     </td>
                     <td data-label="Pick-up">
                       {formatAthensShort(b.pickup_at).replace(/ (?=\d{2}:\d{2}$)/, ' · ')}
+                      {
+                        (b.pickup_shift_min ?? 0) > 0 && b.original_pickup_at ? (
+                          <span class="sub">
+                            <span class="badge s-pending">+{b.pickup_shift_min} min</span>
+                            {' '}
+                            Pick-up moved {athensHmOnly(b.original_pickup_at)} →{' '}
+                            {athensHmOnly(b.pickup_at)}
+                          </span>
+                        ) : null
+                      }
                     </td>
                     <td data-label="Route">
                       {trip}

@@ -2,7 +2,8 @@
   "crons": [
     { "path": "/api/cron/reminders", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/stuck-payments", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/form-retention", "schedule": "0 3 * * 1" }
+    { "path": "/api/cron/form-retention", "schedule": "0 3 * * 1" },
+    { "path": "/api/cron/flights", "schedule": "*/10 * * * *" }
   ],
   "redirects": [
     {

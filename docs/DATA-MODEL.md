@@ -189,3 +189,7 @@ Staff pricing/setup audit log (`admin_activity`) for B5 saves.
 ## 0028 — Return trips (7 Nov 2026)
 
 `FEATURE_RETURN_TRIP` (B6). Kit name `0020_return_trips`. `bookings` gains `trip_group_id`, `leg` (1 outbound / 2 return), `return_of`. Trigger enforces return pick-up after outbound end. `quotes` gains return pickup/duration/distance/flight. `payments.trip_group_id`; Viva transaction unique per `(viva_transaction_id, booking_id)` so one order can cover both legs with each leg’s share. `create_booking_from_quote` creates both legs in one transaction when the quote has `return_pickup_at`. `record_viva_payment` confirms the whole group; `expire_holds` expires both unpaid legs together.
+
+## 0029 — Flight tracking (7 Nov 2026)
+
+`FEATURE_FLIGHT_TRACKING` (B7). Kit name `0021_flights`. `bookings` gains `flight_date`, `flight_status` (`scheduled|delayed|landed|cancelled|diverted|unknown`), `flight_sched_arr`, `flight_eta`, `flight_terminal`, `flight_checked_at`, `flight_origin`, `flight_airline`, `pickup_shift_min`, `original_pickup_at`. Table `flight_events` (provider snapshots). Function `shift_pickup(booking_id, new_pickup, reason)` moves `pickup_at` + hold/`blocked_range`, keeps `original_pickup_at`, refuses on vehicle/class clash. Settings: `flight_buffer_domestic_min` (15), `flight_buffer_international_min` (30), `flight_daily_call_cap` (200), `email_customer_on_flight_change` (false). `booking_events.kind` allows `pickup_shifted`.

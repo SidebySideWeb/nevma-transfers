@@ -1,0 +1,16 @@
+{
+  "flights": [
+    {
+      "ident": "AEE603",
+      "ident_iata": "A3603",
+      "operator": "AEE",
+      "operator_iata": "A3",
+      "status": "Delayed",
+      "origin": { "code_iata": "SKG", "code_icao": "LGTS", "country": "GR" },
+      "destination": { "code_iata": "ATH", "code_icao": "LGAV" },
+      "scheduled_on": "2026-11-08T16:30:00Z",
+      "estimated_on": "2026-11-08T17:10:00Z",
+      "terminal_destination": "1"
+    }
+  ]
+}

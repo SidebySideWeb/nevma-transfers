@@ -1056,6 +1056,31 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
     throw mapPgBookingError(e);
   }
 
+  if (features().flightTracking) {
+    try {
+      const { stampFlightAtBooking } = await import('./flight-tracking');
+      const { rows: legs } = await db().query<{
+        id: string;
+        pickup_at: Date;
+        flight_number: string | null;
+      }>(
+        `select id, pickup_at, flight_number from public.bookings
+          where id = $1::uuid
+             or ($2::uuid is not null and id = $2::uuid)`,
+        [created.booking_id, created.return_booking_id ?? null],
+      );
+      for (const leg of legs) {
+        const fn =
+          leg.id === created.booking_id
+            ? body.flightNumber?.trim() || leg.flight_number
+            : leg.flight_number;
+        if (fn) await stampFlightAtBooking(leg.id, fn, leg.pickup_at);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }
+
   // Prefer request places when provided; quote already copied its own.
   if (pickupPlace || dropoffPlace) {
     try {
@@ -1276,6 +1301,19 @@ export async function createBooking(raw: unknown, visitorKey: string, ip?: strin
     created = rows[0]!.j;
   } catch (e) {
     throw mapPgBookingError(e);
+  }
+
+  if (features().flightTracking && body.flightNumber?.trim()) {
+    try {
+      const { stampFlightAtBooking } = await import('./flight-tracking');
+      const { rows: pu } = await db().query<{ pickup_at: Date }>(
+        `select pickup_at from public.bookings where id = $1::uuid`,
+        [created.booking_id],
+      );
+      if (pu[0]) await stampFlightAtBooking(created.booking_id, body.flightNumber, pu[0].pickup_at);
+    } catch {
+      /* non-fatal */
+    }
   }
 
   // Place IDs/coords are optional enrichment (migration 0021). Never abandon a created booking if this fails

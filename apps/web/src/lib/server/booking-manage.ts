@@ -23,6 +23,7 @@ export type ManagePageView =
       pickupAddress: string;
       dropoffAddress: string | null;
       flightNumber: string | null;
+      flightStatus: string | null;
       className: string;
       /** First Sanity photo of the class (display only), or null. */
       photoUrl: string | null;
@@ -76,6 +77,7 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     pickup_address: string;
     dropoff_address: string | null;
     flight_number: string | null;
+    flight_status: string | null;
     class_key: string;
     class_name: string;
     customer_name: string;
@@ -92,7 +94,7 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     price_breakdown: { code?: string; label?: string; amount?: number }[] | null;
   }>(
     `select b.id, b.reference, b.status, b.pickup_at, b.duration_minutes, b.booking_type, b.hours,
-            b.pickup_address, b.dropoff_address, b.flight_number, c.key as class_key, c.name as class_name, b.customer_name,
+            b.pickup_address, b.dropoff_address, b.flight_number, b.flight_status, c.key as class_key, c.name as class_name, b.customer_name,
             b.passengers, b.luggage, b.price_cents, b.base_price_cents, b.vat_rate_bp, b.vat_cents,
             zf.name as from_name, zt.name as to_name,
             b.distance_km, b.duration_min, b.price_breakdown, b.trip_group_id, b.leg
@@ -212,6 +214,7 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     pickupAddress: b.pickup_address,
     dropoffAddress: b.dropoff_address,
     flightNumber: b.flight_number,
+    flightStatus: b.flight_status,
     className: b.class_name,
     photoUrl,
     leadName: b.customer_name,

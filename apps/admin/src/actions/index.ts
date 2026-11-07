@@ -7,6 +7,8 @@ import {
   callInternalCancel,
   callInternalDriverInvite,
   callInternalDriverNotify,
+  callInternalFlightCheck,
+  callInternalFlightDelay,
   callInternalPayment,
   callInternalRefund,
 } from '../lib/internal';
@@ -2060,6 +2062,88 @@ export const server = {
         detail: { kind: input.kind, addCents, label },
       });
       return { ok: true, addCents };
+    },
+  }),
+
+  checkFlightNow: defineAction({
+    accept: 'form',
+    input: z.object({ reference: z.string().min(1) }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      if (!features().flightTracking) {
+        throw new ActionError({ code: 'NOT_FOUND', message: 'Flight tracking is off' });
+      }
+      const result = await callInternalFlightCheck({ reference: input.reference }, staff.userId);
+      if (!result.ok) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
+      }
+      return result.data;
+    },
+  }),
+
+  setFlightDelay: defineAction({
+    accept: 'form',
+    input: z.object({
+      reference: z.string().min(1),
+      arrivalLocal: z.string().min(1),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      if (!features().flightTracking) {
+        throw new ActionError({ code: 'NOT_FOUND', message: 'Flight tracking is off' });
+      }
+      const provider = (process.env.FLIGHT_PROVIDER || '').toLowerCase();
+      if (provider !== 'manual') {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: 'Set delay is only available with FLIGHT_PROVIDER=manual',
+        });
+      }
+      let arrivalAt: string;
+      try {
+        arrivalAt = athensLocalToInstant(input.arrivalLocal.trim()).toISOString();
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Use YYYY-MM-DDTHH:mm for arrival' });
+      }
+      const result = await callInternalFlightDelay(
+        { reference: input.reference, arrivalAt },
+        staff.userId,
+      );
+      if (!result.ok) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
+      }
+      return result.data;
+    },
+  }),
+
+  saveFlightSettings: defineAction({
+    accept: 'form',
+    input: z.object({
+      bufferDomestic: z.coerce.number().int().min(0).max(180),
+      bufferInternational: z.coerce.number().int().min(0).max(180),
+      dailyCallCap: z.coerce.number().int().min(1).max(10_000),
+      emailCustomer: z.enum(['true', 'false']),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!features().flightTracking) {
+        throw new ActionError({ code: 'NOT_FOUND', message: 'Flight tracking is off' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const rows: { key: string; value: unknown }[] = [
+        { key: 'flight_buffer_domestic_min', value: input.bufferDomestic },
+        { key: 'flight_buffer_international_min', value: input.bufferInternational },
+        { key: 'flight_daily_call_cap', value: input.dailyCallCap },
+        { key: 'email_customer_on_flight_change', value: input.emailCustomer === 'true' },
+      ];
+      for (const r of rows) {
+        const { error } = await supabase
+          .from('settings')
+          .update({ value: r.value as never, is_demo: false })
+          .eq('key', r.key);
+        if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+      }
+      return { ok: true };
     },
   }),
 };

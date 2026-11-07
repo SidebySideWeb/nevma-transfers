@@ -23,7 +23,9 @@ async function postInternal(
     | '/api/internal/bookings'
     | '/api/internal/payments'
     | '/api/internal/drivers/invite'
-    | '/api/internal/drivers/notify',
+    | '/api/internal/drivers/notify'
+    | '/api/internal/flights/check'
+    | '/api/internal/flights/delay',
   body: unknown,
   staffUserId: string,
 ): Promise<InternalResult> {
@@ -131,4 +133,18 @@ export async function callInternalDriverNotify(
   staffUserId: string,
 ) {
   return postInternal('/api/internal/drivers/notify', body, staffUserId);
+}
+
+export async function callInternalFlightCheck(
+  body: { reference: string },
+  staffUserId: string,
+) {
+  return postInternal('/api/internal/flights/check', body, staffUserId);
+}
+
+export async function callInternalFlightDelay(
+  body: { reference: string; arrivalAt: string },
+  staffUserId: string,
+) {
+  return postInternal('/api/internal/flights/delay', body, staffUserId);
 }

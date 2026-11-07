@@ -1,0 +1,124 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import { features } from '@tem/features';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+if (!features().flightTracking) {
+  return Astro.redirect('/settings');
+}
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(Astro.getActionResult?.(actions.saveFlightSettings));
+const pageOk = Astro.getActionResult?.(actions.saveFlightSettings)?.data;
+
+const keys = [
+  'flight_buffer_domestic_min',
+  'flight_buffer_international_min',
+  'flight_daily_call_cap',
+  'email_customer_on_flight_change',
+] as const;
+const { data: rows } = await supabase.from('settings').select('key, value').in('key', [...keys]);
+const map = new Map((rows ?? []).map((r) => [r.key, r.value]));
+const bufferDomestic = Number(map.get('flight_buffer_domestic_min') ?? 15) || 15;
+const bufferInternational = Number(map.get('flight_buffer_international_min') ?? 30) || 30;
+const dailyCallCap = Number(map.get('flight_daily_call_cap') ?? 200) || 200;
+const emailCustomer = map.get('email_customer_on_flight_change') === true;
+const provider = (import.meta.env.FLIGHT_PROVIDER || process.env.FLIGHT_PROVIDER || '—').toLowerCase();
+---
+
+<AdminLayout title="Flights" current="pricing-flights" staffEmail={staff.email}>
+  {
+    pageError && (
+      <Banner tone="danger" role="alert">
+        {pageError}
+      </Banner>
+    )
+  }
+  {
+    pageOk && (
+      <Banner tone="success" role="status">
+        Flight settings saved.
+      </Banner>
+    )
+  }
+
+  <p class="muted" style="margin:0 0 1rem">
+    Provider: <strong>{provider}</strong>. Airport pick-ups with a flight number are tracked on the day;
+    delays of 15 minutes or more move the pick-up and alert the office.
+  </p>
+
+  <form method="POST" action={actions.saveFlightSettings} class="stack">
+    <section class="panel">
+      <div class="panel-head"><h2>Pick-up buffers</h2></div>
+      <div class="panel-body settings-list">
+        <div class="field">
+          <label for="buf-dom">Domestic origin (minutes after arrival)</label>
+          <input
+            id="buf-dom"
+            class="input"
+            type="number"
+            name="bufferDomestic"
+            min="0"
+            max="180"
+            value={bufferDomestic}
+            required
+          />
+        </div>
+        <div class="field">
+          <label for="buf-int">International origin (minutes after arrival)</label>
+          <input
+            id="buf-int"
+            class="input"
+            type="number"
+            name="bufferInternational"
+            min="0"
+            max="180"
+            value={bufferInternational}
+            required
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Provider limits</h2></div>
+      <div class="panel-body settings-list">
+        <div class="field">
+          <label for="cap">Daily provider call cap</label>
+          <input
+            id="cap"
+            class="input"
+            type="number"
+            name="dailyCallCap"
+            min="1"
+            max="10000"
+            value={dailyCallCap}
+            required
+          />
+        </div>
+        <div class="field">
+          <label for="email-cust">Email customer when pick-up moves</label>
+          <select id="email-cust" class="input" name="emailCustomer">
+            <option value="false" selected={!emailCustomer}>Off (default)</option>
+            <option value="true" selected={emailCustomer}>On</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <div class="row">
+      <button type="submit" class="btn">Save</button>
+    </div>
+  </form>
+</AdminLayout>
