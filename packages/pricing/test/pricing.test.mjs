@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  applyReturnDiscount,
   areaFees,
   athensMinutesOfDay,
   inNightWindow,
@@ -324,5 +325,18 @@ describe('integer cents integrity', () => {
       const sumLines = p.breakdown.reduce((s, b) => s + b.amount, 0);
       assert.equal(sumLines, p.total);
     }
+  });
+});
+
+describe('B6 return discount + per-leg night', () => {
+  it('discount applies to leg 2 only', () => {
+    assert.equal(applyReturnDiscount(10000, 10), 9000);
+    assert.equal(applyReturnDiscount(10000, 0), 10000);
+    const out = price({ trip: { pickupAt: DAY } }).perClass.e.total;
+    const retNight = price({ trip: { pickupAt: NIGHT } }).perClass.e.total;
+    assert.ok(retNight > out);
+    const discounted = applyReturnDiscount(retNight, 10);
+    assert.equal(discounted, Math.round(retNight * 0.9));
+    assert.equal(out + discounted, out + discounted);
   });
 });

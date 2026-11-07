@@ -163,7 +163,10 @@ async function company() {
 export async function sendConfirmationEmails(
   reference: string,
   cancelToken: string,
-  opts: { notifyOffice?: boolean } = {},
+  opts: {
+    notifyOffice?: boolean;
+    siblingTokens?: { reference: string; token: string }[];
+  } = {},
 ): Promise<void> {
   const notifyOffice = opts.notifyOffice !== false;
   const booking = await loadBooking(reference);
@@ -187,6 +190,56 @@ export async function sendConfirmationEmails(
     booking.booking_type === 'hourly' && booking.hours != null
       ? booking.hours * 40
       : null;
+
+  let returnLeg: {
+    reference: string;
+    pickupAtLocal: string;
+    routeOrHours: string;
+    totalCents: number;
+    cancelUrl: string;
+  } | null = null;
+  let paymentTotalCents: number | null = null;
+  try {
+    const { rows: sib } = await bookingDb().query<{
+      reference: string;
+      pickup_at: Date;
+      from_zone: string;
+      to_zone: string | null;
+      price_cents: number;
+      booking_type: 'transfer' | 'hourly';
+      hours: number | null;
+    }>(
+      `select b.reference, b.pickup_at, b.price_cents, b.booking_type, b.hours,
+              zf.name as from_zone, zt.name as to_zone
+         from public.bookings b
+         join public.bookings mine on mine.reference = $1
+         join public.zones zf on zf.id = b.from_zone_id
+         left join public.zones zt on zt.id = b.to_zone_id
+        where mine.trip_group_id is not null
+          and b.trip_group_id = mine.trip_group_id
+          and b.id <> mine.id
+        limit 1`,
+      [reference],
+    );
+    const other = sib[0];
+    const tok = opts.siblingTokens?.find((s) => s.reference === other?.reference);
+    if (other && tok) {
+      returnLeg = {
+        reference: other.reference,
+        pickupAtLocal: pickupLocalAthens(other.pickup_at),
+        routeOrHours:
+          other.booking_type === 'transfer'
+            ? `${other.from_zone} → ${other.to_zone}`
+            : String(other.hours ?? ''),
+        totalCents: other.price_cents,
+        cancelUrl: `${siteUrl()}/booking/manage/${tok.token}`,
+      };
+      paymentTotalCents = booking.price_cents + other.price_cents;
+    }
+  } catch {
+    /* trip_group column missing — single-leg email */
+  }
+
   const base = {
     reference: booking.reference,
     bookingType: booking.booking_type,
@@ -213,6 +266,8 @@ export async function sendConfirmationEmails(
     companyName: co.companyName,
     companyPhone: co.companyPhone,
     companyEmail: co.companyEmail,
+    returnLeg,
+    paymentTotalCents,
   };
 
   const customer = confirmationEmail(base);

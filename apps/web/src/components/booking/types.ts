@@ -12,6 +12,10 @@ export type SearchState = {
   pickupLocal: string;
   passengers: number;
   luggage: number;
+  /** FEATURE_RETURN_TRIP */
+  returnOn?: boolean;
+  returnPickupLocal?: string;
+  returnFlightNumber?: string;
 };
 
 export type PlaceSelection = { placeId: string; lat: number; lng: number } | null;
@@ -91,4 +95,7 @@ export const initialSearch = (): SearchState => ({
   pickupLocal: '',
   passengers: 2,
   luggage: 2,
+  returnOn: false,
+  returnPickupLocal: '',
+  returnFlightNumber: '',
 });

@@ -91,11 +91,11 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     duration_min: number | null;
     price_breakdown: { code?: string; label?: string; amount?: number }[] | null;
   }>(
-    `select b.reference, b.status, b.pickup_at, b.duration_minutes, b.booking_type, b.hours,
+    `select b.id, b.reference, b.status, b.pickup_at, b.duration_minutes, b.booking_type, b.hours,
             b.pickup_address, b.dropoff_address, b.flight_number, c.key as class_key, c.name as class_name, b.customer_name,
             b.passengers, b.luggage, b.price_cents, b.base_price_cents, b.vat_rate_bp, b.vat_cents,
             zf.name as from_name, zt.name as to_name,
-            b.distance_km, b.duration_min, b.price_breakdown
+            b.distance_km, b.duration_min, b.price_breakdown, b.trip_group_id, b.leg
        from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
        left join public.zones zf on zf.id = b.from_zone_id
@@ -103,7 +103,11 @@ export async function managePageView(token: string): Promise<ManagePageView> {
       where b.cancel_token_hash = $1`,
     [hash],
   );
-  const b = rows[0];
+  const b = rows[0] as (typeof rows)[0] & {
+    id: string;
+    trip_group_id?: string | null;
+    leg?: number | null;
+  };
   if (!b || b.status === 'cancelled' || b.status === 'expired') return { kind: 'invalid' };
 
   const { rows: extras } = await bookingDb().query<{ name: string; cents: number }>(
@@ -123,6 +127,56 @@ export async function managePageView(token: string): Promise<ManagePageView> {
   const cutoff = new Date(b.pickup_at).getTime() - settings.cancelWindowHours * 3600_000;
   const canCancel =
     (b.status === 'confirmed' || b.status === 'assigned') && Date.now() <= cutoff;
+
+  let sibling: {
+    reference: string;
+    status: string;
+    pickupLabel: string;
+    routeOrHours: string;
+    priceLabel: string;
+    leg: number | null;
+  } | null = null;
+  if (b.trip_group_id) {
+    try {
+      const { rows: sibRows } = await bookingDb().query<{
+        reference: string;
+        status: string;
+        pickup_at: Date;
+        booking_type: string;
+        hours: number | null;
+        duration_minutes: number;
+        price_cents: number;
+        from_name: string | null;
+        to_name: string | null;
+        leg: number | null;
+      }>(
+        `select b.reference, b.status, b.pickup_at, b.booking_type, b.hours, b.duration_minutes, b.price_cents, b.leg,
+                zf.name as from_name, zt.name as to_name
+           from public.bookings b
+           left join public.zones zf on zf.id = b.from_zone_id
+           left join public.zones zt on zt.id = b.to_zone_id
+          where b.trip_group_id = $1::uuid and b.id <> $2::uuid
+          limit 1`,
+        [b.trip_group_id, b.id],
+      );
+      const s = sibRows[0];
+      if (s) {
+        sibling = {
+          reference: s.reference,
+          status: s.status,
+          pickupLabel: `${formatLocal(new Date(s.pickup_at), settings.timezone)} (Athens)`,
+          routeOrHours:
+            s.booking_type === 'hourly'
+              ? `${s.hours ?? Math.round(s.duration_minutes / 60)} h`
+              : `${s.from_name ?? '—'} → ${s.to_name ?? '—'}`,
+          priceLabel: formatEuro(s.price_cents),
+          leg: s.leg,
+        };
+      }
+    } catch {
+      /* column missing */
+    }
+  }
 
   const statusKey = `manage.status.${b.status}` as 'manage.status.confirmed';
   const typeLabel =
@@ -192,6 +246,8 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     officeEmail: site.email,
     officePhone: site.phone,
     officePhoneHref: `tel:${site.phone.replace(/[^\d+]/g, '')}`,
+    sibling,
+    leg: b.leg ?? null,
   };
 }
 

@@ -181,3 +181,11 @@ Distance/hybrid pricing rules (`docs/BOOKING-V2-PLAN.md` §3–4, B3). Kit name 
 ## 0026 — Quotes (7 Nov 2026)
 
 Signed fixed-price quotes + booking sale snapshot (B3). Kit name `0019_quotes`. Table `quotes` (places, distance/duration, `prices` jsonb, `pricing_version`, `expires_at`, `ip_hash`). `bookings` gains `quote_id`, `distance_km`, `duration_min`, `price_breakdown`. `create_booking_from_quote` sells `quotes.prices[class].total` + re-priced extras; hold window = `blocked_range_for(pickup, duration_min, buffer)`. `cleanup_expired_quotes` (+ pg_cron when available). Staff may read quotes; writes are service role only.
+
+## 0027 — Admin activity (7 Nov 2026)
+
+Staff pricing/setup audit log (`admin_activity`) for B5 saves.
+
+## 0028 — Return trips (7 Nov 2026)
+
+`FEATURE_RETURN_TRIP` (B6). Kit name `0020_return_trips`. `bookings` gains `trip_group_id`, `leg` (1 outbound / 2 return), `return_of`. Trigger enforces return pick-up after outbound end. `quotes` gains return pickup/duration/distance/flight. `payments.trip_group_id`; Viva transaction unique per `(viva_transaction_id, booking_id)` so one order can cover both legs with each leg’s share. `create_booking_from_quote` creates both legs in one transaction when the quote has `return_pickup_at`. `record_viva_payment` confirms the whole group; `expire_holds` expires both unpaid legs together.

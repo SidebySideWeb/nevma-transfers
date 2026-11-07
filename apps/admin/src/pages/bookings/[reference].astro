@@ -103,6 +103,7 @@ let refundConfirm = '';
 let cancelConfirm = '';
 let pricedWithLabel = '';
 let freeWaitMin = 15;
+let returnSibling: { reference: string; leg: number | null; status: string } | null = null;
 const showDrivers = features().drivers;
 
 if (found && booking) {
@@ -147,6 +148,16 @@ if (found && booking) {
     const waiting = (ps?.doc as { waiting?: { other_free_min?: number; airport_free_min?: number } } | null)
       ?.waiting;
     freeWaitMin = waiting?.other_free_min ?? 15;
+  }
+  const tripGroupId = (booking as { trip_group_id?: string | null }).trip_group_id;
+  if (tripGroupId) {
+    const { data: sib } = await supabase
+      .from('bookings')
+      .select('reference, leg, status')
+      .eq('trip_group_id', tripGroupId)
+      .neq('id', booking.id)
+      .maybeSingle();
+    if (sib) returnSibling = sib;
   }
   const extrasRes = await supabase
     .from('booking_extras')
@@ -354,6 +365,35 @@ if (found && booking) {
             {pageError}
           </Banner>
         )}
+
+        {
+          returnSibling && (
+            <section class="panel" aria-labelledby="return-h">
+              <div class="panel-head">
+                <h2 id="return-h">Return trip</h2>
+              </div>
+              <div class="panel-body">
+                <p>
+                  {(booking as { leg?: number | null }).leg === 2 ? (
+                    <>
+                      Return {reference} / Outbound{' '}
+                      <a href={`/bookings/${returnSibling.reference}`}>{returnSibling.reference}</a>
+                    </>
+                  ) : (
+                    <>
+                      Outbound {reference} / Return{' '}
+                      <a href={`/bookings/${returnSibling.reference}`}>{returnSibling.reference}</a>
+                    </>
+                  )}
+                </p>
+                <p class="muted small">
+                  Other leg status: {returnSibling.status}. Cancelling one leg leaves the other
+                  confirmed.
+                </p>
+              </div>
+            </section>
+          )
+        }
 
         <div class="cols cols-main booking-detail">
           <div class="stack">

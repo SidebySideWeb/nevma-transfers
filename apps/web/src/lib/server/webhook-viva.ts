@@ -48,10 +48,16 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
     const txId = data.TransactionId;
     if (orderCode && txId) {
       await bookingDb().query(
-        `insert into public.payments (booking_id, kind, status, amount_cents, viva_order_code, viva_transaction_id, raw)
-         select id, 'payment', 'failed', greatest(price_cents, 1), viva_order_code, $1::uuid, '{}'::jsonb
-           from public.bookings where viva_order_code = $2::bigint
-         on conflict (viva_transaction_id) do nothing`,
+        `insert into public.payments (
+           booking_id, kind, status, amount_cents, viva_order_code, viva_transaction_id, raw, trip_group_id
+         )
+         select b.id, 'payment', 'failed', greatest(b.price_cents, 1), b.viva_order_code, $1::uuid, '{}'::jsonb, b.trip_group_id
+           from public.bookings b
+          where b.viva_order_code = $2::bigint
+            and not exists (
+              select 1 from public.payments p
+               where p.viva_transaction_id = $1::uuid and p.booking_id = b.id
+            )`,
         [txId, orderCode],
       );
       logOutcome({ event: 'failed', orderCode });
@@ -97,8 +103,20 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
   logOutcome({ event: 'payment_created', outcome, orderCode: txn.orderCode, reference });
 
   if (outcome === 'confirmed' && reference && bookingId) {
-    const cancelToken = await storeCancelToken(bookingId);
-    await fireOnConfirmed(reference, cancelToken);
+    const { rows: groupRows } = await bookingDb().query<{ id: string; reference: string; leg: number | null }>(
+      `select id, reference, leg from public.bookings
+        where viva_order_code = $1::bigint
+        order by leg nulls first, created_at`,
+      [txn.orderCode],
+    );
+    const legs = groupRows.length ? groupRows : [{ id: bookingId, reference, leg: null }];
+    const tokens: { reference: string; token: string }[] = [];
+    for (const leg of legs) {
+      tokens.push({ reference: leg.reference, token: await storeCancelToken(leg.id) });
+    }
+    await fireOnConfirmed(tokens[0]!.reference, tokens[0]!.token, {
+      siblingTokens: tokens.slice(1),
+    });
   }
 
   if (outcome === 'late_unavailable' && reference && bookingId) {
@@ -109,17 +127,18 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
         amountCents: priceCents,
       });
       await bookingDb().query(
-        `insert into public.payments (booking_id, kind, status, amount_cents, viva_transaction_id, raw)
-         values ($1::uuid, 'refund', 'succeeded', $2::int, gen_random_uuid(), '{}'::jsonb)`,
-        [bookingId, priceCents],
+        `insert into public.payments (booking_id, kind, status, amount_cents, viva_transaction_id, raw, trip_group_id)
+         select id, 'refund', 'succeeded', price_cents, gen_random_uuid(), '{}'::jsonb, trip_group_id
+           from public.bookings where viva_order_code = $1::bigint`,
+        [txn.orderCode],
       );
       await bookingDb().query(
         `update public.bookings
             set status = 'cancelled',
                 cancelled_at = now(),
                 payment_status = 'refunded'
-          where id = $1::uuid`,
-        [bookingId],
+          where viva_order_code = $1::bigint`,
+        [txn.orderCode],
       );
       await fireOnLateRefund(reference);
     } catch {

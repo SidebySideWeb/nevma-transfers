@@ -211,6 +211,22 @@ export default function BookingApp({
     if (!state.details.pickupAddress.trim()) {
       missing.pickupAddress = msg('booking.error.pickupAddress', 'Enter a pick-up address or hotel name.');
     }
+    if (state.search.type === 'transfer' && state.search.returnOn) {
+      if (!isPickupLocal(state.search.returnPickupLocal ?? '')) {
+        missing.returnPickupLocal = msg(
+          'booking.return.needWhen',
+          'Choose a return date and time.',
+        );
+      } else if (
+        isPickupLocal(state.search.pickupLocal) &&
+        (state.search.returnPickupLocal ?? '') <= state.search.pickupLocal
+      ) {
+        missing.returnPickupLocal = msg(
+          'booking.return.tooSoon',
+          'Return must be later than the outbound pick-up.',
+        );
+      }
+    }
     if (Object.keys(missing).length) {
       dispatch({ type: 'SET_ERRORS', errors: missing, formError: strings['booking.errors.summary'] });
       focusErrorSummary();

@@ -34,6 +34,16 @@ export type ConfirmationInput = {
   hourlyKmIncluded?: number | null;
   /** Snapshot breakdown lines from the quote (base / night / airport / extras). */
   breakdownLines?: ExtraLine[];
+  /** B6 return trip: second leg details + manage link. */
+  returnLeg?: {
+    reference: string;
+    pickupAtLocal: string;
+    routeOrHours: string;
+    totalCents: number;
+    cancelUrl: string;
+  } | null;
+  /** Combined payment when returnLeg is set. */
+  paymentTotalCents?: number | null;
 };
 
 export type OfficeNewInput = ConfirmationInput & {
@@ -309,22 +319,41 @@ export function manageLinkEmail(input: {
 }
 
 export function confirmationEmail(input: ConfirmationInput): EmailParts {
-  const subject = t('email.confirmation.subject', { reference: input.reference });
+  const refs = input.returnLeg
+    ? `${input.reference} / ${input.returnLeg.reference}`
+    : input.reference;
+  const subject = t('email.confirmation.subject', { reference: refs });
   const body = t('email.confirmation.body', {
-    reference: input.reference,
+    reference: refs,
     pickupAt: `${input.pickupAtLocal} (Athens)`,
   });
   const cancel = t('email.confirmation.cancelLink', { cancelUrl: input.cancelUrl });
   const vip = input.vipSecurity ? t('email.confirmation.vip') : '';
   const invoiceNote = input.invoiceRequested ? 'Invoice requested.' : '';
+  const paymentTotal = input.paymentTotalCents ?? input.totalCents;
+
+  const returnBlock = input.returnLeg
+    ? [
+        '',
+        'Return',
+        `Reference: ${input.returnLeg.reference}`,
+        `Pick-up: ${input.returnLeg.pickupAtLocal} (Athens)`,
+        `Route: ${input.returnLeg.routeOrHours}`,
+        `Leg total: ${formatEuro(input.returnLeg.totalCents)}`,
+        `Manage / cancel: ${input.returnLeg.cancelUrl}`,
+      ].join('\n')
+    : '';
 
   const analysis = priceAnalysisLines(input);
   const text = [
     body,
     '',
+    input.returnLeg ? 'Outbound' : '',
     tripLines(input),
+    returnBlock,
     '',
     analysis,
+    input.returnLeg ? `Payment total: ${formatEuro(paymentTotal)}` : '',
     vip ? `\n${vip}` : '',
     invoiceNote ? `\n${invoiceNote}` : '',
     '',
@@ -338,7 +367,23 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
 
   const htmlBody = `
     <p style="margin:0 0 12px;">${escapeHtml(body)}</p>
+    ${input.returnLeg ? `<p style="margin:0 0 4px;font-weight:600;">Outbound</p>` : ''}
     <p style="margin:0 0 8px;white-space:pre-line;">${escapeHtml(tripLines(input))}</p>
+    ${
+      input.returnLeg
+        ? `<p style="margin:16px 0 4px;font-weight:600;">Return</p>
+    <p style="margin:0 0 8px;white-space:pre-line;">${escapeHtml(
+      [
+        `Reference: ${input.returnLeg.reference}`,
+        `Pick-up: ${input.returnLeg.pickupAtLocal} (Athens)`,
+        `Route: ${input.returnLeg.routeOrHours}`,
+        `Leg total: ${formatEuro(input.returnLeg.totalCents)}`,
+      ].join('\n'),
+    )}</p>
+    <p style="margin:0 0 8px;">${escapeHtml(`Manage / cancel: ${input.returnLeg.cancelUrl}`)}</p>
+    <p style="margin:0 0 8px;font-weight:600;">Payment total: ${escapeHtml(formatEuro(paymentTotal))}</p>`
+        : ''
+    }
     ${priceAnalysisHtml(input)}
     ${vip ? `<p style="margin:12px 0;font-weight:600;color:${th.accent};">${escapeHtml(vip)}</p>` : ''}
     ${invoiceNote ? `<p style="margin:8px 0;">${escapeHtml(invoiceNote)}</p>` : ''}

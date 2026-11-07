@@ -92,12 +92,17 @@ export const bookingApi = {
         available: boolean;
         reason?: string;
         breakdown?: { code: string; label: string; amount: number }[];
+        outbound?: number | null;
+        return?: number | null;
+        total?: number | null;
+        returnDiscountPct?: number;
       }[];
       quoteId?: string;
       expiresAt?: string;
       signature?: string;
       distanceKm?: number | null;
       durationMin?: number;
+      returnDiscountPct?: number;
     }>('/api/quote', { method: 'POST', body: JSON.stringify(body) }),
 
   createHold: (body: unknown) =>

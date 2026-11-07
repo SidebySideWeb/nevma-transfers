@@ -86,6 +86,24 @@ const addressLine =
           badge={{ label: view.statusLabel.toUpperCase(), note: t('manage.chauffeurNote') }}
           pathname={`/booking/manage/${token}`}
         />
+        {
+          view.kind === 'ok' && view.sibling && (
+            <section class="panel" style="margin:1rem 0;padding:1rem" aria-label="Return trip">
+              <h2 class="display" style="font-size:1.1rem;margin:0 0 0.5rem">
+                {view.leg === 2 ? 'Outbound leg' : 'Return leg'}
+              </h2>
+              <p style="margin:0">
+                {view.sibling.reference} · {view.sibling.status} · {view.sibling.pickupLabel}
+              </p>
+              <p style="margin:0.25rem 0 0" class="muted">
+                {view.sibling.routeOrHours} · {view.sibling.priceLabel}
+              </p>
+              <p style="margin:0.5rem 0 0" class="muted small">
+                Each leg has its own cancel link when you open it from your confirmation email.
+              </p>
+            </section>
+          )
+        }
         <ManageBody
           routeLabel={routeHtml}
           addressLine={addressLine}

@@ -263,6 +263,20 @@ export function StepVehicle({
                     <span className="s7244a">
                       {opt.baseCents != null ? formatEuroV2(opt.baseCents) : '—'}
                     </span>
+                    {opt.outbound != null && opt.return != null ? (
+                      <span className="ep-return-split muted small">
+                        {(
+                          strings['booking.return.split'] ??
+                          'Outbound {out} + Return {ret} = {total}'
+                        )
+                          .replace('{out}', formatEuroV2(opt.outbound))
+                          .replace('{ret}', formatEuroV2(opt.return))
+                          .replace('{total}', formatEuroV2(opt.total ?? opt.baseCents ?? 0))}
+                        {opt.returnDiscountPct && opt.returnDiscountPct > 0
+                          ? ` · ${(strings['booking.return.discount'] ?? 'Return discount −{pct} %').replace('{pct}', String(opt.returnDiscountPct))}`
+                          : ''}
+                      </span>
+                    ) : null}
                     <span className="sb53f1">{priceIncludes}</span>
                     <span className={`radio ${on ? 'sbdbb7' : 's26017'}`}>
                       <span className={on ? 's94d88' : 's0c8bc'} />

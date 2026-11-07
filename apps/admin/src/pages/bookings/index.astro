@@ -32,6 +32,7 @@ const from = q.get('from') || '';
 const to = q.get('to') || '';
 const type = q.get('type') || '';
 const vipOnly = q.get('vip') === '1';
+const hasReturn = q.get('return') === '1';
 const invoice = q.get('invoice') || '';
 const source = q.get('source') === 'online' || q.get('source') === 'office' ? q.get('source')! : '';
 const page = Math.max(1, Number(q.get('page') || 1));
@@ -41,7 +42,7 @@ const invoices = ['not_required', 'requested', 'issued'] as const;
 
 const selectCols = `
     reference, pickup_at, booking_type, duration_minutes, price_cents, status, payment_status,
-    customer_name,
+    customer_name, trip_group_id, leg,
     from_zone:zones!bookings_from_zone_id_fkey(name),
     to_zone:zones!bookings_to_zone_id_fkey(name),
     class:vehicle_classes!bookings_class_id_fkey(key, name)
@@ -62,6 +63,7 @@ function withExtraFilters(query: any) {
   if (to) qy = qy.lte('pickup_at', `${to}T23:59:59+02:00`);
   if (type === 'transfer' || type === 'hourly') qy = qy.eq('booking_type', type);
   if (vipOnly) qy = qy.eq('vip_security', true);
+  if (hasReturn) qy = qy.not('trip_group_id', 'is', null);
   if ((invoices as readonly string[]).includes(invoice)) {
     qy = qy.eq('invoice_status', invoice as (typeof invoices)[number]);
   }
@@ -83,6 +85,8 @@ type BookingRow = {
   status: string;
   payment_status: string;
   customer_name: string;
+  trip_group_id: string | null;
+  leg: number | null;
   from_zone: { name?: string } | null;
   to_zone: { name?: string } | null;
   class: { key?: string; name?: string } | null;
@@ -120,6 +124,12 @@ if (vipOnly) {
   chips.push({
     label: 'VIP security only',
     clear: new URLSearchParams([...q.entries()].filter(([k]) => k !== 'vip')).toString(),
+  });
+}
+if (hasReturn) {
+  chips.push({
+    label: 'Has return',
+    clear: new URLSearchParams([...q.entries()].filter(([k]) => k !== 'return')).toString(),
   });
 }
 if (type) {
@@ -234,6 +244,9 @@ function qs(overrides: Record<string, string | null>): string {
     <label class="check">
       <input type="checkbox" name="vip" value="1" checked={vipOnly} /> VIP security only
     </label>
+    <label class="check">
+      <input type="checkbox" name="return" value="1" checked={hasReturn} /> Has return
+    </label>
     <div class="actions">
       <a class="btn btn-quiet btn-sm" href="/bookings">Clear</a>
     </div>
@@ -312,6 +325,12 @@ function qs(overrides: Record<string, string | null>): string {
                       <a class="ref" href={`/bookings/${b.reference}`}>
                         {b.reference}
                       </a>
+                      {b.trip_group_id ? (
+                        <span class="return-mark" title="Return trip" aria-label="Return trip">
+                          {' '}
+                          ⇄
+                        </span>
+                      ) : null}
                     </td>
                     <td data-label="Pick-up">
                       {formatAthensShort(b.pickup_at).replace(/ (?=\d{2}:\d{2}$)/, ' · ')}

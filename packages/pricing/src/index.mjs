@@ -51,6 +51,14 @@ export function parseHm(hm) {
 /**
  * Night window in Athens local time. Supports windows that cross midnight (from > to).
  */
+/** Apply return discount % to leg-2 cents only (integer). */
+export function applyReturnDiscount(cents, pct) {
+  const p = Number(pct) || 0;
+  if (!Number.isFinite(cents) || cents <= 0 || p <= 0) return Math.round(cents) || 0;
+  const clamped = Math.min(100, Math.max(0, p));
+  return Math.max(0, Math.round(cents * (1 - clamped / 100)));
+}
+
 export function inNightWindow(pickupAt, night) {
   if (!night?.from || !night?.to) return false;
   const t = athensMinutesOfDay(pickupAt);

@@ -110,7 +110,6 @@ export function StepSearch({
 }: Props) {
   const [pickupAreaKind, setPickupAreaKind] = useState<string | null>(null);
   const [showHourlyDropoff, setShowHourlyDropoff] = useState(Boolean(details.dropoffAddress));
-  const [returnOn, setReturnOn] = useState(false);
 
   const hourBounds = options.classes.reduce(
     (acc, c) => {
@@ -125,8 +124,12 @@ export function StepSearch({
 
   const kmPerHour = options.kmPerHour ?? 40;
   const fromZoneMeta = options.zones.find((z) => z.code === search.fromZone);
+  const toZoneMeta = options.zones.find((z) => z.code === search.toZone);
   const airportPickup =
     pickupAreaKind === 'airport' || (!distancePricing && isAirportZone(fromZoneMeta));
+  const airportDropoff = !distancePricing && isAirportZone(toZoneMeta);
+  const returnOn = Boolean(search.returnOn);
+  const { date: returnDate, time: returnTime } = splitLocal(search.returnPickupLocal ?? '');
 
   const earliest = useMemo(
     () => earliestPickupLocal(new Date(), options.minLeadMinutes, options.timezone),
@@ -380,20 +383,70 @@ export function StepSearch({
         </div>
       </div>
 
-      {returnTrip ? (
+      {returnTrip && search.type === 'transfer' ? (
         <div className="ep-return" data-v2-extra>
           <label className="ep-return-switch">
             <input
               type="checkbox"
               checked={returnOn}
-              onChange={(e) => setReturnOn(e.target.checked)}
+              onChange={(e) =>
+                onChange({
+                  returnOn: e.target.checked,
+                  ...(e.target.checked ? {} : { returnPickupLocal: '', returnFlightNumber: '' }),
+                })
+              }
             />
             <span>{strings['booking.return.add'] ?? 'Add return'}</span>
           </label>
           {returnOn ? (
-            <p className="js-hint" role="status">
-              {strings['booking.return.comingSoon'] ?? 'Return trip details come next.'}
-            </p>
+            <div className="ep-return-fields grid">
+              <div className={wrapClass('f2', 'returnPickupLocal')}>
+                <label className="lbl" htmlFor="b-return-date">
+                  {strings['booking.return.date'] ?? 'Return date'}
+                </label>
+                <DateField
+                  id="b-return-date"
+                  value={returnDate}
+                  min={date || earliest.slice(0, 10)}
+                  onChange={(d) => onChange({ returnPickupLocal: joinLocal(d, returnTime || '12:00') })}
+                  {...invalid('returnPickupLocal', 'b-return-date')}
+                />
+                {err('returnPickupLocal', 'b-return-date')}
+              </div>
+              <div className={wrapClass('f2', 'returnPickupLocal')}>
+                <label className="lbl" htmlFor="b-return-time">
+                  {strings['booking.return.time'] ?? 'Return time'}
+                </label>
+                <BrandDropdown
+                  id="b-return-time"
+                  label={strings['booking.return.time'] ?? 'Return time'}
+                  options={TIMES.map((t) => ({ value: t, label: t }))}
+                  value={returnTime ? TIMES.reduce((best, t) => (t <= returnTime.slice(0, 5) ? t : best), '00:00') : ''}
+                  onChange={(t) =>
+                    onChange({ returnPickupLocal: joinLocal(returnDate || date, t) })
+                  }
+                  fieldClass="field ep-time-dd"
+                  error={errors.returnPickupLocal}
+                  {...invalid('returnPickupLocal', 'b-return-time')}
+                />
+              </div>
+              {airportDropoff ? (
+                <div className="f2">
+                  <label className="lbl" htmlFor="b-return-flight">
+                    {strings['booking.return.flight'] ?? 'Return flight number'}
+                  </label>
+                  <input
+                    id="b-return-flight"
+                    className="input"
+                    value={search.returnFlightNumber ?? ''}
+                    onChange={(e) =>
+                      onChange({ returnFlightNumber: normaliseFlightNumber(e.target.value) })
+                    }
+                    autoComplete="off"
+                  />
+                </div>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : (

@@ -84,6 +84,7 @@ export declare function splitVat(
 export declare function roundUpEuros(cents: number, rounding: 1 | 5 | number): number;
 export declare function athensMinutesOfDay(isoOrDate: string | Date): number;
 export declare function parseHm(hm: string): number;
+export declare function applyReturnDiscount(cents: number, pct: number | undefined | null): number;
 export declare function inNightWindow(
   pickupAt: string | Date,
   night: { from: string; to: string; factor?: number },

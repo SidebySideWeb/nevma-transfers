@@ -7,6 +7,13 @@ const classKey = z.string().min(1);
 const turnstileToken = z.string().min(1);
 const uuid = z.uuid();
 
+const returnLeg = z
+  .object({
+    pickupLocal,
+    flightNumber: z.string().optional(),
+  })
+  .strict();
+
 const quoteTransfer = z
   .object({
     type: z.literal('transfer'),
@@ -15,6 +22,7 @@ const quoteTransfer = z
     pickupLocal,
     passengers: z.number().int().positive(),
     luggage: z.number().int().nonnegative(),
+    return: returnLeg.optional(),
   })
   .strict();
 

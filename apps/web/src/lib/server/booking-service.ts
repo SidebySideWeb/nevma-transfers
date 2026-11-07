@@ -26,6 +26,7 @@ import { getPaymentProvider } from './payments';
 import { parsePlace, placeColumns, PlacesError } from '@tem/places';
 import { hashIp, quoteSigningSecret, signQuote, verifyQuoteSignature } from './quote-crypto';
 import { assertRateLimit, RATE } from './rate-limit';
+import { assertReturnAfterOutbound, mergeReturnOption } from './return-pricing';
 import { getSettings } from './settings';
 import { quoteTrip, zoneByCode, routeDuration } from './trip-quote';
 import { verifyTurnstile } from './turnstile';
@@ -282,6 +283,15 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     });
   }
   const body = parsed.data;
+  const fEarly = features();
+  const returnLeg =
+    fEarly.returnTrip &&
+    body.type === 'transfer' &&
+    'return' in body &&
+    body.return &&
+    typeof body.return === 'object'
+      ? body.return
+      : null;
   const overrides =
     opts.isStaff && rawObj.overrides && typeof rawObj.overrides === 'object'
       ? (rawObj.overrides as {
@@ -341,6 +351,11 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     available: boolean;
     reason?: string;
     breakdown?: { code: string; label: string; amount: number }[];
+    outbound?: number | null;
+    return?: number | null;
+    total?: number | null;
+    returnDiscountPct?: number;
+    returnBreakdown?: { code: string; label: string; amount: number }[];
   }[] = [];
 
   let anyPrice = false;
@@ -428,8 +443,17 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
 
   // B3: wrap zone prices in a signed quote when QUOTE_SIGNING_SECRET is set
   // (always on with FEATURE_DISTANCE_PRICING). Keeps `options` for the current widget.
+  // B6: return trips always need a signed quote (two legs, one checkout).
   const secret = quoteSigningSecret();
-  if (!secret) return legacy;
+  if (!secret) {
+    if (returnLeg) {
+      throw new BookingError('invalid_request', {
+        stringKey: 'error.invalid_request',
+        message: 'return_requires_quote_signing',
+      });
+    }
+    return legacy;
+  }
 
   const f = features();
   let ttlMin = 20;
@@ -567,11 +591,171 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     (pricingVersionExtras as { rateIds?: Record<string, string> }).rateIds = ctx.rateIds;
   }
 
+  let returnPickupAt: Date | null = null;
+  let returnDurationMin: number | null = null;
+  let returnDistanceKm: number | null = null;
+  let returnDiscountPct = 0;
+  let returnFlightNumber: string | null = null;
+
+  if (returnLeg && body.type === 'transfer' && toId) {
+    returnPickupAt = localToInstant(returnLeg.pickupLocal, settings.timezone);
+    assertLeadTime(returnPickupAt, new Date(), settings.minLeadMinutes);
+    assertReturnAfterOutbound(pickup, durationMin, returnPickupAt);
+    returnFlightNumber = returnLeg.flightNumber?.trim() || null;
+
+    try {
+      const { rows: ps } = await db().query<{ doc: { return_discount_pct?: number } }>(
+        `select doc from public.current_pricing_settings`,
+      );
+      returnDiscountPct = Number(ps[0]?.doc?.return_discount_pct) || 0;
+    } catch {
+      returnDiscountPct = 0;
+    }
+
+    let returnRouted: { distanceKm: number; durationMin: number } | null = null;
+    if (
+      f.distancePricing &&
+      rawPlaces.pickupPlace?.lat != null &&
+      rawPlaces.dropoffPlace?.lat != null
+    ) {
+      const origin = {
+        lat: Number(rawPlaces.dropoffPlace.lat),
+        lng: Number(rawPlaces.dropoffPlace.lng),
+      };
+      const destination = {
+        lat: Number(rawPlaces.pickupPlace.lat),
+        lng: Number(rawPlaces.pickupPlace.lng),
+      };
+      await assertInServiceArea([origin, destination]);
+      returnRouted = await routeDistance({
+        origin,
+        destination,
+        departAt: returnPickupAt,
+      });
+      returnDistanceKm = returnRouted.distanceKm;
+      returnDurationMin = returnRouted.durationMin;
+    } else {
+      returnDurationMin = await routeDuration(toId, from.id);
+    }
+
+    const returnPrices = new Map<string, { cents: number | null; breakdown?: { code: string; label: string; amount: number }[] }>();
+
+    if (returnRouted) {
+      const ctx = await loadPricingContext();
+      const rates = { ...ctx.rates };
+      if (overrides?.rates) {
+        for (const [key, patch] of Object.entries(overrides.rates)) {
+          rates[key] = { ...(rates[key] ?? {}), ...patch, class_key: key } as (typeof rates)[string];
+        }
+      }
+      const settingsDoc = {
+        ...ctx.settings,
+        ...(overrides?.settings ?? {}),
+      } as typeof ctx.settings;
+      returnDiscountPct = Number(settingsDoc.return_discount_pct) || returnDiscountPct;
+      const zonePriceMap = new Map<string, number | null>();
+      for (const c of classes) {
+        zonePriceMap.set(c.key, await zonePriceCents(toId, from.id, c.id));
+      }
+      const priced = priceTrip({
+        trip: {
+          type: 'transfer',
+          pickupAt: returnPickupAt,
+          distanceKm: returnRouted.distanceKm,
+          durationMin: returnRouted.durationMin,
+          stops: [],
+          pickup: {
+            lat: Number(rawPlaces.dropoffPlace!.lat),
+            lng: Number(rawPlaces.dropoffPlace!.lng),
+          },
+          dropoff: {
+            lat: Number(rawPlaces.pickupPlace!.lat),
+            lng: Number(rawPlaces.pickupPlace!.lng),
+          },
+        },
+        classes: classes.map((c) => ({ key: c.key })),
+        rates,
+        settings: settingsDoc,
+        periods: ctx.periods,
+        areas: ctx.areas,
+        mode: f.pricingMode,
+        zonePrice: (key) => zonePriceMap.get(key) ?? null,
+        vatRateBp: ctx.vatRateBp,
+      });
+      for (const [key, p] of Object.entries(priced.perClass)) {
+        returnPrices.set(key, {
+          cents: p.available ? p.total : null,
+          breakdown: p.breakdown,
+        });
+      }
+    } else {
+      for (const c of classes) {
+        const cents = await zonePriceCents(toId, from.id, c.id);
+        returnPrices.set(c.key, {
+          cents,
+          breakdown:
+            cents != null
+              ? [{ code: 'fixed_route', label: 'Return fixed route', amount: cents }]
+              : undefined,
+        });
+      }
+    }
+
+    for (let i = 0; i < options.length; i++) {
+      const o = options[i]!;
+      const rp = returnPrices.get(o.classKey);
+      let retAvail = false;
+      if (rp?.cents != null) {
+        const cls = classes.find((c) => c.key === o.classKey);
+        if (cls) {
+          const { rows: avail } = await db().query<{ n: number }>(
+            `select public.class_availability(
+               $1::uuid,
+               public.blocked_range_for($2::timestamptz, $3::int, $4::int)
+             ) as n`,
+            [cls.id, returnPickupAt.toISOString(), returnDurationMin, cls.buffer_minutes],
+          );
+          retAvail = (avail[0]?.n ?? 0) > 0;
+        }
+      }
+      const merged = mergeReturnOption(
+        {
+          baseCents: o.baseCents,
+          available: o.available,
+          reason: o.reason,
+          breakdown: o.breakdown,
+        },
+        {
+          baseCents: rp?.cents ?? null,
+          available: retAvail,
+          reason: rp?.cents == null ? 'no_price' : undefined,
+          breakdown: rp?.breakdown,
+        },
+        returnDiscountPct,
+      );
+      options[i] = { classKey: o.classKey, ...merged };
+    }
+
+    // Rebuild prices map for signed quote
+    for (const o of options) {
+      prices[o.classKey] = {
+        total: o.total ?? o.baseCents,
+        outbound: o.outbound,
+        return: o.return,
+        available: o.available && o.baseCents != null,
+        breakdown: o.breakdown ?? [],
+        returnBreakdown: o.returnBreakdown ?? [],
+        ...(o.reason ? { reason: o.reason } : {}),
+      };
+    }
+  }
+
   const pricingVersion = {
     pricingMode: f.pricingMode,
     settingsId,
     ...pricingVersionExtras,
     source: distanceKm != null ? 'distance' : 'zones',
+    return: returnPickupAt ? true : undefined,
     simulate: simulate || undefined,
   };
 
@@ -583,10 +767,16 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       options,
       distanceKm,
       durationMin,
+      returnPickupAt: returnPickupAt
+        ? toIsoWithOffset(returnPickupAt, settings.timezone)
+        : undefined,
+      returnDiscountPct: returnPickupAt ? returnDiscountPct : undefined,
       pricingVersion,
       classes: options.map((o) => ({
         key: o.classKey,
         total: o.baseCents,
+        outbound: o.outbound,
+        return: o.return,
         available: o.available && o.baseCents != null,
         breakdown: o.breakdown,
       })),
@@ -601,12 +791,14 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
        from_zone_code, to_zone_code, passengers, luggage, prices, pricing_version,
        expires_at, ip_hash,
        pickup_place_id, pickup_lat, pickup_lng,
-       dropoff_place_id, dropoff_lat, dropoff_lng
+       dropoff_place_id, dropoff_lat, dropoff_lng,
+       return_pickup_at, return_duration_min, return_distance_km, return_flight_number
      ) values (
        $1, $2::timestamptz, $3, $4, $5,
        $6, $7, $8, $9, $10::jsonb, $11::jsonb,
        $12::timestamptz, $13,
-       $14, $15, $16, $17, $18, $19
+       $14, $15, $16, $17, $18, $19,
+       $20::timestamptz, $21, $22, $23
      ) returning id, expires_at`,
     [
       body.type,
@@ -628,6 +820,10 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       rawPlaces.dropoffPlace?.placeId ?? null,
       rawPlaces.dropoffPlace?.lat ?? null,
       rawPlaces.dropoffPlace?.lng ?? null,
+      returnPickupAt?.toISOString() ?? null,
+      returnDurationMin,
+      returnDistanceKm,
+      returnFlightNumber,
     ],
   );
   const quoteId = inserted[0]!.id;
@@ -816,8 +1012,13 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
   let created: {
     booking_id: string;
     reference: string;
+    return_booking_id?: string;
+    return_reference?: string;
+    trip_group_id?: string;
     base_cents: number;
     price_cents: number;
+    outbound_cents?: number;
+    return_cents?: number;
     hold_expires_at: string;
     lines: { code: string; label: string; cents: number }[];
     class_key: string;
@@ -879,6 +1080,27 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
           dropCols.dropoff_lng,
         ],
       );
+      if (created.return_booking_id) {
+        await db().query(
+          `update public.bookings set
+             pickup_place_id = coalesce($2, pickup_place_id),
+             pickup_lat = coalesce($3, pickup_lat),
+             pickup_lng = coalesce($4, pickup_lng),
+             dropoff_place_id = coalesce($5, dropoff_place_id),
+             dropoff_lat = coalesce($6, dropoff_lat),
+             dropoff_lng = coalesce($7, dropoff_lng)
+           where id = $1::uuid`,
+          [
+            created.return_booking_id,
+            dropCols.dropoff_place_id,
+            dropCols.dropoff_lat,
+            dropCols.dropoff_lng,
+            pickCols.pickup_place_id,
+            pickCols.pickup_lat,
+            pickCols.pickup_lng,
+          ],
+        );
+      }
     } catch {
       /* non-fatal */
     }
@@ -897,10 +1119,17 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
       customerPhone: body.customer.phone,
       paymentTimeoutSeconds: timeoutSec,
     });
-    await db().query(`update public.bookings set viva_order_code = $1::bigint where id = $2::uuid`, [
-      order.orderCode,
-      created.booking_id,
-    ]);
+    if (created.trip_group_id) {
+      await db().query(
+        `update public.bookings set viva_order_code = $1::bigint where trip_group_id = $2::uuid`,
+        [order.orderCode, created.trip_group_id],
+      );
+    } else {
+      await db().query(`update public.bookings set viva_order_code = $1::bigint where id = $2::uuid`, [
+        order.orderCode,
+        created.booking_id,
+      ]);
+    }
 
     const { rows: vatRows } = await db().query<{ vat_rate_bp: number; vat_cents: number }>(
       `select vat_rate_bp, vat_cents from public.bookings where id = $1::uuid`,
@@ -910,6 +1139,8 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
 
     return {
       reference: created.reference,
+      returnReference: created.return_reference,
+      tripGroupId: created.trip_group_id,
       status: 'pending' as const,
       currency: created.currency,
       lines: created.lines,

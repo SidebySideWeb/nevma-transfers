@@ -5,12 +5,20 @@ import {
   sendLateRefundEmails,
 } from './booking-emails';
 
-export type ConfirmedHook = (reference: string, cancelToken: string) => void | Promise<void>;
+export type ConfirmedOpts = {
+  siblingTokens?: { reference: string; token: string }[];
+};
+
+export type ConfirmedHook = (
+  reference: string,
+  cancelToken: string,
+  opts?: ConfirmedOpts,
+) => void | Promise<void>;
 export type LateRefundHook = (reference: string) => void | Promise<void>;
 export type CancelledHook = (reference: string, refundCents: number) => void | Promise<void>;
 
-let onConfirmed: ConfirmedHook = async (reference, cancelToken) => {
-  await sendConfirmationEmails(reference, cancelToken);
+let onConfirmed: ConfirmedHook = async (reference, cancelToken, opts) => {
+  await sendConfirmationEmails(reference, cancelToken, { siblingTokens: opts?.siblingTokens });
 };
 
 let onLateRefund: LateRefundHook = async (reference) => {
@@ -44,8 +52,8 @@ export function setOnCancelled(fn: CancelledHook): void {
 }
 
 export function resetEmailHooks(): void {
-  onConfirmed = async (reference, cancelToken) => {
-    await sendConfirmationEmails(reference, cancelToken);
+  onConfirmed = async (reference, cancelToken, opts) => {
+    await sendConfirmationEmails(reference, cancelToken, { siblingTokens: opts?.siblingTokens });
   };
   onLateRefund = async (reference) => {
     await sendLateRefundEmails(reference);
@@ -55,10 +63,14 @@ export function resetEmailHooks(): void {
   };
 }
 
-export async function fireOnConfirmed(reference: string, cancelToken: string): Promise<void> {
+export async function fireOnConfirmed(
+  reference: string,
+  cancelToken: string,
+  opts?: ConfirmedOpts,
+): Promise<void> {
   confirmedCalls.push(reference);
   try {
-    await onConfirmed(reference, cancelToken);
+    await onConfirmed(reference, cancelToken, opts);
   } catch (e) {
     const detail = e instanceof Error ? e.message.slice(0, 180) : 'unknown';
     console.error(JSON.stringify({ level: 'error', code: 'on_confirmed_failed', reference, detail }));

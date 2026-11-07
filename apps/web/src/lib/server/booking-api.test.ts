@@ -719,4 +719,26 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
     });
     expect(staffSim.options.length).toBeGreaterThan(0);
   });
+
+  it('B6: with returnTrip off, quote ignores return and options stay single-leg', async () => {
+    const prev = process.env.FEATURE_RETURN_TRIP;
+    process.env.FEATURE_RETURN_TRIP = 'false';
+    try {
+      const body = {
+        type: 'transfer' as const,
+        fromZone: 'demo-airport',
+        toZone: 'demo-centre',
+        pickupLocal: futureLocal(),
+        passengers: 2,
+        luggage: 2,
+        return: { pickupLocal: futureLocal() },
+      };
+      const q = await quote(body, ip);
+      expect(q.options.every((o) => o.outbound == null && o.return == null)).toBe(true);
+      expect((q as { returnPickupAt?: string }).returnPickupAt).toBeUndefined();
+    } finally {
+      if (prev === undefined) delete process.env.FEATURE_RETURN_TRIP;
+      else process.env.FEATURE_RETURN_TRIP = prev;
+    }
+  });
 });

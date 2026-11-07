@@ -77,7 +77,16 @@ export function parseBookingPrefill(
 export function quoteRequestBody(
   search: Pick<
     SearchState,
-    'type' | 'fromZone' | 'toZone' | 'hours' | 'pickupLocal' | 'passengers' | 'luggage'
+    | 'type'
+    | 'fromZone'
+    | 'toZone'
+    | 'hours'
+    | 'pickupLocal'
+    | 'passengers'
+    | 'luggage'
+    | 'returnOn'
+    | 'returnPickupLocal'
+    | 'returnFlightNumber'
   >,
   classKey?: string,
   places?: {
@@ -94,6 +103,16 @@ export function quoteRequestBody(
           pickupLocal: search.pickupLocal,
           passengers: search.passengers,
           luggage: search.luggage,
+          ...(search.returnOn && search.returnPickupLocal
+            ? {
+                return: {
+                  pickupLocal: search.returnPickupLocal,
+                  ...(search.returnFlightNumber
+                    ? { flightNumber: search.returnFlightNumber }
+                    : {}),
+                },
+              }
+            : {}),
         }
       : {
           type: 'hourly' as const,
