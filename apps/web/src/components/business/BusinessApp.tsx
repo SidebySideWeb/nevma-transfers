@@ -232,10 +232,9 @@ function Bookings({ api, strings }: PanelProps) {
   }, [api, range, q, strings]);
 
   useEffect(() => {
-    void load();
     // Reload on range change; the search text applies on submit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range]);
+    void load();
+  }, [range, load]);
 
   const cancel = async (reference: string) => {
     if (!window.confirm(fill(strings['business.bookings.cancelConfirm'], { reference }))) return;
