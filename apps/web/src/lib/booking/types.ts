@@ -2,7 +2,13 @@ import type { UiStringKey } from '../strings';
 
 export type BookingType = 'transfer' | 'hourly';
 
-export type ErrorCode = 'invalid_request' | 'no_price' | 'unavailable' | 'payment_failed';
+export type ErrorCode =
+  | 'invalid_request'
+  | 'no_price'
+  | 'unavailable'
+  | 'payment_failed'
+  | 'quote_expired';
+
 
 export class BookingError extends Error {
   readonly code: ErrorCode;

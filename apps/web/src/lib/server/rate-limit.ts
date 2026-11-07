@@ -4,7 +4,12 @@ import { bookingDb } from './db';
 
 /** Limits from docs/BOOKING-RULES.md §11. */
 export const RATE = {
+  /** Default (zones). Distance pricing uses quotePerIpDistance in booking-service. */
   quotePerIp: { windowSeconds: 60, max: 30 },
+  /** B3: 20 quotes per IP per 10 minutes when FEATURE_DISTANCE_PRICING is on. */
+  quotePerIpDistance: { windowSeconds: 600, max: 20 },
+
+
   holdPerIp: { windowSeconds: 3600, max: 6 },
   holdPerVisitor: { windowSeconds: 3600, max: 6 },
   bookingPerIp: { windowSeconds: 3600, max: 6 },

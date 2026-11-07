@@ -68,6 +68,36 @@ const placePayload = z
   .strict()
   .optional();
 
+const extrasField = z
+  .array(
+    z.union([
+      z.string().min(1),
+      z.object({
+        code: z.string().min(1),
+        quantity: z.number().int().min(1).max(10).optional(),
+      }),
+    ]),
+  )
+  .default([]);
+
+const customerField = z
+  .object({
+    name: z.string().min(1),
+    email: z.email(),
+    phone: z.string().min(1),
+  })
+  .strict();
+
+const invoiceField = z
+  .object({
+    company: z.string().min(1),
+    vat: z.string().min(1),
+    taxOffice: z.string().min(1),
+    address: z.string().min(1),
+  })
+  .strict()
+  .optional();
+
 export const BookingRequest = z
   .object({
     holdId: uuid,
@@ -79,34 +109,32 @@ export const BookingRequest = z
     luggage: z.number().int().nonnegative(),
     flightNumber: z.string().optional(),
     // Strings mean quantity 1; objects set an explicit quantity (expanded to repeated codes for the RPC).
-    extras: z
-      .array(
-        z.union([
-          z.string().min(1),
-          z.object({
-            code: z.string().min(1),
-            quantity: z.number().int().min(1).max(10).optional(),
-          }),
-        ]),
-      )
-      .default([]),
-    customer: z
-      .object({
-        name: z.string().min(1),
-        email: z.email(),
-        phone: z.string().min(1),
-      })
-      .strict(),
+    extras: extrasField,
+    customer: customerField,
     notes: z.string().optional(),
-    invoice: z
-      .object({
-        company: z.string().min(1),
-        vat: z.string().min(1),
-        taxOffice: z.string().min(1),
-        address: z.string().min(1),
-      })
-      .strict()
-      .optional(),
+    invoice: invoiceField,
+    consent: z.literal(true),
+    turnstileToken,
+  })
+  .strict();
+
+/** Checkout from a signed quote (B3). Browser-sent price/amount is rejected by rejectMoneyFields. */
+export const QuoteCheckoutRequest = z
+  .object({
+    quoteId: uuid,
+    signature: z.string().min(16),
+    classKey,
+    pickupAddress: z.string().min(1),
+    dropoffAddress: z.string().min(1).optional(),
+    pickupPlace: placePayload,
+    dropoffPlace: placePayload,
+    passengers: z.number().int().positive(),
+    luggage: z.number().int().nonnegative(),
+    flightNumber: z.string().optional(),
+    extras: extrasField,
+    customer: customerField,
+    notes: z.string().optional(),
+    invoice: invoiceField,
     consent: z.literal(true),
     turnstileToken,
   })

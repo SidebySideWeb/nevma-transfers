@@ -1,0 +1,21 @@
+{
+  "name": "@tem/pricing",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Pure distance/hybrid trip pricing (integer cents). docs/BOOKING-V2-PLAN.md §3",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.mjs",
+      "default": "./src/index.mjs"
+    }
+  },
+  "types": "./src/index.d.ts",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@tem/geo": "workspace:*"
+  }
+}

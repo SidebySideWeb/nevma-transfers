@@ -1,5 +1,6 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
+import { features } from '@tem/features';
 import { expandExtraCodes, formatEuro, normaliseExtraChoices, quoteHourly, quoteTransfer } from '../booking/pricing';
 import { assertLeadTime, formatLocal, localToInstant, toIsoWithOffset } from '../booking/time';
 import { BookingError } from '../booking/types';
@@ -7,14 +8,23 @@ import {
   BookingRequest,
   CancelRequest,
   HoldRequest,
+  QuoteCheckoutRequest,
   QuoteRequest,
   rejectMoneyFields,
 } from '../booking/validation';
 import { bookingDb, type BookingDb } from './db';
+import {
+  assertInServiceArea,
+  loadPricingContext,
+  priceTrip,
+  routeDistance,
+  zonePriceCents,
+} from './distance-quote';
 import { mapPgBookingError } from './http';
 import { fireOnCancelled } from './hooks';
 import { getPaymentProvider } from './payments';
 import { parsePlace, placeColumns, PlacesError } from '@tem/places';
+import { hashIp, quoteSigningSecret, signQuote, verifyQuoteSignature } from './quote-crypto';
 import { assertRateLimit, RATE } from './rate-limit';
 import { getSettings } from './settings';
 import { quoteTrip, zoneByCode, routeDuration } from './trip-quote';
@@ -217,7 +227,10 @@ export async function bookingOptions() {
 
 export async function quote(raw: unknown, ip?: string) {
   rejectMoneyFields(raw);
-  if (ip) await assertRateLimit(`quote:ip:${ip}`, RATE.quotePerIp.windowSeconds, RATE.quotePerIp.max);
+  if (ip) {
+    const lim = features().distancePricing ? RATE.quotePerIpDistance : RATE.quotePerIp;
+    await assertRateLimit(`quote:ip:${ip}`, lim.windowSeconds, lim.max);
+  }
 
   const parsed = QuoteRequest.safeParse(raw);
   if (!parsed.success) {
@@ -344,11 +357,201 @@ export async function quote(raw: unknown, ip?: string) {
     throw new BookingError('no_price', { stringKey: 'error.no_price', message: 'no_price' });
   }
 
-  return {
-    pickupAt: toIsoWithOffset(pickup, settings.timezone),
+  const pickupAt = toIsoWithOffset(pickup, settings.timezone);
+  const legacy = {
+    pickupAt,
     durationMinutes,
-    currency: 'EUR',
+    currency: 'EUR' as const,
     options,
+  };
+
+  // B3: wrap zone prices in a signed quote when QUOTE_SIGNING_SECRET is set
+  // (always on with FEATURE_DISTANCE_PRICING). Keeps `options` for the current widget.
+  const secret = quoteSigningSecret();
+  if (!secret) return legacy;
+
+  const f = features();
+  let ttlMin = 20;
+  let settingsId: string | null = null;
+  try {
+    const { rows: ps } = await db().query<{ id: string; doc: { quote_ttl_min?: number } }>(
+      `select id, doc from public.current_pricing_settings`,
+    );
+    settingsId = ps[0]?.id ?? null;
+    if (ps[0]?.doc?.quote_ttl_min) ttlMin = ps[0].doc.quote_ttl_min;
+  } catch {
+    // 0025 not applied — still sign with 20 min
+  }
+
+  const prices: Record<string, unknown> = {};
+  for (const o of options) {
+    prices[o.classKey] = {
+      total: o.baseCents,
+      available: o.available && o.baseCents != null,
+      breakdown:
+        o.baseCents != null
+          ? [{ code: 'fixed_route', label: 'Fixed route price', amount: o.baseCents }]
+          : [],
+      ...(o.reason ? { reason: o.reason } : {}),
+    };
+  }
+
+  // Distance / hybrid: when the switch is on and places are supplied, re-price with Routes + priceTrip.
+  let distanceKm: number | null = null;
+  let durationMin = durationMinutes;
+  const rawPlaces = raw as {
+    pickupPlace?: { lat?: number; lng?: number; placeId?: string };
+    dropoffPlace?: { lat?: number; lng?: number; placeId?: string };
+    stops?: { lat: number; lng: number }[];
+  };
+  if (
+    f.distancePricing &&
+    body.type === 'transfer' &&
+    rawPlaces.pickupPlace?.lat != null &&
+    rawPlaces.dropoffPlace?.lat != null &&
+    toId
+  ) {
+    const origin = {
+      lat: Number(rawPlaces.pickupPlace.lat),
+      lng: Number(rawPlaces.pickupPlace.lng),
+    };
+    const destination = {
+      lat: Number(rawPlaces.dropoffPlace.lat),
+      lng: Number(rawPlaces.dropoffPlace.lng),
+    };
+    await assertInServiceArea([origin, destination]);
+    const routed = await routeDistance({
+      origin,
+      destination,
+      stops: rawPlaces.stops,
+      departAt: pickup,
+    });
+    distanceKm = routed.distanceKm;
+    durationMin = routed.durationMin;
+
+    const ctx = await loadPricingContext();
+    const zonePriceMap = new Map<string, number | null>();
+    for (const c of classes) {
+      zonePriceMap.set(c.key, await zonePriceCents(from.id, toId, c.id));
+    }
+    const priced = priceTrip({
+      trip: {
+        type: 'transfer',
+        pickupAt: pickup,
+        distanceKm,
+        durationMin,
+        stops: rawPlaces.stops ?? [],
+        pickup: origin,
+        dropoff: destination,
+      },
+      classes: classes.map((c) => ({ key: c.key })),
+      rates: ctx.rates,
+      settings: ctx.settings,
+      periods: ctx.periods,
+      areas: ctx.areas,
+      mode: f.pricingMode,
+      zonePrice: (key) => zonePriceMap.get(key) ?? null,
+      vatRateBp: ctx.vatRateBp,
+    });
+
+    for (const [key, p] of Object.entries(priced.perClass)) {
+      const cls = classes.find((c) => c.key === key);
+      let available = p.available;
+      if (available && cls) {
+        const { rows: avail } = await db().query<{ n: number }>(
+          `select public.class_availability(
+             $1::uuid,
+             public.blocked_range_for($2::timestamptz, $3::int, $4::int)
+           ) as n`,
+          [cls.id, pickup.toISOString(), durationMin, cls.buffer_minutes],
+        );
+        available = (avail[0]?.n ?? 0) > 0;
+      }
+      prices[key] = {
+        total: p.available ? p.total : null,
+        net: p.net,
+        vat: p.vat,
+        breakdown: p.breakdown,
+        available,
+        ...(p.reason ? { reason: p.reason } : {}),
+      };
+      const opt = options.find((o) => o.classKey === key);
+      if (opt) {
+        if (p.available) {
+          opt.baseCents = p.total;
+          opt.available = available;
+          delete opt.reason;
+        } else {
+          opt.baseCents = null;
+          opt.available = false;
+          opt.reason = p.reason ?? 'not_priced';
+        }
+      }
+    }
+    settingsId = ctx.settingsId;
+    ttlMin = ctx.settings.quote_ttl_min ?? ttlMin;
+  }
+
+  const expiresAtFinal = new Date(Date.now() + ttlMin * 60_000).toISOString();
+
+  const { rows: inserted } = await db().query<{ id: string; expires_at: Date }>(
+    `insert into public.quotes (
+       mode, pickup_at, hours, distance_km, duration_min,
+       from_zone_code, to_zone_code, passengers, luggage, prices, pricing_version,
+       expires_at, ip_hash,
+       pickup_place_id, pickup_lat, pickup_lng,
+       dropoff_place_id, dropoff_lat, dropoff_lng
+     ) values (
+       $1, $2::timestamptz, $3, $4, $5,
+       $6, $7, $8, $9, $10::jsonb, $11::jsonb,
+       $12::timestamptz, $13,
+       $14, $15, $16, $17, $18, $19
+     ) returning id, expires_at`,
+    [
+      body.type,
+      pickup.toISOString(),
+      body.type === 'hourly' ? body.hours : null,
+      distanceKm,
+      durationMin,
+      body.fromZone,
+      body.type === 'transfer' ? body.toZone : null,
+      body.passengers,
+      body.luggage,
+      JSON.stringify(prices),
+      JSON.stringify({
+        pricingMode: f.pricingMode,
+        settingsId,
+        source: distanceKm != null ? 'distance' : 'zones',
+      }),
+      expiresAtFinal,
+      hashIp(ip),
+      rawPlaces.pickupPlace?.placeId ?? null,
+      rawPlaces.pickupPlace?.lat ?? null,
+      rawPlaces.pickupPlace?.lng ?? null,
+      rawPlaces.dropoffPlace?.placeId ?? null,
+      rawPlaces.dropoffPlace?.lat ?? null,
+      rawPlaces.dropoffPlace?.lng ?? null,
+    ],
+  );
+  const quoteId = inserted[0]!.id;
+  const expiresAt = new Date(inserted[0]!.expires_at).toISOString();
+  const signature = signQuote(secret, quoteId, expiresAt);
+
+  return {
+    pickupAt,
+    durationMinutes: durationMin,
+    currency: 'EUR' as const,
+    options,
+    quoteId,
+    expiresAt,
+    signature,
+    distanceKm,
+    durationMin,
+    classes: options.map((o) => ({
+      key: o.classKey,
+      total: o.baseCents,
+      available: o.available && o.baseCents != null,
+    })),
   };
 }
 
@@ -423,6 +626,212 @@ export async function createHold(raw: unknown, visitorKey: string, ip?: string) 
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/bookings from a signed quote (B3)
+// ---------------------------------------------------------------------------
+
+async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: string) {
+  const parsed = QuoteCheckoutRequest.safeParse(raw);
+  if (!parsed.success) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: parsed.error.message,
+    });
+  }
+  const body = parsed.data;
+  await requireTurnstile(body.turnstileToken, ip);
+  if (ip) {
+    await assertRateLimit(`book:ip:${ip}`, RATE.bookingPerIp.windowSeconds, RATE.bookingPerIp.max);
+  }
+  await assertRateLimit(
+    `book:vid:${visitorKey}`,
+    RATE.bookingPerVisitor.windowSeconds,
+    RATE.bookingPerVisitor.max,
+  );
+
+  const secret = quoteSigningSecret();
+  if (!secret) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'quote_signing_unavailable',
+    });
+  }
+
+  const { rows: quoteRows } = await db().query<{
+    id: string;
+    expires_at: Date;
+    prices: Record<string, { total?: number; available?: boolean }>;
+    mode: string;
+  }>(`select id, expires_at, prices, mode from public.quotes where id = $1::uuid`, [body.quoteId]);
+  const q = quoteRows[0];
+  if (!q) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'unknown_quote',
+    });
+  }
+  const expiresAt = new Date(q.expires_at).toISOString();
+  if (!verifyQuoteSignature(secret, body.quoteId, expiresAt, body.signature)) {
+    const err = new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'bad_signature',
+    });
+    (err as BookingError & { httpStatus?: number }).httpStatus = 403;
+    throw err;
+  }
+  if (new Date(q.expires_at).getTime() <= Date.now()) {
+    throw new BookingError('quote_expired', {
+      stringKey: 'error.quote_expired',
+      message: 'quote_expired',
+    });
+  }
+  const classPrice = q.prices?.[body.classKey];
+  if (!classPrice?.available || !classPrice.total) {
+    throw new BookingError('unavailable', {
+      stringKey: 'error.unavailable',
+      message: 'class_unavailable',
+    });
+  }
+
+  let pickupPlace;
+  let dropoffPlace;
+  try {
+    pickupPlace = parsePlace(body.pickupPlace ?? null);
+    dropoffPlace = parsePlace(body.dropoffPlace ?? null);
+  } catch (e) {
+    if (e instanceof PlacesError) {
+      throw new BookingError('invalid_request', {
+        stringKey: 'error.invalid_request',
+        message: e.message,
+      });
+    }
+    throw e;
+  }
+  if (q.mode === 'hourly' && dropoffPlace) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'dropoff place not allowed on hourly',
+      field: 'dropoffPlace',
+    });
+  }
+
+  const inv = body.invoice;
+  let created: {
+    booking_id: string;
+    reference: string;
+    base_cents: number;
+    price_cents: number;
+    hold_expires_at: string;
+    lines: { code: string; label: string; cents: number }[];
+    class_key: string;
+    currency: string;
+  };
+  try {
+    const { rows } = await db().query<{ j: typeof created }>(
+      `select public.create_booking_from_quote(
+         $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::int, $7::int, $8::text, $9::text,
+         $10::text[], $11::text, $12::text, $13::text,
+         $14::text, $15::text, $16::text, $17::text
+       ) as j`,
+      [
+        body.quoteId,
+        body.classKey,
+        visitorKey,
+        body.pickupAddress,
+        body.dropoffAddress ?? null,
+        body.passengers,
+        body.luggage,
+        body.flightNumber ?? null,
+        body.notes ?? null,
+        expandExtraCodes(normaliseExtraChoices(body.extras)),
+        body.customer.name,
+        body.customer.email,
+        body.customer.phone,
+        inv?.company ?? null,
+        inv?.vat ?? null,
+        inv?.taxOffice ?? null,
+        inv?.address ?? null,
+      ],
+    );
+    created = rows[0]!.j;
+  } catch (e) {
+    throw mapPgBookingError(e);
+  }
+
+  // Prefer request places when provided; quote already copied its own.
+  if (pickupPlace || dropoffPlace) {
+    try {
+      const pickCols = placeColumns('pickup', pickupPlace ?? null);
+      const dropCols = placeColumns('dropoff', dropoffPlace ?? null);
+      await db().query(
+        `update public.bookings set
+           pickup_place_id = coalesce($2, pickup_place_id),
+           pickup_lat = coalesce($3, pickup_lat),
+           pickup_lng = coalesce($4, pickup_lng),
+           dropoff_place_id = coalesce($5, dropoff_place_id),
+           dropoff_lat = coalesce($6, dropoff_lat),
+           dropoff_lng = coalesce($7, dropoff_lng)
+         where id = $1::uuid`,
+        [
+          created.booking_id,
+          pickCols.pickup_place_id,
+          pickCols.pickup_lat,
+          pickCols.pickup_lng,
+          dropCols.dropoff_place_id,
+          dropCols.dropoff_lat,
+          dropCols.dropoff_lng,
+        ],
+      );
+    } catch {
+      /* non-fatal */
+    }
+  }
+
+  const settings = await getSettings();
+  const holdExpires = new Date(created.hold_expires_at);
+  const timeoutSec = Math.max(1, Math.floor((holdExpires.getTime() - Date.now()) / 1000));
+
+  try {
+    const order = await getPaymentProvider().createOrder({
+      amountCents: created.price_cents,
+      reference: created.reference,
+      customerEmail: body.customer.email,
+      customerName: body.customer.name,
+      customerPhone: body.customer.phone,
+      paymentTimeoutSeconds: timeoutSec,
+    });
+    await db().query(`update public.bookings set viva_order_code = $1::bigint where id = $2::uuid`, [
+      order.orderCode,
+      created.booking_id,
+    ]);
+
+    const { rows: vatRows } = await db().query<{ vat_rate_bp: number; vat_cents: number }>(
+      `select vat_rate_bp, vat_cents from public.bookings where id = $1::uuid`,
+      [created.booking_id],
+    );
+    const vat = vatRows[0]!;
+
+    return {
+      reference: created.reference,
+      status: 'pending' as const,
+      currency: created.currency,
+      lines: created.lines,
+      totalCents: created.price_cents,
+      vatRateBp: vat.vat_rate_bp,
+      vatCents: vat.vat_cents,
+      holdExpiresAt: toIsoWithOffset(holdExpires, settings.timezone),
+      checkoutUrl: order.checkoutUrl,
+    };
+  } catch (e) {
+    const err = new BookingError('payment_failed', {
+      stringKey: 'error.payment_failed',
+      message: e instanceof Error ? e.message : 'payment_failed',
+    });
+    (err as BookingError & { reference?: string }).reference = created.reference;
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // DELETE /api/holds/:id
 // ---------------------------------------------------------------------------
 
@@ -451,6 +860,9 @@ export async function releaseHold(holdId: string, visitorKey: string): Promise<v
 
 export async function createBooking(raw: unknown, visitorKey: string, ip?: string) {
   rejectMoneyFields(raw);
+  if (raw && typeof raw === 'object' && 'quoteId' in (raw as object)) {
+    return createBookingFromQuote(raw, visitorKey, ip);
+  }
   const parsed = BookingRequest.safeParse(raw);
   if (!parsed.success) {
     throw new BookingError('invalid_request', {

@@ -7,6 +7,7 @@ const STATUS: Record<ErrorCode, number> = {
   no_price: 404,
   unavailable: 409,
   payment_failed: 502,
+  quote_expired: 409,
 };
 
 export function json(data: unknown, status = 200, headers: HeadersInit = {}): Response {
@@ -23,6 +24,8 @@ export function json(data: unknown, status = 200, headers: HeadersInit = {}): Re
 
 function statusFor(error: BookingError, httpOverride?: number): number {
   if (httpOverride != null) return httpOverride;
+  const marked = (error as BookingError & { httpStatus?: number }).httpStatus;
+  if (marked != null) return marked;
   if (error.message === 'rate_limit' || error.message === 'too_many_holds') return 429;
   return STATUS[error.code];
 }
@@ -69,6 +72,12 @@ export function failWithStatus(error: BookingError, status: number): Response {
 
 export function mapPgBookingError(err: unknown): BookingError {
   const message = err instanceof Error ? err.message : String(err);
+  if (message.includes('quote_expired')) {
+    return new BookingError('quote_expired', {
+      stringKey: 'error.quote_expired',
+      message: 'quote_expired',
+    });
+  }
   if (message.includes('unavailable')) {
     return new BookingError('unavailable', { stringKey: 'error.unavailable', message });
   }

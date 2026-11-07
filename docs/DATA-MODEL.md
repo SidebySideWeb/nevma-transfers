@@ -173,3 +173,11 @@ Extends `driver_jobs` with `pickup_place_id` / lat / lng and drop-off equivalent
 ## 0024 — `route_cache` (7 Nov 2026)
 
 Google Routes distance/duration cache for `FEATURE_DISTANCE_PRICING` (`docs/BOOKING-V2-PLAN.md` B2). Columns: `cache_key` (PK), `distance_km`, `duration_min`, `source`, `created_at`, `expires_at`. Index on `expires_at`. RLS on; no anon/authenticated grants (service role only). In-process memory TTL is 15 minutes; table TTL is 24 hours. (Kit called this migration `0018a`; this repo uses `0024` because 0018–0023 are already taken.)
+
+## 0025 — Pricing rules (7 Nov 2026)
+
+Distance/hybrid pricing rules (`docs/BOOKING-V2-PLAN.md` §3–4, B3). Kit name `0018_pricing_rules`. Tables: `class_rates` (append-only versions + view `current_class_rates`), `pricing_settings` (versioned JSON + `pricing_settings_valid` + view `current_pricing_settings`), `pricing_periods`, `pricing_areas` (airport/port polygons). Seed: zero rates per class, default settings (night 00:00–06:00 ×1.2, quote TTL 20, rounding €1), LGAV/Piraeus/Rafina/Lavrio fees 0. Staff RLS read/write; anon none.
+
+## 0026 — Quotes (7 Nov 2026)
+
+Signed fixed-price quotes + booking sale snapshot (B3). Kit name `0019_quotes`. Table `quotes` (places, distance/duration, `prices` jsonb, `pricing_version`, `expires_at`, `ip_hash`). `bookings` gains `quote_id`, `distance_km`, `duration_min`, `price_breakdown`. `create_booking_from_quote` sells `quotes.prices[class].total` + re-priced extras; hold window = `blocked_range_for(pickup, duration_min, buffer)`. `cleanup_expired_quotes` (+ pg_cron when available). Staff may read quotes; writes are service role only.

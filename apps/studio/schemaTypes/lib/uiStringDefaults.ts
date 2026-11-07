@@ -80,6 +80,11 @@ export const uiStringDefaults: UiStringDefault[] = [
   // --- errors (one per API error code, plus field errors) ---
   { area: 'errors', key: 'error.no_price', value: 'There is no online price for this trip. Please contact us.' },
   { area: 'errors', key: 'error.unavailable', value: 'No vehicle is available at that time. Please try another time or vehicle.' },
+  {
+    area: 'errors',
+    key: 'error.quote_expired',
+    value: 'This quote has expired. Please get a fresh quote.',
+  },
   { area: 'errors', key: 'error.invalid_request', value: 'Please check the highlighted fields and try again.' },
   { area: 'errors', key: 'error.payment_failed', value: 'We could not start the payment. Please try again.' },
   { area: 'errors', key: 'error.lead_time', value: 'Please choose a pick-up time at least {hours} hours from now, or contact us.' },

@@ -11,6 +11,12 @@ insert into public.vehicle_classes (key, name, max_passengers, max_luggage, buff
   ('demo-vito',     'DEMO Vito',     8,  6, 30, 40),
   ('demo-sprinter', 'DEMO Sprinter', 12, 10, 45, 50);
 
+-- Zero distance rates (0025 may have run before these DEMO classes existed).
+insert into public.class_rates (class_key, base_fare, per_km, per_min, minimum_fare, km_per_hour, extra_km_rate)
+select c.key, 0, 0, 0, 0, 40, 0
+  from public.vehicle_classes c
+ where not exists (select 1 from public.class_rates r where r.class_key = c.key);
+
 insert into public.vehicles (class_id, label)
 select c.id, 'DEMO ' || upper(replace(c.key, 'demo-', '')) || '-' || n
   from public.vehicle_classes c cross join generate_series(1, 2) n

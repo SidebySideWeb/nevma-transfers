@@ -175,6 +175,9 @@ importers:
       '@tem/places':
         specifier: workspace:*
         version: link:../../packages/places
+      '@tem/pricing':
+        specifier: workspace:*
+        version: link:../../packages/pricing
       '@vercel/functions':
         specifier: 3.10.5
         version: 3.10.5(ws@8.22.1)
@@ -272,6 +275,12 @@ importers:
   packages/geo: {}
 
   packages/places: {}
+
+  packages/pricing:
+    dependencies:
+      '@tem/geo':
+        specifier: workspace:*
+        version: link:../geo
 
 packages:
 
