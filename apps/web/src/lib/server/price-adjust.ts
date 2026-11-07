@@ -2,7 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import { BookingError } from '../booking/types';
 import { bookingDb } from './db';
-import { getPaymentProvider } from './payment-provider';
+import { getPaymentProvider } from './payments';
 import { getSettings } from './settings';
 import { toIsoWithOffset } from '../booking/time';
 
