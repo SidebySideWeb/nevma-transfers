@@ -45,7 +45,7 @@ export function mergeReturnOption(
     }
   }
   const bothPriced = out != null && retCents != null;
-  const total = bothPriced ? out + retCents : null;
+  const total = out != null && retCents != null ? out + retCents : null;
   return {
     baseCents: total,
     available: Boolean(bothPriced && outbound.available && ret.available),

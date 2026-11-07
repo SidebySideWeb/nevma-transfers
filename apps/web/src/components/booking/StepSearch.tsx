@@ -473,6 +473,7 @@ export function StepSearch({
                 </label>
                 <DateField
                   id="b-return-date"
+                  label={strings['booking.return.date'] ?? 'Return date'}
                   value={returnDate}
                   min={date || earliest.slice(0, 10)}
                   onChange={(d) => onChange({ returnPickupLocal: joinLocal(d, returnTime || '12:00') })}

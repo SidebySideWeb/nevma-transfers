@@ -43,6 +43,16 @@ export type ManagePageView =
       officeEmail: string;
       officePhone: string;
       officePhoneHref: string;
+      /** B6 return trip: other leg in the same trip group, if any. */
+      sibling: {
+        reference: string;
+        status: string;
+        pickupLabel: string;
+        routeOrHours: string;
+        priceLabel: string;
+        leg: number | null;
+      } | null;
+      leg: number | null;
     };
 
 const TIMELINE_KEYS = ['booked', 'confirmed', 'assigned', 'completed'] as const;
