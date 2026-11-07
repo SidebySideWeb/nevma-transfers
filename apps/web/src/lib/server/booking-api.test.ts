@@ -684,4 +684,39 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
       ),
     ).rejects.toMatchObject({ code: 'invalid_request' });
   });
+
+  it('B5: simulate totals match /api/quote; overrides 403 for anon', async () => {
+    const body = {
+      type: 'transfer' as const,
+      fromZone: 'demo-airport',
+      toZone: 'demo-centre',
+      pickupLocal: futureLocal(),
+      passengers: 2,
+      luggage: 2,
+    };
+    const live = await quote(body, ip);
+    const sim = await quote(body, ip, { simulate: true });
+    expect(
+      sim.options.map((o) => ({ key: o.classKey, total: o.baseCents, available: o.available })),
+    ).toEqual(
+      live.options.map((o) => ({ key: o.classKey, total: o.baseCents, available: o.available })),
+    );
+    expect((sim as { quoteId?: string }).quoteId).toBeUndefined();
+
+    const forbidden = await quote({ ...body, overrides: { rates: {} } }, ip, {
+      simulate: true,
+    }).then(
+      () => null,
+      (e) => e,
+    );
+    expect(forbidden).toBeTruthy();
+    expect(fail(forbidden!).status).toBe(403);
+    expect((forbidden as { message?: string }).message).toBe('overrides_forbidden');
+
+    const staffSim = await quote({ ...body, overrides: { rates: {} } }, ip, {
+      simulate: true,
+      isStaff: true,
+    });
+    expect(staffSim.options.length).toBeGreaterThan(0);
+  });
 });

@@ -1,0 +1,69 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import { features } from '@tem/features';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import PricingSaveBar from '../../components/PricingSaveBar.astro';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+if (!features().returnTrip) return Astro.redirect('/pricing/rates');
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(Astro.getActionResult?.(actions.savePricingSettings));
+
+const { data: settingsRow } = await supabase.from('current_pricing_settings').select('doc').maybeSingle();
+const doc = (settingsRow?.doc ?? {}) as Record<string, unknown>;
+const pct = Number(doc.return_discount_pct ?? 0);
+---
+
+<AdminLayout title="Return" current="pricing-return" staffEmail={staff.email}>
+  {
+    pageError && (
+      <Banner tone="danger" role="alert">
+        {pageError}
+      </Banner>
+    )
+  }
+  <form method="POST" action={actions.savePricingSettings} id="return-form" class="stack">
+    <input type="hidden" name="docJson" id="docJson" value={JSON.stringify(doc)} />
+    <section class="panel">
+      <div class="panel-head"><h2>Return discount</h2></div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="ret-pct">Discount on the return leg</label>
+          <div class="unit-control">
+            <input id="ret-pct" class="input" type="number" min="0" max="100" value={pct} data-ret />
+            <span class="muted small">%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </form>
+  <PricingSaveBar formId="return-form" />
+</AdminLayout>
+
+<script is:inline>
+  (function () {
+    const docInput = document.getElementById('docJson');
+    const form = document.getElementById('return-form');
+    const base = JSON.parse(docInput.value || '{}');
+    function sync() {
+      base.return_discount_pct = Number(document.querySelector('[data-ret]').value) || 0;
+      docInput.value = JSON.stringify(base);
+    }
+    form?.addEventListener('input', sync);
+    form?.addEventListener('submit', sync);
+  })();
+</script>

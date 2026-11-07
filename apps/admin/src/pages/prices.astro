@@ -8,10 +8,13 @@ import ConfirmDot from '../components/ConfirmDot.astro';
 import Select from '../components/Select.astro';
 import { logListError, resolveListLoad } from '../lib/bookings-list';
 import { centsToEuroInput } from '../lib/money';
+import { features } from '@tem/features';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
+const distanceOn = features().distancePricing;
+const pageTitle = distanceOn ? 'Fixed routes' : 'Zone prices';
 const classKey = Astro.url.searchParams.get('class') || '';
 
 function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
@@ -91,7 +94,7 @@ const shortName = (name: string) =>
     .replace(/\s+(Airport|Port|Area|Zone)$/i, '');
 ---
 
-<AdminLayout title="Zone prices" current="prices" staffEmail={staff.email}>
+<AdminLayout title={pageTitle} current="prices" staffEmail={staff.email}>
   {
     hasUnconfirmed && selected && (
       <form method="POST" action={actions.clearDemoAll} slot="actions">
@@ -110,6 +113,11 @@ const shortName = (name: string) =>
   }
   <p class="muted">
     Prices in euros. Changes apply to new bookings only. An empty cell means no online price.
+    {
+      distanceOn && (
+        <> In hybrid mode these prices win over the distance price.</>
+      )
+    }
   </p>
 
   <form method="get" class="filters">

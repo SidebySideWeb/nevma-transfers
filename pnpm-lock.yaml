@@ -59,9 +59,15 @@ importers:
       '@tem/features':
         specifier: workspace:*
         version: link:../../packages/features
+      '@tem/geo':
+        specifier: workspace:*
+        version: link:../../packages/geo
       '@tem/places':
         specifier: workspace:*
         version: link:../../packages/places
+      '@tem/pricing':
+        specifier: workspace:*
+        version: link:../../packages/pricing
       ajv:
         specifier: ^8.20.0
         version: 8.20.0

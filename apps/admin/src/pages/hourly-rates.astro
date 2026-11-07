@@ -7,11 +7,15 @@ import ClassName from '../components/ClassName.astro';
 import ConfirmDot from '../components/ConfirmDot.astro';
 import ShowDemoOffline from '../components/ShowDemoOffline.astro';
 import { withDemoOfflineLast } from '../lib/demo-offline';
+import PricingSaveBar from '../components/PricingSaveBar.astro';
+import { features } from '@tem/features';
 import { centsToEuroInput } from '../lib/money';
 import { createSupabaseServerClient } from '../lib/supabase';
 
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
+const distanceOn = features().distancePricing;
+const pageTitle = distanceOn ? 'Hourly' : 'Hourly rates';
 
 function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
   if (!result || !('error' in result) || !result.error) return null;
@@ -28,6 +32,11 @@ const { data: classes } = await supabase
   .select('id, key, name, active, hourly_rates(price_per_hour_cents, min_hours, max_hours, is_demo)')
   .order('sort_order');
 
+const { data: classRates } = distanceOn
+  ? await supabase.from('current_class_rates').select('class_key, km_per_hour, extra_km_rate')
+  : { data: [] as { class_key: string; km_per_hour: number; extra_km_rate: number }[] };
+const kmByKey = new Map((classRates ?? []).map((r) => [r.class_key, r]));
+
 type HourlyClass = NonNullable<typeof classes>[number];
 function hourlyHidden(c: HourlyClass): boolean {
   const rate = Array.isArray(c.hourly_rates) ? c.hourly_rates[0] : c.hourly_rates;
@@ -40,7 +49,7 @@ const hasUnconfirmed = rateList.rows.some((c) => {
 });
 ---
 
-<AdminLayout title="Hourly rates" current="hourly-rates" staffEmail={staff.email}>
+<AdminLayout title={pageTitle} current="hourly-rates" staffEmail={staff.email}>
   {
     hasUnconfirmed && (
       <form method="POST" action={actions.clearDemoAll} slot="actions">
@@ -66,6 +75,14 @@ const hasUnconfirmed = rateList.rows.some((c) => {
             <th scope="col" class="num">Rate per hour (€)</th>
             <th scope="col" class="num">Min hours</th>
             <th scope="col" class="num">Max hours</th>
+            {
+              distanceOn && (
+                <>
+                  <th scope="col" class="num">Km / hour</th>
+                  <th scope="col" class="num">Extra km (€)</th>
+                </>
+              )
+            }
             <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
@@ -75,9 +92,11 @@ const hasUnconfirmed = rateList.rows.some((c) => {
               const rate = Array.isArray(c.hourly_rates) ? c.hourly_rates[0] : c.hourly_rates;
               const isDemo = Boolean(rate && 'is_demo' in rate && rate.is_demo);
               const bury = hourlyHidden(c);
+              const km = kmByKey.get(c.key);
               return (
                 <tr
                   data-class-id={c.id}
+                  data-class-key={c.key}
                   class:list={[{ 'is-muted': !c.active }]}
                   data-demo-offline={bury ? 'hourly-rates' : undefined}
                   hidden={bury || undefined}
@@ -103,6 +122,31 @@ const hasUnconfirmed = rateList.rows.some((c) => {
                   <td class="num">
                     <input class="input max" aria-label={`${c.name || 'Class'} max hours`} value={rate?.max_hours ?? 12} />
                   </td>
+                  {
+                    distanceOn && (
+                      <>
+                        <td class="num">
+                          <input
+                            class="input kmh"
+                            aria-label={`${c.name || 'Class'} km per hour`}
+                            type="number"
+                            min="1"
+                            value={km?.km_per_hour ?? 40}
+                          />
+                        </td>
+                        <td class="num">
+                          <div class="input-money">
+                            <input
+                              class="input xkm"
+                              aria-label={`${c.name || 'Class'} extra km rate`}
+                              value={centsToEuroInput(km?.extra_km_rate ?? 0)}
+                              inputmode="decimal"
+                            />
+                          </div>
+                        </td>
+                      </>
+                    )
+                  }
                   <td class="actions">
                     {
                       isDemo && (
@@ -127,8 +171,13 @@ const hasUnconfirmed = rateList.rows.some((c) => {
       </table>
     </div>
     <ShowDemoOffline group="hourly-rates" count={rateList.hiddenCount} />
-    <button class="btn" type="submit">Save hourly rates</button>
+    {!distanceOn && (
+      <button class="btn" type="submit">
+        Save hourly rates
+      </button>
+    )}
   </form>
+  {distanceOn && <PricingSaveBar formId="hourly-rates-form" />}
 </AdminLayout>
 
 <script is:inline>
@@ -136,12 +185,18 @@ const hasUnconfirmed = rateList.rows.some((c) => {
     if (ev.submitter && ev.submitter.getAttribute('formaction')) return;
     const rows = [];
     document.querySelectorAll('tbody tr[data-class-id]').forEach((tr) => {
-      rows.push({
+      const row = {
         classId: tr.getAttribute('data-class-id'),
+        classKey: tr.getAttribute('data-class-key'),
         rateEuros: tr.querySelector('.rate').value,
         minHours: String(tr.querySelector('.min').value),
         maxHours: String(tr.querySelector('.max').value),
-      });
+      };
+      const kmh = tr.querySelector('.kmh');
+      const xkm = tr.querySelector('.xkm');
+      if (kmh) row.kmPerHour = String(kmh.value);
+      if (xkm) row.extraKmRate = String(xkm.value);
+      rows.push(row);
     });
     document.getElementById('rowsJson').value = JSON.stringify(rows);
   });

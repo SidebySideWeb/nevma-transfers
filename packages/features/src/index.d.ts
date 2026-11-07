@@ -40,7 +40,12 @@ export type AdminNavItem = {
   href: string;
   id: string;
   label: string;
+  /** Show only when this switch is on. */
   feature?: keyof Features;
+  /** Show only when every listed switch is on. */
+  features?: readonly (keyof Features)[];
+  /** Hide when this switch is on (legacy Pricing items). */
+  hideWhen?: keyof Features;
   count?: number;
 };
 export type AdminNavGroup = {

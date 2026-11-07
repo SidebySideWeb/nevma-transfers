@@ -1,0 +1,223 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import PricingSaveBar from '../../components/PricingSaveBar.astro';
+import { factorToPlusPercent, plusPercentToFactor } from '../../lib/pricing-example';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError =
+  actionErr(Astro.getActionResult?.(actions.savePricingSettings)) ||
+  actionErr(Astro.getActionResult?.(actions.savePricingPeriod));
+
+const { data: settingsRow } = await supabase.from('current_pricing_settings').select('id, doc').maybeSingle();
+const doc = (settingsRow?.doc ?? {}) as {
+  night?: { from: string; to: string; factor: number };
+  stop_fee?: number;
+  waiting?: object;
+  rounding?: number;
+  return_discount_pct?: number;
+  quote_ttl_min?: number;
+  demand?: object;
+};
+const night = doc.night ?? { from: '00:00', to: '06:00', factor: 1.2 };
+
+const { data: periods } = await supabase
+  .from('pricing_periods')
+  .select('*')
+  .order('starts_on', { ascending: true });
+
+function overlaps(a: { starts_on: string; ends_on: string }, b: { starts_on: string; ends_on: string }) {
+  return a.starts_on <= b.ends_on && b.starts_on <= a.ends_on;
+}
+const active = (periods ?? []).filter((p) => p.active);
+const hasOverlap = active.some((p, i) => active.some((q, j) => i < j && overlaps(p, q)));
+
+const nightPlus = factorToPlusPercent(night.factor);
+---
+
+<AdminLayout title="Night & periods" current="pricing-night" staffEmail={staff.email}>
+  {
+    pageError && (
+      <Banner tone="danger" role="alert">
+        {pageError}
+      </Banner>
+    )
+  }
+
+  <form method="POST" action={actions.savePricingSettings} id="night-form" class="stack">
+    <input type="hidden" name="docJson" id="docJson" value={JSON.stringify(doc)} />
+    <section class="panel">
+      <div class="panel-head"><h2>Night window</h2></div>
+      <div class="panel-body night-grid">
+        <div class="field">
+          <label for="night-from">From</label>
+          <input id="night-from" class="input" type="time" value={night.from} data-night="from" />
+        </div>
+        <div class="field">
+          <label for="night-to">To</label>
+          <input id="night-to" class="input" type="time" value={night.to} data-night="to" />
+        </div>
+        <div class="field">
+          <label for="night-pct">Night factor</label>
+          <div class="unit-control">
+            <input id="night-pct" class="input" type="number" step="1" value={Math.round((night.factor - 1) * 100)} data-night="pct" />
+            <span class="muted small">% (shown as {nightPlus})</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </form>
+  <PricingSaveBar formId="night-form" />
+
+  <section class="panel" style="margin-top:1.5rem">
+    <div class="panel-head">
+      <h2>Special periods</h2>
+      <button class="btn btn-secondary btn-sm" type="button" data-open="period-dialog">Add period</button>
+    </div>
+    <div class="panel-body">
+      {
+        hasOverlap && (
+          <Banner tone="warning">Overlapping periods: the highest applies.</Banner>
+        )
+      }
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>From</th>
+              <th>To</th>
+              <th>+%</th>
+              <th>Active</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              (periods ?? []).length === 0 ? (
+                <tr><td colspan="6" class="muted">No special periods yet.</td></tr>
+              ) : (
+                (periods ?? []).map((p) => (
+                  <tr>
+                    <td>{p.label}</td>
+                    <td>{p.starts_on}</td>
+                    <td>{p.ends_on}</td>
+                    <td>{factorToPlusPercent(Number(p.factor))}</td>
+                    <td>{p.active ? 'Yes' : 'No'}</td>
+                    <td>
+                      <button
+                        class="btn btn-secondary btn-sm"
+                        type="button"
+                        data-edit-period={JSON.stringify({
+                          id: p.id,
+                          label: p.label,
+                          startsOn: p.starts_on,
+                          endsOn: p.ends_on,
+                          plusPercent: Math.round((Number(p.factor) - 1) * 100),
+                          active: p.active,
+                        })}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<dialog class="dialog" id="period-dialog" aria-labelledby="pd-h">
+  <form method="POST" action={actions.savePricingPeriod} class="stack">
+    <h2 id="pd-h">Period</h2>
+    <input type="hidden" name="id" id="p-id" value="" />
+    <div class="field">
+      <label for="p-label">Label</label>
+      <input class="input" id="p-label" name="label" required />
+    </div>
+    <div class="field">
+      <label for="p-from">From</label>
+      <input class="input" id="p-from" name="startsOn" type="date" required />
+    </div>
+    <div class="field">
+      <label for="p-to">To</label>
+      <input class="input" id="p-to" name="endsOn" type="date" required />
+    </div>
+    <div class="field">
+      <label for="p-pct">+%</label>
+      <input class="input" id="p-pct" name="plusPercent" type="number" value="20" required />
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="p-active" checked />
+      <span>Active</span>
+    </label>
+    <input type="hidden" name="active" id="p-active-val" value="true" />
+    <div class="dialog-actions">
+      <button class="btn btn-quiet" type="button" data-close="period-dialog">Back</button>
+      <button class="btn" type="submit">Save period</button>
+    </div>
+  </form>
+</dialog>
+
+<script is:inline>
+  (function () {
+    const form = document.getElementById('night-form');
+    const docInput = document.getElementById('docJson');
+    const base = JSON.parse(docInput.value || '{}');
+    function syncDoc() {
+      const from = document.querySelector('[data-night="from"]').value;
+      const to = document.querySelector('[data-night="to"]').value;
+      const pct = Number(document.querySelector('[data-night="pct"]').value) || 0;
+      base.night = { from, to, factor: 1 + pct / 100 };
+      docInput.value = JSON.stringify(base);
+    }
+    form?.addEventListener('input', syncDoc);
+    form?.addEventListener('submit', syncDoc);
+
+    const dialog = document.getElementById('period-dialog');
+    document.querySelector('[data-open="period-dialog"]')?.addEventListener('click', () => {
+      document.getElementById('p-id').value = '';
+      dialog?.showModal();
+    });
+    document.querySelector('[data-close="period-dialog"]')?.addEventListener('click', () => dialog?.close());
+    document.querySelectorAll('[data-edit-period]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const p = JSON.parse(btn.getAttribute('data-edit-period'));
+        document.getElementById('p-id').value = p.id;
+        document.getElementById('p-label').value = p.label;
+        document.getElementById('p-from').value = p.startsOn;
+        document.getElementById('p-to').value = p.endsOn;
+        document.getElementById('p-pct').value = p.plusPercent;
+        document.getElementById('p-active').checked = !!p.active;
+        document.getElementById('p-active-val').value = p.active ? 'true' : 'false';
+        dialog?.showModal();
+      });
+    });
+    document.getElementById('p-active')?.addEventListener('change', (e) => {
+      document.getElementById('p-active-val').value = e.target.checked ? 'true' : 'false';
+    });
+  })();
+</script>
+
+<style>
+  .night-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+</style>

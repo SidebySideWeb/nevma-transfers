@@ -1,0 +1,95 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import PricingSaveBar from '../../components/PricingSaveBar.astro';
+import { centsToEuroInput } from '../../lib/money';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(Astro.getActionResult?.(actions.savePricingSettings));
+
+const { data: settingsRow } = await supabase.from('current_pricing_settings').select('doc').maybeSingle();
+const doc = (settingsRow?.doc ?? {}) as Record<string, unknown>;
+const waiting = (doc.waiting ?? {
+  airport_free_min: 60,
+  other_free_min: 15,
+  per_min: 0,
+}) as { airport_free_min: number; other_free_min: number; per_min: number };
+const stopFee = Number(doc.stop_fee ?? 0);
+---
+
+<AdminLayout title="Waiting & stops" current="pricing-waiting" staffEmail={staff.email}>
+  {
+    pageError && (
+      <Banner tone="danger" role="alert">
+        {pageError}
+      </Banner>
+    )
+  }
+  <form method="POST" action={actions.savePricingSettings} id="waiting-form" class="stack">
+    <input type="hidden" name="docJson" id="docJson" value={JSON.stringify(doc)} />
+    <section class="panel">
+      <div class="panel-head"><h2>Free waiting</h2></div>
+      <div class="panel-body settings-list">
+        <div class="field">
+          <label for="w-air">Free minutes at airports</label>
+          <input id="w-air" class="input" type="number" min="0" value={waiting.airport_free_min} data-w="airport" />
+        </div>
+        <div class="field">
+          <label for="w-other">Free minutes elsewhere</label>
+          <input id="w-other" class="input" type="number" min="0" value={waiting.other_free_min} data-w="other" />
+        </div>
+        <div class="field">
+          <label for="w-per">Per extra minute</label>
+          <div class="input-money">
+            <input id="w-per" class="input" value={centsToEuroInput(waiting.per_min)} inputmode="decimal" data-w="per" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="w-stop">Per extra stop</label>
+          <div class="input-money">
+            <input id="w-stop" class="input" value={centsToEuroInput(stopFee)} inputmode="decimal" data-w="stop" />
+          </div>
+        </div>
+      </div>
+    </section>
+  </form>
+  <PricingSaveBar formId="waiting-form" />
+</AdminLayout>
+
+<script is:inline>
+  (function () {
+    const docInput = document.getElementById('docJson');
+    const form = document.getElementById('waiting-form');
+    const base = JSON.parse(docInput.value || '{}');
+    function eurosToCents(v) {
+      const n = Number(String(v).replace(',', '.'));
+      return Number.isFinite(n) ? Math.round(n * 100) : 0;
+    }
+    function sync() {
+      base.waiting = {
+        airport_free_min: Number(document.querySelector('[data-w="airport"]').value) || 0,
+        other_free_min: Number(document.querySelector('[data-w="other"]').value) || 0,
+        per_min: eurosToCents(document.querySelector('[data-w="per"]').value),
+      };
+      base.stop_fee = eurosToCents(document.querySelector('[data-w="stop"]').value);
+      docInput.value = JSON.stringify(base);
+    }
+    form?.addEventListener('input', sync);
+    form?.addEventListener('submit', sync);
+  })();
+</script>

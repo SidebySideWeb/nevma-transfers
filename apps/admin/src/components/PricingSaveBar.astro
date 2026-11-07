@@ -1,0 +1,73 @@
+---
+interface Props {
+  formId: string;
+  dirtyLabel?: string;
+}
+const { formId, dirtyLabel = 'Unsaved changes' } = Astro.props;
+---
+
+<div class="pricing-save" id="pricing-save-bar" hidden data-form={formId}>
+  <span id="pricing-dirty-count">{dirtyLabel}</span>
+  <div class="pricing-save-actions">
+    <button class="btn btn-secondary" type="button" id="pricing-discard">Discard</button>
+    <button class="btn" type="submit" form={formId} id="pricing-save">Save</button>
+  </div>
+</div>
+
+<style is:global>
+  .pricing-save {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 20;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-accent);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  .pricing-save-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    const bar = document.getElementById('pricing-save-bar');
+    if (!bar) return;
+    const formId = bar.getAttribute('data-form');
+    const form = formId ? document.getElementById(formId) : null;
+    if (!form) return;
+    const discard = document.getElementById('pricing-discard');
+    const initial = new FormData(form);
+    const snap = () => {
+      const fd = new FormData(form);
+      const keys = new Set([...initial.keys(), ...fd.keys()]);
+      for (const k of keys) {
+        if (String(initial.get(k) ?? '') !== String(fd.get(k) ?? '')) return true;
+      }
+      return false;
+    };
+    const refresh = () => {
+      const dirty = snap();
+      bar.hidden = !dirty;
+    };
+    form.addEventListener('input', refresh);
+    form.addEventListener('change', refresh);
+    discard?.addEventListener('click', () => {
+      form.reset();
+      refresh();
+    });
+    window.addEventListener('beforeunload', (e) => {
+      if (!bar.hidden) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+    refresh();
+  })();
+</script>

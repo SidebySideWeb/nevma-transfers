@@ -184,10 +184,23 @@ describe('filterAdminNav()', () => {
     assert.ok(!labels.includes('Drivers'));
     assert.ok(!labels.includes('Reports'));
     assert.ok(!labels.includes('Rates'));
-    assert.ok(!labels.includes('Quote simulator'));
+    assert.ok(!labels.includes('Simulator'));
     assert.ok(!groups.some((g) => g.id === 'drivers'));
     assert.ok(groups.some((g) => g.items.some((i) => i.id === 'today')));
     assert.ok(labels.includes('Zone prices'));
+    assert.ok(labels.includes('Hourly rates'));
+    assert.ok(labels.includes('Extras'));
+    assert.ok(!labels.includes('Fixed routes'));
+    assert.ok(!labels.includes('Rates'));
+  });
+
+  it('with distancePricing off, Pricing menu matches the legacy items', () => {
+    const f = features({}, silentLog().log);
+    const pricing = filterAdminNav(f).find((g) => g.id === 'pricing');
+    assert.deepEqual(
+      pricing.items.map((i) => i.label),
+      ['Zone prices', 'Hourly rates', 'Extras'],
+    );
   });
 
   it('with drivers and distancePricing shows those items', () => {
@@ -204,6 +217,9 @@ describe('filterAdminNav()', () => {
     const labels = groups.flatMap((g) => g.items.map((i) => i.label));
     assert.ok(labels.includes('Drivers'));
     assert.ok(labels.includes('Rates'));
-    assert.ok(labels.includes('Quote simulator'));
+    assert.ok(labels.includes('Fixed routes'));
+    assert.ok(labels.includes('Hourly'));
+    assert.ok(labels.includes('Simulator'));
+    assert.ok(!labels.includes('Zone prices'));
   });
 });

@@ -1,0 +1,190 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+const { data: zones } = await supabase
+  .from('zones')
+  .select('code, name')
+  .eq('active', true)
+  .order('sort_order');
+
+const zoneOpts = (zones ?? []).map((z) => ({ value: z.code, label: z.name }));
+---
+
+<AdminLayout title="Simulator" current="pricing-simulator" staffEmail={staff.email}>
+  <p class="muted">
+    Prices the trip with the live engine (no quote stored, no hold). Toggle compare to send unsaved
+    overrides from other Pricing tabs (staff only).
+  </p>
+
+  <form id="sim-form" class="stack panel" style="padding:1rem">
+    <div class="sim-tabs" role="tablist">
+      <button type="button" class="btn btn-secondary" data-type="transfer" aria-pressed="true">One way</button>
+      <button type="button" class="btn btn-secondary" data-type="hourly" aria-pressed="false">By the hour</button>
+    </div>
+    <div class="sim-grid">
+      <div class="field">
+        <label for="sim-from">Pick-up zone</label>
+        <select id="sim-from" class="input" required>
+          {zoneOpts.map((z) => <option value={z.value}>{z.label}</option>)}
+        </select>
+      </div>
+      <div class="field" id="sim-to-wrap">
+        <label for="sim-to">Drop-off zone</label>
+        <select id="sim-to" class="input">
+          {zoneOpts.map((z) => <option value={z.value}>{z.label}</option>)}
+        </select>
+      </div>
+      <div class="field" id="sim-hours-wrap" hidden>
+        <label for="sim-hours">Hours</label>
+        <input id="sim-hours" class="input" type="number" min="1" value="4" />
+      </div>
+      <div class="field">
+        <label for="sim-pick-addr">Pick-up address</label>
+        <input id="sim-pick-addr" class="input" autocomplete="off" placeholder="Optional Places address" />
+      </div>
+      <div class="field">
+        <label for="sim-drop-addr">Drop-off address</label>
+        <input id="sim-drop-addr" class="input" autocomplete="off" placeholder="Optional Places address" />
+      </div>
+      <div class="field">
+        <label for="sim-date">Date</label>
+        <input id="sim-date" class="input" type="date" required />
+      </div>
+      <div class="field">
+        <label for="sim-time">Time</label>
+        <input id="sim-time" class="input" type="time" value="14:00" required />
+      </div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="sim-compare" />
+      <span>Compare with unsaved changes</span>
+    </label>
+    <button class="btn" type="submit">Run simulation</button>
+  </form>
+
+  <div id="sim-error" class="banner banner-danger" hidden role="alert"></div>
+  <div id="sim-out" class="stack" hidden>
+    <p class="muted" id="sim-meta"></p>
+    <div class="table-wrap">
+      <table class="table" id="sim-table">
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th class="num">Total</th>
+            <th>Breakdown</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .sim-tabs { display: flex; gap: 0.5rem; }
+  .sim-grid { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+</style>
+
+<script>
+  import { actions } from 'astro:actions';
+
+  const form = document.getElementById('sim-form') as HTMLFormElement | null;
+  let type: 'transfer' | 'hourly' = 'transfer';
+  const toWrap = document.getElementById('sim-to-wrap');
+  const hoursWrap = document.getElementById('sim-hours-wrap');
+  document.querySelectorAll('[data-type]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      type = (btn.getAttribute('data-type') as 'transfer' | 'hourly') || 'transfer';
+      document.querySelectorAll('[data-type]').forEach((b) =>
+        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'),
+      );
+      if (toWrap) toWrap.hidden = type === 'hourly';
+      if (hoursWrap) hoursWrap.hidden = type !== 'hourly';
+    });
+  });
+
+  function euro(cents: number) {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = document.getElementById('sim-error');
+    const out = document.getElementById('sim-out');
+    if (err) err.hidden = true;
+    const date = (document.getElementById('sim-date') as HTMLInputElement).value;
+    const time = (document.getElementById('sim-time') as HTMLInputElement).value;
+    const payload = {
+      type,
+      fromZone: (document.getElementById('sim-from') as HTMLSelectElement).value,
+      toZone: (document.getElementById('sim-to') as HTMLSelectElement).value,
+      hours: Number((document.getElementById('sim-hours') as HTMLInputElement).value) || 4,
+      pickupLocal: `${date}T${time.slice(0, 5)}`,
+      passengers: 2,
+      luggage: 2,
+      compareUnsaved: (document.getElementById('sim-compare') as HTMLInputElement).checked,
+      overrides: undefined as Record<string, unknown> | undefined,
+    };
+    if (payload.compareUnsaved) {
+      try {
+        payload.overrides = JSON.parse(sessionStorage.getItem('tem.pricing.overrides') || 'null') || undefined;
+      } catch {
+        payload.overrides = undefined;
+      }
+    }
+    const { data, error } = await actions.simulateQuote(payload);
+    if (error) {
+      if (err) {
+        err.hidden = false;
+        err.textContent = error.message;
+      }
+      return;
+    }
+    const result = data as {
+      distanceKm?: number | null;
+      durationMin?: number;
+      pricingVersion?: { settingsId?: string; source?: string };
+      options?: { classKey: string; baseCents: number | null; breakdown?: { label: string; amount: number }[] }[];
+      classes?: { key: string; total: number | null; breakdown?: { label: string; amount: number }[] }[];
+    };
+    const meta = document.getElementById('sim-meta');
+    if (meta) {
+      const dist =
+        result.distanceKm != null
+          ? `${Number(result.distanceKm).toFixed(1)} km · ${result.durationMin ?? '—'} min`
+          : `Duration ${result.durationMin ?? '—'} min (zones)`;
+      const ver = result.pricingVersion
+        ? ` · ${result.pricingVersion.source || 'zones'} · settings ${result.pricingVersion.settingsId?.slice(0, 8) || '—'}`
+        : '';
+      meta.textContent = dist + ver;
+    }
+    const tbody = document.querySelector('#sim-table tbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      const rows = result.options ?? result.classes?.map((c) => ({
+        classKey: c.key,
+        baseCents: c.total,
+        breakdown: c.breakdown,
+      })) ?? [];
+      for (const o of rows) {
+        const tr = document.createElement('tr');
+        const bd = (o.breakdown ?? [])
+          .map((l) => `${l.label}: ${euro(l.amount)}`)
+          .join(' · ');
+        tr.innerHTML = `<td>${o.classKey}</td><td class="num">${o.baseCents != null ? euro(o.baseCents) : '—'}</td><td>${bd || '—'}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+    if (out) out.hidden = false;
+  });
+</script>

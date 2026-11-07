@@ -1,0 +1,221 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import PricingSaveBar from '../../components/PricingSaveBar.astro';
+import { centsToEuroInput } from '../../lib/money';
+import { exampleTripCents, formatEuroCents } from '../../lib/pricing-example';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(Astro.getActionResult?.(actions.saveClassRates));
+
+const { data: classes } = await supabase
+  .from('vehicle_classes')
+  .select('id, key, name, active')
+  .eq('active', true)
+  .order('sort_order');
+
+const { data: rates } = await supabase.from('current_class_rates').select('*');
+const rateByKey = new Map((rates ?? []).map((r) => [r.class_key, r]));
+
+type StaffRow = { email: string };
+const lastByKey = new Map<string, { email: string; at: string }>();
+for (const r of rates ?? []) {
+  if (!r.created_by) continue;
+  const { data: st } = await supabase
+    .from('staff')
+    .select('email')
+    .eq('user_id', r.created_by)
+    .maybeSingle();
+  lastByKey.set(r.class_key, {
+    email: (st as StaffRow | null)?.email ?? 'staff',
+    at: r.valid_from || r.created_at,
+  });
+}
+
+const shortName = (name: string) => name.replace(/^DEMO\s+/i, '').split(/\s+/)[0] || name;
+---
+
+<AdminLayout title="Rates" current="pricing-rates" staffEmail={staff.email}>
+  {
+    pageError && (
+      <Banner tone="danger" role="alert">
+        {pageError}
+      </Banner>
+    )
+  }
+  <p class="muted">
+    Distance pricing per vehicle class (euros). Save inserts a new version — past bookings keep their
+    breakdown.
+  </p>
+
+  <form method="POST" action={actions.saveClassRates} id="rates-form" class="stack">
+    <input type="hidden" name="rowsJson" id="rowsJson" value="[]" />
+    <div class="rates-grid">
+      {
+        (classes ?? []).map((c) => {
+          const r = rateByKey.get(c.key);
+          const base = r?.base_fare ?? 0;
+          const perKm = r?.per_km ?? 0;
+          const perMin = r?.per_min ?? 0;
+          const minFare = r?.minimum_fare ?? 0;
+          const unpriced = base === 0 && perKm === 0 && perMin === 0 && minFare === 0;
+          const example = exampleTripCents({
+            baseFare: base,
+            perKm,
+            perMin,
+            minimumFare: minFare,
+          });
+          const last = lastByKey.get(c.key);
+          return (
+            <section class="panel rate-card" data-class-key={c.key}>
+              <div class="panel-head rate-card-head">
+                <h2>{shortName(c.name)}</h2>
+                {unpriced && <span class="badge s-pending">Not priced yet</span>}
+              </div>
+              <div class="panel-body stack">
+                <p class="muted small mono">{c.key}</p>
+                <div class="rate-fields">
+                  <div class="field">
+                    <label for={`base-${c.key}`}>Base fare</label>
+                    <div class="input-money">
+                      <input
+                        id={`base-${c.key}`}
+                        class="input base"
+                        value={centsToEuroInput(base)}
+                        inputmode="decimal"
+                      />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for={`pkm-${c.key}`}>Per km</label>
+                    <div class="input-money">
+                      <input
+                        id={`pkm-${c.key}`}
+                        class="input pkm"
+                        value={centsToEuroInput(perKm)}
+                        inputmode="decimal"
+                      />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for={`pmin-${c.key}`}>Per minute</label>
+                    <div class="input-money">
+                      <input
+                        id={`pmin-${c.key}`}
+                        class="input pmin"
+                        value={centsToEuroInput(perMin)}
+                        inputmode="decimal"
+                      />
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for={`min-${c.key}`}>Minimum fare</label>
+                    <div class="input-money">
+                      <input
+                        id={`min-${c.key}`}
+                        class="input minf"
+                        value={centsToEuroInput(minFare)}
+                        inputmode="decimal"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p class="rate-example muted" data-example>
+                  Example: 20 km, 30 min = {formatEuroCents(example)}
+                </p>
+                {
+                  last && (
+                    <p class="muted small">
+                      Last changed by {last.email} on{' '}
+                      {new Date(last.at).toLocaleString('en-GB', { timeZone: 'Europe/Athens' })}
+                    </p>
+                  )
+                }
+              </div>
+            </section>
+          );
+        })
+      }
+    </div>
+  </form>
+  <PricingSaveBar formId="rates-form" />
+</AdminLayout>
+
+<style>
+  .rates-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .rate-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .rate-fields {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr 1fr;
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    const form = document.getElementById('rates-form');
+    const rowsJson = document.getElementById('rowsJson');
+    if (!form || !rowsJson) return;
+
+    function eurosToCents(v) {
+      const n = Number(String(v).replace(',', '.'));
+      if (!Number.isFinite(n)) return 0;
+      return Math.round(n * 100);
+    }
+
+    function refreshExamples() {
+      document.querySelectorAll('.rate-card').forEach((card) => {
+        const base = eurosToCents(card.querySelector('.base')?.value);
+        const perKm = eurosToCents(card.querySelector('.pkm')?.value);
+        const perMin = eurosToCents(card.querySelector('.pmin')?.value);
+        const minFare = eurosToCents(card.querySelector('.minf')?.value);
+        const raw = base + perKm * 20 + perMin * 30;
+        const total = Math.max(raw, minFare);
+        const el = card.querySelector('[data-example]');
+        if (el) {
+          el.textContent =
+            'Example: 20 km, 30 min = €' + (total / 100).toFixed(2).replace(/\.00$/, '');
+        }
+      });
+    }
+
+    form.addEventListener('input', refreshExamples);
+    form.addEventListener('submit', () => {
+      const rows = [];
+      document.querySelectorAll('.rate-card[data-class-key]').forEach((card) => {
+        rows.push({
+          classKey: card.getAttribute('data-class-key'),
+          baseFare: card.querySelector('.base').value,
+          perKm: card.querySelector('.pkm').value,
+          perMin: card.querySelector('.pmin').value,
+          minimumFare: card.querySelector('.minf').value,
+        });
+      });
+      rowsJson.value = JSON.stringify(rows);
+    });
+  })();
+</script>

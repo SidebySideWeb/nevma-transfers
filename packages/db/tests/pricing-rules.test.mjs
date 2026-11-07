@@ -112,6 +112,46 @@ test('overlap constraint still blocks a double booking', async () => {
   );
 });
 
+test('B5: saving rates creates a new version; old booking breakdown stays', async () => {
+  const before = await one(
+    `select id, base_fare from current_class_rates where class_key = 'demo-e-class'`,
+  );
+  const a = await one(`select id from zones where code = 'demo-airport'`);
+  const b = await one(`select id from zones where code = 'demo-centre'`);
+  const cls = await one(`select id, buffer_minutes from vehicle_classes where key = 'demo-e-class'`);
+  const veh = await one(
+    `select id from vehicles where class_id = $1 and status = 'active' limit 1`,
+    [cls.id],
+  );
+  const breakdown = [{ code: 'base', label: 'Base', amount: 7000 }];
+  const booking = await one(
+    `insert into bookings (
+       booking_type, class_id, vehicle_id, from_zone_id, to_zone_id, pickup_address, dropoff_address,
+       pickup_at, duration_minutes, passengers, customer_name, customer_email, customer_phone,
+       base_price_cents, price_cents, status, blocked_range, price_breakdown
+     ) values (
+       'transfer', $1, $2, $3, $4, 'A', 'B', '2027-08-01T10:00:00+03:00', 45, 1,
+       'Keep', 'keep@example.com', '+30', 7000, 7000, 'confirmed',
+       public.blocked_range_for('2027-08-01T10:00:00+03:00'::timestamptz, 45, $5::int),
+       $6::jsonb
+     ) returning id, price_breakdown`,
+    [cls.id, veh.id, a.id, b.id, cls.buffer_minutes, JSON.stringify(breakdown)],
+  );
+
+  await q(
+    `insert into class_rates (class_key, base_fare, per_km, per_min, minimum_fare)
+     values ('demo-e-class', 9999, 200, 50, 8000)`,
+  );
+  const after = await one(
+    `select id, base_fare from current_class_rates where class_key = 'demo-e-class'`,
+  );
+  assert.notEqual(after.id, before.id);
+  assert.equal(Number(after.base_fare), 9999);
+
+  const still = await one(`select price_breakdown from bookings where id = $1`, [booking.id]);
+  assert.deepEqual(still.price_breakdown, breakdown);
+});
+
 test('quotes table + cleanup function', async () => {
   const row = await one(
     `insert into quotes (

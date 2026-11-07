@@ -1,0 +1,78 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import { centsToEuroInput } from '../../lib/money';
+import { polygonToSvg } from '../../lib/polygon-svg';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(Astro.getActionResult?.(actions.savePricingAreaFee));
+
+const { data: areas } = await supabase
+  .from('pricing_areas')
+  .select('id, label, kind, polygon, fee, active')
+  .order('kind')
+  .order('label');
+---
+
+<AdminLayout title="Airports & ports" current="pricing-areas" staffEmail={staff.email}>
+  {
+    pageError && (
+      <Banner tone="danger" role="alert">
+        {pageError}
+      </Banner>
+    )
+  }
+  <p class="muted">Polygons are read-only here. Edit fees in euros. Outline is a static SVG (no map API).</p>
+  <div class="areas-grid">
+    {
+      (areas ?? []).map((a) => (
+        <section class="panel">
+          <div class="panel-head">
+            <h2>{a.label}</h2>
+            <span class="badge">{a.kind}</span>
+          </div>
+          <div class="panel-body area-body">
+            <div class="area-svg" set:html={polygonToSvg(a.polygon as { coordinates?: number[][][] })} />
+            <form method="POST" action={actions.savePricingAreaFee} class="stack">
+              <input type="hidden" name="id" value={a.id} />
+              <div class="field">
+                <label for={`fee-${a.id}`}>Airport / port fee</label>
+                <div class="input-money">
+                  <input
+                    id={`fee-${a.id}`}
+                    class="input"
+                    name="feeEuros"
+                    value={centsToEuroInput(a.fee)}
+                    inputmode="decimal"
+                  />
+                </div>
+              </div>
+              <button class="btn" type="submit">Save fee</button>
+            </form>
+          </div>
+        </section>
+      ))
+    }
+  </div>
+</AdminLayout>
+
+<style>
+  .areas-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .area-body { display: grid; gap: 1rem; grid-template-columns: auto 1fr; align-items: start; }
+  .area-svg svg { display: block; border: 1px solid rgba(207,164,95,.35); }
+</style>

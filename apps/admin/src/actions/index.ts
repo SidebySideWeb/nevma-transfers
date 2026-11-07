@@ -33,8 +33,10 @@ import {
 } from '../lib/price-update-cookies';
 import { parseTstzRange, rangesOverlap } from '../lib/range';
 import { resolveStatementPeriod, type PeriodKind } from '../lib/report-period';
+import { logAdminActivity } from '../lib/admin-activity';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { athensLocalToInstant } from '../lib/time';
+import { signWithEnv } from '../lib/signing';
 
 function requireStaff(locals: App.Locals) {
   if (!locals.staff) {
@@ -352,8 +354,16 @@ export const server = {
       rowsJson: z.string().min(2),
     }),
     async handler(input, ctx) {
-      requireStaff(ctx.locals);
-      type Row = { classId: string; rateEuros: string; minHours: string; maxHours: string };
+      const staff = requireStaff(ctx.locals);
+      type Row = {
+        classId: string;
+        classKey?: string;
+        rateEuros: string;
+        minHours: string;
+        maxHours: string;
+        kmPerHour?: string;
+        extraKmRate?: string;
+      };
       let rows: Row[];
       try {
         rows = JSON.parse(input.rowsJson) as Row[];
@@ -384,7 +394,41 @@ export const server = {
           { onConflict: 'class_id' },
         );
         if (error) throwDb(error);
+
+        if (row.classKey && (row.kmPerHour != null || row.extraKmRate != null) && features().distancePricing) {
+          const { data: cur } = await supabase
+            .from('current_class_rates')
+            .select('*')
+            .eq('class_key', row.classKey)
+            .maybeSingle();
+          const km_per_hour = Math.max(1, Number(row.kmPerHour || cur?.km_per_hour || 40) || 40);
+          let extra_km_rate = cur?.extra_km_rate ?? 0;
+          try {
+            if (row.extraKmRate != null && row.extraKmRate !== '') {
+              extra_km_rate = eurosOrZero(row.extraKmRate);
+            }
+          } catch {
+            throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid extra km rate' });
+          }
+          const { error: rateErr } = await supabase.from('class_rates').insert({
+            class_key: row.classKey,
+            base_fare: cur?.base_fare ?? 0,
+            per_km: cur?.per_km ?? 0,
+            per_min: cur?.per_min ?? 0,
+            minimum_fare: cur?.minimum_fare ?? 0,
+            km_per_hour,
+            extra_km_rate,
+            created_by: staff.userId,
+          });
+          if (rateErr) throwDb(rateErr);
+        }
       }
+      await logAdminActivity(supabase, {
+        actorId: staff.userId,
+        actorEmail: staff.email,
+        action: 'save',
+        entity: 'hourly_rates',
+      });
       markPricesChanged(ctx.cookies);
       return { ok: true };
     },
@@ -1680,6 +1724,342 @@ export const server = {
         code: 'FORBIDDEN',
         message: error?.message || 'price_cents cannot be changed by staff',
       });
+    },
+  }),
+
+  saveClassRates: defineAction({
+    accept: 'form',
+    input: z.object({ rowsJson: z.string().min(2) }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      type Row = {
+        classKey: string;
+        baseFare: string;
+        perKm: string;
+        perMin: string;
+        minimumFare: string;
+        kmPerHour?: string;
+        extraKmRate?: string;
+      };
+      let rows: Row[];
+      try {
+        rows = JSON.parse(input.rowsJson) as Row[];
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid rates payload' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      for (const row of rows) {
+        let base_fare: number;
+        let per_km: number;
+        let per_min: number;
+        let minimum_fare: number;
+        let km_per_hour: number;
+        let extra_km_rate: number;
+        const { data: cur } = await supabase
+          .from('current_class_rates')
+          .select('km_per_hour, extra_km_rate')
+          .eq('class_key', row.classKey)
+          .maybeSingle();
+        try {
+          base_fare = eurosOrZero(row.baseFare);
+          per_km = eurosOrZero(row.perKm);
+          per_min = eurosOrZero(row.perMin);
+          minimum_fare = eurosOrZero(row.minimumFare);
+          km_per_hour = Math.max(
+            1,
+            Number(row.kmPerHour ?? cur?.km_per_hour ?? 40) || 40,
+          );
+          extra_km_rate =
+            row.extraKmRate != null && row.extraKmRate !== ''
+              ? eurosOrZero(row.extraKmRate)
+              : (cur?.extra_km_rate ?? 0);
+        } catch {
+          throw new ActionError({ code: 'BAD_REQUEST', message: `Invalid euros for ${row.classKey}` });
+        }
+        const { error } = await supabase.from('class_rates').insert({
+          class_key: row.classKey,
+          base_fare,
+          per_km,
+          per_min,
+          minimum_fare,
+          km_per_hour,
+          extra_km_rate,
+          created_by: staff.userId,
+        });
+        if (error) throwDb(error);
+      }
+      await logAdminActivity(supabase, {
+        actorId: staff.userId,
+        actorEmail: staff.email,
+        action: 'save',
+        entity: 'class_rates',
+        detail: { classes: rows.map((r) => r.classKey) },
+      });
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  savePricingSettings: defineAction({
+    accept: 'form',
+    input: z.object({ docJson: z.string().min(2) }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      let doc: Record<string, unknown>;
+      try {
+        doc = JSON.parse(input.docJson) as Record<string, unknown>;
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid settings JSON' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('pricing_settings').insert({
+        doc,
+        created_by: staff.userId,
+      });
+      if (error) throwDb(error);
+      await logAdminActivity(supabase, {
+        actorId: staff.userId,
+        actorEmail: staff.email,
+        action: 'save',
+        entity: 'pricing_settings',
+        detail: { keys: Object.keys(doc) },
+      });
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  savePricingPeriod: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid().optional().or(z.literal('')),
+      label: z.string().min(1),
+      startsOn: z.string().min(1),
+      endsOn: z.string().min(1),
+      plusPercent: z.string(),
+      active: z.enum(['true', 'false']).optional(),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      const pct = Number(input.plusPercent);
+      if (!Number.isFinite(pct)) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid +%' });
+      }
+      const factor = 1 + pct / 100;
+      if (factor < 1) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Factor must be ≥ 1' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const row = {
+        label: input.label,
+        starts_on: input.startsOn,
+        ends_on: input.endsOn,
+        factor,
+        active: input.active !== 'false',
+      };
+      const { error } = input.id
+        ? await supabase.from('pricing_periods').update(row).eq('id', input.id)
+        : await supabase.from('pricing_periods').insert(row);
+      if (error) throwDb(error);
+      await logAdminActivity(supabase, {
+        actorId: staff.userId,
+        actorEmail: staff.email,
+        action: input.id ? 'update' : 'create',
+        entity: 'pricing_periods',
+        entityId: input.id || undefined,
+        detail: { label: input.label, factor },
+      });
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  savePricingAreaFee: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid(),
+      feeEuros: z.string(),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      let fee: number;
+      try {
+        fee = eurosOrZero(input.feeEuros);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid fee' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { error } = await supabase.from('pricing_areas').update({ fee }).eq('id', input.id);
+      if (error) throwDb(error);
+      await logAdminActivity(supabase, {
+        actorId: staff.userId,
+        actorEmail: staff.email,
+        action: 'save',
+        entity: 'pricing_areas',
+        entityId: input.id,
+        detail: { fee },
+      });
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  simulateQuote: defineAction({
+    accept: 'json',
+    input: z.object({
+      type: z.enum(['transfer', 'hourly']),
+      fromZone: z.string().min(1),
+      toZone: z.string().optional(),
+      hours: z.number().int().positive().optional(),
+      pickupLocal: pickupLocal,
+      passengers: z.number().int().positive().default(2),
+      luggage: z.number().int().nonnegative().default(2),
+      pickupPlace: z
+        .object({ placeId: z.string(), lat: z.number(), lng: z.number() })
+        .optional(),
+      dropoffPlace: z
+        .object({ placeId: z.string(), lat: z.number(), lng: z.number() })
+        .optional(),
+      stops: z.array(z.object({ lat: z.number(), lng: z.number() })).optional(),
+      overrides: z.record(z.string(), z.unknown()).optional(),
+      compareUnsaved: z.boolean().optional(),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      const site = (import.meta.env.PUBLIC_SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(
+        /\/$/,
+        '',
+      );
+      const body = {
+        ...input,
+        simulate: true,
+        overrides: input.compareUnsaved ? input.overrides : undefined,
+      };
+      const rawBody = JSON.stringify(body);
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signature = signWithEnv(rawBody, timestamp);
+      const res = await fetch(`${site}/api/quote/simulate`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-tem-timestamp': String(timestamp),
+          'x-tem-signature': signature,
+          'x-tem-staff': staff.userId,
+        },
+        body: rawBody,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new ActionError({
+          code: res.status === 403 ? 'FORBIDDEN' : 'BAD_REQUEST',
+          message: (data as { message?: string }).message || `HTTP ${res.status}`,
+        });
+      }
+      return data;
+    },
+  }),
+
+  addWaitingOrKm: defineAction({
+    accept: 'form',
+    input: z.object({
+      reference: z.string().min(1),
+      kind: z.enum(['waiting', 'extra_km']),
+      quantity: z.string(),
+      emailLink: z.enum(['true', 'false']).optional(),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      const qty = Number(input.quantity);
+      if (!Number.isFinite(qty) || qty <= 0) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Enter a positive amount' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      const { data: booking, error: bErr } = await supabase
+        .from('bookings')
+        .select('id, reference, price_cents, class_id, vehicle_classes(key), price_breakdown')
+        .eq('reference', input.reference)
+        .maybeSingle();
+      if (bErr || !booking) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Booking not found' });
+      }
+      const classKey =
+        (booking.vehicle_classes as { key?: string } | null)?.key ||
+        (Array.isArray(booking.vehicle_classes)
+          ? (booking.vehicle_classes[0] as { key?: string })?.key
+          : null);
+      const { data: rate } = await supabase
+        .from('current_class_rates')
+        .select('per_km, per_min, extra_km_rate')
+        .eq('class_key', classKey ?? '')
+        .maybeSingle();
+      const { data: settingsRow } = await supabase
+        .from('current_pricing_settings')
+        .select('doc')
+        .maybeSingle();
+      const waiting = (settingsRow?.doc as { waiting?: { airport_free_min?: number; other_free_min?: number; per_min?: number } })
+        ?.waiting;
+      let addCents = 0;
+      let label = '';
+      if (input.kind === 'waiting') {
+        const free = waiting?.other_free_min ?? 15;
+        const billable = Math.max(0, Math.ceil(qty) - free);
+        const perMin = waiting?.per_min ?? rate?.per_min ?? 0;
+        addCents = billable * perMin;
+        label = `Waiting ${Math.ceil(qty)} min (−${free} free)`;
+      } else {
+        const perKm = rate?.extra_km_rate || rate?.per_km || 0;
+        addCents = Math.round(qty * perKm);
+        label = `Extra ${qty} km`;
+      }
+      if (addCents <= 0) {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: 'Nothing to charge after free minutes / zero rate',
+        });
+      }
+      const prev = Array.isArray(booking.price_breakdown) ? booking.price_breakdown : [];
+      const breakdown = [...prev, { code: input.kind, label, amount: addCents }];
+      const newTotal = booking.price_cents + addCents;
+      const site = (import.meta.env.PUBLIC_SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(
+        /\/$/,
+        '',
+      );
+      const rawBody = JSON.stringify({
+        reference: input.reference,
+        addCents,
+        breakdown,
+        reason: label,
+        emailLink: input.emailLink === 'true',
+        idempotencyKey: randomUUID(),
+      });
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signature = signWithEnv(rawBody, timestamp);
+      const res = await fetch(`${site}/api/internal/price-adjust`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-tem-timestamp': String(timestamp),
+          'x-tem-signature': signature,
+          'x-tem-staff': staff.userId,
+        },
+        body: rawBody,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: (data as { message?: string }).message || `Could not adjust (${newTotal})`,
+        });
+      }
+      await logAdminActivity(supabase, {
+        actorId: staff.userId,
+        actorEmail: staff.email,
+        action: 'price_adjust',
+        entity: 'bookings',
+        entityId: input.reference,
+        detail: { kind: input.kind, addCents, label },
+      });
+      return { ok: true, addCents };
     },
   }),
 };

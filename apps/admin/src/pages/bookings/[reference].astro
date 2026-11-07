@@ -101,9 +101,53 @@ let tripError: string | null = null;
 let pageError: string | null = null;
 let refundConfirm = '';
 let cancelConfirm = '';
+let pricedWithLabel = '';
+let freeWaitMin = 15;
 const showDrivers = features().drivers;
 
 if (found && booking) {
+  const quoteId = (booking as { quote_id?: string | null }).quote_id;
+  if (quoteId) {
+    const { data: qrow } = await supabase
+      .from('quotes')
+      .select('pricing_version')
+      .eq('id', quoteId)
+      .maybeSingle();
+    const ver = (qrow?.pricing_version ?? {}) as {
+      settingsId?: string | null;
+      ratesVersion?: number;
+      settingsVersion?: number;
+    };
+    const ratesPart =
+      ver.ratesVersion != null ? `rates v${ver.ratesVersion}` : 'rates';
+    let settingsPart = 'settings';
+    if (ver.settingsVersion != null) {
+      settingsPart = `settings v${ver.settingsVersion}`;
+    } else if (ver.settingsId) {
+      const { data: srow } = await supabase
+        .from('pricing_settings')
+        .select('valid_from')
+        .eq('id', ver.settingsId)
+        .maybeSingle();
+      if (srow?.valid_from) {
+        const { count } = await supabase
+          .from('pricing_settings')
+          .select('id', { count: 'exact', head: true })
+          .lte('valid_from', srow.valid_from);
+        if (count != null && count > 0) settingsPart = `settings v${count}`;
+      }
+    }
+    pricedWithLabel = `Priced with ${ratesPart} · ${settingsPart}`;
+  }
+  if (features().distancePricing) {
+    const { data: ps } = await supabase
+      .from('current_pricing_settings')
+      .select('doc')
+      .maybeSingle();
+    const waiting = (ps?.doc as { waiting?: { other_free_min?: number; airport_free_min?: number } } | null)
+      ?.waiting;
+    freeWaitMin = waiting?.other_free_min ?? 15;
+  }
   const extrasRes = await supabase
     .from('booking_extras')
     .select('price_cents, quantity, extras(code, name)')
@@ -244,7 +288,8 @@ if (found && booking) {
     actionErr(Astro.getActionResult?.(actions.saveNotesInvoice)) ||
     actionErr(Astro.getActionResult?.(actions.refundBooking)) ||
     actionErr(Astro.getActionResult?.(actions.recordOfflinePayment)) ||
-    actionErr(Astro.getActionResult?.(actions.cancelBooking));
+    actionErr(Astro.getActionResult?.(actions.cancelBooking)) ||
+    actionErr(Astro.getActionResult?.(actions.addWaitingOrKm));
 
   canRecordOffline =
     booking.payment_status === 'unpaid' &&
@@ -556,6 +601,74 @@ if (found && booking) {
           </div>
 
           <div class="stack col-sticky">
+            {
+              Array.isArray((booking as { price_breakdown?: unknown }).price_breakdown) &&
+              ((booking as { price_breakdown: { label?: string; amount?: number }[] }).price_breakdown)
+                .length > 0 ? (
+                <section class="panel panel-pay" aria-labelledby="price-h">
+                  <div class="panel-head">
+                    <h2 id="price-h">Price</h2>
+                    <button class="btn btn-secondary btn-sm" type="button" data-open="waiting-km-dialog">
+                      Add waiting / extra km
+                    </button>
+                  </div>
+                  <div class="panel-body stack-sm">
+                    {
+                      (booking as { distance_km?: number | null; duration_min?: number | null })
+                        .distance_km != null && (
+                        <p class="muted small">
+                          {Number((booking as { distance_km: number }).distance_km).toFixed(1)} km
+                          {(booking as { duration_min?: number | null }).duration_min != null
+                            ? ` · ${(booking as { duration_min: number }).duration_min} min`
+                            : ''}
+                        </p>
+                      )
+                    }
+                    {
+                      (booking as { quote_id?: string | null }).quote_id && (
+                        <p class="muted small mono">
+                          Quote {(booking as { quote_id: string }).quote_id.slice(0, 8)}…
+                        </p>
+                      )
+                    }
+                    <dl class="totals">
+                      {(
+                        booking as {
+                          price_breakdown: { label?: string; code?: string; amount?: number }[];
+                        }
+                      ).price_breakdown.map((line) => (
+                        <div>
+                          <dt>{line.label || line.code || 'Line'}</dt>
+                          <dd>{formatEuro(line.amount ?? 0)}</dd>
+                        </div>
+                      ))}
+                      {extras.map((e) => {
+                        const ex = e.extras as { name?: string } | null;
+                        return (
+                          <div>
+                            <dt>{ex?.name ?? 'Extra'}</dt>
+                            <dd>{formatEuro(e.price_cents * e.quantity)}</dd>
+                          </div>
+                        );
+                      })}
+                      <div>
+                        <dt>Price before VAT</dt>
+                        <dd>{formatEuro(booking.price_cents - (booking.vat_cents ?? 0))}</dd>
+                      </div>
+                      <div>
+                        <dt>{`VAT ${formatVatRate(booking.vat_rate_bp ?? 0)}%`}</dt>
+                        <dd>{formatEuro(booking.vat_cents ?? 0)}</dd>
+                      </div>
+                      <div class="grand">
+                        <dt>Total</dt>
+                        <dd>{formatEuro(booking.price_cents)}</dd>
+                      </div>
+                    </dl>
+                    {pricedWithLabel && <p class="muted small">{pricedWithLabel}</p>}
+                  </div>
+                </section>
+              ) : null
+            }
             <section class="panel panel-pay" aria-labelledby="p-h">
               <div class="panel-head">
                 <h2 id="p-h">Payment</h2>
@@ -570,33 +683,40 @@ if (found && booking) {
                     </p>
                   )
                 }
-                <dl class="totals">
-                  <div>
-                    <dt>Vehicle</dt>
-                    <dd>{formatEuro(booking.base_price_cents)}</dd>
-                  </div>
-                  {extras.map((e) => {
-                    const ex = e.extras as { name?: string } | null;
-                    return (
+                {
+                  !(
+                    Array.isArray((booking as { price_breakdown?: unknown }).price_breakdown) &&
+                    ((booking as { price_breakdown: unknown[] }).price_breakdown).length > 0
+                  ) && (
+                    <dl class="totals">
                       <div>
-                        <dt>{ex?.name ?? 'Extra'}</dt>
-                        <dd>{formatEuro(e.price_cents * e.quantity)}</dd>
+                        <dt>Vehicle</dt>
+                        <dd>{formatEuro(booking.base_price_cents)}</dd>
                       </div>
-                    );
-                  })}
-                  <div>
-                    <dt>Price before VAT</dt>
-                    <dd>{formatEuro(booking.price_cents - (booking.vat_cents ?? 0))}</dd>
-                  </div>
-                  <div>
-                    <dt>{`VAT ${formatVatRate(booking.vat_rate_bp ?? 0)}%`}</dt>
-                    <dd>{formatEuro(booking.vat_cents ?? 0)}</dd>
-                  </div>
-                  <div class="grand">
-                    <dt>Total</dt>
-                    <dd>{formatEuro(booking.price_cents)}</dd>
-                  </div>
-                </dl>
+                      {extras.map((e) => {
+                        const ex = e.extras as { name?: string } | null;
+                        return (
+                          <div>
+                            <dt>{ex?.name ?? 'Extra'}</dt>
+                            <dd>{formatEuro(e.price_cents * e.quantity)}</dd>
+                          </div>
+                        );
+                      })}
+                      <div>
+                        <dt>Price before VAT</dt>
+                        <dd>{formatEuro(booking.price_cents - (booking.vat_cents ?? 0))}</dd>
+                      </div>
+                      <div>
+                        <dt>{`VAT ${formatVatRate(booking.vat_rate_bp ?? 0)}%`}</dt>
+                        <dd>{formatEuro(booking.vat_cents ?? 0)}</dd>
+                      </div>
+                      <div class="grand">
+                        <dt>Total</dt>
+                        <dd>{formatEuro(booking.price_cents)}</dd>
+                      </div>
+                    </dl>
+                  )
+                }
                 <p class="refundable-line muted small">
                   Refundable {formatEuro(refundable)}
                 </p>
@@ -882,6 +1002,57 @@ if (found && booking) {
         )
       }
 
+      <dialog class="dialog" id="waiting-km-dialog" aria-labelledby="waiting-km-h">
+        <form method="POST" action={actions.addWaitingOrKm} id="waiting-km-form">
+          <div class="dialog-head">
+            <p class="eyebrow">{reference}</p>
+            <h2 id="waiting-km-h">Add waiting / extra km</h2>
+          </div>
+          <div class="dialog-body stack">
+            <input type="hidden" name="reference" value={reference} />
+            <div class="field">
+              <label for="wk-kind">Charge</label>
+              <Select
+                id="wk-kind"
+                name="kind"
+                options={[
+                  { value: 'waiting', label: 'Waiting time (minutes)', selected: true },
+                  { value: 'extra_km', label: 'Extra kilometres' },
+                ]}
+              />
+            </div>
+            <div class="field">
+              <label for="wk-qty" id="wk-qty-label">Minutes waited</label>
+              <input
+                id="wk-qty"
+                class="input"
+                name="quantity"
+                required
+                inputmode="decimal"
+                value="60"
+                aria-describedby="wk-help"
+              />
+              <p class="help" id="wk-help">
+                Waiting: first {freeWaitMin} minutes are free, then the current per-minute rate.
+                Extra km use the class extra-km rate.
+              </p>
+            </div>
+            <div class="field">
+              <label class="check">
+                <input type="checkbox" name="emailLink" value="true" checked />
+                Email the customer a payment link for the difference
+              </label>
+            </div>
+          </div>
+          <div class="dialog-foot">
+            <button class="btn btn-quiet" type="button" id="close-waiting-km">
+              Back
+            </button>
+            <button class="btn" type="submit">Add charge</button>
+          </div>
+        </form>
+      </dialog>
+
       <dialog class="dialog" id="cancel-dialog" aria-labelledby="cancel-h">
         <form method="POST" action={actions.cancelBooking} id="cancel-form">
           <div class="dialog-head">
@@ -955,6 +1126,23 @@ if (found && booking) {
           document.querySelector<HTMLElement>('#offline-dialog .ep-select-btn')?.focus();
         });
         document.getElementById('close-offline')?.addEventListener('click', () => offlineDlg?.close());
+
+        const waitingDlg = document.getElementById('waiting-km-dialog') as HTMLDialogElement | null;
+        document.querySelectorAll<HTMLElement>('[data-open="waiting-km-dialog"]').forEach((btn) => {
+          btn.addEventListener('click', () => waitingDlg?.showModal());
+        });
+        document.getElementById('close-waiting-km')?.addEventListener('click', () => waitingDlg?.close());
+        const wkKind = document.getElementById('wk-kind') as HTMLSelectElement | null;
+        const wkLabel = document.getElementById('wk-qty-label');
+        const syncWkLabel = () => {
+          if (!wkLabel || !wkKind) return;
+          wkLabel.textContent = wkKind.value === 'extra_km' ? 'Extra kilometres' : 'Minutes waited';
+        };
+        wkKind?.addEventListener('change', syncWkLabel);
+        document.getElementById('waiting-km-form')?.addEventListener('change', (ev) => {
+          const t = ev.target as HTMLElement | null;
+          if (t && t.id === 'wk-kind') syncWkLabel();
+        });
 
         // Toasts fade after 6 s (design: role="status", never for errors that need action).
         document.querySelectorAll<HTMLElement>('.toast[role="status"]').forEach((t) => {

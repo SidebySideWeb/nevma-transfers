@@ -249,14 +249,32 @@ export async function bookingOptions() {
 // POST /api/quote
 // ---------------------------------------------------------------------------
 
-export async function quote(raw: unknown, ip?: string) {
-  rejectMoneyFields(raw);
-  if (ip) {
+export type QuoteOpts = {
+  /** Do not persist a quotes row (admin simulator). */
+  simulate?: boolean;
+  /** Staff-only rate/settings overrides for "compare with unsaved". */
+  isStaff?: boolean;
+};
+
+export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
+  rejectMoneyFields(raw, ['overrides']);
+  const rawObj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const simulate = opts.simulate === true || rawObj.simulate === true;
+  if (rawObj.overrides != null && !opts.isStaff) {
+    const err = new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'overrides_forbidden',
+    });
+    (err as BookingError & { httpStatus?: number }).httpStatus = 403;
+    throw err;
+  }
+  if (ip && !simulate) {
     const lim = features().distancePricing ? RATE.quotePerIpDistance : RATE.quotePerIp;
     await assertRateLimit(`quote:ip:${ip}`, lim.windowSeconds, lim.max);
   }
 
-  const parsed = QuoteRequest.safeParse(raw);
+  const { simulate: _s, overrides: _o, ...quoteRaw } = rawObj;
+  const parsed = QuoteRequest.safeParse(quoteRaw);
   if (!parsed.success) {
     throw new BookingError('invalid_request', {
       stringKey: 'error.invalid_request',
@@ -264,6 +282,13 @@ export async function quote(raw: unknown, ip?: string) {
     });
   }
   const body = parsed.data;
+  const overrides =
+    opts.isStaff && rawObj.overrides && typeof rawObj.overrides === 'object'
+      ? (rawObj.overrides as {
+          rates?: Record<string, Partial<{ base_fare: number; per_km: number; per_min: number; minimum_fare: number; km_per_hour: number }>>;
+          settings?: Record<string, unknown>;
+        })
+      : null;
   const settings = await getSettings();
   const pickup = localToInstant(body.pickupLocal, settings.timezone);
   assertLeadTime(pickup, new Date(), settings.minLeadMinutes);
@@ -409,6 +434,7 @@ export async function quote(raw: unknown, ip?: string) {
   const f = features();
   let ttlMin = 20;
   let settingsId: string | null = null;
+  const pricingVersionExtras: { rateIds?: Record<string, string> } = {};
   try {
     const { rows: ps } = await db().query<{ id: string; doc: { quote_ttl_min?: number } }>(
       `select id, doc from public.current_pricing_settings`,
@@ -466,6 +492,16 @@ export async function quote(raw: unknown, ip?: string) {
     durationMin = routed.durationMin;
 
     const ctx = await loadPricingContext();
+    const rates = { ...ctx.rates };
+    if (overrides?.rates) {
+      for (const [key, patch] of Object.entries(overrides.rates)) {
+        rates[key] = { ...(rates[key] ?? {}), ...patch, class_key: key } as (typeof rates)[string];
+      }
+    }
+    const settingsDoc = {
+      ...ctx.settings,
+      ...(overrides?.settings ?? {}),
+    } as typeof ctx.settings;
     const zonePriceMap = new Map<string, number | null>();
     for (const c of classes) {
       zonePriceMap.set(c.key, await zonePriceCents(from.id, toId, c.id));
@@ -476,13 +512,13 @@ export async function quote(raw: unknown, ip?: string) {
         pickupAt: pickup,
         distanceKm,
         durationMin,
-        stops: rawPlaces.stops ?? [],
+        stops: (rawPlaces.stops as { lat: number; lng: number }[]) ?? [],
         pickup: origin,
         dropoff: destination,
       },
       classes: classes.map((c) => ({ key: c.key })),
-      rates: ctx.rates,
-      settings: ctx.settings,
+      rates,
+      settings: settingsDoc,
       periods: ctx.periods,
       areas: ctx.areas,
       mode: f.pricingMode,
@@ -528,6 +564,33 @@ export async function quote(raw: unknown, ip?: string) {
     }
     settingsId = ctx.settingsId;
     ttlMin = ctx.settings.quote_ttl_min ?? ttlMin;
+    (pricingVersionExtras as { rateIds?: Record<string, string> }).rateIds = ctx.rateIds;
+  }
+
+  const pricingVersion = {
+    pricingMode: f.pricingMode,
+    settingsId,
+    ...pricingVersionExtras,
+    source: distanceKm != null ? 'distance' : 'zones',
+    simulate: simulate || undefined,
+  };
+
+  if (simulate) {
+    return {
+      pickupAt,
+      durationMinutes: durationMin,
+      currency: 'EUR' as const,
+      options,
+      distanceKm,
+      durationMin,
+      pricingVersion,
+      classes: options.map((o) => ({
+        key: o.classKey,
+        total: o.baseCents,
+        available: o.available && o.baseCents != null,
+        breakdown: o.breakdown,
+      })),
+    };
   }
 
   const expiresAtFinal = new Date(Date.now() + ttlMin * 60_000).toISOString();
@@ -556,11 +619,7 @@ export async function quote(raw: unknown, ip?: string) {
       body.passengers,
       body.luggage,
       JSON.stringify(prices),
-      JSON.stringify({
-        pricingMode: f.pricingMode,
-        settingsId,
-        source: distanceKm != null ? 'distance' : 'zones',
-      }),
+      JSON.stringify(pricingVersion),
       expiresAtFinal,
       hashIp(ip),
       rawPlaces.pickupPlace?.placeId ?? null,
@@ -585,6 +644,7 @@ export async function quote(raw: unknown, ip?: string) {
     signature,
     distanceKm,
     durationMin,
+    pricingVersion,
     classes: options.map((o) => ({
       key: o.classKey,
       total: o.baseCents,

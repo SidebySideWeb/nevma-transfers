@@ -1,0 +1,107 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import { features } from '@tem/features';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import PricingSaveBar from '../../components/PricingSaveBar.astro';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+if (!features().demandPricing) return Astro.redirect('/pricing/rates');
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(Astro.getActionResult?.(actions.savePricingSettings));
+
+const { data: settingsRow } = await supabase.from('current_pricing_settings').select('doc').maybeSingle();
+const doc = (settingsRow?.doc ?? {}) as Record<string, unknown>;
+const demand = (doc.demand ?? {
+  enabled: false,
+  steps: [
+    { over: 0.7, factor: 1.1 },
+    { over: 0.9, factor: 1.2 },
+  ],
+  max: 1.25,
+}) as { enabled: boolean; steps: { over: number; factor: number }[]; max: number };
+---
+
+<AdminLayout title="Demand" current="pricing-demand" staffEmail={staff.email}>
+  {
+    pageError && (
+      <Banner tone="danger" role="alert">
+        {pageError}
+      </Banner>
+    )
+  }
+  <p class="muted">Demand pricing behaviour is filled in by B8. You can edit the steps and cap here.</p>
+  <form method="POST" action={actions.savePricingSettings} id="demand-form" class="stack">
+    <input type="hidden" name="docJson" id="docJson" value={JSON.stringify(doc)} />
+    <input type="hidden" name="stepsJson" id="stepsJson" value={JSON.stringify(demand.steps)} />
+    <section class="panel">
+      <div class="panel-head"><h2>Demand factor</h2></div>
+      <div class="panel-body stack">
+        <label class="switch">
+          <input type="checkbox" id="d-enabled" checked={demand.enabled || undefined} data-d="enabled" />
+          <span>Enabled</span>
+        </label>
+        <div class="field">
+          <label for="d-max">Maximum factor</label>
+          <input id="d-max" class="input" type="number" step="0.01" min="1" value={demand.max} data-d="max" />
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="steps-table">
+            <thead>
+              <tr><th>Utilisation over</th><th>Factor</th></tr>
+            </thead>
+            <tbody>
+              {
+                demand.steps.map((s) => (
+                  <tr>
+                    <td><input class="input over" type="number" step="0.01" value={s.over} /></td>
+                    <td><input class="input factor" type="number" step="0.01" value={s.factor} /></td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </form>
+  <PricingSaveBar formId="demand-form" />
+</AdminLayout>
+
+<script is:inline>
+  (function () {
+    const docInput = document.getElementById('docJson');
+    const form = document.getElementById('demand-form');
+    const base = JSON.parse(docInput.value || '{}');
+    function sync() {
+      const steps = [];
+      document.querySelectorAll('#steps-table tbody tr').forEach((tr) => {
+        steps.push({
+          over: Number(tr.querySelector('.over').value) || 0,
+          factor: Number(tr.querySelector('.factor').value) || 1,
+        });
+      });
+      base.demand = {
+        enabled: document.querySelector('[data-d="enabled"]').checked,
+        max: Number(document.querySelector('[data-d="max"]').value) || 1,
+        steps,
+      };
+      docInput.value = JSON.stringify(base);
+    }
+    form?.addEventListener('input', sync);
+    form?.addEventListener('submit', sync);
+  })();
+</script>

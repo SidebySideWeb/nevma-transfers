@@ -178,9 +178,21 @@ export const ADMIN_NAV = Object.freeze([
     id: 'pricing',
     label: 'Pricing',
     items: Object.freeze([
-      Object.freeze({ href: '/prices', id: 'prices', label: 'Zone prices' }),
-      Object.freeze({ href: '/hourly-rates', id: 'hourly-rates', label: 'Hourly rates' }),
+      // Legacy (zones mode)
+      Object.freeze({
+        href: '/prices',
+        id: 'prices',
+        label: 'Zone prices',
+        hideWhen: 'distancePricing',
+      }),
+      Object.freeze({
+        href: '/hourly-rates',
+        id: 'hourly-rates',
+        label: 'Hourly rates',
+        hideWhen: 'distancePricing',
+      }),
       Object.freeze({ href: '/extras', id: 'extras', label: 'Extras' }),
+      // Distance / hybrid Pricing area (B5)
       Object.freeze({
         href: '/pricing/rates',
         id: 'pricing-rates',
@@ -188,9 +200,51 @@ export const ADMIN_NAV = Object.freeze([
         feature: 'distancePricing',
       }),
       Object.freeze({
+        href: '/prices',
+        id: 'prices',
+        label: 'Fixed routes',
+        feature: 'distancePricing',
+      }),
+      Object.freeze({
+        href: '/hourly-rates',
+        id: 'hourly-rates',
+        label: 'Hourly',
+        feature: 'distancePricing',
+      }),
+      Object.freeze({
+        href: '/pricing/night',
+        id: 'pricing-night',
+        label: 'Night & periods',
+        feature: 'distancePricing',
+      }),
+      Object.freeze({
+        href: '/pricing/areas',
+        id: 'pricing-areas',
+        label: 'Airports & ports',
+        feature: 'distancePricing',
+      }),
+      Object.freeze({
+        href: '/pricing/waiting',
+        id: 'pricing-waiting',
+        label: 'Waiting & stops',
+        feature: 'distancePricing',
+      }),
+      Object.freeze({
+        href: '/pricing/return',
+        id: 'pricing-return',
+        label: 'Return',
+        features: ['distancePricing', 'returnTrip'],
+      }),
+      Object.freeze({
+        href: '/pricing/demand',
+        id: 'pricing-demand',
+        label: 'Demand',
+        features: ['distancePricing', 'demandPricing'],
+      }),
+      Object.freeze({
         href: '/pricing/simulator',
         id: 'pricing-simulator',
-        label: 'Quote simulator',
+        label: 'Simulator',
         feature: 'distancePricing',
       }),
     ]),
@@ -212,13 +266,18 @@ export const ADMIN_NAV = Object.freeze([
  * @param {AdminNavGroup[]} [groups]
  * @returns {AdminNavGroup[]}
  */
+function navItemVisible(f, i) {
+  if (i.hideWhen && f[i.hideWhen]) return false;
+  if (i.feature && !f[i.feature]) return false;
+  if (Array.isArray(i.features) && !i.features.every((k) => f[k])) return false;
+  return true;
+}
+
 export function filterAdminNav(f, groups = ADMIN_NAV) {
   return groups
     .map((g) => {
       if (g.feature && !f[g.feature]) return null;
-      const items = g.items
-        .filter((i) => !i.feature || f[i.feature])
-        .map((i) => ({ ...i }));
+      const items = g.items.filter((i) => navItemVisible(f, i)).map((i) => ({ ...i }));
       if (!items.length) return null;
       return { id: g.id, label: g.label, items };
     })
