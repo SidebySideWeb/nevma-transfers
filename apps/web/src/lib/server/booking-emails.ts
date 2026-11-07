@@ -42,7 +42,7 @@ type BookingRow = {
   invoice_tax_office: string | null;
   invoice_address: string | null;
   class_name: string;
-  from_zone: string;
+  from_zone: string | null;
   to_zone: string | null;
   vehicle_label: string | null;
   vehicle_auto_assigned: boolean;
@@ -88,7 +88,7 @@ const BOOKING_SELECT_CORE = `select b.id, b.reference, b.booking_type, b.pickup_
 
 const BOOKING_FROM = ` from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
-       join public.zones zf on zf.id = b.from_zone_id
+       left join public.zones zf on zf.id = b.from_zone_id
        left join public.zones zt on zt.id = b.to_zone_id
        left join public.vehicles v on v.id = b.vehicle_id
        left join public.companies co on co.id = b.company_id
@@ -136,7 +136,7 @@ async function loadBooking(reference: string): Promise<BookingRow | null> {
               null::text as dropoff_place_id, null::float8 as dropoff_lat, null::float8 as dropoff_lng
          from public.bookings b
          join public.vehicle_classes c on c.id = b.class_id
-         join public.zones zf on zf.id = b.from_zone_id
+         left join public.zones zf on zf.id = b.from_zone_id
          left join public.zones zt on zt.id = b.to_zone_id
          left join public.vehicles v on v.id = b.vehicle_id
         where b.reference = $1`,
@@ -217,9 +217,11 @@ export async function sendConfirmationEmails(
   const settings = await getSettings();
   const co = await company();
   const pickupAtLocal = pickupLocalAthens(booking.pickup_at);
+  const fromLabel = booking.from_zone || booking.pickup_address || '—';
+  const toLabel = booking.to_zone || booking.dropoff_address || '—';
   const routeOrHours =
     booking.booking_type === 'transfer'
-      ? `${booking.from_zone} → ${booking.to_zone}`
+      ? `${fromLabel} → ${toLabel}`
       : String(booking.hours ?? '');
   // Confirmation links to the manage page (same token; cancel stays at /booking/cancel/<token>).
   const cancelUrl = `${siteUrl()}/booking/manage/${cancelToken}`;
@@ -245,17 +247,20 @@ export async function sendConfirmationEmails(
     const { rows: sib } = await bookingDb().query<{
       reference: string;
       pickup_at: Date;
-      from_zone: string;
+      from_zone: string | null;
       to_zone: string | null;
+      pickup_address: string | null;
+      dropoff_address: string | null;
       price_cents: number;
       booking_type: 'transfer' | 'hourly';
       hours: number | null;
     }>(
       `select b.reference, b.pickup_at, b.price_cents, b.booking_type, b.hours,
+              b.pickup_address, b.dropoff_address,
               zf.name as from_zone, zt.name as to_zone
          from public.bookings b
          join public.bookings mine on mine.reference = $1
-         join public.zones zf on zf.id = b.from_zone_id
+         left join public.zones zf on zf.id = b.from_zone_id
          left join public.zones zt on zt.id = b.to_zone_id
         where mine.trip_group_id is not null
           and b.trip_group_id = mine.trip_group_id
@@ -266,12 +271,14 @@ export async function sendConfirmationEmails(
     const other = sib[0];
     const tok = opts.siblingTokens?.find((s) => s.reference === other?.reference);
     if (other && tok) {
+      const oFrom = other.from_zone || other.pickup_address || '—';
+      const oTo = other.to_zone || other.dropoff_address || '—';
       returnLeg = {
         reference: other.reference,
         pickupAtLocal: pickupLocalAthens(other.pickup_at),
         routeOrHours:
           other.booking_type === 'transfer'
-            ? `${other.from_zone} → ${other.to_zone}`
+            ? `${oFrom} → ${oTo}`
             : String(other.hours ?? ''),
         totalCents: other.price_cents,
         cancelUrl: `${siteUrl()}/booking/manage/${tok.token}`,

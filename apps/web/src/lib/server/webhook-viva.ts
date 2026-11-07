@@ -99,17 +99,27 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
   const outcome = String(result.outcome);
   const reference = result.reference != null ? String(result.reference) : undefined;
   const bookingId = result.booking_id != null ? String(result.booking_id) : undefined;
+  type RpcLeg = { booking_id?: string; reference?: string; leg?: number | null; outcome?: string };
+  const rpcLegs = Array.isArray(result.legs) ? (result.legs as RpcLeg[]) : [];
+  const confirmedRpc = rpcLegs.filter((l) => l.outcome === 'confirmed' && l.booking_id && l.reference);
+  const lateRpc = rpcLegs.filter((l) => l.outcome === 'late_unavailable' && l.booking_id && l.reference);
 
   logOutcome({ event: 'payment_created', outcome, orderCode: txn.orderCode, reference });
 
-  if (outcome === 'confirmed' && reference && bookingId) {
-    const { rows: groupRows } = await bookingDb().query<{ id: string; reference: string; leg: number | null }>(
-      `select id, reference, leg from public.bookings
-        where viva_order_code = $1::bigint
-        order by leg nulls first, created_at`,
-      [txn.orderCode],
-    );
-    const legs = groupRows.length ? groupRows : [{ id: bookingId, reference, leg: null }];
+  // Confirm every confirmed leg (even when the top outcome is late_unavailable for a sibling).
+  if (confirmedRpc.length > 0 || (outcome === 'confirmed' && reference && bookingId)) {
+    let legs: { id: string; reference: string }[];
+    if (confirmedRpc.length > 0) {
+      legs = confirmedRpc.map((l) => ({ id: String(l.booking_id), reference: String(l.reference) }));
+    } else {
+      const { rows: groupRows } = await bookingDb().query<{ id: string; reference: string }>(
+        `select id, reference from public.bookings
+          where viva_order_code = $1::bigint
+          order by leg nulls first, created_at`,
+        [txn.orderCode],
+      );
+      legs = groupRows.length ? groupRows : [{ id: bookingId!, reference: reference! }];
+    }
     const tokens: { reference: string; token: string }[] = [];
     for (const leg of legs) {
       tokens.push({ reference: leg.reference, token: await storeCancelToken(leg.id) });
@@ -119,30 +129,46 @@ export async function handleVivaPost(body: unknown): Promise<{ ok: true }> {
     });
   }
 
-  if (outcome === 'late_unavailable' && reference && bookingId) {
-    const priceCents = Number(result.price_cents);
+  // Late-refund every late_unavailable leg (0032 returns legs[]; do not wait for top-level alone).
+  const lateTargets =
+    lateRpc.length > 0
+      ? lateRpc.map((l) => ({ id: String(l.booking_id), reference: String(l.reference) }))
+      : outcome === 'late_unavailable' && reference && bookingId
+        ? [{ id: bookingId, reference }]
+        : [];
+
+  if (lateTargets.length > 0) {
     try {
-      await getPaymentProvider().refund({
-        transactionId,
-        amountCents: priceCents,
-      });
-      await bookingDb().query(
-        `insert into public.payments (booking_id, kind, status, amount_cents, viva_transaction_id, raw, trip_group_id)
-         select id, 'refund', 'succeeded', price_cents, gen_random_uuid(), '{}'::jsonb, trip_group_id
-           from public.bookings where viva_order_code = $1::bigint`,
-        [txn.orderCode],
+      const { rows: priced } = await bookingDb().query<{ id: string; reference: string; price_cents: number }>(
+        `select id, reference, price_cents from public.bookings where id = any($1::uuid[])`,
+        [lateTargets.map((t) => t.id)],
       );
-      await bookingDb().query(
-        `update public.bookings
-            set status = 'cancelled',
-                cancelled_at = now(),
-                payment_status = 'refunded'
-          where viva_order_code = $1::bigint`,
-        [txn.orderCode],
-      );
-      await fireOnLateRefund(reference);
+      const refundCents = priced.reduce((s, b) => s + Number(b.price_cents), 0);
+      if (refundCents > 0) {
+        await getPaymentProvider().refund({
+          transactionId,
+          amountCents: refundCents,
+        });
+      }
+      for (const b of priced) {
+        await bookingDb().query(
+          `insert into public.payments (booking_id, kind, status, amount_cents, viva_transaction_id, raw, trip_group_id)
+           select id, 'refund', 'succeeded', price_cents, gen_random_uuid(), '{}'::jsonb, trip_group_id
+             from public.bookings where id = $1::uuid`,
+          [b.id],
+        );
+        await bookingDb().query(
+          `update public.bookings
+              set status = 'cancelled',
+                  cancelled_at = now(),
+                  payment_status = 'refunded'
+            where id = $1::uuid`,
+          [b.id],
+        );
+        await fireOnLateRefund(b.reference);
+      }
     } catch {
-      logOutcome({ event: 'late_refund_failed', reference });
+      logOutcome({ event: 'late_refund_failed', reference: lateTargets[0]?.reference });
     }
   }
 

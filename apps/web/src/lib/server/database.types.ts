@@ -96,14 +96,14 @@ isOneToOne: false
                   ]
                 },"bookings": {
                   Row: {
-                    "base_price_cents": number,"blocked_range": unknown,"booking_type": Database["public"]['Enums']["booking_type"],"cancel_token_hash": string | null,"cancelled_at": string | null,"class_id": string,"created_at": string,"created_by": string | null,"currency": string,"customer_email": string,"customer_id": string | null,"customer_name": string,"customer_phone": string,"driver_id": string | null,"dropoff_address": string | null,"dropoff_lat": number | null,"dropoff_lng": number | null,"dropoff_place_id": string | null,"duration_minutes": number,"flight_number": string | null,"from_zone_id": string,"hold_expires_at": string | null,"hours": number | null,"id": string,"invoice_address": string | null,"invoice_company": string | null,"invoice_number": string | null,"invoice_status": Database["public"]['Enums']["invoice_status"],"invoice_tax_office": string | null,"invoice_vat": string | null,"list_price_cents": number | null,"luggage": number,"notes": string | null,"passengers": number,"payment_method": string | null,"payment_status": Database["public"]['Enums']["payment_status"],"pickup_address": string,"pickup_at": string,"pickup_lat": number | null,"pickup_lng": number | null,"pickup_place_id": string | null,"price_cents": number,"price_override_reason": string | null,"reference": string,"reminder_sent_at": string | null,"security_notes": string | null,"source": string,"status": Database["public"]['Enums']["booking_status"],"to_zone_id": string | null,"trip_status": string,"updated_at": string,"vat_cents": number | null,"vat_rate_bp": number,"vehicle_auto_assigned": boolean,"vehicle_id": string | null,"vip_security": boolean,"visitor_key": string | null,"viva_order_code": number | null
+                    "base_price_cents": number,"blocked_range": unknown,"booking_type": Database["public"]['Enums']["booking_type"],"cancel_token_hash": string | null,"cancelled_at": string | null,"class_id": string,"created_at": string,"created_by": string | null,"currency": string,"customer_email": string,"customer_id": string | null,"customer_name": string,"customer_phone": string,"driver_id": string | null,"dropoff_address": string | null,"dropoff_lat": number | null,"dropoff_lng": number | null,"dropoff_place_id": string | null,"duration_minutes": number,"flight_number": string | null,"from_zone_id": string | null,"hold_expires_at": string | null,"hours": number | null,"id": string,"invoice_address": string | null,"invoice_company": string | null,"invoice_number": string | null,"invoice_status": Database["public"]['Enums']["invoice_status"],"invoice_tax_office": string | null,"invoice_vat": string | null,"list_price_cents": number | null,"luggage": number,"notes": string | null,"passengers": number,"payment_method": string | null,"payment_status": Database["public"]['Enums']["payment_status"],"pickup_address": string,"pickup_at": string,"pickup_lat": number | null,"pickup_lng": number | null,"pickup_place_id": string | null,"price_cents": number,"price_override_reason": string | null,"reference": string,"reminder_sent_at": string | null,"security_notes": string | null,"source": string,"status": Database["public"]['Enums']["booking_status"],"to_zone_id": string | null,"trip_status": string,"updated_at": string,"vat_cents": number | null,"vat_rate_bp": number,"vehicle_auto_assigned": boolean,"vehicle_id": string | null,"vip_security": boolean,"visitor_key": string | null,"viva_order_code": number | null,"booked_by": string | null,"company_id": string | null,"cost_center": string | null,"distance_km": number | null,"duration_min": number | null,"flight_airline": string | null,"flight_checked_at": string | null,"flight_date": string | null,"flight_eta": string | null,"flight_origin": string | null,"flight_sched_arr": string | null,"flight_status": string | null,"flight_terminal": string | null,"guest_name": string | null,"guest_phone": string | null,"leg": number | null,"original_pickup_at": string | null,"pickup_shift_min": number,"price_breakdown": Json | null,"quote_id": string | null,"return_of": string | null,"trip_group_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "base_price_cents": number,"blocked_range": unknown,"booking_type": Database["public"]['Enums']["booking_type"],"cancel_token_hash"?: string | null,"cancelled_at"?: string | null,"class_id": string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"customer_email": string,"customer_id"?: string | null,"customer_name": string,"customer_phone": string,"driver_id"?: string | null,"dropoff_address"?: string | null,"dropoff_lat"?: number | null,"dropoff_lng"?: number | null,"dropoff_place_id"?: string | null,"duration_minutes": number,"flight_number"?: string | null,"from_zone_id": string,"hold_expires_at"?: string | null,"hours"?: number | null,"id"?: string,"invoice_address"?: string | null,"invoice_company"?: string | null,"invoice_number"?: string | null,"invoice_status"?: Database["public"]['Enums']["invoice_status"],"invoice_tax_office"?: string | null,"invoice_vat"?: string | null,"list_price_cents"?: number | null,"luggage"?: number,"notes"?: string | null,"passengers": number,"payment_method"?: string | null,"payment_status"?: Database["public"]['Enums']["payment_status"],"pickup_address": string,"pickup_at": string,"pickup_lat"?: number | null,"pickup_lng"?: number | null,"pickup_place_id"?: string | null,"price_cents": number,"price_override_reason"?: string | null,"reference"?: string,"reminder_sent_at"?: string | null,"security_notes"?: string | null,"source"?: string,"status"?: Database["public"]['Enums']["booking_status"],"to_zone_id"?: string | null,"trip_status"?: string,"updated_at"?: string,"vat_cents"?: never,"vat_rate_bp": number,"vehicle_auto_assigned"?: boolean,"vehicle_id"?: string | null,"vip_security"?: boolean,"visitor_key"?: string | null,"viva_order_code"?: number | null
+                    "base_price_cents": number,"blocked_range": unknown,"booking_type": Database["public"]['Enums']["booking_type"],"cancel_token_hash"?: string | null,"cancelled_at"?: string | null,"class_id": string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"customer_email": string,"customer_id"?: string | null,"customer_name": string,"customer_phone": string,"driver_id"?: string | null,"dropoff_address"?: string | null,"dropoff_lat"?: number | null,"dropoff_lng"?: number | null,"dropoff_place_id"?: string | null,"duration_minutes": number,"flight_number"?: string | null,"from_zone_id"?: string | null,"hold_expires_at"?: string | null,"hours"?: number | null,"id"?: string,"invoice_address"?: string | null,"invoice_company"?: string | null,"invoice_number"?: string | null,"invoice_status"?: Database["public"]['Enums']["invoice_status"],"invoice_tax_office"?: string | null,"invoice_vat"?: string | null,"list_price_cents"?: number | null,"luggage"?: number,"notes"?: string | null,"passengers": number,"payment_method"?: string | null,"payment_status"?: Database["public"]['Enums']["payment_status"],"pickup_address": string,"pickup_at": string,"pickup_lat"?: number | null,"pickup_lng"?: number | null,"pickup_place_id"?: string | null,"price_cents": number,"price_override_reason"?: string | null,"reference"?: string,"reminder_sent_at"?: string | null,"security_notes"?: string | null,"source"?: string,"status"?: Database["public"]['Enums']["booking_status"],"to_zone_id"?: string | null,"trip_status"?: string,"updated_at"?: string,"vat_cents"?: never,"vat_rate_bp": number,"vehicle_auto_assigned"?: boolean,"vehicle_id"?: string | null,"vip_security"?: boolean,"visitor_key"?: string | null,"viva_order_code"?: number | null,"booked_by"?: string | null,"company_id"?: string | null,"cost_center"?: string | null,"distance_km"?: number | null,"duration_min"?: number | null,"flight_airline"?: string | null,"flight_checked_at"?: string | null,"flight_date"?: string | null,"flight_eta"?: string | null,"flight_origin"?: string | null,"flight_sched_arr"?: string | null,"flight_status"?: string | null,"flight_terminal"?: string | null,"guest_name"?: string | null,"guest_phone"?: string | null,"leg"?: number | null,"original_pickup_at"?: string | null,"pickup_shift_min"?: number,"price_breakdown"?: Json | null,"quote_id"?: string | null,"return_of"?: string | null,"trip_group_id"?: string | null
                   }
                   Update: {
-                    "base_price_cents"?: number,"blocked_range"?: unknown,"booking_type"?: Database["public"]['Enums']["booking_type"],"cancel_token_hash"?: string | null,"cancelled_at"?: string | null,"class_id"?: string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"customer_email"?: string,"customer_id"?: string | null,"customer_name"?: string,"customer_phone"?: string,"driver_id"?: string | null,"dropoff_address"?: string | null,"dropoff_lat"?: number | null,"dropoff_lng"?: number | null,"dropoff_place_id"?: string | null,"duration_minutes"?: number,"flight_number"?: string | null,"from_zone_id"?: string,"hold_expires_at"?: string | null,"hours"?: number | null,"id"?: string,"invoice_address"?: string | null,"invoice_company"?: string | null,"invoice_number"?: string | null,"invoice_status"?: Database["public"]['Enums']["invoice_status"],"invoice_tax_office"?: string | null,"invoice_vat"?: string | null,"list_price_cents"?: number | null,"luggage"?: number,"notes"?: string | null,"passengers"?: number,"payment_method"?: string | null,"payment_status"?: Database["public"]['Enums']["payment_status"],"pickup_address"?: string,"pickup_at"?: string,"pickup_lat"?: number | null,"pickup_lng"?: number | null,"pickup_place_id"?: string | null,"price_cents"?: number,"price_override_reason"?: string | null,"reference"?: string,"reminder_sent_at"?: string | null,"security_notes"?: string | null,"source"?: string,"status"?: Database["public"]['Enums']["booking_status"],"to_zone_id"?: string | null,"trip_status"?: string,"updated_at"?: string,"vat_cents"?: never,"vat_rate_bp"?: number,"vehicle_auto_assigned"?: boolean,"vehicle_id"?: string | null,"vip_security"?: boolean,"visitor_key"?: string | null,"viva_order_code"?: number | null
+                    "base_price_cents"?: number,"blocked_range"?: unknown,"booking_type"?: Database["public"]['Enums']["booking_type"],"cancel_token_hash"?: string | null,"cancelled_at"?: string | null,"class_id"?: string,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"customer_email"?: string,"customer_id"?: string | null,"customer_name"?: string,"customer_phone"?: string,"driver_id"?: string | null,"dropoff_address"?: string | null,"dropoff_lat"?: number | null,"dropoff_lng"?: number | null,"dropoff_place_id"?: string | null,"duration_minutes"?: number,"flight_number"?: string | null,"from_zone_id"?: string | null,"hold_expires_at"?: string | null,"hours"?: number | null,"id"?: string,"invoice_address"?: string | null,"invoice_company"?: string | null,"invoice_number"?: string | null,"invoice_status"?: Database["public"]['Enums']["invoice_status"],"invoice_tax_office"?: string | null,"invoice_vat"?: string | null,"list_price_cents"?: number | null,"luggage"?: number,"notes"?: string | null,"passengers"?: number,"payment_method"?: string | null,"payment_status"?: Database["public"]['Enums']["payment_status"],"pickup_address"?: string,"pickup_at"?: string,"pickup_lat"?: number | null,"pickup_lng"?: number | null,"pickup_place_id"?: string | null,"price_cents"?: number,"price_override_reason"?: string | null,"reference"?: string,"reminder_sent_at"?: string | null,"security_notes"?: string | null,"source"?: string,"status"?: Database["public"]['Enums']["booking_status"],"to_zone_id"?: string | null,"trip_status"?: string,"updated_at"?: string,"vat_cents"?: never,"vat_rate_bp"?: number,"vehicle_auto_assigned"?: boolean,"vehicle_id"?: string | null,"vip_security"?: boolean,"visitor_key"?: string | null,"viva_order_code"?: number | null,"booked_by"?: string | null,"company_id"?: string | null,"cost_center"?: string | null,"distance_km"?: number | null,"duration_min"?: number | null,"flight_airline"?: string | null,"flight_checked_at"?: string | null,"flight_date"?: string | null,"flight_eta"?: string | null,"flight_origin"?: string | null,"flight_sched_arr"?: string | null,"flight_status"?: string | null,"flight_terminal"?: string | null,"guest_name"?: string | null,"guest_phone"?: string | null,"leg"?: number | null,"original_pickup_at"?: string | null,"pickup_shift_min"?: number,"price_breakdown"?: Json | null,"quote_id"?: string | null,"return_of"?: string | null,"trip_group_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -171,6 +171,150 @@ isOneToOne: false
       columns: ["vehicle_id"]
 isOneToOne: false
       referencedRelation: "vehicles"
+      referencedColumns: ["id"]
+    }
+                  ,{
+      foreignKeyName: "bookings_quote_id_fkey"
+      columns: ["quote_id"]
+isOneToOne: false
+      referencedRelation: "quotes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bookings_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "bookings_return_of_fkey"
+      columns: ["return_of"]
+isOneToOne: false
+      referencedRelation: "bookings"
+      referencedColumns: ["id"]
+    }]
+                },"admin_activity": {
+                  Row: {
+                    "action": string,"actor_email": string | null,"actor_id": string | null,"created_at": string,"detail": Json,"entity": string,"entity_id": string | null,"id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"actor_email"?: string | null,"actor_id"?: string | null,"created_at"?: string,"detail"?: Json,"entity": string,"entity_id"?: string | null,"id"?: string
+                  }
+                  Update: {
+                    "action"?: string,"actor_email"?: string | null,"actor_id"?: string | null,"created_at"?: string,"detail"?: Json,"entity"?: string,"entity_id"?: string | null,"id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "admin_activity_actor_id_fkey"
+      columns: ["actor_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"class_rates": {
+                  Row: {
+                    "base_fare": number,"class_key": string,"created_at": string,"created_by": string | null,"extra_km_rate": number,"id": string,"km_per_hour": number,"minimum_fare": number,"per_km": number,"per_min": number,"valid_from": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "base_fare": number,"class_key": string,"created_at"?: string,"created_by"?: string | null,"extra_km_rate"?: number,"id"?: string,"km_per_hour"?: number,"minimum_fare": number,"per_km": number,"per_min": number,"valid_from"?: string
+                  }
+                  Update: {
+                    "base_fare"?: number,"class_key"?: string,"created_at"?: string,"created_by"?: string | null,"extra_km_rate"?: number,"id"?: string,"km_per_hour"?: number,"minimum_fare"?: number,"per_km"?: number,"per_min"?: number,"valid_from"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "class_rates_class_key_fkey"
+      columns: ["class_key"]
+isOneToOne: false
+      referencedRelation: "vehicle_classes"
+      referencedColumns: ["key"]
+    },{
+      foreignKeyName: "class_rates_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"companies": {
+                  Row: {
+                    "active": boolean,"billing_address": string | null,"billing_email": string | null,"created_at": string,"credit_limit_cents": number | null,"discount_pct": number,"id": string,"kind": string,"name": string,"notes": string | null,"pay_on_account": boolean,"payment_terms_days": number,"tax_office": string | null,"updated_at": string,"vat_number": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"billing_address"?: string | null,"billing_email"?: string | null,"created_at"?: string,"credit_limit_cents"?: number | null,"discount_pct"?: number,"id"?: string,"kind": string,"name": string,"notes"?: string | null,"pay_on_account"?: boolean,"payment_terms_days"?: number,"tax_office"?: string | null,"updated_at"?: string,"vat_number"?: string | null
+                  }
+                  Update: {
+                    "active"?: boolean,"billing_address"?: string | null,"billing_email"?: string | null,"created_at"?: string,"credit_limit_cents"?: number | null,"discount_pct"?: number,"id"?: string,"kind"?: string,"name"?: string,"notes"?: string | null,"pay_on_account"?: boolean,"payment_terms_days"?: number,"tax_office"?: string | null,"updated_at"?: string,"vat_number"?: string | null
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"company_prices": {
+                  Row: {
+                    "booking_type": Database["public"]['Enums']["booking_type"],"class_id": string,"company_id": string,"created_at": string,"from_zone_id": string | null,"id": string,"price_cents": number,"to_zone_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "booking_type": Database["public"]['Enums']["booking_type"],"class_id": string,"company_id": string,"created_at"?: string,"from_zone_id"?: string | null,"id"?: string,"price_cents": number,"to_zone_id"?: string | null
+                  }
+                  Update: {
+                    "booking_type"?: Database["public"]['Enums']["booking_type"],"class_id"?: string,"company_id"?: string,"created_at"?: string,"from_zone_id"?: string | null,"id"?: string,"price_cents"?: number,"to_zone_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "company_prices_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "company_prices_class_id_fkey"
+      columns: ["class_id"]
+isOneToOne: false
+      referencedRelation: "vehicle_classes"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"company_statements": {
+                  Row: {
+                    "company_id": string,"created_at": string,"id": string,"paid_at": string | null,"paid_ref": string | null,"pdf_path": string | null,"period_from": string,"period_to": string,"sent_at": string | null,"status": string,"total_cents": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"created_at"?: string,"id"?: string,"paid_at"?: string | null,"paid_ref"?: string | null,"pdf_path"?: string | null,"period_from": string,"period_to": string,"sent_at"?: string | null,"status"?: string,"total_cents"?: number
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"id"?: string,"paid_at"?: string | null,"paid_ref"?: string | null,"pdf_path"?: string | null,"period_from"?: string,"period_to"?: string,"sent_at"?: string | null,"status"?: string,"total_cents"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "company_statements_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"company_users": {
+                  Row: {
+                    "active": boolean,"company_id": string,"created_at": string,"email": string,"id": string,"invited_at": string,"role": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"company_id": string,"created_at"?: string,"email": string,"id"?: string,"invited_at"?: string,"role": string,"user_id": string
+                  }
+                  Update: {
+                    "active"?: boolean,"company_id"?: string,"created_at"?: string,"email"?: string,"id"?: string,"invited_at"?: string,"role"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "company_users_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
       referencedColumns: ["id"]
     }
                   ]
@@ -460,6 +604,74 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pricing_areas": {
+                  Row: {
+                    "active": boolean,"created_at": string,"fee": number,"id": string,"kind": string,"label": string,"polygon": Json
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"created_at"?: string,"fee"?: number,"id"?: string,"kind": string,"label": string,"polygon": Json
+                  }
+                  Update: {
+                    "active"?: boolean,"created_at"?: string,"fee"?: number,"id"?: string,"kind"?: string,"label"?: string,"polygon"?: Json
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"pricing_periods": {
+                  Row: {
+                    "active": boolean,"created_at": string,"ends_on": string,"factor": number,"id": string,"label": string,"starts_on": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"created_at"?: string,"ends_on": string,"factor": number,"id"?: string,"label": string,"starts_on": string
+                  }
+                  Update: {
+                    "active"?: boolean,"created_at"?: string,"ends_on"?: string,"factor"?: number,"id"?: string,"label"?: string,"starts_on"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"pricing_settings": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"doc": Json,"id": string,"valid_from": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"doc": Json,"id"?: string,"valid_from"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"doc"?: Json,"id"?: string,"valid_from"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pricing_settings_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["user_id"]
+    }
+                  ]
+                },"quotes": {
+                  Row: {
+                    "company_id": string | null,"created_at": string,"distance_km": number | null,"dropoff_address": string | null,"dropoff_lat": number | null,"dropoff_lng": number | null,"dropoff_place_id": string | null,"duration_min": number,"expires_at": string,"from_zone_code": string | null,"hours": number | null,"id": string,"ip_hash": string | null,"luggage": number,"mode": string,"passengers": number,"pickup_address": string | null,"pickup_at": string,"pickup_lat": number | null,"pickup_lng": number | null,"pickup_place_id": string | null,"prices": Json,"pricing_version": Json,"return_distance_km": number | null,"return_duration_min": number | null,"return_flight_number": string | null,"return_pickup_at": string | null,"stops": Json,"to_zone_code": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id"?: string | null,"created_at"?: string,"distance_km"?: number | null,"dropoff_address"?: string | null,"dropoff_lat"?: number | null,"dropoff_lng"?: number | null,"dropoff_place_id"?: string | null,"duration_min": number,"expires_at": string,"from_zone_code"?: string | null,"hours"?: number | null,"id"?: string,"ip_hash"?: string | null,"luggage": number,"mode": string,"passengers": number,"pickup_address"?: string | null,"pickup_at": string,"pickup_lat"?: number | null,"pickup_lng"?: number | null,"pickup_place_id"?: string | null,"prices": Json,"pricing_version"?: Json,"return_distance_km"?: number | null,"return_duration_min"?: number | null,"return_flight_number"?: string | null,"return_pickup_at"?: string | null,"stops"?: Json,"to_zone_code"?: string | null
+                  }
+                  Update: {
+                    "company_id"?: string | null,"created_at"?: string,"distance_km"?: number | null,"dropoff_address"?: string | null,"dropoff_lat"?: number | null,"dropoff_lng"?: number | null,"dropoff_place_id"?: string | null,"duration_min"?: number,"expires_at"?: string,"from_zone_code"?: string | null,"hours"?: number | null,"id"?: string,"ip_hash"?: string | null,"luggage"?: number,"mode"?: string,"passengers"?: number,"pickup_address"?: string | null,"pickup_at"?: string,"pickup_lat"?: number | null,"pickup_lng"?: number | null,"pickup_place_id"?: string | null,"prices"?: Json,"pricing_version"?: Json,"return_distance_km"?: number | null,"return_duration_min"?: number | null,"return_flight_number"?: string | null,"return_pickup_at"?: string | null,"stops"?: Json,"to_zone_code"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "quotes_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"rate_limits": {
                   Row: {
                     "count": number,"key": string,"window_start": string
@@ -660,6 +872,22 @@ isOneToOne: false
             "calendar_items": {
                   Row: {
                     "booking_id": string | null,"booking_type": string | null,"class_id": string | null,"ends_at": string | null,"kind": string | null,"label": string | null,"pickup_at": string | null,"range": unknown,"reason": string | null,"reference": string | null,"source": string | null,"status": string | null,"vehicle_auto_assigned": boolean | null,"vehicle_id": string | null,"vip_security": boolean | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"current_class_rates": {
+                  Row: {
+                    "base_fare": number | null,"class_key": string | null,"created_at": string | null,"created_by": string | null,"extra_km_rate": number | null,"id": string | null,"km_per_hour": number | null,"minimum_fare": number | null,"per_km": number | null,"per_min": number | null,"valid_from": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"current_pricing_settings": {
+                  Row: {
+                    "created_at": string | null,"created_by": string | null,"doc": Json | null,"id": string | null,"valid_from": string | null
                   }
                   ComputedFields: never
                   Relationships: [

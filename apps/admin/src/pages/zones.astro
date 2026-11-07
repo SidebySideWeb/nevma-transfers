@@ -47,12 +47,12 @@ for (const r of routes ?? []) {
   routeCounts.set(r.to_zone_id, (routeCounts.get(r.to_zone_id) ?? 0) + 1);
 }
 for (const b of bookings ?? []) {
-  usedIds.add(b.from_zone_id);
+  if (b.from_zone_id) usedIds.add(b.from_zone_id);
   if (b.to_zone_id) usedIds.add(b.to_zone_id);
 }
 const bookedIds = new Set<string>();
 for (const b of bookings ?? []) {
-  bookedIds.add(b.from_zone_id);
+  if (b.from_zone_id) bookedIds.add(b.from_zone_id);
   if (b.to_zone_id) bookedIds.add(b.to_zone_id);
 }
 const zoneList = withDemoOfflineLast(zones ?? []);

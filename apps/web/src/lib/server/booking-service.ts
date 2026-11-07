@@ -861,13 +861,15 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
        expires_at, ip_hash,
        pickup_place_id, pickup_lat, pickup_lng,
        dropoff_place_id, dropoff_lat, dropoff_lng,
-       return_pickup_at, return_duration_min, return_distance_km, return_flight_number
+       return_pickup_at, return_duration_min, return_distance_km, return_flight_number,
+       company_id
      ) values (
        $1, $2::timestamptz, $3, $4, $5,
        $6, $7, $8, $9, $10::jsonb, $11::jsonb,
        $12::timestamptz, $13,
        $14, $15, $16, $17, $18, $19,
-       $20::timestamptz, $21, $22, $23
+       $20::timestamptz, $21, $22, $23,
+       $24::uuid
      ) returning id, expires_at`,
     [
       body.type,
@@ -893,6 +895,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       returnDurationMin,
       returnDistanceKm,
       returnFlightNumber,
+      opts.company?.id ?? null,
     ],
   );
   const quoteId = inserted[0]!.id;

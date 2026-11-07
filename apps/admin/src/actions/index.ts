@@ -40,6 +40,7 @@ import { parseTstzRange, rangesOverlap } from '../lib/range';
 import { resolveStatementPeriod, type PeriodKind } from '../lib/report-period';
 import { logAdminActivity } from '../lib/admin-activity';
 import { corporateDb } from '../lib/corporate';
+import type { Json } from '../lib/database.types';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { athensLocalToInstant } from '../lib/time';
 import { signWithEnv } from '../lib/signing';
@@ -2088,7 +2089,7 @@ export const server = {
       }
       const supabase = createSupabaseServerClient(ctx.cookies);
       const { error } = await supabase.from('pricing_settings').insert({
-        doc,
+        doc: doc as Json,
         created_by: staff.userId,
       });
       if (error) throwDb(error);

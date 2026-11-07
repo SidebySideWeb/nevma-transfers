@@ -133,7 +133,7 @@ let returnSibling: { reference: string; leg: number | null; status: string } | n
 const showDrivers = features().drivers;
 
 if (found && booking) {
-  const quoteId = (booking as { quote_id?: string | null }).quote_id;
+  const quoteId = booking.quote_id;
   if (quoteId) {
     const { data: qrow } = await supabase
       .from('quotes')
@@ -175,7 +175,7 @@ if (found && booking) {
       ?.waiting;
     freeWaitMin = waiting?.other_free_min ?? 15;
   }
-  const tripGroupId = (booking as { trip_group_id?: string | null }).trip_group_id;
+  const tripGroupId = booking.trip_group_id;
   if (tripGroupId) {
     const { data: sib } = await supabase
       .from('bookings')
@@ -340,6 +340,26 @@ if (found && booking) {
     paid > 0 ? paid : 0,
   );
 }
+
+const customerWhatsAppHref =
+  booking?.customer_phone && features().whatsapp
+    ? whatsappUrl({ number: booking.customer_phone, ref: booking.reference })
+    : null;
+const priceBreakdown = (Array.isArray(booking?.price_breakdown) ? booking.price_breakdown : []) as {
+  label?: string;
+  code?: string;
+  amount?: number;
+}[];
+const hasPriceBreakdown = priceBreakdown.length > 0;
+const fromLabel = fromName || booking?.pickup_address || '—';
+const toLabel = toName || booking?.dropoff_address || '—';
+const bookingSubtitle = booking
+  ? `${formatAthensShort(booking.pickup_at).replace(/ (?=\d{2}:\d{2}$)/, ' · ')} · ${
+      booking.booking_type === 'hourly'
+        ? `${fromLabel} · ${Math.round((booking.duration_minutes || 0) / 60)} h`
+        : `${fromLabel} → ${toLabel}`
+    }`
+  : '';
 ---
 
 {
@@ -359,11 +379,7 @@ if (found && booking) {
     <>
       <AdminLayout
         title={reference}
-        subtitle={`${formatAthensShort(booking.pickup_at).replace(/ (?=\d{2}:\d{2}$)/, ' · ')} · ${
-          booking.booking_type === 'hourly'
-            ? `${fromName ?? '—'} · ${Math.round((booking.duration_minutes || 0) / 60)} h`
-            : `${fromName ?? '—'} → ${toName ?? '—'}`
-        }`}
+        subtitle={bookingSubtitle}
         current="bookings"
         staffEmail={staff.email}
         crumbs={[{ href: '/bookings', label: 'Bookings' }, { label: reference }]}
@@ -400,7 +416,7 @@ if (found && booking) {
               </div>
               <div class="panel-body">
                 <p>
-                  {(booking as { leg?: number | null }).leg === 2 ? (
+                  {booking.leg === 2 ? (
                     <>
                       Return {reference} / Outbound{' '}
                       <a href={`/bookings/${returnSibling.reference}`}>{returnSibling.reference}</a>
@@ -435,8 +451,8 @@ if (found && booking) {
                   <dd>{formatAthens(booking.pickup_at)} (Athens)</dd>
                   <dt>From</dt>
                   <dd>
-                    {fromName ?? '—'}
-                    {booking.pickup_address ? ` · ${booking.pickup_address}` : ''}
+                    {fromName || booking.pickup_address || '—'}
+                    {fromName && booking.pickup_address ? ` · ${booking.pickup_address}` : ''}
                     {
                       booking.pickup_address && (
                         <a
@@ -460,8 +476,8 @@ if (found && booking) {
                     <>
                       <dt>To</dt>
                       <dd>
-                        {toName ?? '—'}
-                        {booking.dropoff_address ? ` · ${booking.dropoff_address}` : ''}
+                        {toName || booking.dropoff_address || '—'}
+                        {toName && booking.dropoff_address ? ` · ${booking.dropoff_address}` : ''}
                         {
                           booking.dropoff_address && (
                             <a
@@ -733,7 +749,7 @@ if (found && booking) {
                       <ol class="timeline">
                         {bookingEvents.map((ev) => {
                           const name =
-                            (ev.driver as { full_name?: string } | null)?.full_name ?? '';
+                            ev.driver?.full_name ?? '';
                           let label = ev.kind;
                           if (ev.kind === 'driver_assigned') {
                             label = name ? `Driver assigned · ${name}` : 'Driver assigned';
@@ -761,9 +777,7 @@ if (found && booking) {
 
           <div class="stack col-sticky">
             {
-              Array.isArray((booking as { price_breakdown?: unknown }).price_breakdown) &&
-              ((booking as { price_breakdown: { label?: string; amount?: number }[] }).price_breakdown)
-                .length > 0 ? (
+              hasPriceBreakdown ? (
                 <section class="panel panel-pay" aria-labelledby="price-h">
                   <div class="panel-head">
                     <h2 id="price-h">Price</h2>
@@ -773,36 +787,31 @@ if (found && booking) {
                   </div>
                   <div class="panel-body stack-sm">
                     {
-                      (booking as { distance_km?: number | null; duration_min?: number | null })
-                        .distance_km != null && (
+                      booking.distance_km != null && (
                         <p class="muted small">
-                          {Number((booking as { distance_km: number }).distance_km).toFixed(1)} km
-                          {(booking as { duration_min?: number | null }).duration_min != null
-                            ? ` · ${(booking as { duration_min: number }).duration_min} min`
+                          {Number(booking.distance_km).toFixed(1)} km
+                          {booking.duration_min != null
+                            ? ` · ${booking.duration_min} min`
                             : ''}
                         </p>
                       )
                     }
                     {
-                      (booking as { quote_id?: string | null }).quote_id && (
+                      booking.quote_id && (
                         <p class="muted small mono">
-                          Quote {(booking as { quote_id: string }).quote_id.slice(0, 8)}…
+                          Quote {booking.quote_id.slice(0, 8)}…
                         </p>
                       )
                     }
                     <dl class="totals">
-                      {(
-                        booking as {
-                          price_breakdown: { label?: string; code?: string; amount?: number }[];
-                        }
-                      ).price_breakdown.map((line) => (
+                      {priceBreakdown.map((line) => (
                         <div>
                           <dt>{line.label || line.code || 'Line'}</dt>
                           <dd>{formatEuro(line.amount ?? 0)}</dd>
                         </div>
                       ))}
                       {extras.map((e) => {
-                        const ex = e.extras as { name?: string } | null;
+                        const ex = e.extras;
                         return (
                           <div>
                             <dt>{ex?.name ?? 'Extra'}</dt>
@@ -844,8 +853,7 @@ if (found && booking) {
                 }
                 {
                   !(
-                    Array.isArray((booking as { price_breakdown?: unknown }).price_breakdown) &&
-                    ((booking as { price_breakdown: unknown[] }).price_breakdown).length > 0
+                    hasPriceBreakdown
                   ) && (
                     <dl class="totals">
                       <div>
@@ -853,7 +861,7 @@ if (found && booking) {
                         <dd>{formatEuro(booking.base_price_cents)}</dd>
                       </div>
                       {extras.map((e) => {
-                        const ex = e.extras as { name?: string } | null;
+                        const ex = e.extras;
                         return (
                           <div>
                             <dt>{ex?.name ?? 'Extra'}</dt>
@@ -953,31 +961,21 @@ if (found && booking) {
                   <dd>{booking.customer_email || '—'}</dd>
                   <dt>Phone</dt>
                   <dd>
-                    {
-                      booking.customer_phone ? (
-                        <>
-                          <Phone value={booking.customer_phone} />
-                          {
-                            (() => {
-                              const href = whatsappUrl({
-                                number: booking.customer_phone,
-                                ref: booking.reference,
-                              });
-                              return href ? (
-                                <>
-                                  {' '}
-                                  <a href={href} target="_blank" rel="noopener">
-                                    WhatsApp
-                                  </a>
-                                </>
-                              ) : null;
-                            })()
-                          }
-                        </>
-                      ) : (
-                        '—'
-                      )
-                    }
+                    {booking.customer_phone ? (
+                      <>
+                        <Phone value={booking.customer_phone} />
+                        {customerWhatsAppHref ? (
+                          <>
+                            {' '}
+                            <a href={customerWhatsAppHref} target="_blank" rel="noopener">
+                              WhatsApp
+                            </a>
+                          </>
+                        ) : null}
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </dd>
                   <dt>Notes</dt>
                   <dd>{booking.notes || '—'}</dd>
@@ -1308,12 +1306,12 @@ if (found && booking) {
           const el = document.getElementById('offline-idem') as HTMLInputElement | null;
           if (el) el.value = crypto.randomUUID();
           offlineDlg?.showModal();
-          document.querySelector<HTMLElement>('#offline-dialog .ep-select-btn')?.focus();
+          (document.querySelector('#offline-dialog .ep-select-btn') as HTMLElement | null)?.focus();
         });
         document.getElementById('close-offline')?.addEventListener('click', () => offlineDlg?.close());
 
         const waitingDlg = document.getElementById('waiting-km-dialog') as HTMLDialogElement | null;
-        document.querySelectorAll<HTMLElement>('[data-open="waiting-km-dialog"]').forEach((btn) => {
+        document.querySelectorAll('[data-open="waiting-km-dialog"]').forEach((btn) => {
           btn.addEventListener('click', () => waitingDlg?.showModal());
         });
         document.getElementById('close-waiting-km')?.addEventListener('click', () => waitingDlg?.close());
@@ -1330,7 +1328,7 @@ if (found && booking) {
         });
 
         // Toasts fade after 6 s (design: role="status", never for errors that need action).
-        document.querySelectorAll<HTMLElement>('.toast[role="status"]').forEach((t) => {
+        document.querySelectorAll('.toast[role="status"]').forEach((t) => {
           setTimeout(() => t.remove(), 6000);
         });
       </script>

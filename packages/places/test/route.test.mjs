@@ -29,7 +29,7 @@ function spy(body, { status = 200, ok = true, failTimes = 0 } = {}) {
   return f;
 }
 
-test('route sends computeRoutes with DRIVE, TRAFFIC_AWARE, field mask and future departureTime', async () => {
+test('route sends computeRoutes with DRIVE, TRAFFIC_UNAWARE, field mask and future departureTime', async () => {
   const departAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
   const f = spy({ routes: [{ distanceMeters: 35421, duration: '2345s' }] });
   const r = await route({
@@ -48,7 +48,7 @@ test('route sends computeRoutes with DRIVE, TRAFFIC_AWARE, field mask and future
   assert.equal(init.headers['X-Goog-FieldMask'], 'routes.distanceMeters,routes.duration');
   const body = JSON.parse(init.body);
   assert.equal(body.travelMode, 'DRIVE');
-  assert.equal(body.routingPreference, 'TRAFFIC_AWARE');
+  assert.equal(body.routingPreference, 'TRAFFIC_UNAWARE');
   assert.equal(body.departureTime, departAt);
   assert.equal(body.origin.location.latLng.latitude, ORIGIN.lat);
   assert.equal(body.destination.location.latLng.longitude, DEST.lng);

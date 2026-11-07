@@ -8,6 +8,7 @@ import EmptyState from '../../components/EmptyState.astro';
 import Money from '../../components/Money.astro';
 import Select from '../../components/Select.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
+import { companyOpenBalanceCents } from '../../lib/company-balance';
 import { corporateDb, corporateNotFound, parseCompanyTab, type CompanyTab } from '../../lib/corporate';
 import { centsToEuroInput } from '../../lib/money';
 import { athensTodayKey } from '../../lib/report-period';
@@ -86,10 +87,10 @@ if (!isNew) {
   company = data as Company;
 }
 
-const [balanceRes, classesRes, zonesRes, pricesRes, usersRes, bookingsRes, statementsRes] = isNew
-  ? [null, null, null, null, null, null, null]
+const [balanceCents, classesRes, zonesRes, pricesRes, usersRes, bookingsRes, statementsRes] = isNew
+  ? [0, null, null, null, null, null, null]
   : await Promise.all([
-      supabase.rpc('company_open_balance_cents', { p_company_id: id }),
+      companyOpenBalanceCents(supabase, id),
       tab === 'prices'
         ? supabase.from('vehicle_classes').select('id, name').order('sort_order').order('name')
         : null,
@@ -132,7 +133,7 @@ const [balanceRes, classesRes, zonesRes, pricesRes, usersRes, bookingsRes, state
         : null,
     ]);
 
-const openBalance = Number(balanceRes?.data ?? 0);
+const openBalance = Number(balanceCents ?? 0);
 const classes = (classesRes?.data ?? []) as { id: string; name: string }[];
 const zones = (zonesRes?.data ?? []) as { id: string; name: string }[];
 const prices = (pricesRes?.data ?? []) as {

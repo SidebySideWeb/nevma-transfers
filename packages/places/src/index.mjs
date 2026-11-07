@@ -293,7 +293,7 @@ export async function route(o) {
     origin: latLngBody(o.origin),
     destination: latLngBody(o.destination),
     travelMode: 'DRIVE',
-    routingPreference: 'TRAFFIC_AWARE',
+    routingPreference: 'TRAFFIC_UNAWARE',
   };
   if (stops.length) {
     body.intermediates = stops.map(latLngBody);

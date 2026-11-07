@@ -5,6 +5,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import Banner from '../../components/Banner.astro';
 import EmptyState from '../../components/EmptyState.astro';
 import Money from '../../components/Money.astro';
+import { companyOpenBalanceCents } from '../../lib/company-balance';
 import { corporateDb, corporateNotFound } from '../../lib/corporate';
 import { logListError } from '../../lib/bookings-list';
 import { athensTodayKey } from '../../lib/report-period';
@@ -64,8 +65,8 @@ const monthCount = count(bookingsRes.data);
 const balances = new Map<string, number>(
   await Promise.all(
     companies.map(async (c) => {
-      const { data } = await supabase.rpc('company_open_balance_cents', { p_company_id: c.id });
-      return [c.id, Number(data ?? 0)] as const;
+      const n = await companyOpenBalanceCents(supabase, c.id);
+      return [c.id, n] as const;
     }),
   ),
 );

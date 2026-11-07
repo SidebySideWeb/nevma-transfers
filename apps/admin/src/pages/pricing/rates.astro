@@ -35,7 +35,7 @@ const rateByKey = new Map((rates ?? []).map((r) => [r.class_key, r]));
 type StaffRow = { email: string };
 const lastByKey = new Map<string, { email: string; at: string }>();
 for (const r of rates ?? []) {
-  if (!r.created_by) continue;
+  if (!r.created_by || !r.class_key) continue;
   const { data: st } = await supabase
     .from('staff')
     .select('email')
@@ -43,7 +43,7 @@ for (const r of rates ?? []) {
     .maybeSingle();
   lastByKey.set(r.class_key, {
     email: (st as StaffRow | null)?.email ?? 'staff',
-    at: r.valid_from || r.created_at,
+    at: r.valid_from || r.created_at || '',
   });
 }
 

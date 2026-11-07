@@ -201,3 +201,7 @@ Staff pricing/setup audit log (`admin_activity`) for B5 saves.
 ## 0031 — Fix `record_viva_payment` uuid aggregate (7 Nov 2026)
 
 `record_viva_payment` (0028) used `min(trip_group_id)`; PostgreSQL has no `min(uuid)`. Replaced with an ordered `array_agg(...)[1]`. Fresh installs also get the same fix inlined in 0028.
+
+## 0032 — Booking v2 fixes (8 Nov 2026)
+
+Post-review fixes for 0024–0031 (do not edit earlier migrations). Distance-priced bookings/holds may omit zones (`from_zone_id` nullable; type check allows lat/lng + `distance_km`). `quotes.company_id` for business-area quotes; public `create_booking_from_quote` refuses those and checks passengers/luggage against the quote and class. Return checkout: outbound hold counted before return window; total must equal outbound + return. `record_viva_payment` returns per-leg `legs[]` with worst outcome on top. `shift_pickup` ignores `hold_expires_at` and respects `blocked_slots`. Rate views use `security_invoker`. Corporate helpers: `company_open_balance_cents` is service-role only; authenticated use `my_company_open_balance_cents()`. `admin_activity.actor_id` must be the signed-in staff user. Tighter LGAV/port `pricing_areas` polygons (verify on a map before fees). Append-only rates/settings; new classes get zero `class_rates`.
