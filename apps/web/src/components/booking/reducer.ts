@@ -20,7 +20,9 @@ export type Action =
   | { type: 'CLEAR_ERRORS' }
   | { type: 'BUSY'; busy: boolean }
   | { type: 'HOLD_EXPIRED' }
-  | { type: 'CLEAR_HOLD_EXPIRED' };
+  | { type: 'CLEAR_HOLD_EXPIRED' }
+  | { type: 'SELECT_CLASS'; classKey: string }
+  | { type: 'QUOTE_REFRESHED'; quote: BookingState['quote'] };
 
 export function createInitialState(): BookingState {
   return {
@@ -115,6 +117,23 @@ export function bookingReducer(state: BookingState, action: Action): BookingStat
       };
     case 'CLEAR_HOLD_EXPIRED':
       return { ...state, holdExpiredMessage: false };
+    case 'SELECT_CLASS':
+      return {
+        ...state,
+        selectedClassKey: action.classKey,
+        step: 'details',
+        formError: null,
+        errors: {},
+        holdExpiredMessage: false,
+      };
+    case 'QUOTE_REFRESHED':
+      return {
+        ...state,
+        quote: action.quote,
+        holdExpiredMessage: false,
+        formError: null,
+        errors: {},
+      };
     default:
       return state;
   }

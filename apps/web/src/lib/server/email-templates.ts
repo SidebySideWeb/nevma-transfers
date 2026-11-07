@@ -27,6 +27,13 @@ export type ConfirmationInput = {
   companyName: string;
   companyPhone: string;
   companyEmail: string;
+  /** Distance pricing (B4). */
+  distanceKm?: number | null;
+  durationMin?: number | null;
+  /** Hourly: km included for the hire window. */
+  hourlyKmIncluded?: number | null;
+  /** Snapshot breakdown lines from the quote (base / night / airport / extras). */
+  breakdownLines?: ExtraLine[];
 };
 
 export type OfficeNewInput = ConfirmationInput & {
@@ -176,12 +183,30 @@ function tripLines(input: {
   passengers: number;
   extras: ExtraLine[];
   totalCents: number;
+  distanceKm?: number | null;
+  durationMin?: number | null;
+  hourlyKmIncluded?: number | null;
 }): string {
   const typeLabel = input.bookingType === 'transfer' ? 'Transfer' : 'Hourly hire';
+  const dist =
+    input.distanceKm != null && Number.isFinite(input.distanceKm)
+      ? `${Number(input.distanceKm).toFixed(1)} km`
+      : null;
+  const dur =
+    input.durationMin != null && Number.isFinite(input.durationMin)
+      ? `approx. ${input.durationMin} min`
+      : null;
+  const routeExtra = [dist, dur].filter(Boolean).join(' · ');
+  const hourlyKm =
+    input.bookingType === 'hourly' && input.hourlyKmIncluded != null
+      ? `${input.hourlyKmIncluded} km included`
+      : null;
   return [
     `Type: ${typeLabel}`,
     `Pick-up: ${input.pickupAtLocal} (Athens)`,
-    input.bookingType === 'transfer' ? `Route: ${input.routeOrHours}` : `Hours: ${input.routeOrHours}`,
+    input.bookingType === 'transfer'
+      ? `Route: ${input.routeOrHours}${routeExtra ? ` (${routeExtra})` : ''}`
+      : `Hours: ${input.routeOrHours}${hourlyKm ? ` · ${hourlyKm}` : ''}`,
     `Vehicle: ${input.className}`,
     `Passengers: ${input.passengers}`,
     `Extras:\n${extrasText(input.extras)}`,
@@ -197,10 +222,19 @@ function priceAnalysisLines(input: {
   vatRateBp: number;
   vatCents: number;
 }): string {
+  const withBreakdown = input as ConfirmationInput;
   const items =
-    input.lines && input.lines.length > 0
-      ? input.lines
-      : [{ label: input.className, cents: input.totalCents - input.extras.reduce((s, e) => s + e.cents, 0) }, ...input.extras];
+    withBreakdown.breakdownLines && withBreakdown.breakdownLines.length > 0
+      ? withBreakdown.breakdownLines
+      : input.lines && input.lines.length > 0
+        ? input.lines
+        : [
+            {
+              label: input.className,
+              cents: input.totalCents - input.extras.reduce((s, e) => s + e.cents, 0),
+            },
+            ...input.extras,
+          ];
   const rate = formatVatRate(input.vatRateBp);
   const net = input.totalCents - input.vatCents;
   return [
@@ -219,11 +253,20 @@ function priceAnalysisHtml(input: {
   totalCents: number;
   vatRateBp: number;
   vatCents: number;
+  breakdownLines?: ExtraLine[];
 }): string {
   const items =
-    input.lines && input.lines.length > 0
-      ? input.lines
-      : [{ label: input.className, cents: input.totalCents - input.extras.reduce((s, e) => s + e.cents, 0) }, ...input.extras];
+    input.breakdownLines && input.breakdownLines.length > 0
+      ? input.breakdownLines
+      : input.lines && input.lines.length > 0
+        ? input.lines
+        : [
+            {
+              label: input.className,
+              cents: input.totalCents - input.extras.reduce((s, e) => s + e.cents, 0),
+            },
+            ...input.extras,
+          ];
   const rate = formatVatRate(input.vatRateBp);
   const net = input.totalCents - input.vatCents;
   const rows = [

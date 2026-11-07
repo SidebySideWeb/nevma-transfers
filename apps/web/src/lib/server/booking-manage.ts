@@ -87,11 +87,15 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     vat_cents: number;
     from_name: string | null;
     to_name: string | null;
+    distance_km: number | null;
+    duration_min: number | null;
+    price_breakdown: { code?: string; label?: string; amount?: number }[] | null;
   }>(
     `select b.reference, b.status, b.pickup_at, b.duration_minutes, b.booking_type, b.hours,
             b.pickup_address, b.dropoff_address, b.flight_number, c.key as class_key, c.name as class_name, b.customer_name,
             b.passengers, b.luggage, b.price_cents, b.base_price_cents, b.vat_rate_bp, b.vat_cents,
-            zf.name as from_name, zt.name as to_name
+            zf.name as from_name, zt.name as to_name,
+            b.distance_km, b.duration_min, b.price_breakdown
        from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
        left join public.zones zf on zf.id = b.from_zone_id
@@ -123,10 +127,16 @@ export async function managePageView(token: string): Promise<ManagePageView> {
   const statusKey = `manage.status.${b.status}` as 'manage.status.confirmed';
   const typeLabel =
     b.booking_type === 'hourly' ? t('booking.toggle.hourly') : t('booking.toggle.transfer');
+  const distMeta =
+    b.distance_km != null
+      ? `${Number(b.distance_km).toFixed(1)} km${b.duration_min != null ? ` · approx. ${b.duration_min} min` : ''}`
+      : null;
+  const hourlyKm =
+    b.booking_type === 'hourly' && b.hours != null ? `${b.hours * 40} km included` : null;
   const routeOrHours =
     b.booking_type === 'hourly'
-      ? `${b.hours ?? Math.round(b.duration_minutes / 60)} h`
-      : `${b.from_name ?? '—'} → ${b.to_name ?? '—'}`;
+      ? `${b.hours ?? Math.round(b.duration_minutes / 60)} h${hourlyKm ? ` · ${hourlyKm}` : ''}`
+      : `${b.from_name ?? '—'} → ${b.to_name ?? '—'}${distMeta ? ` · ${distMeta}` : ''}`;
 
   return {
     kind: 'ok',
@@ -163,10 +173,20 @@ export async function managePageView(token: string): Promise<ManagePageView> {
     vatRateBp: b.vat_rate_bp,
     vatCents: b.vat_cents,
     netCents: b.price_cents - b.vat_cents,
-    analysisLines: [
-      { label: b.class_name, cents: b.base_price_cents },
-      ...(extras ?? []).map((e) => ({ label: e.name, cents: e.cents })),
-    ],
+    analysisLines: (() => {
+      const fromQuote = Array.isArray(b.price_breakdown)
+        ? b.price_breakdown
+            .filter((l) => l && typeof l.amount === 'number')
+            .map((l) => ({ label: l.label || l.code || 'Line', cents: l.amount as number }))
+        : [];
+      if (fromQuote.length) {
+        return [...fromQuote, ...(extras ?? []).map((e) => ({ label: e.name, cents: e.cents }))];
+      }
+      return [
+        { label: b.class_name, cents: b.base_price_cents },
+        ...(extras ?? []).map((e) => ({ label: e.name, cents: e.cents })),
+      ];
+    })(),
     canCancel,
     timeline: timelineFor(b.status),
     officeEmail: site.email,

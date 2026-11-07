@@ -17,6 +17,12 @@ vi.mock('../env', () => ({
   getPublicEnv: () => ({ PUBLIC_SITE_URL: 'http://127.0.0.1:4321' }),
 }));
 
+vi.mock('./db', () => ({
+  bookingDb: () => ({
+    query: async () => ({ rows: [] }),
+  }),
+}));
+
 import { features } from '@tem/features';
 import { assertRateLimit } from './rate-limit';
 import { handleGeoCheck } from './geo-api';
@@ -53,7 +59,9 @@ describe('/api/geo/check', () => {
     } as ReturnType<typeof features>);
     const res = await handleGeoCheck(req({ lat: 37.9755, lng: 23.7348 }), 'vid', '1.1.1.1', ORIGIN);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ inArea: true });
+    const body = await res.json();
+    expect(body.inArea).toBe(true);
+    expect(body).toHaveProperty('kind');
   });
 
   it('returns inArea false for Corinth when on', async () => {
@@ -63,6 +71,8 @@ describe('/api/geo/check', () => {
     } as ReturnType<typeof features>);
     const res = await handleGeoCheck(req({ lat: 37.9386, lng: 22.9322 }), 'vid', '1.1.1.1', ORIGIN);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ inArea: false });
+    const body = await res.json();
+    expect(body.inArea).toBe(false);
+    expect(body.kind).toBeNull();
   });
 });

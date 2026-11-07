@@ -87,6 +87,20 @@ async function setPickupDate(page: Page, iso: string) {
   await dialog.getByRole('gridcell', { name: String(d), exact: true }).click();
 }
 
+/** Snap to a 5-minute BrandDropdown time option. */
+function snapTime(hhmm: string): string {
+  const [hs, ms] = hhmm.split(':').map(Number);
+  const m = Math.ceil((ms || 0) / 5) * 5;
+  const h = (hs || 0) + (m >= 60 ? 1 : 0);
+  return `${String(h % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+async function setPickupTime(page: Page, hhmm: string) {
+  const t = snapTime(hhmm);
+  await page.locator('#b-time').click();
+  await page.getByRole('option', { name: t, exact: true }).click();
+}
+
 async function fillSearchTransfer(page: Page, hoursAhead = 8) {
   await page.goto('/book');
   await expect(page.getByRole('heading', { name: /Where and when/i })).toBeVisible();
@@ -94,10 +108,10 @@ async function fillSearchTransfer(page: Page, hoursAhead = 8) {
   await setZone(page, 'b-to', /^DEMO Athens$|^Athens$/i);
   const { date, time } = futureParts(hoursAhead);
   await setPickupDate(page, date);
-  await page.locator('#b-time').fill(time);
+  await setPickupTime(page, time);
   await page.locator('#b-pick').fill('Street 1, Athens');
   await page.locator('#b-drop').fill('Street 2, Athens');
-  await page.getByRole('button', { name: /See vehicles/i }).click();
+  await page.getByRole('button', { name: /View options|See vehicles/i }).first().click();
   await expect(page.getByRole('heading', { name: /Choose your vehicle/i })).toBeVisible({
     timeout: 15_000,
   });
@@ -136,30 +150,24 @@ test('AC-01: full transfer booking reaches hand-off', async ({ page }, testInfo)
 test('hourly booking for 4 hours', async ({ page }) => {
   await page.goto('/book');
   await expect(page.getByRole('heading', { name: /Where and when/i })).toBeVisible();
-  await page.getByRole('button', { name: /By the hour/i }).click();
-  await expect(page.getByRole('button', { name: /By the hour/i })).toHaveAttribute(
-    'aria-pressed',
+  await page.getByRole('tab', { name: /By the hour/i }).click();
+  await expect(page.getByRole('tab', { name: /By the hour/i })).toHaveAttribute(
+    'aria-selected',
     'true',
   );
   await expect(page.locator('#b-to')).toHaveCount(0);
   await setZone(page, 'b-from', /DEMO Athens|^Athens$/i);
-  const hoursGroup = page.getByRole('group', { name: /Number of hours/i });
-  await expect(hoursGroup).toBeVisible();
-  // Click "+" until the group shows 4 (class min may already be 3 or 4).
-  for (let i = 0; i < 4; i++) {
-    const text = await hoursGroup.innerText();
-    if (/\b4\b/.test(text)) break;
-    await hoursGroup.getByRole('button', { name: /More/i }).click();
-  }
-  await expect(hoursGroup).toContainText('4');
+  await page.locator('#b-hours').click();
+  await page.getByRole('option', { name: /4 hours \(\d+ km included\)/i }).click();
   const { date, time } = futureParts(36);
   await setPickupDate(page, date);
-  await page.locator('#b-time').fill(time);
+  await setPickupTime(page, time);
   await page.locator('#b-pick').fill('Street 1, Athens');
-  await page.getByRole('button', { name: /See vehicles/i }).click();
+  await page.getByRole('button', { name: /View options|See vehicles/i }).first().click();
   await expect(page.getByRole('heading', { name: /Choose your vehicle/i })).toBeVisible({
     timeout: 15_000,
   });
+  await expect(page.getByText(/4 hours · 160 km included|160 km included/i)).toBeVisible();
   await continueWithFirstVehicle(page);
   await expect(page.getByRole('heading', { name: /Your details/i })).toBeVisible({ timeout: 15_000 });
 });
@@ -171,7 +179,7 @@ test('AC-16: no-price pair shows contact block', async ({ page }) => {
   await setZone(page, 'b-to', /^Piraeus port$/i);
   const { date, time } = futureParts(5);
   await setPickupDate(page, date);
-  await page.locator('#b-time').fill(time);
+  await setPickupTime(page, time);
   // Bump pax/bags to 7 via steppers (default is usually 1–2).
   const paxMore = page.getByRole('button', { name: /More passengers/i });
   const bagsMore = page.getByRole('button', { name: /More luggage/i });
@@ -179,7 +187,9 @@ test('AC-16: no-price pair shows contact block', async ({ page }) => {
     if (await paxMore.isEnabled()) await paxMore.click();
     if (await bagsMore.isEnabled()) await bagsMore.click();
   }
-  await page.getByRole('button', { name: /See vehicles/i }).click();
+  await page.locator('#b-pick').fill('Street 1, Athens');
+  await page.locator('#b-drop').fill('Street 2, Athens');
+  await page.getByRole('button', { name: /View options|See vehicles/i }).first().click();
   await expect(page.getByRole('heading', { name: /Choose your vehicle/i })).toBeVisible({
     timeout: 15_000,
   });

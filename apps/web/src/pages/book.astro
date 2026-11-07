@@ -153,11 +153,55 @@ const header = {
   }
   /* Address autocomplete list (reuses .ddl; attribution under suggestions). */
   [data-block='appBody'] .ep-address { position: relative; }
-  [data-block='appBody'] .ep-address-ddl { z-index: 40; }
+  [data-block='appBody'] .ep-address-wrap { position: relative; display: flex; align-items: stretch; }
+  [data-block='appBody'] .ep-address-wrap input { flex: 1; min-width: 0; padding-right: 2.5rem; }
+  [data-block='appBody'] .ep-address-clear {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    border: 0; background: transparent; color: #c9a45c; cursor: pointer;
+    font-size: 14px; line-height: 1; padding: 6px;
+  }
+  [data-block='appBody'] .ep-address-ddl { z-index: 40; width: 100%; left: 0; right: 0; }
   [data-block='appBody'] .ep-address-main { font-weight: 600; display: block; }
   [data-block='appBody'] .ep-address-sec { display: block; font-size: 13px; color: #8e887b; }
   [data-block='appBody'] .ep-address-attr { padding: 8px 12px 10px; opacity: 0.85; }
   [data-block='appBody'] .ep-address-attr img { display: block; height: 14px; width: auto; }
+  [data-block='appBody'] .ep-bar-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    align-items: end;
+  }
+  [data-block='appBody'] .ep-bar-cta-desktop { display: flex; align-items: end; }
+  [data-block='appBody'] .ep-bar-cta-sticky {
+    display: none;
+    position: sticky; bottom: 0; z-index: 20;
+    padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, transparent, #0a0a0b 28%);
+  }
+  [data-block='appBody'] .ep-bar-cta-sticky .btn { width: 100%; }
+  [data-block='appBody'] .ep-airport-hint {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 14px; border: 1px solid rgba(207, 164, 95, 0.35);
+    color: #e8e2d6; font-size: 14px;
+  }
+  [data-block='appBody'] .ep-airport-hint p { margin: 0; }
+  [data-block='appBody'] .ep-airport-icon { color: #c9a45c; font-size: 18px; }
+  [data-block='appBody'] .ep-route-card {
+    display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+    padding: 16px 18px; border: 1px solid rgba(207, 164, 95, 0.35);
+  }
+  [data-block='appBody'] .ep-route-when, [data-block='appBody'] .ep-route-meta {
+    margin: 6px 0 0; color: #8e887b; font-size: 14px;
+  }
+  [data-block='appBody'] .ep-quote-timer { color: #e7c687; font-size: 14px; margin: 0; }
+  [data-block='appBody'] .ep-return-switch {
+    display: inline-flex; gap: 10px; align-items: center; font-size: 14px;
+  }
+  @media (max-width: 1023px) {
+    [data-block='appBody'] .ep-bar-row { grid-template-columns: 1fr; }
+    [data-block='appBody'] .ep-bar-cta-desktop { display: none; }
+    [data-block='appBody'] .ep-bar-cta-sticky { display: block; }
+  }
   /* Transfer / By the hour (extra/08b-book-hourly), drawn with the zone fields' `dd-btn`. */
   [data-block='appBody'] .js-trip[data-v2-extra] {
     display: flex;

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { earliestPickupLocal, meetsMinNotice } from '../../lib/booking/hourly-labels';
 import { formatVatRate } from '../../lib/booking/pricing';
 import { parseBookingPrefill, quoteRequestBody } from '../../lib/booking/prefill';
 import { BookingApiError, bookingApi } from './api';
 import { formatEuroV2 } from './format';
 import { Handoff } from './Handoff';
+import { loadQuoteSession, saveQuoteSession, vehicleUrl } from './quote-session';
 import { bookingReducer, createInitialState, stepFromHash } from './reducer';
 import { StepDetails } from './StepDetails';
 import { StepReview, type ReviewTarget } from './StepReview';
@@ -31,6 +33,8 @@ export type BookingAppProps = {
   distancePricing?: boolean;
   /** wa.me URL when FEATURE_WHATSAPP is on. */
   whatsappHref?: string | null;
+  /** Deep-link into the vehicle step (`/book/vehicle?q=&s=`). */
+  initialVehicleQuery?: { quoteId: string; signature: string } | null;
 };
 
 function skewFromDateHeader(dateHeader: string | null): number {
@@ -60,10 +64,12 @@ export default function BookingApp({
   addressAutocomplete = false,
   distancePricing = false,
   whatsappHref = null,
+  initialVehicleQuery = null,
 }: BookingAppProps) {
   const [state, dispatch] = useReducer(bookingReducer, undefined, createInitialState);
   const [preferredClassKey, setPreferredClassKey] = useState<string | null>(null);
   const [pickedClassKey, setPickedClassKey] = useState<string | null>(null);
+  const [pricesUpdated, setPricesUpdated] = useState(false);
   const syncHash = useRef(true);
   const prevStep = useRef(state.step);
 
@@ -80,6 +86,23 @@ export default function BookingApp({
           dispatch({ type: 'SET_SEARCH', patch: prefill.search });
         }
         if (prefill.classKey) setPreferredClassKey(prefill.classKey);
+
+        const session = loadQuoteSession();
+        const wantVehicle =
+          initialVehicleQuery ||
+          (q.get('q') && q.get('s')) ||
+          window.location.pathname.includes('/book/vehicle');
+        if (wantVehicle && session?.quote) {
+          const qid = initialVehicleQuery?.quoteId ?? q.get('q');
+          if (!qid || session.quote.quoteId === qid) {
+            dispatch({ type: 'SET_SEARCH', patch: session.search });
+            dispatch({
+              type: 'SET_DETAILS',
+              patch: session.details,
+            });
+            dispatch({ type: 'QUOTE_OK', quote: session.quote });
+          }
+        }
       } catch {
         if (!cancelled) {
           dispatch({
@@ -93,7 +116,7 @@ export default function BookingApp({
     return () => {
       cancelled = true;
     };
-  }, [strings]);
+  }, [strings, initialVehicleQuery]);
 
   useEffect(() => {
     const from = prevStep.current;
@@ -141,14 +164,27 @@ export default function BookingApp({
     [strings],
   );
 
-  const submitQuote = async () => {
+  const quoteBody = () =>
+    quoteRequestBody(state.search, undefined, {
+      pickupPlace: state.details.pickupPlace,
+      dropoffPlace: state.details.dropoffPlace,
+    });
+
+  const submitQuote = async (opts?: { refresh?: boolean }) => {
     // Catch incomplete journey fields here so we never POST a Zod-invalid /api/quote body (400).
     const msg = (key: string, fallback: string) => strings[key] ?? fallback;
     const missing: Record<string, string> = {};
-    if (!state.search.fromZone) missing.fromZone = msg('booking.error.fromZone', 'Choose a pick-up zone.');
+    if (!distancePricing && !state.search.fromZone) {
+      missing.fromZone = msg('booking.error.fromZone', 'Choose a pick-up zone.');
+    }
     if (state.search.type === 'transfer') {
-      if (!state.search.toZone) missing.toZone = msg('booking.error.toZone', 'Choose a drop-off zone.');
-      else if (state.search.fromZone === state.search.toZone) {
+      if (!distancePricing && !state.search.toZone) {
+        missing.toZone = msg('booking.error.toZone', 'Choose a drop-off zone.');
+      } else if (
+        !distancePricing &&
+        state.search.fromZone &&
+        state.search.fromZone === state.search.toZone
+      ) {
         missing.toZone = msg('booking.error.sameZone', 'Pick-up and drop-off must be different zones.');
       }
       if (!state.details.dropoffAddress.trim()) {
@@ -159,6 +195,18 @@ export default function BookingApp({
     }
     if (!isPickupLocal(state.search.pickupLocal)) {
       missing.pickupLocal = msg('booking.error.pickupLocal', 'Choose a pick-up date and time.');
+    } else if (state.options) {
+      const earliest = earliestPickupLocal(
+        new Date(),
+        state.options.minLeadMinutes,
+        state.options.timezone,
+      );
+      if (!meetsMinNotice(state.search.pickupLocal, earliest)) {
+        missing.pickupLocal = msg(
+          'booking.error.minNotice',
+          'Pick-up must be later — please choose a later time.',
+        );
+      }
     }
     if (!state.details.pickupAddress.trim()) {
       missing.pickupAddress = msg('booking.error.pickupAddress', 'Enter a pick-up address or hotel name.');
@@ -171,10 +219,31 @@ export default function BookingApp({
     dispatch({ type: 'BUSY', busy: true });
     dispatch({ type: 'CLEAR_ERRORS' });
     try {
-      const body = quoteRequestBody(state.search);
+      const body = quoteBody();
       const { data } = await bookingApi.quote(body);
       setPickedClassKey(null);
-      dispatch({ type: 'QUOTE_OK', quote: data });
+      if (opts?.refresh) {
+        dispatch({ type: 'QUOTE_REFRESHED', quote: data });
+        setPricesUpdated(true);
+      } else {
+        dispatch({ type: 'QUOTE_OK', quote: data });
+        setPricesUpdated(false);
+      }
+      saveQuoteSession({
+        quote: data,
+        search: state.search,
+        details: {
+          pickupAddress: state.details.pickupAddress,
+          dropoffAddress: state.details.dropoffAddress,
+          pickupPlace: state.details.pickupPlace,
+          dropoffPlace: state.details.dropoffPlace,
+          flightNumber: state.details.flightNumber,
+        },
+      });
+      const url = vehicleUrl(data);
+      if (url && !opts?.refresh) {
+        window.history.pushState(null, '', url);
+      }
     } catch (e) {
       if (e instanceof BookingApiError && e.body.error === 'no_price') {
         setPickedClassKey(null);
@@ -197,8 +266,12 @@ export default function BookingApp({
     }
   };
 
-  /** Creates the hold. Returns false when it failed (the error is already in state). */
+  /** Creates the hold, or advances on a signed quote (hold starts at payment). */
   const selectVehicle = async (classKey: string): Promise<boolean> => {
+    if (state.quote?.quoteId && state.quote.signature) {
+      dispatch({ type: 'SELECT_CLASS', classKey });
+      return true;
+    }
     dispatch({ type: 'BUSY', busy: true });
     dispatch({ type: 'CLEAR_ERRORS' });
     try {
@@ -275,7 +348,8 @@ export default function BookingApp({
   };
 
   const submitBooking = async () => {
-    if (!state.hold) return;
+    const signed = state.quote?.quoteId && state.quote.signature && state.selectedClassKey;
+    if (!state.hold && !signed) return;
     const errors: Record<string, string> = {};
     const msg = (key: string, fallback: string) => strings[key] ?? fallback;
     if (!state.details.pickupAddress) {
@@ -302,20 +376,34 @@ export default function BookingApp({
     dispatch({ type: 'CLEAR_ERRORS' });
     try {
       const token = await getTurnstileToken(turnstileSiteKey);
-      const body: Record<string, unknown> = {
-        holdId: state.hold.holdId,
-        pickupAddress: state.details.pickupAddress,
-        passengers: state.search.passengers,
-        luggage: state.search.luggage,
-        extras: state.details.extras,
-        customer: {
-          name: state.details.name,
-          email: state.details.email,
-          phone: state.details.phone,
-        },
-        consent: true,
-        turnstileToken: token,
+      const customer = {
+        name: state.details.name,
+        email: state.details.email,
+        phone: state.details.phone,
       };
+      const body: Record<string, unknown> = signed
+        ? {
+            quoteId: state.quote!.quoteId,
+            signature: state.quote!.signature,
+            classKey: state.selectedClassKey,
+            pickupAddress: state.details.pickupAddress,
+            passengers: state.search.passengers,
+            luggage: state.search.luggage,
+            extras: state.details.extras,
+            customer,
+            consent: true,
+            turnstileToken: token,
+          }
+        : {
+            holdId: state.hold!.holdId,
+            pickupAddress: state.details.pickupAddress,
+            passengers: state.search.passengers,
+            luggage: state.search.luggage,
+            extras: state.details.extras,
+            customer,
+            consent: true,
+            turnstileToken: token,
+          };
       if (state.search.type === 'transfer') body.dropoffAddress = state.details.dropoffAddress;
       if (state.details.pickupPlace) body.pickupPlace = state.details.pickupPlace;
       if (state.search.type === 'transfer' && state.details.dropoffPlace) {
@@ -413,17 +501,38 @@ export default function BookingApp({
         ),
         total: total(strings['booking.total'] ?? '', b.totalCents),
       };
-    } else if (step === 'details' && state.hold) {
-      // Display only: the base price from the hold plus each chosen extra's listed price. No sum here;
-      // the server totals it when the booking is created.
+    } else if (step === 'details' && (state.hold || state.quote?.quoteId)) {
+      // Display only: quote/hold base + extras' listed prices. Server totals on create.
+      const baseCents =
+        state.hold?.baseCents ??
+        state.quote?.options.find((o) => o.classKey === state.selectedClassKey)?.baseCents ??
+        null;
+      const breakdown =
+        state.quote?.options.find((o) => o.classKey === state.selectedClassKey)?.breakdown ?? [];
       const extras = state.details.extras.flatMap((e) => {
         const ex = options.extras.find((x) => x.code === e.code);
-        return ex ? [{ label: ex.name, value: formatEuroV2(ex.priceCents) }] : [];
+        return ex
+          ? [{ label: ex.name, value: formatEuroV2(ex.priceCents * (e.quantity || 1)) }]
+          : [];
       });
-      lines = [{ label: lineLabel, value: formatEuroV2(state.hold.baseCents) }, ...extras];
-      if (extras.length === 0) sum = total(strings['booking.total'] ?? '', state.hold.baseCents);
+      lines =
+        breakdown.length > 0
+          ? [
+              ...breakdown.map((b) => ({ label: b.label, value: formatEuroV2(b.amount) })),
+              ...extras,
+            ]
+          : baseCents != null
+            ? [{ label: lineLabel, value: formatEuroV2(baseCents) }, ...extras]
+            : extras;
+      if (extras.length === 0 && baseCents != null) {
+        sum = total(strings['booking.total'] ?? '', baseCents);
+      }
     } else if (step === 'vehicle' && quoted?.baseCents != null) {
-      lines = [{ label: lineLabel, value: formatEuroV2(quoted.baseCents) }];
+      const breakdown = quoted.breakdown ?? [];
+      lines =
+        breakdown.length > 0
+          ? breakdown.map((b) => ({ label: b.label, value: formatEuroV2(b.amount) }))
+          : [{ label: lineLabel, value: formatEuroV2(quoted.baseCents) }];
       sum = total(strings['booking.total'] ?? '', quoted.baseCents);
     }
     summary = {
@@ -509,10 +618,18 @@ export default function BookingApp({
         onBack={() => {
           dispatch({ type: 'CLEAR_HOLD_EXPIRED' });
           dispatch({ type: 'SET_STEP', step: 'search' });
+          window.history.pushState(null, '', '/book#search');
         }}
+        onRefreshQuote={() => void submitQuote({ refresh: true })}
+        onQuoteExpired={() => dispatch({ type: 'HOLD_EXPIRED' })}
+        pricesUpdated={pricesUpdated}
       />
     );
-  } else if (step === 'details' && state.hold && state.selectedClassKey) {
+  } else if (
+    step === 'details' &&
+    state.selectedClassKey &&
+    (state.hold || state.quote?.quoteId)
+  ) {
     main = (
       <StepDetails
         strings={strings}

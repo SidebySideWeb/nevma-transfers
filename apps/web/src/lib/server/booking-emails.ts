@@ -51,6 +51,9 @@ type BookingRow = {
   dropoff_place_id: string | null;
   dropoff_lat: number | null;
   dropoff_lng: number | null;
+  distance_km: number | null;
+  duration_min: number | null;
+  price_breakdown: { code?: string; label?: string; amount?: number }[] | null;
 };
 
 function pickupLocalAthens(pickup: Date): string {
@@ -72,7 +75,8 @@ const BOOKING_SELECT_CORE = `select b.id, b.reference, b.booking_type, b.pickup_
             b.notes, b.flight_number, b.invoice_company, b.invoice_vat, b.invoice_tax_office,
             b.invoice_address, c.name as class_name, zf.name as from_zone, zt.name as to_zone,
             v.label as vehicle_label, b.vehicle_auto_assigned,
-            b.pickup_address, b.dropoff_address`;
+            b.pickup_address, b.dropoff_address,
+            b.distance_km, b.duration_min, b.price_breakdown`;
 
 const BOOKING_FROM = ` from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
@@ -94,7 +98,9 @@ async function loadBooking(reference: string): Promise<BookingRow | null> {
   } catch (e) {
     // Migration 0021 not applied yet — still send confirmation; Maps links use address text.
     const detail = e instanceof Error ? e.message : '';
-    if (!/pickup_place_id|dropoff_place_id/i.test(detail)) throw e;
+    if (!/pickup_place_id|dropoff_place_id|distance_km|duration_min|price_breakdown/i.test(detail)) {
+      throw e;
+    }
     console.error(
       JSON.stringify({
         level: 'error',
@@ -172,6 +178,15 @@ export async function sendConfirmationEmails(
       : String(booking.hours ?? '');
   // Confirmation links to the manage page (same token; cancel stays at /booking/cancel/<token>).
   const cancelUrl = `${siteUrl()}/booking/manage/${cancelToken}`;
+  const breakdownLines = Array.isArray(booking.price_breakdown)
+    ? booking.price_breakdown
+        .filter((l) => l && typeof l.amount === 'number')
+        .map((l) => ({ label: l.label || l.code || 'Line', cents: l.amount as number }))
+    : [];
+  const hourlyKmIncluded =
+    booking.booking_type === 'hourly' && booking.hours != null
+      ? booking.hours * 40
+      : null;
   const base = {
     reference: booking.reference,
     bookingType: booking.booking_type,
@@ -184,6 +199,10 @@ export async function sendConfirmationEmails(
       { label: booking.class_name, cents: booking.base_price_cents },
       ...extras,
     ],
+    breakdownLines: breakdownLines.length ? [...breakdownLines, ...extras] : undefined,
+    distanceKm: booking.distance_km,
+    durationMin: booking.duration_min,
+    hourlyKmIncluded,
     totalCents: booking.price_cents,
     vatRateBp: booking.vat_rate_bp,
     vatCents: booking.vat_cents,

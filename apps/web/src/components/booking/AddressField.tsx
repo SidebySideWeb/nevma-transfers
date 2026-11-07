@@ -21,6 +21,9 @@ export type AddressFieldProps = {
   whatsappLabel?: string;
   error?: string;
   autoComplete?: string;
+  /** Called after a place pick / clear with pricing-area kind from /api/geo/check (airport|port|null). */
+  onAreaKind?: (kind: string | null, label: string | null) => void;
+  clearLabel?: string;
   onChange: (text: string, place: PlaceValue) => void;
   'aria-invalid'?: boolean | 'true' | 'false';
   'aria-describedby'?: string;
@@ -63,6 +66,8 @@ export function AddressField({
   whatsappLabel = 'WhatsApp',
   error,
   autoComplete = 'street-address',
+  onAreaKind,
+  clearLabel = 'Clear',
   onChange,
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedBy,
@@ -126,22 +131,38 @@ export function AddressField({
   }, [value, enabled]);
 
   const applyPlace = async (text: string, next: PlaceValue) => {
-    if (!checkServiceArea || !next) {
+    if (!next) {
+      setOutOfArea(false);
+      onAreaKind?.(null, null);
+      onChange(text, null);
+      return;
+    }
+    if (!checkServiceArea) {
       setOutOfArea(false);
       onChange(text, next);
       return;
     }
-    const check = await postJson<{ inArea: boolean }>('/api/geo/check', {
-      lat: next.lat,
-      lng: next.lng,
-    });
+    const check = await postJson<{ inArea: boolean; kind?: string | null; label?: string | null }>(
+      '/api/geo/check',
+      { lat: next.lat, lng: next.lng },
+    );
     if (check.ok && check.data.inArea === false) {
       setOutOfArea(true);
+      onAreaKind?.(null, null);
       onChange(text, null);
       return;
     }
     setOutOfArea(false);
+    onAreaKind?.(check.ok ? check.data.kind ?? null : null, check.ok ? check.data.label ?? null : null);
     onChange(text, next);
+  };
+
+  const clear = () => {
+    setOutOfArea(false);
+    setItems([]);
+    setOpen(false);
+    onAreaKind?.(null, null);
+    onChange('', null);
   };
 
   const pick = async (s: Suggestion) => {
@@ -203,26 +224,33 @@ export function AddressField({
   return (
     <div className={invalid || outOfArea ? 'f2 is-invalid ep-address' : 'f2 ep-address'} ref={root}>
       <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        name={name}
-        type="text"
-        autoComplete={autoComplete}
-        placeholder={placeholder}
-        value={value}
-        role={enabled ? 'combobox' : undefined}
-        aria-autocomplete={enabled ? 'list' : undefined}
-        aria-expanded={enabled ? open : undefined}
-        aria-controls={enabled && open ? listId : undefined}
-        aria-activedescendant={enabled && open ? optId(active) : undefined}
-        aria-invalid={invalid || outOfArea || undefined}
-        aria-describedby={describedBy}
-        onChange={(e) => onInput(e.target.value)}
-        onFocus={() => {
-          if (!sessionRef.current) renewSession();
-        }}
-        onKeyDown={onKeyDown}
-      />
+      <div className="ep-address-wrap" data-v2-extra>
+        <input
+          id={id}
+          name={name}
+          type="text"
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          value={value}
+          role={enabled ? 'combobox' : undefined}
+          aria-autocomplete={enabled ? 'list' : undefined}
+          aria-expanded={enabled ? open : undefined}
+          aria-controls={enabled && open ? listId : undefined}
+          aria-activedescendant={enabled && open ? optId(active) : undefined}
+          aria-invalid={invalid || outOfArea || undefined}
+          aria-describedby={describedBy}
+          onChange={(e) => onInput(e.target.value)}
+          onFocus={() => {
+            if (!sessionRef.current) renewSession();
+          }}
+          onKeyDown={onKeyDown}
+        />
+        {value ? (
+          <button type="button" className="ep-address-clear" aria-label={clearLabel} onClick={clear}>
+            ✕
+          </button>
+        ) : null}
+      </div>
       <input type="hidden" name={`${placePrefix}PlaceId`} value={place?.placeId ?? ''} />
       <input type="hidden" name={`${placePrefix}Lat`} value={place?.lat ?? ''} />
       <input type="hidden" name={`${placePrefix}Lng`} value={place?.lng ?? ''} />

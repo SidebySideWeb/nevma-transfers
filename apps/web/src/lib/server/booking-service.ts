@@ -211,10 +211,34 @@ export async function bookingOptions() {
     maxQuantity: e.max_quantity ?? 1,
   }));
 
+  const f = features();
+  let kmPerHour = 40;
+  let waitingAirportFreeMin = 60;
+  try {
+    const [{ rows: rateRows }, { rows: ps }] = await Promise.all([
+      db().query<{ km_per_hour: number }>(
+        `select km_per_hour from public.current_class_rates order by km_per_hour desc limit 1`,
+      ),
+      db().query<{ doc: { waiting?: { airport_free_min?: number } } }>(
+        `select doc from public.current_pricing_settings`,
+      ),
+    ]);
+    if (rateRows[0]?.km_per_hour) kmPerHour = rateRows[0].km_per_hour;
+    if (ps[0]?.doc?.waiting?.airport_free_min != null) {
+      waitingAirportFreeMin = ps[0].doc.waiting.airport_free_min;
+    }
+  } catch {
+    /* 0025 not applied — defaults */
+  }
+
   return {
     timezone: settings.timezone,
     minLeadMinutes: settings.minLeadMinutes,
     holdMinutes: settings.holdMinutes,
+    kmPerHour,
+    waitingAirportFreeMin,
+    returnTrip: f.returnTrip,
+    flightTracking: f.flightTracking,
     zones: zones.map((z) => ({ code: z.code, name: z.name })),
     classes,
     extras,
@@ -291,6 +315,7 @@ export async function quote(raw: unknown, ip?: string) {
     baseCents: number | null;
     available: boolean;
     reason?: string;
+    breakdown?: { code: string; label: string; amount: number }[];
   }[] = [];
 
   let anyPrice = false;
@@ -350,6 +375,17 @@ export async function quote(raw: unknown, ip?: string) {
       baseCents,
       available,
       ...(reason ? { reason } : {}),
+      ...(baseCents != null
+        ? {
+            breakdown: [
+              {
+                code: body.type === 'hourly' ? 'hourly' : 'fixed_route',
+                label: body.type === 'hourly' ? 'Hourly hire' : 'Fixed route price',
+                amount: baseCents,
+              },
+            ],
+          }
+        : {}),
     });
   }
 
@@ -480,10 +516,12 @@ export async function quote(raw: unknown, ip?: string) {
         if (p.available) {
           opt.baseCents = p.total;
           opt.available = available;
+          opt.breakdown = p.breakdown;
           delete opt.reason;
         } else {
           opt.baseCents = null;
           opt.available = false;
+          opt.breakdown = undefined;
           opt.reason = p.reason ?? 'not_priced';
         }
       }

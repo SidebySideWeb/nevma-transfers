@@ -80,6 +80,10 @@ export function quoteRequestBody(
     'type' | 'fromZone' | 'toZone' | 'hours' | 'pickupLocal' | 'passengers' | 'luggage'
   >,
   classKey?: string,
+  places?: {
+    pickupPlace?: { placeId: string; lat: number; lng: number } | null;
+    dropoffPlace?: { placeId: string; lat: number; lng: number } | null;
+  },
 ): Record<string, unknown> {
   const base =
     search.type === 'transfer'
@@ -99,5 +103,12 @@ export function quoteRequestBody(
           passengers: search.passengers,
           luggage: search.luggage,
         };
-  return classKey ? { ...base, classKey } : { ...base };
+  const withPlaces = {
+    ...base,
+    ...(places?.pickupPlace ? { pickupPlace: places.pickupPlace } : {}),
+    ...(places?.dropoffPlace && search.type === 'transfer'
+      ? { dropoffPlace: places.dropoffPlace }
+      : {}),
+  };
+  return classKey ? { ...withPlaces, classKey } : withPlaces;
 }

@@ -11,22 +11,27 @@ import { initialDetails, initialSearch } from './types';
 const strings: Record<string, string> = {
   'booking.search.title': 'Book your ride',
   'booking.toggle.transfer': 'Transfer',
+  'booking.toggle.oneWay': 'One way',
   'booking.toggle.hourly': 'By the hour',
-  'booking.pickup.zone': 'Pick-up area',
-  'booking.dropoff.zone': 'Drop-off area',
+  'booking.pickup.zone': 'Pick-up',
+  'booking.dropoff.zone': 'Drop-off',
   'booking.hours.label': 'Number of hours',
+  'booking.hours.duration': 'Duration',
   'booking.hours.hint': 'Minimum {min} hours, maximum {max} hours.',
+  'booking.hourly.differentDropoff': 'Different drop-off address',
   'booking.pickup.datetime': 'Pick-up date and time',
   'booking.athensHint': 'Athens time',
   'booking.passengers': 'Passengers',
   'booking.luggage': 'Luggage',
   'booking.search.submit': 'See vehicles',
+  'booking.search.viewOptions': 'View options',
   'booking.loading': 'Please wait…',
   'booking.errors.summary': 'Please fix',
   'booking.details.title': 'Your details',
   'booking.pickup.address': 'Pick-up address',
   'booking.dropoff.address': 'Drop-off address',
-  'booking.flight': 'Flight',
+  'booking.flight': 'Flight number',
+  'booking.airport.hint': 'Add your flight number so your chauffeur meets you at arrivals.',
   'booking.details.name': 'Name',
   'booking.details.email': 'Email',
   'booking.details.phone': 'Phone',
@@ -47,15 +52,22 @@ const strings: Record<string, string> = {
   'booking.quoteLink': 'Route not listed? Request a quote',
   'form.stepper.fewer': 'Fewer',
   'form.stepper.more': 'More',
+  'form.placeholder.flight': 'e.g. A3 603, LH1284',
   'booking.extras.label': 'Optional add-on',
   'booking.review.submit': 'Review & pay',
   'booking.step.vehicle': 'Vehicle',
+  'booking.serviceArea.outOfArea': 'We only serve Athens and Attica. For other destinations, {contact}.',
+  'booking.serviceArea.contact': 'contact us',
 };
 
 const options: OptionsData = {
   timezone: 'Europe/Athens',
-  minLeadMinutes: 120,
+  minLeadMinutes: 180,
   holdMinutes: 20,
+  kmPerHour: 40,
+  waitingAirportFreeMin: 60,
+  returnTrip: false,
+  flightTracking: false,
   zones: [
     { code: 'demo-airport', name: 'Airport' },
     { code: 'demo-centre', name: 'Centre' },
@@ -130,17 +142,28 @@ describe('booking reducer', () => {
   });
 });
 
-describe('StepSearch hourly', () => {
-  it('hides drop-off for hourly', async () => {
+describe('StepSearch Blacklane bar', () => {
+  it('tab switch keeps shared fields and shows hourly km labels', async () => {
     const user = userEvent.setup();
-    const search = { ...initialSearch(), fromZone: 'demo-airport', toZone: 'demo-centre' };
+    const search = {
+      ...initialSearch(),
+      fromZone: 'demo-airport',
+      toZone: 'demo-centre',
+      pickupLocal: '2026-12-01T14:00',
+      hours: 4,
+    };
+    const details = {
+      ...initialDetails(),
+      pickupAddress: 'Terminal',
+      dropoffAddress: 'Syntagma',
+    };
     const onChange = vi.fn();
     const { rerender } = render(
       <StepSearch
         strings={strings}
         options={options}
         search={search}
-        details={initialDetails()}
+        details={details}
         errors={{}}
         formError={null}
         busy={false}
@@ -150,15 +173,17 @@ describe('StepSearch hourly', () => {
         onSubmit={vi.fn()}
       />,
     );
-    expect(screen.getByLabelText('Drop-off area')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'By the hour' }));
+    expect(screen.getByDisplayValue('Terminal')).toBeTruthy();
+    expect(screen.getByLabelText('Flight number')).toBeTruthy();
+    expect(screen.getByText(/Add your flight number/i)).toBeTruthy();
+    await user.click(screen.getByRole('tab', { name: 'By the hour' }));
     expect(onChange).toHaveBeenCalledWith({ type: 'hourly' });
     rerender(
       <StepSearch
         strings={strings}
         options={options}
         search={{ ...search, type: 'hourly' }}
-        details={initialDetails()}
+        details={details}
         errors={{}}
         formError={null}
         busy={false}
@@ -168,9 +193,29 @@ describe('StepSearch hourly', () => {
         onSubmit={vi.fn()}
       />,
     );
-    expect(screen.queryByLabelText('Drop-off area')).toBeNull();
-    expect(screen.queryByLabelText('Drop-off address')).toBeNull();
-    expect(screen.getByRole('group', { name: 'Number of hours' })).toBeTruthy();
+    expect(screen.getByDisplayValue('Terminal')).toBeTruthy();
+    expect(screen.getAllByText('4 hours (160 km included)').length).toBeGreaterThan(0);
+    // Airport pick-up zone still shows the flight field in hourly mode.
+    expect(screen.getByLabelText('Flight number')).toBeTruthy();
+  });
+
+  it('hides flight field when pick-up is not an airport', () => {
+    render(
+      <StepSearch
+        strings={strings}
+        options={options}
+        search={{ ...initialSearch(), fromZone: 'demo-centre', toZone: 'demo-airport' }}
+        details={initialDetails()}
+        errors={{}}
+        formError={null}
+        busy={false}
+        addressAutocomplete={false}
+        onChange={vi.fn()}
+        onChangeDetails={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText('Flight number')).toBeNull();
   });
 });
 

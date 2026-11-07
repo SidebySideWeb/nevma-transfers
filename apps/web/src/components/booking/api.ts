@@ -58,6 +58,10 @@ export const bookingApi = {
       timezone: string;
       minLeadMinutes: number;
       holdMinutes: number;
+      kmPerHour: number;
+      waitingAirportFreeMin: number;
+      returnTrip: boolean;
+      flightTracking: boolean;
       zones: { code: string; name: string }[];
       classes: {
         key: string;
@@ -87,7 +91,13 @@ export const bookingApi = {
         baseCents: number | null;
         available: boolean;
         reason?: string;
+        breakdown?: { code: string; label: string; amount: number }[];
       }[];
+      quoteId?: string;
+      expiresAt?: string;
+      signature?: string;
+      distanceKm?: number | null;
+      durationMin?: number;
     }>('/api/quote', { method: 'POST', body: JSON.stringify(body) }),
 
   createHold: (body: unknown) =>
