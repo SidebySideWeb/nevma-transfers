@@ -18,6 +18,9 @@
     "qa:security-api": "node scripts/qa-security-api.mjs",
     "qa:anon-rls": "node scripts/qa-anon-rls.mjs",
     "qa:secrets-build": "node scripts/check-secrets-in-build.mjs",
+    "qa:matrix": "node scripts/feature-matrix.mjs",
+    "qa:matrix:unit": "node scripts/feature-matrix.mjs --suite=unit",
+    "qa:matrix:e2e": "node scripts/feature-matrix.mjs --suite=e2e",
     "format": "prettier --write .",
     "db:types": "node scripts/db-types.mjs"
   },

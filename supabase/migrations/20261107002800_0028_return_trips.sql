@@ -184,7 +184,7 @@ declare
   leg_count int := 0;
 begin
   perform 1 from public.bookings where viva_order_code = p_order_code for update;
-  select coalesce(sum(price_cents), 0), count(*)::int, min(trip_group_id)
+  select coalesce(sum(price_cents), 0), count(*)::int, (array_agg(trip_group_id order by leg nulls first, created_at) filter (where trip_group_id is not null))[1]
     into expected, leg_count, group_id
     from public.bookings
    where viva_order_code = p_order_code;

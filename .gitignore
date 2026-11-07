@@ -29,6 +29,7 @@ playwright-report
 test-results
 coverage
 **/coverage
+docs/.qa-matrix*.json
 apps/admin/e2e/.deploy-hook-hits
 apps/admin/e2e/.last-e2e-out.txt
 

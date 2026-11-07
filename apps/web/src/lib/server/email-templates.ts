@@ -355,26 +355,18 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
     input.guestName ? `Guest: ${input.guestName}` : '',
     input.paymentMethod === 'on_account' ? 'Payment: On account' : '',
   ].filter(Boolean);
-  const text = [
-    body,
-    '',
-    accountLines.join('\n'),
-    input.returnLeg ? 'Outbound' : '',
-    tripLines(input),
-    returnBlock,
-    '',
-    analysis,
-    input.returnLeg ? `Payment total: ${formatEuro(paymentTotal)}` : '',
-    vip ? `\n${vip}` : '',
-    invoiceNote ? `\n${invoiceNote}` : '',
-    '',
-    cancel,
-    `You can cancel online until ${input.cancelWindowHours} hours before pick-up.`,
-    '',
-    companyFooter(input),
-  ]
-    .filter((line, i, arr) => !(line === '' && arr[i - 1] === ''))
-    .join('\n');
+  const textParts: string[] = [body];
+  if (accountLines.length) textParts.push('', accountLines.join('\n'));
+  if (input.returnLeg) textParts.push('', 'Outbound');
+  textParts.push('', tripLines(input));
+  if (returnBlock) textParts.push('', returnBlock);
+  textParts.push('', analysis);
+  if (input.returnLeg) textParts.push(`Payment total: ${formatEuro(paymentTotal)}`);
+  if (vip) textParts.push('', vip);
+  if (invoiceNote) textParts.push('', invoiceNote);
+  textParts.push('', cancel, `You can cancel online until ${input.cancelWindowHours} hours before pick-up.`);
+  textParts.push('', companyFooter(input));
+  const text = textParts.join('\n');
 
   const htmlBody = `
     <p style="margin:0 0 12px;">${escapeHtml(body)}</p>

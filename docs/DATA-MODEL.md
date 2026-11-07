@@ -197,3 +197,7 @@ Staff pricing/setup audit log (`admin_activity`) for B5 saves.
 ## 0030 — Corporate accounts (7 Nov 2026)
 
 `FEATURE_CORPORATE` (B9). Kit name `0022_corporate`. Tables: `companies` (kind hotel|agency|company, VAT/billing, `discount_pct`, `pay_on_account`, `credit_limit_cents`, `payment_terms_days`), `company_prices` (fixed price per class for a zone route or hourly), `company_users` (Supabase auth user, role admin|booker), `company_statements` (period, total, status draft|sent|paid, `pdf_path`). `bookings` gains `company_id`, `booked_by`, `guest_name`, `guest_phone`, `cost_center`. `payment_method` already allows `on_account` (0011). Helpers: `current_company_id`, `is_company_admin`, `company_open_balance_cents`, `company_statement_total_cents`. RLS: company members read only their company, prices, users, statements and bookings; staff full access; `class_rates` / `pricing_settings` stay staff-only.
+
+## 0031 — Fix `record_viva_payment` uuid aggregate (7 Nov 2026)
+
+`record_viva_payment` (0028) used `min(trip_group_id)`; PostgreSQL has no `min(uuid)`. Replaced with an ordered `array_agg(...)[1]`. Fresh installs also get the same fix inlined in 0028.

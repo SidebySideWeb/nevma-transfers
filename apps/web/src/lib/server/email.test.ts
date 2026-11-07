@@ -62,6 +62,9 @@ describe('emails (prompt 08)', () => {
   it('AC-13: each template text renders DEMO strings and placeholders', () => {
     const conf = confirmationEmail(baseConfirm);
     expect(conf.subject).toContain('TEM-ABCDEF');
+    // B10: keep under the 102 KB email budget (HTML + text).
+    expect(Buffer.byteLength(conf.html, 'utf8')).toBeLessThan(102 * 1024);
+    expect(Buffer.byteLength(conf.text, 'utf8')).toBeLessThan(102 * 1024);
     expect(conf.text).toMatchInlineSnapshot(`
       "Thank you for booking with us. Your booking TEM-ABCDEF is confirmed for Mon 1 Dec 2026, 10:00 (Athens).
 
