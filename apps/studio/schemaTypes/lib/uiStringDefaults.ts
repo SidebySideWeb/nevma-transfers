@@ -18,6 +18,18 @@ export const uiStringDefaults: UiStringDefault[] = [
   { area: 'booking', key: 'booking.dropoff.zone', value: 'Drop-off zone' },
   { area: 'booking', key: 'booking.pickup.address', value: 'Pick-up address or hotel' },
   { area: 'booking', key: 'booking.dropoff.address', value: 'Drop-off address or hotel' },
+  {
+    area: 'booking',
+    key: 'booking.serviceArea.outOfArea',
+    value: 'We only serve Athens and Attica. For other destinations, {contact}.',
+  },
+  { area: 'booking', key: 'booking.serviceArea.contact', value: 'contact us' },
+  { area: 'booking', key: 'booking.serviceArea.whatsapp', value: 'WhatsApp' },
+  {
+    area: 'booking',
+    key: 'booking.route.unavailable',
+    value: "We couldn't calculate this route. Try again or contact us.",
+  },
   { area: 'booking', key: 'booking.pickup.datetime', value: 'Pick-up date and time' },
   { area: 'booking', key: 'booking.hours.label', value: 'Number of hours' },
   { area: 'booking', key: 'booking.hours.hint', value: 'Minimum {min} hours, maximum {max} hours.' },

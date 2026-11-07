@@ -1,12 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { autocomplete, placeDetails, parsePlace, placeColumns, mapsDirectionsUrl, addressAnswer, cleanInput, PlacesError } from '../src/index.mjs';
+import { autocomplete, placeDetails, parsePlace, placeColumns, mapsDirectionsUrl, addressAnswer, cleanInput, PlacesError, PREFERRED_PLACE_TYPES } from '../src/index.mjs';
 
 const KEY = 'test-key';
 const TOKEN = '3f2c8a52-1b7e-4c3d-9a1f-2e6b7c8d9e0f';
 const PID = 'ChIJ8UNwBh-9oRQR3Y1mdkU1Nic';
 const ok = (body) => async () => ({ ok: true, status: 200, json: async () => body });
 const spy = (body) => { const calls = []; const f = async (url, init) => { calls.push({ url, init }); return { ok: true, status: 200, json: async () => body }; }; f.calls = calls; return f; };
+
+/** Snapshot of the default (distance pricing OFF) autocomplete request body. */
+const DEFAULT_AUTOCOMPLETE_BODY = {
+  input: 'hilton ath',
+  sessionToken: TOKEN,
+  includedRegionCodes: ['gr'],
+  languageCode: 'en',
+  locationBias: {
+    circle: { center: { latitude: 37.9838, longitude: 23.7275 }, radius: 50000 },
+  },
+};
 
 test('autocomplete sends one POST with session token, Greece only, Athens bias and the key in a header', async () => {
   const f = spy({ suggestions: [{ placePrediction: { placeId: PID, text: { text: 'Hilton Athens, Vasilissis Sofias 46, Athens, Greece' },
@@ -18,11 +29,79 @@ test('autocomplete sends one POST with session token, Greece only, Athens bias a
   assert.equal(init.method, 'POST');
   assert.equal(init.headers['X-Goog-Api-Key'], KEY);
   const body = JSON.parse(init.body);
-  assert.equal(body.input, 'hilton ath');
-  assert.equal(body.sessionToken, TOKEN);
-  assert.deepEqual(body.includedRegionCodes, ['gr']);
-  assert.equal(body.locationBias.circle.radius, 50000);
+  assert.deepEqual(body, DEFAULT_AUTOCOMPLETE_BODY);
+  assert.ok(!('locationRestriction' in body));
   assert.ok(!url.includes(KEY), 'key never in the URL');
+});
+
+test('autocomplete with locationRestriction uses Attica rectangle (no bias) and prefers airports/ports/hotels first', async () => {
+  const rect = {
+    low: { latitude: 37.64, longitude: 23.3 },
+    high: { latitude: 38.35, longitude: 24.08 },
+  };
+  const sug = {
+    suggestions: [
+      {
+        placePrediction: {
+          placeId: PID,
+          text: { text: 'Athens Airport' },
+          structuredFormat: { mainText: { text: 'Athens Airport' }, secondaryText: { text: 'Spata' } },
+        },
+      },
+    ],
+  };
+  const f = spy(sug);
+  await autocomplete({
+    input: 'airport',
+    sessionToken: TOKEN,
+    apiKey: KEY,
+    locationRestriction: rect,
+    preferPrimaryTypes: PREFERRED_PLACE_TYPES,
+    fetch: f,
+  });
+  assert.equal(f.calls.length, 1);
+  const body = JSON.parse(f.calls[0].init.body);
+  assert.deepEqual(body.locationRestriction, { rectangle: rect });
+  assert.ok(!('locationBias' in body));
+  assert.deepEqual(body.includedPrimaryTypes, PREFERRED_PLACE_TYPES);
+  assert.deepEqual(body.includedRegionCodes, ['gr']);
+});
+
+test('autocomplete falls back to all types when preferred types return nothing', async () => {
+  const calls = [];
+  const f = async (_url, init) => {
+    calls.push(JSON.parse(init.body));
+    const empty = calls.length === 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () =>
+        empty
+          ? { suggestions: [] }
+          : {
+              suggestions: [
+                {
+                  placePrediction: {
+                    placeId: PID,
+                    text: { text: 'Somewhere' },
+                    structuredFormat: { mainText: { text: 'Somewhere' }, secondaryText: { text: '' } },
+                  },
+                },
+              ],
+            },
+    };
+  };
+  const r = await autocomplete({
+    input: 'athens',
+    sessionToken: TOKEN,
+    apiKey: KEY,
+    preferPrimaryTypes: PREFERRED_PLACE_TYPES,
+    fetch: f,
+  });
+  assert.equal(calls.length, 2);
+  assert.ok(calls[0].includedPrimaryTypes);
+  assert.ok(!('includedPrimaryTypes' in calls[1]));
+  assert.equal(r[0].main, 'Somewhere');
 });
 
 test('autocomplete: fewer than 3 letters makes no call; at most 5 suggestions; query predictions are skipped', async () => {

@@ -1,6 +1,7 @@
 ---
 export const prerender = true;
 
+import { features, publicFeatures } from '@tem/features';
 import BookingApp from '../components/booking/BookingApp';
 import SiteHeader from '../components/v2/SiteHeader.astro';
 import PublicLayout from '../layouts/PublicLayout.astro';
@@ -13,6 +14,11 @@ import { uiStringDefaults } from '@studio-strings';
 await loadUiStrings();
 const settings = await getSiteSettings();
 const bookingOpen = isBookingOpen();
+const publicFlags = publicFeatures(features());
+const whatsappHref =
+  publicFlags.whatsapp && publicFlags.whatsappNumber
+    ? `https://wa.me/${publicFlags.whatsappNumber}?text=${encodeURIComponent("Hello, I'd like information about a transfer")}`
+    : null;
 
 const strings: Record<string, string> = {};
 for (const entry of uiStringDefaults) {
@@ -62,6 +68,8 @@ const header = {
           contact={{ phone: settings.phone, email: settings.email }}
           header={header}
           addressAutocomplete={import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE === 'true'}
+          distancePricing={publicFlags.distancePricing}
+          whatsappHref={whatsappHref}
         />
       </>
     ) : (

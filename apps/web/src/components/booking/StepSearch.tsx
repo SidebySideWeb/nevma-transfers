@@ -14,6 +14,9 @@ type Props = {
   formError: string | null;
   busy: boolean;
   addressAutocomplete: boolean;
+  /** FEATURE_DISTANCE_PRICING: Attica check + out-of-area message under the field. */
+  distancePricing?: boolean;
+  whatsappHref?: string | null;
   onChange: (patch: Partial<SearchState>) => void;
   onChangeDetails: (patch: Partial<DetailsState>) => void;
   onSubmit: () => void;
@@ -82,6 +85,8 @@ export function StepSearch({
   formError,
   busy,
   addressAutocomplete,
+  distancePricing = false,
+  whatsappHref = null,
   onChange,
   onChangeDetails,
   onSubmit,
@@ -225,6 +230,11 @@ export function StepSearch({
           value={details.pickupAddress}
           place={details.pickupPlace}
           enabled={addressAutocomplete}
+          checkServiceArea={distancePricing}
+          outOfAreaText={strings['booking.serviceArea.outOfArea']}
+          contactLabel={strings['booking.serviceArea.contact']}
+          whatsappHref={whatsappHref}
+          whatsappLabel={strings['booking.serviceArea.whatsapp']}
           error={errors.pickupAddress}
           onChange={(pickupAddress, pickupPlace) => onChangeDetails({ pickupAddress, pickupPlace })}
           {...invalid('pickupAddress', 'b-pick')}
@@ -239,6 +249,11 @@ export function StepSearch({
             value={details.dropoffAddress}
             place={details.dropoffPlace}
             enabled={addressAutocomplete}
+            checkServiceArea={distancePricing}
+            outOfAreaText={strings['booking.serviceArea.outOfArea']}
+            contactLabel={strings['booking.serviceArea.contact']}
+            whatsappHref={whatsappHref}
+            whatsappLabel={strings['booking.serviceArea.whatsapp']}
             error={errors.dropoffAddress}
             onChange={(dropoffAddress, dropoffPlace) =>
               onChangeDetails({ dropoffAddress, dropoffPlace })

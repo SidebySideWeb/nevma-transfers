@@ -12,6 +12,13 @@ export type AddressFieldProps = {
   /** Hidden input name prefixes: pickup → pickupPlaceId|Lat|Lng */
   placePrefix: 'pickup' | 'dropoff';
   enabled: boolean;
+  /** When distance pricing is on: check Attica after a place pick. */
+  checkServiceArea?: boolean;
+  outOfAreaText?: string;
+  contactHref?: string;
+  contactLabel?: string;
+  whatsappHref?: string | null;
+  whatsappLabel?: string;
   error?: string;
   autoComplete?: string;
   onChange: (text: string, place: PlaceValue) => void;
@@ -23,7 +30,7 @@ type Suggestion = { placeId: string; label: string; main: string; secondary: str
 
 const DEBOUNCE_MS = 300;
 
-async function postJson<T>(url: string, body: unknown): Promise<T | null> {
+async function postJson<T>(url: string, body: unknown): Promise<{ ok: true; data: T } | { ok: false }> {
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -31,10 +38,10 @@ async function postJson<T>(url: string, body: unknown): Promise<T | null> {
       body: JSON.stringify(body),
       credentials: 'same-origin',
     });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
+    if (!res.ok) return { ok: false };
+    return { ok: true, data: (await res.json()) as T };
   } catch {
-    return null;
+    return { ok: false };
   }
 }
 
@@ -48,6 +55,12 @@ export function AddressField({
   place,
   placePrefix,
   enabled,
+  checkServiceArea = false,
+  outOfAreaText,
+  contactHref = '/contact',
+  contactLabel = 'contact us',
+  whatsappHref = null,
+  whatsappLabel = 'WhatsApp',
   error,
   autoComplete = 'street-address',
   onChange,
@@ -57,10 +70,12 @@ export function AddressField({
   const listReactId = useId();
   const listId = `${id}-list-${listReactId}`;
   const liveId = `${id}-live-${listReactId}`;
+  const outId = `${id}-out-area`;
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Suggestion[]>([]);
   const [active, setActive] = useState(0);
   const [live, setLive] = useState('');
+  const [outOfArea, setOutOfArea] = useState(false);
   const sessionRef = useRef(crypto.randomUUID());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -90,25 +105,44 @@ export function AddressField({
       return;
     }
     timer.current = setTimeout(async () => {
-      const data = await postJson<{ suggestions: Suggestion[] }>('/api/places/autocomplete', {
+      const result = await postJson<{ suggestions: Suggestion[] }>('/api/places/autocomplete', {
         input: q,
         sessionToken: sessionRef.current,
       });
-      if (!data?.suggestions?.length) {
+      if (!result.ok || !result.data.suggestions?.length) {
         setItems([]);
         setOpen(false);
         setLive('');
         return;
       }
-      setItems(data.suggestions);
+      setItems(result.data.suggestions);
       setActive(0);
       setOpen(true);
-      setLive(`${data.suggestions.length} suggestions`);
+      setLive(`${result.data.suggestions.length} suggestions`);
     }, DEBOUNCE_MS);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
   }, [value, enabled]);
+
+  const applyPlace = async (text: string, next: PlaceValue) => {
+    if (!checkServiceArea || !next) {
+      setOutOfArea(false);
+      onChange(text, next);
+      return;
+    }
+    const check = await postJson<{ inArea: boolean }>('/api/geo/check', {
+      lat: next.lat,
+      lng: next.lng,
+    });
+    if (check.ok && check.data.inArea === false) {
+      setOutOfArea(true);
+      onChange(text, null);
+      return;
+    }
+    setOutOfArea(false);
+    onChange(text, next);
+  };
 
   const pick = async (s: Suggestion) => {
     picking.current = true;
@@ -118,21 +152,23 @@ export function AddressField({
       { placeId: s.placeId, sessionToken: sessionRef.current },
     );
     renewSession();
-    if (!details) {
+    if (!details.ok) {
       onChange(s.label, null);
       picking.current = false;
       return;
     }
-    onChange(s.label || details.address, {
-      placeId: details.placeId,
-      lat: details.lat,
-      lng: details.lng,
+    const d = details.data;
+    await applyPlace(s.label || d.address, {
+      placeId: d.placeId,
+      lat: d.lat,
+      lng: d.lng,
     });
     picking.current = false;
   };
 
   const onInput = (text: string) => {
     if (picking.current) return;
+    setOutOfArea(false);
     // Editing after a pick clears the place.
     onChange(text, null);
   };
@@ -159,9 +195,13 @@ export function AddressField({
 
   const optId = (i: number) => `${id}-opt-${i}`;
   const invalid = Boolean(error) || ariaInvalid === true || ariaInvalid === 'true';
+  const describedBy = [ariaDescribedBy, outOfArea ? outId : null].filter(Boolean).join(' ') || undefined;
+
+  const message = outOfAreaText ?? 'We only serve Athens and Attica. For other destinations, {contact}.';
+  const [before, after = ''] = message.split('{contact}');
 
   return (
-    <div className={invalid ? 'f2 is-invalid ep-address' : 'f2 ep-address'} ref={root}>
+    <div className={invalid || outOfArea ? 'f2 is-invalid ep-address' : 'f2 ep-address'} ref={root}>
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
@@ -175,8 +215,8 @@ export function AddressField({
         aria-expanded={enabled ? open : undefined}
         aria-controls={enabled && open ? listId : undefined}
         aria-activedescendant={enabled && open ? optId(active) : undefined}
-        aria-invalid={invalid || undefined}
-        aria-describedby={ariaDescribedBy}
+        aria-invalid={invalid || outOfArea || undefined}
+        aria-describedby={describedBy}
         onChange={(e) => onInput(e.target.value)}
         onFocus={() => {
           if (!sessionRef.current) renewSession();
@@ -189,6 +229,19 @@ export function AddressField({
       {error ? (
         <span className="error" id={`${id}-err`}>
           {error}
+        </span>
+      ) : null}
+      {outOfArea ? (
+        <span className="error" id={outId} role="status">
+          {before}
+          <a href={contactHref}>{contactLabel}</a>
+          {whatsappHref ? (
+            <>
+              {' '}
+              / <a href={whatsappHref}>{whatsappLabel}</a>
+            </>
+          ) : null}
+          {after}
         </span>
       ) : null}
       <span id={liveId} className="js-sr-only" aria-live="polite" data-v2-extra>

@@ -1,6 +1,9 @@
 import 'server-only';
+import { features } from '@tem/features';
+import { areaBounds } from '@tem/geo';
 import {
   PlacesError,
+  PREFERRED_PLACE_TYPES,
   autocomplete as placesAutocomplete,
   placeDetails as placesDetails,
 } from '@tem/places';
@@ -63,11 +66,18 @@ export async function handleAutocomplete(
     if (ip) await assertRateLimit(`places-ac:ip:${ip}`, 60, 30);
     await assertRateLimit(`places-ac:vid:${visitorKey}`, 60, 30);
     await assertRateLimit(`places-ac-day:vid:${visitorKey}`, 86400, 300);
+
+    const f = features();
     const suggestions = await placesAutocomplete({
       input: String(body.input ?? ''),
       sessionToken: String(body.sessionToken ?? ''),
       apiKey: placesApiKey(),
-      bias: placesBias(),
+      ...(f.distancePricing
+        ? {
+            locationRestriction: areaBounds(f.serviceArea || 'attica'),
+            preferPrimaryTypes: PREFERRED_PLACE_TYPES,
+          }
+        : { bias: placesBias() }),
     });
     return json({ suggestions }, 200, NO_STORE);
   } catch (e) {

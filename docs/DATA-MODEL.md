@@ -169,3 +169,7 @@ Rules: `docs/ADDRESS-AUTOCOMPLETE.md`. `bookings.pickup_place_id`, `pickup_lat`,
 ## 0022 — `driver_jobs` place columns (2 Nov 2026)
 
 Extends `driver_jobs` with `pickup_place_id` / lat / lng and drop-off equivalents so the drivers API can build exact Google Maps links (`docs/ADDRESS-AUTOCOMPLETE.md`).
+
+## 0024 — `route_cache` (7 Nov 2026)
+
+Google Routes distance/duration cache for `FEATURE_DISTANCE_PRICING` (`docs/BOOKING-V2-PLAN.md` B2). Columns: `cache_key` (PK), `distance_km`, `duration_min`, `source`, `created_at`, `expires_at`. Index on `expires_at`. RLS on; no anon/authenticated grants (service role only). In-process memory TTL is 15 minutes; table TTL is 24 hours. (Kit called this migration `0018a`; this repo uses `0024` because 0018–0023 are already taken.)

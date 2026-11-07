@@ -474,6 +474,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"route_cache": {
+                  Row: {
+                    "cache_key": string,"created_at": string,"distance_km": number,"duration_min": number,"expires_at": string,"source": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cache_key": string,"created_at"?: string,"distance_km": number,"duration_min": number,"expires_at": string,"source"?: string
+                  }
+                  Update: {
+                    "cache_key"?: string,"created_at"?: string,"distance_km"?: number,"duration_min"?: number,"expires_at"?: string,"source"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"settings": {
                   Row: {
                     "description": string | null,"is_demo": boolean,"key": string,"value": NonNullable<Json>

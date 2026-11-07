@@ -11,9 +11,9 @@ Call `features()` on the server. Expose `publicFeatures(features())` to the brow
 | Switch / env | Default | Depends on | Shows / hides |
 | --- | --- | --- | --- |
 | `PRICING_MODE` | `zones` | `distance` / `hybrid` need `FEATURE_DISTANCE_PRICING` (+ its keys); else falls back to `zones` | How a trip is priced: fixed zones only, distance rules, or hybrid (zone route when present, else distance) |
-| `FEATURE_DISTANCE_PRICING` | off | `GOOGLE_MAPS_SERVER_KEY`, `QUOTE_SIGNING_SECRET` | Distance pricing engine, signed quotes, Admin → Pricing v2 (Rates, Quote simulator). Without keys the switch stays off and an error is logged |
+| `FEATURE_DISTANCE_PRICING` | off | `GOOGLE_MAPS_SERVER_KEY`, `QUOTE_SIGNING_SECRET` | Distance pricing: Attica service area (`@tem/geo`), Places `locationRestriction`, Google Routes + `route_cache`, `/api/geo/check`, signed quotes (B3+), Admin → Pricing v2. Without keys the switch stays off and an error is logged |
 | `FEATURE_DEMAND_PRICING` | off | distance pricing | Demand factor on quotes (cap in pricing settings). Off if distance pricing is off |
-| `SERVICE_AREA` | `attica` | polygon file (B2) | Which service-area polygon rejects out-of-area addresses |
+| `SERVICE_AREA` | `attica` | `packages/geo/areas/<name>.geojson` | Which service-area polygon rejects out-of-area addresses (`inServiceArea`) |
 | `FEATURE_PLACES` | off | Places API key (existing) | Formal autocomplete switch for booking/request forms |
 | `FEATURE_RETURN_TRIP` | off | — (works in every pricing mode) | “Add return” in the booking widget; linked bookings; return discount |
 | `FEATURE_FLIGHT_TRACKING` | off | `FLIGHT_PROVIDER`; `FLIGHT_PROVIDER_KEY` unless provider is `manual` | Flight number checks, ETA shifts, admin flight card, office alerts |

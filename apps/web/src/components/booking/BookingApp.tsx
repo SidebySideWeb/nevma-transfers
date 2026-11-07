@@ -27,6 +27,10 @@ export type BookingAppProps = {
   header: HeroHeader;
   /** PUBLIC_ADDRESS_AUTOCOMPLETE=true and server key present (build-time public flag). */
   addressAutocomplete?: boolean;
+  /** FEATURE_DISTANCE_PRICING (publicFeatures). */
+  distancePricing?: boolean;
+  /** wa.me URL when FEATURE_WHATSAPP is on. */
+  whatsappHref?: string | null;
 };
 
 function skewFromDateHeader(dateHeader: string | null): number {
@@ -54,6 +58,8 @@ export default function BookingApp({
   contact,
   header,
   addressAutocomplete = false,
+  distancePricing = false,
+  whatsappHref = null,
 }: BookingAppProps) {
   const [state, dispatch] = useReducer(bookingReducer, undefined, createInitialState);
   const [preferredClassKey, setPreferredClassKey] = useState<string | null>(null);
@@ -478,6 +484,8 @@ export default function BookingApp({
         formError={state.formError}
         busy={state.busy}
         addressAutocomplete={addressAutocomplete}
+        distancePricing={distancePricing}
+        whatsappHref={whatsappHref}
         onChange={(patch) => dispatch({ type: 'SET_SEARCH', patch })}
         onChangeDetails={(patch) => dispatch({ type: 'SET_DETAILS', patch })}
         onSubmit={submitQuote}

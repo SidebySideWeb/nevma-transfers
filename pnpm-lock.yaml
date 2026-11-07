@@ -169,6 +169,9 @@ importers:
       '@tem/features':
         specifier: workspace:*
         version: link:../../packages/features
+      '@tem/geo':
+        specifier: workspace:*
+        version: link:../../packages/geo
       '@tem/places':
         specifier: workspace:*
         version: link:../../packages/places
@@ -265,6 +268,8 @@ importers:
         version: 8.23.1
 
   packages/features: {}
+
+  packages/geo: {}
 
   packages/places: {}
 

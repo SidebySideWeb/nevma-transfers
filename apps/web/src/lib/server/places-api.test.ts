@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@tem/features', () => ({
+  features: vi.fn(() => ({
+    distancePricing: false,
+    serviceArea: 'attica',
+  })),
+}));
+
 vi.mock('@tem/places', async () => {
   const actual = await vi.importActual<typeof import('@tem/places')>('@tem/places');
   return {
@@ -30,6 +37,7 @@ vi.mock('./places-config', async () => {
   };
 });
 
+import { features } from '@tem/features';
 import { PlacesError } from '@tem/places';
 import { autocomplete as placesAutocomplete } from '@tem/places';
 import { assertRateLimit } from './rate-limit';
@@ -50,6 +58,10 @@ describe('places API routes', () => {
   beforeEach(() => {
     vi.mocked(placesEnabled).mockReturnValue(true);
     vi.mocked(assertRateLimit).mockResolvedValue(undefined);
+    vi.mocked(features).mockReturnValue({
+      distancePricing: false,
+      serviceArea: 'attica',
+    } as ReturnType<typeof features>);
   });
   afterEach(() => vi.clearAllMocks());
 
@@ -91,6 +103,43 @@ describe('places API routes', () => {
     expect(placesAutocomplete).toHaveBeenCalled();
     const body = await res.json();
     expect(body.suggestions[0].main).toBe('Hilton Athens');
+  });
+
+  it('switch off: autocomplete request uses bias (snapshot), not Attica restriction', async () => {
+    const token = '00000000-0000-4000-8000-000000000001';
+    await handleAutocomplete(
+      req('/api/places/autocomplete', { input: 'hilton ath', sessionToken: token }),
+      'vid',
+      '1.1.1.1',
+      ORIGIN,
+    );
+    expect(placesAutocomplete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bias: { lat: 37.98, lng: 23.73, radiusM: 50000 },
+        apiKey: 'test-key',
+      }),
+    );
+    const arg = vi.mocked(placesAutocomplete).mock.calls[0]![0] as Record<string, unknown>;
+    expect(arg).not.toHaveProperty('locationRestriction');
+    expect(arg).not.toHaveProperty('preferPrimaryTypes');
+  });
+
+  it('switch on: autocomplete uses locationRestriction and preferred types', async () => {
+    vi.mocked(features).mockReturnValue({
+      distancePricing: true,
+      serviceArea: 'attica',
+    } as ReturnType<typeof features>);
+    const token = '00000000-0000-4000-8000-000000000001';
+    await handleAutocomplete(
+      req('/api/places/autocomplete', { input: 'hilton ath', sessionToken: token }),
+      'vid',
+      '1.1.1.1',
+      ORIGIN,
+    );
+    const arg = vi.mocked(placesAutocomplete).mock.calls[0]![0] as Record<string, unknown>;
+    expect(arg).toHaveProperty('locationRestriction');
+    expect(arg).toHaveProperty('preferPrimaryTypes');
+    expect(arg).not.toHaveProperty('bias');
   });
 
   it('returns details for a valid place', async () => {

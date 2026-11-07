@@ -1,0 +1,18 @@
+{
+  "name": "@tem/geo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Service-area polygons (Attica) and point-in-polygon helpers for distance pricing. docs/BOOKING-V2-PLAN.md",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.mjs",
+      "default": "./src/index.mjs"
+    }
+  },
+  "types": "./src/index.d.ts",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}
