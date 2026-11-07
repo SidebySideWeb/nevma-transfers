@@ -154,8 +154,18 @@ const zoneOpts = (zones ?? []).map((z) => ({ value: z.code, label: z.name }));
       distanceKm?: number | null;
       durationMin?: number;
       pricingVersion?: { settingsId?: string; source?: string };
-      options?: { classKey: string; baseCents: number | null; breakdown?: { label: string; amount: number }[] }[];
-      classes?: { key: string; total: number | null; breakdown?: { label: string; amount: number }[] }[];
+      options?: {
+        classKey: string;
+        baseCents: number | null;
+        demandFactor?: number;
+        breakdown?: { code?: string; label: string; amount: number }[];
+      }[];
+      classes?: {
+        key: string;
+        total: number | null;
+        demandFactor?: number;
+        breakdown?: { code?: string; label: string; amount: number }[];
+      }[];
     };
     const meta = document.getElementById('sim-meta');
     if (meta) {
@@ -174,12 +184,22 @@ const zoneOpts = (zones ?? []).map((z) => ({ value: z.code, label: z.name }));
       const rows = result.options ?? result.classes?.map((c) => ({
         classKey: c.key,
         baseCents: c.total,
+        demandFactor: c.demandFactor,
         breakdown: c.breakdown,
       })) ?? [];
       for (const o of rows) {
         const tr = document.createElement('tr');
-        const bd = (o.breakdown ?? [])
-          .map((l) => `${l.label}: ${euro(l.amount)}`)
+        const df =
+          'demandFactor' in o
+            ? (o as { demandFactor?: number }).demandFactor
+            : undefined;
+        const demandNote =
+          df != null && df !== 1 ? `Demand factor ×${Number(df).toFixed(2)}` : '';
+        const bd = [
+          demandNote,
+          ...(o.breakdown ?? []).map((l) => `${l.label}: ${euro(l.amount)}`),
+        ]
+          .filter(Boolean)
           .join(' · ');
         tr.innerHTML = `<td>${o.classKey}</td><td class="num">${o.baseCents != null ? euro(o.baseCents) : '—'}</td><td>${bd || '—'}</td>`;
         tbody.appendChild(tr);

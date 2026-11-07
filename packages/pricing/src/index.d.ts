@@ -8,6 +8,8 @@ export type ClassPrice = {
   available: boolean;
   reason?: string;
   kmIncluded?: number;
+  /** Demand multiplier baked into total (1 when off / unused). */
+  demandFactor?: number;
 };
 
 export type ClassRate = {
@@ -34,6 +36,8 @@ export type PricingSettings = {
     enabled: boolean;
     steps: Array<{ over: number; factor: number }>;
     max: number;
+    /** Hybrid/zones fixed routes: apply demand only when true (default false). */
+    apply_to_fixed_routes?: boolean;
   };
 };
 
@@ -72,7 +76,8 @@ export type PriceTripInput = {
   }>;
   zonePrice?: (classKey: string) => number | null | undefined;
   mode?: 'zones' | 'distance' | 'hybrid';
-  demand?: number;
+  /** Single factor for all classes, or per-class map. */
+  demand?: number | Record<string, number>;
   extras?: BreakdownLine[];
   vatRateBp?: number;
 };
@@ -111,3 +116,30 @@ export declare function areaFees(
 export declare function priceTrip(input: PriceTripInput): {
   perClass: Record<string, ClassPrice>;
 };
+
+export declare function peakBusyCount(
+  intervals: Array<{ start: Date | string | number; end: Date | string | number }>,
+  windowStart: Date | string | number,
+  windowEnd: Date | string | number,
+): number;
+
+export declare function occupancyRatio(
+  peakBusy: number,
+  activeVehicles: number,
+): { occupancy: number; unavailable: boolean };
+
+export declare function demandFactor(input: {
+  featureOn?: boolean;
+  demand?: PricingSettings['demand'] | null;
+  occupancy?: number;
+  activeVehicles?: number;
+}): { factor: number; unavailable?: boolean };
+
+export declare function demandForClass(
+  demand: number | Record<string, number> | undefined,
+  classKey: string,
+): number;
+
+export declare function applyDemandToFixedRoute(
+  demandSettings: PricingSettings['demand'] | null | undefined,
+): boolean;

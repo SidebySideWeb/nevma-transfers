@@ -4,7 +4,10 @@ import {
   applyReturnDiscount,
   areaFees,
   athensMinutesOfDay,
+  demandFactor,
   inNightWindow,
+  occupancyRatio,
+  peakBusyCount,
   periodFactor,
   priceTrip,
   roundUpEuros,
@@ -190,10 +193,39 @@ describe('transfer building blocks', () => {
     assert.equal(r.perClass.e.total, 5300);
   });
 
-  it('applies demand factor', () => {
+  it('applies demand factor as High demand before minimum', () => {
     const r = price({ demand: 1.1 });
     // 4000 * 1.1 = 4400
     assert.equal(r.perClass.e.total, 4400);
+    assert.equal(r.perClass.e.demandFactor, 1.1);
+    const line = r.perClass.e.breakdown.find((b) => b.code === 'demand');
+    assert.equal(line?.label, 'High demand');
+  });
+
+  it('skips demand on hybrid fixed routes unless apply_to_fixed_routes', () => {
+    const off = price({
+      mode: 'hybrid',
+      zonePrice: () => 9000,
+      demand: 1.2,
+      settings: {
+        ...SETTINGS,
+        demand: { enabled: true, steps: [], max: 1.25, apply_to_fixed_routes: false },
+      },
+    });
+    assert.equal(off.perClass.e.total, 9000);
+    assert.ok(!off.perClass.e.breakdown.some((b) => b.code === 'demand'));
+
+    const on = price({
+      mode: 'hybrid',
+      zonePrice: () => 9000,
+      demand: 1.2,
+      settings: {
+        ...SETTINGS,
+        demand: { enabled: true, steps: [], max: 1.25, apply_to_fixed_routes: true },
+      },
+    });
+    assert.equal(on.perClass.e.total, 10800);
+    assert.ok(on.perClass.e.breakdown.some((b) => b.code === 'demand'));
   });
 
   it('enforces minimum fare', () => {
@@ -338,5 +370,77 @@ describe('B6 return discount + per-leg night', () => {
     const discounted = applyReturnDiscount(retNight, 10);
     assert.equal(discounted, Math.round(retNight * 0.9));
     assert.equal(out + discounted, out + discounted);
+  });
+});
+
+describe('B8 demandFactor occupancy', () => {
+  const DEMAND = {
+    enabled: true,
+    steps: [
+      { over: 0.7, factor: 1.1 },
+      { over: 0.9, factor: 1.2 },
+    ],
+    max: 1.15,
+  };
+
+  it('peak over window, not average', () => {
+    const w0 = '2026-07-15T18:00:00Z';
+    const w1 = '2026-07-15T20:00:00Z';
+    // Two bookings overlap for 30 min → peak 2; average would be lower
+    const peak = peakBusyCount(
+      [
+        { start: '2026-07-15T17:00:00Z', end: '2026-07-15T18:30:00Z' },
+        { start: '2026-07-15T18:15:00Z', end: '2026-07-15T19:00:00Z' },
+        { start: '2026-07-15T19:30:00Z', end: '2026-07-15T21:00:00Z' },
+      ],
+      w0,
+      w1,
+    );
+    assert.equal(peak, 2);
+  });
+
+  it('0 active vehicles → unavailable, no division by zero', () => {
+    const r = occupancyRatio(3, 0);
+    assert.equal(r.unavailable, true);
+    const f = demandFactor({ featureOn: true, demand: DEMAND, occupancy: 1, activeVehicles: 0 });
+    assert.equal(f.unavailable, true);
+    assert.equal(f.factor, 1);
+  });
+
+  it('steps and cap; switch off / disabled → factor 1', () => {
+    assert.equal(
+      demandFactor({ featureOn: true, demand: DEMAND, occupancy: 0.95 }).factor,
+      1.15, // capped (would be 1.2)
+    );
+    assert.equal(
+      demandFactor({ featureOn: true, demand: DEMAND, occupancy: 0.75 }).factor,
+      1.1,
+    );
+    assert.equal(
+      demandFactor({ featureOn: true, demand: DEMAND, occupancy: 0.5 }).factor,
+      1,
+    );
+    assert.equal(
+      demandFactor({ featureOn: false, demand: DEMAND, occupancy: 0.95 }).factor,
+      1,
+    );
+    assert.equal(
+      demandFactor({
+        featureOn: true,
+        demand: { ...DEMAND, enabled: false },
+        occupancy: 0.95,
+      }).factor,
+      1,
+    );
+  });
+
+  it('quote stores demandFactor so later occupancy cannot change the sold total', () => {
+    const quoted = price({ demand: 1.1 });
+    assert.equal(quoted.perClass.e.demandFactor, 1.1);
+    assert.equal(quoted.perClass.e.total, 4400);
+    // Re-price with higher demand would differ — the stored quote total stays 4400
+    const later = price({ demand: 1.25 });
+    assert.ok(later.perClass.e.total !== quoted.perClass.e.total);
+    assert.equal(quoted.perClass.e.total, 4400);
   });
 });

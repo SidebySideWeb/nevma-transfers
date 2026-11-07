@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { actions } from 'astro:actions';
 import { features } from '@tem/features';
+import { demandFactor, occupancyRatio, peakBusyCount } from '@tem/pricing';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Banner from '../../components/Banner.astro';
 import PricingSaveBar from '../../components/PricingSaveBar.astro';
@@ -32,7 +33,80 @@ const demand = (doc.demand ?? {
     { over: 0.9, factor: 1.2 },
   ],
   max: 1.25,
-}) as { enabled: boolean; steps: { over: number; factor: number }[]; max: number };
+  apply_to_fixed_routes: false,
+}) as {
+  enabled: boolean;
+  steps: { over: number; factor: number }[];
+  max: number;
+  apply_to_fixed_routes?: boolean;
+};
+
+// Preview: today 18:00–20:00 Athens for each active class
+const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }).format(new Date());
+const windowStart = new Date(`${todayKey}T18:00:00+03:00`);
+const windowEnd = new Date(`${todayKey}T20:00:00+03:00`);
+
+const { data: classRows } = await supabase
+  .from('vehicle_classes')
+  .select('id, key, name')
+  .eq('active', true)
+  .order('sort_order');
+
+type PreviewLine = { text: string };
+const previews: PreviewLine[] = [];
+
+for (const cls of classRows ?? []) {
+  const { count: active } = await supabase
+    .from('vehicles')
+    .select('id', { count: 'exact', head: true })
+    .eq('class_id', cls.id)
+    .eq('status', 'active');
+  const activeN = active ?? 0;
+  if (activeN <= 0) continue;
+
+  const { data: bookings } = await supabase
+    .from('bookings')
+    .select('pickup_at, duration_minutes, status, hold_expires_at')
+    .eq('class_id', cls.id)
+    .in('status', ['confirmed', 'assigned', 'pending'])
+    .lt('pickup_at', windowEnd.toISOString())
+    .gt('pickup_at', new Date(windowStart.getTime() - 24 * 3600_000).toISOString());
+
+  const intervals: { start: string; end: string }[] = [];
+  const now = Date.now();
+  for (const b of bookings ?? []) {
+    if (b.status === 'pending' && b.hold_expires_at && new Date(b.hold_expires_at).getTime() <= now) {
+      continue;
+    }
+    if (!['confirmed', 'assigned', 'pending'].includes(b.status)) continue;
+    const start = new Date(b.pickup_at);
+    const end = new Date(start.getTime() + (b.duration_minutes || 0) * 60_000);
+    if (end <= windowStart || start >= windowEnd) continue;
+    intervals.push({ start: start.toISOString(), end: end.toISOString() });
+  }
+
+  const peak = peakBusyCount(intervals, windowStart, windowEnd);
+  const { occupancy, unavailable } = occupancyRatio(peak, activeN);
+  if (unavailable) continue;
+  const { factor } = demandFactor({
+    featureOn: true,
+    demand: { ...demand, enabled: true },
+    occupancy,
+    activeVehicles: activeN,
+  });
+  const pct = Math.round(occupancy * 100);
+  const bump = Math.round((factor - 1) * 100);
+  const label = cls.name || cls.key;
+  if (factor > 1) {
+    previews.push({
+      text: `Today the ${label} is ${pct} % booked between 18:00 and 20:00 → +${bump} %`,
+    });
+  } else {
+    previews.push({
+      text: `Today the ${label} is ${pct} % booked between 18:00 and 20:00 → no demand uplift`,
+    });
+  }
+}
 ---
 
 <AdminLayout title="Demand" current="pricing-demand" staffEmail={staff.email}>
@@ -43,16 +117,24 @@ const demand = (doc.demand ?? {
       </Banner>
     )
   }
-  <p class="muted">Demand pricing behaviour is filled in by B8. You can edit the steps and cap here.</p>
+
   <form method="POST" action={actions.savePricingSettings} id="demand-form" class="stack">
     <input type="hidden" name="docJson" id="docJson" value={JSON.stringify(doc)} />
-    <input type="hidden" name="stepsJson" id="stepsJson" value={JSON.stringify(demand.steps)} />
     <section class="panel">
       <div class="panel-head"><h2>Demand factor</h2></div>
       <div class="panel-body stack">
         <label class="switch">
           <input type="checkbox" id="d-enabled" checked={demand.enabled || undefined} data-d="enabled" />
           <span>Enabled</span>
+        </label>
+        <label class="switch">
+          <input
+            type="checkbox"
+            id="d-fixed"
+            checked={demand.apply_to_fixed_routes || undefined}
+            data-d="fixed"
+          />
+          <span>Apply to fixed routes (hybrid)</span>
         </label>
         <div class="field">
           <label for="d-max">Maximum factor</label>
@@ -61,23 +143,64 @@ const demand = (doc.demand ?? {
         <div class="table-wrap">
           <table class="table" id="steps-table">
             <thead>
-              <tr><th>Utilisation over</th><th>Factor</th></tr>
+              <tr>
+                <th>Over %</th>
+                <th>+ %</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody>
               {
                 demand.steps.map((s) => (
                   <tr>
-                    <td><input class="input over" type="number" step="0.01" value={s.over} /></td>
-                    <td><input class="input factor" type="number" step="0.01" value={s.factor} /></td>
+                    <td>
+                      <input
+                        class="input over-pct"
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        value={Math.round(Number(s.over) * 100)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        class="input bump-pct"
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={Math.round((Number(s.factor) - 1) * 100)}
+                      />
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-secondary btn-sm" data-rm>
+                        Remove
+                      </button>
+                    </td>
                   </tr>
                 ))
               }
             </tbody>
           </table>
         </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="add-step">Add step</button>
       </div>
     </section>
   </form>
+
+  {
+    previews.length > 0 && (
+      <section class="panel" style="margin-top:1rem">
+        <div class="panel-head"><h2>Preview</h2></div>
+        <div class="panel-body stack-sm">
+          {previews.map((p) => (
+            <p style="margin:0">{p.text}</p>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
   <PricingSaveBar formId="demand-form" />
 </AdminLayout>
 
@@ -85,17 +208,21 @@ const demand = (doc.demand ?? {
   (function () {
     const docInput = document.getElementById('docJson');
     const form = document.getElementById('demand-form');
+    const tbody = document.querySelector('#steps-table tbody');
     const base = JSON.parse(docInput.value || '{}');
     function sync() {
       const steps = [];
       document.querySelectorAll('#steps-table tbody tr').forEach((tr) => {
+        const overPct = Number(tr.querySelector('.over-pct').value) || 0;
+        const bumpPct = Number(tr.querySelector('.bump-pct').value) || 0;
         steps.push({
-          over: Number(tr.querySelector('.over').value) || 0,
-          factor: Number(tr.querySelector('.factor').value) || 1,
+          over: overPct / 100,
+          factor: 1 + bumpPct / 100,
         });
       });
       base.demand = {
         enabled: document.querySelector('[data-d="enabled"]').checked,
+        apply_to_fixed_routes: document.querySelector('[data-d="fixed"]').checked,
         max: Number(document.querySelector('[data-d="max"]').value) || 1,
         steps,
       };
@@ -103,5 +230,21 @@ const demand = (doc.demand ?? {
     }
     form?.addEventListener('input', sync);
     form?.addEventListener('submit', sync);
+    form?.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t && t.matches && t.matches('[data-rm]')) {
+        t.closest('tr')?.remove();
+        sync();
+      }
+    });
+    document.getElementById('add-step')?.addEventListener('click', () => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><input class="input over-pct" type="number" step="1" min="0" max="100" value="70" /></td>' +
+        '<td><input class="input bump-pct" type="number" step="1" min="0" value="10" /></td>' +
+        '<td><button type="button" class="btn btn-secondary btn-sm" data-rm>Remove</button></td>';
+      tbody?.appendChild(tr);
+      sync();
+    });
   })();
 </script>

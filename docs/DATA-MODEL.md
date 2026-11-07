@@ -176,7 +176,7 @@ Google Routes distance/duration cache for `FEATURE_DISTANCE_PRICING` (`docs/BOOK
 
 ## 0025 — Pricing rules (7 Nov 2026)
 
-Distance/hybrid pricing rules (`docs/BOOKING-V2-PLAN.md` §3–4, B3). Kit name `0018_pricing_rules`. Tables: `class_rates` (append-only versions + view `current_class_rates`), `pricing_settings` (versioned JSON + `pricing_settings_valid` + view `current_pricing_settings`), `pricing_periods`, `pricing_areas` (airport/port polygons). Seed: zero rates per class, default settings (night 00:00–06:00 ×1.2, quote TTL 20, rounding €1), LGAV/Piraeus/Rafina/Lavrio fees 0. Staff RLS read/write; anon none.
+Distance/hybrid pricing rules (`docs/BOOKING-V2-PLAN.md` §3–4, B3). Kit name `0018_pricing_rules`. Tables: `class_rates` (append-only versions + view `current_class_rates`), `pricing_settings` (versioned JSON + `pricing_settings_valid` + view `current_pricing_settings`), `pricing_periods`, `pricing_areas` (airport/port polygons). Seed: zero rates per class, default settings (night 00:00–06:00 ×1.2, quote TTL 20, rounding €1), LGAV/Piraeus/Rafina/Lavrio fees 0. Staff RLS read/write; anon none. Demand object (`enabled`, `steps`, `max`, optional `apply_to_fixed_routes`) is consumed by B8 when `FEATURE_DEMAND_PRICING` is on; the quote stores `demandFactor` per class so the sold total does not change after occupancy moves.
 
 ## 0026 — Quotes (7 Nov 2026)
 

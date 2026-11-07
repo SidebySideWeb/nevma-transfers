@@ -1,6 +1,7 @@
 // @tem/pricing — pure priceTrip (no I/O). Money = integer cents. docs/BOOKING-V2-PLAN.md §3
 
 import { pointInRing } from '@tem/geo';
+import { applyDemandToFixedRoute, demandForClass } from './demand.mjs';
 
 /**
  * @typedef {{ code: string, label: string, amount: number }} BreakdownLine
@@ -173,7 +174,7 @@ function ratesAreZero(rate) {
  *   areas?: Array<{ label: string, kind: string, polygon: unknown, fee: number, active?: boolean }>,
  *   zonePrice?: (classKey: string) => number|null|undefined,
  *   mode?: 'zones'|'distance'|'hybrid',
- *   demand?: number,
+ *   demand?: number | Record<string, number>,
  *   extras?: BreakdownLine[],
  *   vatRateBp?: number,
  * }} input
@@ -197,7 +198,6 @@ export function priceTrip(input) {
   const nightOn = inNightWindow(trip.pickupAt, settings.night);
   const nightF = nightOn ? Number(settings.night.factor) || 1 : 1;
   const periodF = periodFactor(trip.pickupAt, periods);
-  const demandF = Number(demand) > 0 ? Number(demand) : 1;
   const stopFee = Math.trunc(settings.stop_fee ?? 0);
   const stopCount = Array.isArray(trip.stops) ? trip.stops.length : 0;
   const stopsCents = stopFee * stopCount;
@@ -261,10 +261,11 @@ export function priceTrip(input) {
         cents = applyFactor(cents, periodF);
         breakdown.push({ code: 'period', label: 'Special period', amount: cents - before });
       }
+      const demandF = demandForClass(demand, key);
       if (demandF !== 1) {
         const before = cents;
         cents = applyFactor(cents, demandF);
-        breakdown.push({ code: 'demand', label: 'Demand', amount: cents - before });
+        breakdown.push({ code: 'demand', label: 'High demand', amount: cents - before });
       }
       for (const e of extras) breakdown.push({ ...e, amount: Math.trunc(e.amount) });
       cents += extrasCents;
@@ -281,6 +282,7 @@ export function priceTrip(input) {
           available: false,
           reason: 'not_priced',
           kmIncluded,
+          demandFactor: demandF,
         };
         continue;
       }
@@ -292,6 +294,7 @@ export function priceTrip(input) {
         breakdown,
         available: true,
         kmIncluded,
+        demandFactor: demandF,
       };
       continue;
     }
@@ -373,10 +376,12 @@ export function priceTrip(input) {
       cents = applyFactor(cents, periodF);
       breakdown.push({ code: 'period', label: 'Special period', amount: cents - before });
     }
+    const demandF =
+      useFixed && !applyDemandToFixedRoute(settings.demand) ? 1 : demandForClass(demand, key);
     if (demandF !== 1) {
       const before = cents;
       cents = applyFactor(cents, demandF);
-      breakdown.push({ code: 'demand', label: 'Demand', amount: cents - before });
+      breakdown.push({ code: 'demand', label: 'High demand', amount: cents - before });
     }
 
     const minFare = Math.trunc(rate?.minimum_fare ?? 0);
@@ -406,10 +411,24 @@ export function priceTrip(input) {
     }
 
     const { net, vat } = splitVat(rounded, vatRateBp);
-    perClass[key] = { total: rounded, net, vat, breakdown, available: true };
+    perClass[key] = {
+      total: rounded,
+      net,
+      vat,
+      breakdown,
+      available: true,
+      demandFactor: demandF,
+    };
   }
 
   return { perClass };
 }
 
+export {
+  applyDemandToFixedRoute,
+  demandFactor,
+  demandForClass,
+  occupancyRatio,
+  peakBusyCount,
+} from './demand.mjs';
 export { pointInRing };

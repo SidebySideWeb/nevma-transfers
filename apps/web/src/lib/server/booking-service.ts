@@ -13,6 +13,7 @@ import {
   rejectMoneyFields,
 } from '../booking/validation';
 import { bookingDb, type BookingDb } from './db';
+import { demandFactorsForClasses, publicBreakdown } from './demand';
 import {
   assertInServiceArea,
   loadPricingContext,
@@ -530,6 +531,15 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     for (const c of classes) {
       zonePriceMap.set(c.key, await zonePriceCents(from.id, toId, c.id));
     }
+    const demandSnaps = await demandFactorsForClasses({
+      classes: classes.map((c) => ({ id: c.id, key: c.key })),
+      pickupAt: pickup,
+      durationMin,
+      demand: settingsDoc.demand,
+    });
+    const demandByClass = Object.fromEntries(
+      Object.entries(demandSnaps).map(([k, s]) => [k, s.factor]),
+    );
     const priced = priceTrip({
       trip: {
         type: 'transfer',
@@ -547,12 +557,14 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       areas: ctx.areas,
       mode: f.pricingMode,
       zonePrice: (key) => zonePriceMap.get(key) ?? null,
+      demand: demandByClass,
       vatRateBp: ctx.vatRateBp,
     });
 
     for (const [key, p] of Object.entries(priced.perClass)) {
       const cls = classes.find((c) => c.key === key);
-      let available = p.available;
+      const snap = demandSnaps[key];
+      let available = p.available && !snap?.unavailable;
       if (available && cls) {
         const { rows: avail } = await db().query<{ n: number }>(
           `select public.class_availability(
@@ -563,26 +575,28 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         );
         available = (avail[0]?.n ?? 0) > 0;
       }
+      const demandFactor = p.demandFactor ?? snap?.factor ?? 1;
       prices[key] = {
-        total: p.available ? p.total : null,
+        total: available && p.available ? p.total : null,
         net: p.net,
         vat: p.vat,
         breakdown: p.breakdown,
         available,
-        ...(p.reason ? { reason: p.reason } : {}),
+        demandFactor,
+        ...(p.reason || snap?.unavailable ? { reason: p.reason ?? 'unavailable' } : {}),
       };
       const opt = options.find((o) => o.classKey === key);
       if (opt) {
-        if (p.available) {
+        if (available && p.available) {
           opt.baseCents = p.total;
-          opt.available = available;
-          opt.breakdown = p.breakdown;
+          opt.available = true;
+          opt.breakdown = simulate ? p.breakdown : publicBreakdown(p.breakdown);
           delete opt.reason;
         } else {
           opt.baseCents = null;
           opt.available = false;
           opt.breakdown = undefined;
-          opt.reason = p.reason ?? 'not_priced';
+          opt.reason = snap?.unavailable ? 'unavailable' : (p.reason ?? 'not_priced');
         }
       }
     }
@@ -657,6 +671,15 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       for (const c of classes) {
         zonePriceMap.set(c.key, await zonePriceCents(toId, from.id, c.id));
       }
+      const demandSnaps = await demandFactorsForClasses({
+        classes: classes.map((c) => ({ id: c.id, key: c.key })),
+        pickupAt: returnPickupAt,
+        durationMin: returnRouted.durationMin,
+        demand: settingsDoc.demand,
+      });
+      const demandByClass = Object.fromEntries(
+        Object.entries(demandSnaps).map(([k, s]) => [k, s.factor]),
+      );
       const priced = priceTrip({
         trip: {
           type: 'transfer',
@@ -680,12 +703,14 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         areas: ctx.areas,
         mode: f.pricingMode,
         zonePrice: (key) => zonePriceMap.get(key) ?? null,
+        demand: demandByClass,
         vatRateBp: ctx.vatRateBp,
       });
       for (const [key, p] of Object.entries(priced.perClass)) {
+        const snap = demandSnaps[key];
         returnPrices.set(key, {
-          cents: p.available ? p.total : null,
-          breakdown: p.breakdown,
+          cents: p.available && !snap?.unavailable ? p.total : null,
+          breakdown: simulate ? p.breakdown : publicBreakdown(p.breakdown),
         });
       }
     } else {
@@ -736,8 +761,9 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       options[i] = { classKey: o.classKey, ...merged };
     }
 
-    // Rebuild prices map for signed quote
+    // Rebuild prices map for signed quote (keep outbound demandFactor)
     for (const o of options) {
+      const prev = prices[o.classKey] as { demandFactor?: number } | undefined;
       prices[o.classKey] = {
         total: o.total ?? o.baseCents,
         outbound: o.outbound,
@@ -745,8 +771,15 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         available: o.available && o.baseCents != null,
         breakdown: o.breakdown ?? [],
         returnBreakdown: o.returnBreakdown ?? [],
+        demandFactor: prev?.demandFactor ?? 1,
         ...(o.reason ? { reason: o.reason } : {}),
       };
+    }
+  }
+
+  if (!simulate) {
+    for (const o of options) {
+      if (o.breakdown) o.breakdown = publicBreakdown(o.breakdown);
     }
   }
 
@@ -760,11 +793,15 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
   };
 
   if (simulate) {
+    const withDemand = options.map((o) => {
+      const stored = prices[o.classKey] as { demandFactor?: number } | undefined;
+      return { ...o, demandFactor: stored?.demandFactor ?? 1 };
+    });
     return {
       pickupAt,
       durationMinutes: durationMin,
       currency: 'EUR' as const,
-      options,
+      options: withDemand,
       distanceKm,
       durationMin,
       returnPickupAt: returnPickupAt
@@ -772,13 +809,14 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         : undefined,
       returnDiscountPct: returnPickupAt ? returnDiscountPct : undefined,
       pricingVersion,
-      classes: options.map((o) => ({
+      classes: withDemand.map((o) => ({
         key: o.classKey,
         total: o.baseCents,
         outbound: o.outbound,
         return: o.return,
         available: o.available && o.baseCents != null,
         breakdown: o.breakdown,
+        demandFactor: o.demandFactor,
       })),
     };
   }
