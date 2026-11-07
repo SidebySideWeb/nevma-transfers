@@ -5,6 +5,9 @@ import { searchCustomerRows } from '../lib/customer-search';
 import {
   callInternalBooking,
   callInternalCancel,
+  callInternalCompanyInvite,
+  callInternalCompanyStatementPaid,
+  callInternalCompanyStatementSend,
   callInternalDriverInvite,
   callInternalDriverNotify,
   callInternalFlightCheck,
@@ -36,6 +39,7 @@ import {
 import { parseTstzRange, rangesOverlap } from '../lib/range';
 import { resolveStatementPeriod, type PeriodKind } from '../lib/report-period';
 import { logAdminActivity } from '../lib/admin-activity';
+import { corporateDb } from '../lib/corporate';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { athensLocalToInstant } from '../lib/time';
 import { signWithEnv } from '../lib/signing';
@@ -45,6 +49,11 @@ function requireStaff(locals: App.Locals) {
     throw new ActionError({ code: 'UNAUTHORIZED', message: 'Not signed in' });
   }
   return locals.staff;
+}
+
+/** B9: every Companies action 404s when FEATURE_CORPORATE is off. */
+function requireCorporate() {
+  if (!features().corporate) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
 }
 
 function throwDb(error: { code?: string; message?: string; details?: string | null } | null, fieldText?: string): never {
@@ -67,6 +76,7 @@ const tripInput = z.object({
   hours: z.number().int().positive().optional(),
   passengers: z.number().int().positive(),
   luggage: z.number().int().nonnegative(),
+  companyId: z.uuid().optional(),
 });
 
 export const server = {
@@ -976,11 +986,272 @@ export const server = {
     },
   }),
 
+  // ---------------------------------------------------------------------------
+  // B9 corporate accounts (FEATURE_CORPORATE). Tables come from migration 0030.
+  // ---------------------------------------------------------------------------
+  saveCompany: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid().optional().or(z.literal('')),
+      name: z.string().trim().min(1).max(200),
+      kind: z.enum(['hotel', 'agency', 'company']),
+      vatNumber: z.string().trim().max(40).optional(),
+      taxOffice: z.string().trim().max(100).optional(),
+      billingAddress: z.string().trim().max(400).optional(),
+      billingEmail: z.union([z.literal(''), z.email()]).optional(),
+      discountPct: z.string().optional(),
+      payOnAccount: z.string().optional(),
+      creditLimitEuros: z.string().optional(),
+      paymentTermsDays: z.coerce.number().int().min(1).max(365),
+      active: z.string().optional(),
+      notes: z.string().trim().max(2000).optional(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      requireCorporate();
+      const pct = Number((input.discountPct ?? '').trim().replace(',', '.') || '0');
+      if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Discount must be between 0 and 100 %.' });
+      }
+      let creditLimitCents: number | null;
+      try {
+        creditLimitCents = optionalEurosToCents(input.creditLimitEuros ?? '');
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid credit limit' });
+      }
+      if (creditLimitCents != null && creditLimitCents < 0) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid credit limit' });
+      }
+      const row = {
+        name: input.name,
+        kind: input.kind,
+        vat_number: input.vatNumber || null,
+        tax_office: input.taxOffice || null,
+        billing_address: input.billingAddress || null,
+        billing_email: input.billingEmail?.toLowerCase() || null,
+        discount_pct: Math.round(pct * 100) / 100,
+        pay_on_account: input.payOnAccount === 'true' || input.payOnAccount === 'on',
+        credit_limit_cents: creditLimitCents,
+        payment_terms_days: input.paymentTermsDays,
+        active: input.active === 'true' || input.active === 'on',
+        notes: input.notes || null,
+      };
+      const db = corporateDb(createSupabaseServerClient(ctx.cookies));
+      if (input.id) {
+        const { error } = await db
+          .from('companies')
+          .update({ ...row, updated_at: new Date().toISOString() })
+          .eq('id', input.id);
+        if (error) throwDb(error);
+        return { ok: true as const, id: input.id, created: false };
+      }
+      const { data, error } = await db.from('companies').insert(row).select('id').single();
+      if (error) throwDb(error);
+      return { ok: true as const, id: data!.id as string, created: true };
+    },
+  }),
+
+  saveCompanyPrice: defineAction({
+    accept: 'form',
+    input: z.object({
+      companyId: z.string().uuid(),
+      classId: z.string().uuid(),
+      bookingType: z.enum(['transfer', 'hourly']),
+      fromZoneId: z.string().optional(),
+      toZoneId: z.string().optional(),
+      priceEuros: z.string().min(1),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      requireCorporate();
+      let cents: number;
+      try {
+        cents = eurosToCents(input.priceEuros);
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid price' });
+      }
+      if (cents < 0) throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid price' });
+      const transfer = input.bookingType === 'transfer';
+      const from = input.fromZoneId || null;
+      const to = input.toZoneId || null;
+      if (transfer) {
+        if (!from || !to || from === to) {
+          throw new ActionError({ code: 'BAD_REQUEST', message: 'Pick two different zones for a transfer price.' });
+        }
+      }
+      const db = corporateDb(createSupabaseServerClient(ctx.cookies));
+      // Unique indexes are partial, so replace the same key instead of upserting.
+      let del = db
+        .from('company_prices')
+        .delete()
+        .eq('company_id', input.companyId)
+        .eq('class_id', input.classId)
+        .eq('booking_type', input.bookingType);
+      if (transfer) del = del.eq('from_zone_id', from!).eq('to_zone_id', to!);
+      const { error: delErr } = await del;
+      if (delErr) throwDb(delErr);
+      const { error } = await db.from('company_prices').insert({
+        company_id: input.companyId,
+        class_id: input.classId,
+        booking_type: input.bookingType,
+        from_zone_id: transfer ? from : null,
+        to_zone_id: transfer ? to : null,
+        price_cents: cents,
+      });
+      if (error) throwDb(error);
+      return { ok: true as const, companyId: input.companyId };
+    },
+  }),
+
+  deleteCompanyPrice: defineAction({
+    accept: 'form',
+    input: z.object({ id: z.string().uuid(), companyId: z.string().uuid() }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      requireCorporate();
+      const db = corporateDb(createSupabaseServerClient(ctx.cookies));
+      const { error } = await db
+        .from('company_prices')
+        .delete()
+        .eq('id', input.id)
+        .eq('company_id', input.companyId);
+      if (error) throwDb(error);
+      return { ok: true as const, companyId: input.companyId };
+    },
+  }),
+
+  inviteCompanyUser: defineAction({
+    accept: 'form',
+    input: z.object({
+      companyId: z.string().uuid(),
+      email: z.email(),
+      role: z.enum(['admin', 'booker']),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      requireCorporate();
+      const result = await callInternalCompanyInvite(
+        { companyId: input.companyId, email: input.email.trim().toLowerCase(), role: input.role },
+        staff.userId,
+      );
+      if (!result.ok) throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
+      return { ok: true as const, companyId: input.companyId };
+    },
+  }),
+
+  deactivateCompanyUser: defineAction({
+    accept: 'form',
+    input: z.object({ id: z.string().uuid(), companyId: z.string().uuid() }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      requireCorporate();
+      const db = corporateDb(createSupabaseServerClient(ctx.cookies));
+      const { error } = await db
+        .from('company_users')
+        .update({ active: false })
+        .eq('id', input.id)
+        .eq('company_id', input.companyId);
+      if (error) throwDb(error);
+      return { ok: true as const, companyId: input.companyId };
+    },
+  }),
+
+  createCompanyStatement: defineAction({
+    accept: 'form',
+    input: z.object({
+      companyId: z.string().uuid(),
+      periodFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      periodTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      requireCorporate();
+      if (input.periodTo < input.periodFrom) {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'The period must end on or after it starts.' });
+      }
+      const db = corporateDb(createSupabaseServerClient(ctx.cookies));
+      const { data: total, error: totalErr } = await db.rpc('company_statement_total_cents', {
+        p_company_id: input.companyId,
+        p_from: input.periodFrom,
+        p_to: input.periodTo,
+      });
+      if (totalErr) throwDb(totalErr);
+      const { data, error } = await db
+        .from('company_statements')
+        .insert({
+          company_id: input.companyId,
+          period_from: input.periodFrom,
+          period_to: input.periodTo,
+          total_cents: Number(total ?? 0),
+          status: 'draft',
+        })
+        .select('id')
+        .single();
+      if (error) throwDb(error);
+      return { ok: true as const, id: data!.id as string, companyId: input.companyId };
+    },
+  }),
+
+  sendCompanyStatement: defineAction({
+    accept: 'form',
+    input: z.object({ statementId: z.string().uuid(), companyId: z.string().uuid() }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      requireCorporate();
+      const db = corporateDb(createSupabaseServerClient(ctx.cookies));
+      const { data: st, error: sErr } = await db
+        .from('company_statements')
+        .select('id, status, period_from, period_to')
+        .eq('id', input.statementId)
+        .eq('company_id', input.companyId)
+        .maybeSingle();
+      if (sErr) throwDb(sErr);
+      if (!st) throw new ActionError({ code: 'NOT_FOUND', message: 'Statement not found' });
+      if (st.status === 'draft') {
+        // A draft total follows the bookings until it is sent.
+        const { data: total, error: tErr } = await db.rpc('company_statement_total_cents', {
+          p_company_id: input.companyId,
+          p_from: st.period_from,
+          p_to: st.period_to,
+        });
+        if (tErr) throwDb(tErr);
+        const { error: uErr } = await db
+          .from('company_statements')
+          .update({ total_cents: Number(total ?? 0) })
+          .eq('id', st.id);
+        if (uErr) throwDb(uErr);
+      }
+      const result = await callInternalCompanyStatementSend({ statementId: input.statementId }, staff.userId);
+      if (!result.ok) throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
+      return { ok: true as const, companyId: input.companyId };
+    },
+  }),
+
+  markCompanyStatementPaid: defineAction({
+    accept: 'form',
+    input: z.object({
+      statementId: z.string().uuid(),
+      companyId: z.string().uuid(),
+      paidRef: z.string().trim().min(1).max(120),
+    }),
+    async handler(input, ctx) {
+      const staff = requireStaff(ctx.locals);
+      requireCorporate();
+      const result = await callInternalCompanyStatementPaid(
+        { statementId: input.statementId, paidRef: input.paidRef },
+        staff.userId,
+      );
+      if (!result.ok) throw new ActionError({ code: 'BAD_REQUEST', message: result.message });
+      return { ok: true as const, companyId: input.companyId };
+    },
+  }),
+
   classAvailabilityForTrip: defineAction({
     accept: 'json',
     input: tripInput,
     async handler(input, ctx) {
       requireStaff(ctx.locals);
+      if (input.companyId) requireCorporate();
       const supabase = createSupabaseServerClient(ctx.cookies);
       try {
         return await tripClassAvailability(supabase, input);
@@ -1054,10 +1325,12 @@ export const server = {
       priceOverrideReason: z.string().trim().optional(),
       payment: z.enum(['link', 'offline_paid', 'offline_collect']),
       offlineMethod: z.enum(['cash', 'bank_transfer', 'on_account']).optional(),
+      companyId: z.uuid().optional(),
       emailCustomer: z.boolean(),
     }),
     async handler(input, ctx) {
       const staff = requireStaff(ctx.locals);
+      if (input.companyId) requireCorporate();
       const { priceOverrideEuros, idempotencyKey, ...rest } = input;
       let priceOverrideCents: number | undefined;
       if (priceOverrideEuros) {

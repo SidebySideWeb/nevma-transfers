@@ -1,6 +1,7 @@
 // @tem/pricing — pure priceTrip (no I/O). Money = integer cents. docs/BOOKING-V2-PLAN.md §3
 
 import { pointInRing } from '@tem/geo';
+import { applyCompanyDiscount, companyBasePrice } from './company.mjs';
 import { applyDemandToFixedRoute, demandForClass } from './demand.mjs';
 
 /**
@@ -175,6 +176,7 @@ function ratesAreZero(rate) {
  *   zonePrice?: (classKey: string) => number|null|undefined,
  *   mode?: 'zones'|'distance'|'hybrid',
  *   demand?: number | Record<string, number>,
+ *   company?: { prices?: Record<string, number>, discountPct?: number },
  *   extras?: BreakdownLine[],
  *   vatRateBp?: number,
  * }} input
@@ -191,9 +193,11 @@ export function priceTrip(input) {
     zonePrice,
     mode = 'distance',
     demand = 1,
+    company = null,
     extras = [],
     vatRateBp = 2400,
   } = input;
+  const isCompany = Boolean(company);
 
   const nightOn = inNightWindow(trip.pickupAt, settings.night);
   const nightF = nightOn ? Number(settings.night.factor) || 1 : 1;
@@ -246,11 +250,21 @@ export function priceTrip(input) {
 
       const kmPerHour = rate?.km_per_hour ?? 40;
       const kmIncluded = hours * kmPerHour;
+      const corpBase = companyBasePrice(company?.prices, key);
       /** @type {BreakdownLine[]} */
-      const breakdown = [
-        { code: 'hourly', label: `Hourly × ${hours}`, amount: hr * hours },
-      ];
-      let cents = hr * hours;
+      const breakdown = [];
+      let cents = 0;
+      if (corpBase != null) {
+        cents = corpBase * hours;
+        breakdown.push({
+          code: 'company_price',
+          label: 'Company price',
+          amount: cents,
+        });
+      } else {
+        cents = hr * hours;
+        breakdown.push({ code: 'hourly', label: `Hourly × ${hours}`, amount: cents });
+      }
       if (nightOn && nightF !== 1) {
         const before = cents;
         cents = applyFactor(cents, nightF);
@@ -261,11 +275,23 @@ export function priceTrip(input) {
         cents = applyFactor(cents, periodF);
         breakdown.push({ code: 'period', label: 'Special period', amount: cents - before });
       }
-      const demandF = demandForClass(demand, key);
+      // Demand never applies to company bookings.
+      const demandF = isCompany ? 1 : demandForClass(demand, key);
       if (demandF !== 1) {
         const before = cents;
         cents = applyFactor(cents, demandF);
         breakdown.push({ code: 'demand', label: 'High demand', amount: cents - before });
+      }
+      if (isCompany && corpBase == null && company?.discountPct) {
+        const { cents: next, saved } = applyCompanyDiscount(cents, company.discountPct);
+        if (saved > 0) {
+          breakdown.push({
+            code: 'company_discount',
+            label: `Company discount −${Number(company.discountPct)} %`,
+            amount: -saved,
+          });
+          cents = next;
+        }
       }
       for (const e of extras) breakdown.push({ ...e, amount: Math.trunc(e.amount) });
       cents += extrasCents;
@@ -338,8 +364,12 @@ export function priceTrip(input) {
     /** @type {BreakdownLine[]} */
     const breakdown = [];
     let cents = 0;
+    const corpBase = companyBasePrice(company?.prices, key);
 
-    if (useFixed) {
+    if (corpBase != null) {
+      cents = corpBase;
+      breakdown.push({ code: 'company_price', label: 'Company price', amount: cents });
+    } else if (useFixed) {
       cents = Math.trunc(zp);
       breakdown.push({ code: 'fixed_route', label: 'Fixed route price', amount: cents });
     } else {
@@ -376,8 +406,12 @@ export function priceTrip(input) {
       cents = applyFactor(cents, periodF);
       breakdown.push({ code: 'period', label: 'Special period', amount: cents - before });
     }
-    const demandF =
-      useFixed && !applyDemandToFixedRoute(settings.demand) ? 1 : demandForClass(demand, key);
+    // Demand never applies to company bookings.
+    const demandF = isCompany
+      ? 1
+      : useFixed && !applyDemandToFixedRoute(settings.demand)
+        ? 1
+        : demandForClass(demand, key);
     if (demandF !== 1) {
       const before = cents;
       cents = applyFactor(cents, demandF);
@@ -385,9 +419,22 @@ export function priceTrip(input) {
     }
 
     const minFare = Math.trunc(rate?.minimum_fare ?? 0);
-    if (!useFixed && minFare > cents) {
+    if (corpBase == null && !useFixed && minFare > cents) {
       breakdown.push({ code: 'minimum', label: 'Minimum fare', amount: minFare - cents });
       cents = minFare;
+    }
+
+    // Company discount only when there is no fixed company price; before rounding.
+    if (isCompany && corpBase == null && company?.discountPct) {
+      const { cents: next, saved } = applyCompanyDiscount(cents, company.discountPct);
+      if (saved > 0) {
+        breakdown.push({
+          code: 'company_discount',
+          label: `Company discount −${Number(company.discountPct)} %`,
+          amount: -saved,
+        });
+        cents = next;
+      }
     }
 
     for (const e of extras) breakdown.push({ ...e, amount: Math.trunc(e.amount) });
@@ -424,6 +471,7 @@ export function priceTrip(input) {
   return { perClass };
 }
 
+export { applyCompanyDiscount, companyBasePrice } from './company.mjs';
 export {
   applyDemandToFixedRoute,
   demandFactor,

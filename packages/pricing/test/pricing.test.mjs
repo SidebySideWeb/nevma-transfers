@@ -55,6 +55,7 @@ function price(over = {}) {
     zonePrice: over.zonePrice,
     mode: over.mode ?? 'distance',
     demand: over.demand ?? 1,
+    company: over.company ?? null,
     extras: over.extras || [],
     vatRateBp: over.vatRateBp ?? 2400,
   });
@@ -370,6 +371,29 @@ describe('B6 return discount + per-leg night', () => {
     const discounted = applyReturnDiscount(retNight, 10);
     assert.equal(discounted, Math.round(retNight * 0.9));
     assert.equal(out + discounted, out + discounted);
+  });
+});
+
+describe('B9 company pricing', () => {
+  it('company price beats discount; demand ignored; discount before rounding', () => {
+    const withPrice = price({
+      demand: 1.25,
+      company: { prices: { e: 5000 }, discountPct: 50 },
+    });
+    assert.equal(withPrice.perClass.e.total, 5000);
+    assert.ok(withPrice.perClass.e.breakdown.some((b) => b.code === 'company_price'));
+    assert.ok(!withPrice.perClass.e.breakdown.some((b) => b.code === 'demand'));
+    assert.ok(!withPrice.perClass.e.breakdown.some((b) => b.code === 'company_discount'));
+
+    const withDiscount = price({
+      demand: 1.25,
+      company: { discountPct: 10 },
+      settings: { ...SETTINGS, rounding: 1 },
+    });
+    // public 4000, no demand, −10% → 3600
+    assert.equal(withDiscount.perClass.e.total, 3600);
+    assert.ok(withDiscount.perClass.e.breakdown.some((b) => b.code === 'company_discount'));
+    assert.ok(!withDiscount.perClass.e.breakdown.some((b) => b.code === 'demand'));
   });
 });
 

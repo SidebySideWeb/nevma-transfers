@@ -81,7 +81,7 @@ export const bookingApi = {
       }[];
     }>('/api/booking-options'),
 
-  quote: (body: unknown) =>
+  quote: (body: unknown, accessToken?: string) =>
     request<{
       pickupAt: string;
       durationMinutes: number;
@@ -103,7 +103,11 @@ export const bookingApi = {
       distanceKm?: number | null;
       durationMin?: number;
       returnDiscountPct?: number;
-    }>('/api/quote', { method: 'POST', body: JSON.stringify(body) }),
+    }>('/api/quote', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      ...(accessToken ? { headers: { authorization: `Bearer ${accessToken}` } } : {}),
+    }),
 
   createHold: (body: unknown) =>
     request<{
@@ -121,6 +125,34 @@ export const bookingApi = {
     request<{ ok: true }>('/api/bookings/release', {
       method: 'POST',
       body: JSON.stringify({ reference }),
+    }),
+
+  /** Company member booking (`/business/app`): on account, or card with the company tagged. */
+  corporateBookOnAccount: (body: unknown, accessToken: string) =>
+    request<{ reference: string; status: string; paymentMethod: string }>(
+      '/api/corporate/book-on-account',
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify(body),
+      },
+    ),
+
+  corporateBookCard: (body: unknown, accessToken: string) =>
+    request<{
+      reference: string;
+      status: string;
+      currency: string;
+      lines: { label: string; cents: number }[];
+      totalCents: number;
+      vatRateBp: number;
+      vatCents: number;
+      holdExpiresAt: string;
+      checkoutUrl: string;
+    }>('/api/corporate/book-card', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
     }),
 
   createBooking: (body: unknown) =>

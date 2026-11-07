@@ -162,6 +162,7 @@ export const ADMIN_NAV = Object.freeze([
       Object.freeze({ href: '/bookings', id: 'bookings', label: 'Bookings' }),
       Object.freeze({ href: '/calendar', id: 'calendar', label: 'Fleet calendar' }),
       Object.freeze({ href: '/customers', id: 'customers', label: 'Customers' }),
+      Object.freeze({ href: '/companies', id: 'companies', label: 'Companies', feature: 'corporate' }),
       Object.freeze({ href: '/blocked-slots', id: 'blocked-slots', label: 'Blocked slots' }),
     ]),
   }),

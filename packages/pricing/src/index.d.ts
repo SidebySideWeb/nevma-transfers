@@ -78,6 +78,11 @@ export type PriceTripInput = {
   mode?: 'zones' | 'distance' | 'hybrid';
   /** Single factor for all classes, or per-class map. */
   demand?: number | Record<string, number>;
+  /** Corporate: fixed prices and/or discount %. Demand is ignored when set. */
+  company?: {
+    prices?: Record<string, number>;
+    discountPct?: number;
+  } | null;
   extras?: BreakdownLine[];
   vatRateBp?: number;
 };
@@ -143,3 +148,13 @@ export declare function demandForClass(
 export declare function applyDemandToFixedRoute(
   demandSettings: PricingSettings['demand'] | null | undefined,
 ): boolean;
+
+export declare function applyCompanyDiscount(
+  cents: number,
+  discountPct: number | null | undefined,
+): { cents: number; saved: number };
+
+export declare function companyBasePrice(
+  companyPrices: Record<string, number | null | undefined> | null | undefined,
+  classKey: string,
+): number | null;

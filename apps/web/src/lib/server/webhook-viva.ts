@@ -11,7 +11,7 @@ function logOutcome(fields: Record<string, unknown>): void {
   console.error(JSON.stringify({ level: 'info', code: 'viva_webhook', ...fields }));
 }
 
-async function storeCancelToken(bookingId: string): Promise<string> {
+export async function storeCancelToken(bookingId: string): Promise<string> {
   const token = randomBytes(32).toString('base64url');
   const hash = createHash('sha256').update(token, 'utf8').digest('hex');
   await bookingDb().query(

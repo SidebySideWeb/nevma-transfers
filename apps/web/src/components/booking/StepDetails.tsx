@@ -13,6 +13,9 @@ type Props = {
   onChange: (patch: Partial<DetailsState>) => void;
   onSubmit: () => void;
   onBack: () => void;
+  /** Business account: the member's email is the contact, there is no consent box or invoice block. */
+  corporate?: boolean;
+  submitLabel?: string;
 };
 
 /** Error summary links go to the control with the problem; keys without a control on this step stay plain text. */
@@ -88,6 +91,8 @@ export function StepDetails({
   onChange,
   onSubmit,
   onBack,
+  corporate = false,
+  submitLabel,
 }: Props) {
   const uid = useId();
   const invoiceId = `${uid}-invoice`;
@@ -153,7 +158,9 @@ export function StepDetails({
           {formError && formError !== strings['booking.errors.summary'] && <p>{formError}</p>}
           <ul>
             {errorKeys.map((k) => (
-              <li key={k}>{FIELD_ID[k] ? <a href={`#${FIELD_ID[k]}`}>{errors[k]}</a> : errors[k]}</li>
+              <li key={k}>
+                {FIELD_ID[k] ? <a href={`#${FIELD_ID[k]}`}>{errors[k]}</a> : errors[k]}
+              </li>
             ))}
           </ul>
         </div>
@@ -161,10 +168,12 @@ export function StepDetails({
 
       <div className="grid">
         {field('name', 'b-name', strings['booking.details.name'], { autoComplete: 'name' })}
-        {field('email', 'b-email', strings['booking.details.email'], {
-          type: 'email',
-          autoComplete: 'email',
-        })}
+        {corporate
+          ? null
+          : field('email', 'b-email', strings['booking.details.email'], {
+              type: 'email',
+              autoComplete: 'email',
+            })}
         {field('phone', 'b-phone', strings['booking.details.phone'], {
           type: 'tel',
           autoComplete: 'tel',
@@ -223,17 +232,19 @@ export function StepDetails({
         );
       })}
 
-      <button
-        type="button"
-        className="disclose"
-        aria-expanded={details.needInvoice}
-        aria-controls={invoiceId}
-        onClick={() => onChange({ needInvoice: !details.needInvoice })}
-      >
-        <span aria-hidden="true">{details.needInvoice ? '−' : '+'}</span>{' '}
-        {strings['booking.invoice.toggle']}
-      </button>
-      {details.needInvoice && (
+      {!corporate && (
+        <button
+          type="button"
+          className="disclose"
+          aria-expanded={details.needInvoice}
+          aria-controls={invoiceId}
+          onClick={() => onChange({ needInvoice: !details.needInvoice })}
+        >
+          <span aria-hidden="true">{details.needInvoice ? '−' : '+'}</span>{' '}
+          {strings['booking.invoice.toggle']}
+        </button>
+      )}
+      {!corporate && details.needInvoice && (
         <div className="grid s02d42" id={invoiceId}>
           {field('invoiceCompany', 'b-co', strings['booking.invoice.company'])}
           {field('invoiceVat', 'b-vat', strings['booking.invoice.vat'])}
@@ -242,38 +253,40 @@ export function StepDetails({
         </div>
       )}
 
-      <label className="sb72c0">
-        <input
-          className="sd8619"
-          type="checkbox"
-          id="b-consent"
-          checked={details.consent}
-          onChange={(e) => onChange({ consent: e.target.checked })}
-          {...invalid('consent', 'b-consent')}
-        />
-        <span>
-          {(strings['booking.terms'] || strings['booking.consent'] || '')
-            .split(/(\{terms\}|\{privacy\})/)
-            .map((part, i) => {
-              if (part === '{terms}') {
-                return (
-                  <a key={i} href="/legal#terms">
-                    {strings['booking.terms.link'] || 'terms'}
-                  </a>
-                );
-              }
-              if (part === '{privacy}') {
-                return (
-                  <a key={i} href="/legal#privacy">
-                    {strings['booking.privacy.link'] || 'privacy policy'}
-                  </a>
-                );
-              }
-              return <span key={i}>{part}</span>;
-            })}
-        </span>
-      </label>
-      {err('consent', 'b-consent')}
+      {!corporate && (
+        <label className="sb72c0">
+          <input
+            className="sd8619"
+            type="checkbox"
+            id="b-consent"
+            checked={details.consent}
+            onChange={(e) => onChange({ consent: e.target.checked })}
+            {...invalid('consent', 'b-consent')}
+          />
+          <span>
+            {(strings['booking.terms'] || strings['booking.consent'] || '')
+              .split(/(\{terms\}|\{privacy\})/)
+              .map((part, i) => {
+                if (part === '{terms}') {
+                  return (
+                    <a key={i} href="/legal#terms">
+                      {strings['booking.terms.link'] || 'terms'}
+                    </a>
+                  );
+                }
+                if (part === '{privacy}') {
+                  return (
+                    <a key={i} href="/legal#privacy">
+                      {strings['booking.privacy.link'] || 'privacy policy'}
+                    </a>
+                  );
+                }
+                return <span key={i}>{part}</span>;
+              })}
+          </span>
+        </label>
+      )}
+      {!corporate && err('consent', 'b-consent')}
 
       <div className="s8dac8">
         <button type="button" className="btn btn-line" onClick={onBack} disabled={busy}>
@@ -284,7 +297,7 @@ export function StepDetails({
             strings['booking.loading']
           ) : (
             <>
-              {strings['booking.review.submit']} <span aria-hidden="true">→</span>
+              {submitLabel ?? strings['booking.review.submit']} <span aria-hidden="true">→</span>
             </>
           )}
         </button>

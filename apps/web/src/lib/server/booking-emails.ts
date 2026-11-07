@@ -54,6 +54,9 @@ type BookingRow = {
   distance_km: number | null;
   duration_min: number | null;
   price_breakdown: { code?: string; label?: string; amount?: number }[] | null;
+  guest_name: string | null;
+  payment_method: string | null;
+  account_company_name: string | null;
 };
 
 function pickupLocalAthens(pickup: Date): string {
@@ -76,13 +79,16 @@ const BOOKING_SELECT_CORE = `select b.id, b.reference, b.booking_type, b.pickup_
             b.invoice_address, c.name as class_name, zf.name as from_zone, zt.name as to_zone,
             v.label as vehicle_label, b.vehicle_auto_assigned,
             b.pickup_address, b.dropoff_address,
-            b.distance_km, b.duration_min, b.price_breakdown`;
+            b.distance_km, b.duration_min, b.price_breakdown,
+            b.guest_name, b.payment_method::text as payment_method,
+            co.name as account_company_name`;
 
 const BOOKING_FROM = ` from public.bookings b
        join public.vehicle_classes c on c.id = b.class_id
        join public.zones zf on zf.id = b.from_zone_id
        left join public.zones zt on zt.id = b.to_zone_id
        left join public.vehicles v on v.id = b.vehicle_id
+       left join public.companies co on co.id = b.company_id
       where b.reference = $1`;
 
 async function loadBooking(reference: string): Promise<BookingRow | null> {
@@ -98,7 +104,11 @@ async function loadBooking(reference: string): Promise<BookingRow | null> {
   } catch (e) {
     // Migration 0021 not applied yet — still send confirmation; Maps links use address text.
     const detail = e instanceof Error ? e.message : '';
-    if (!/pickup_place_id|dropoff_place_id|distance_km|duration_min|price_breakdown/i.test(detail)) {
+    if (
+      !/pickup_place_id|dropoff_place_id|distance_km|duration_min|price_breakdown|guest_name|payment_method|companies/i.test(
+        detail,
+      )
+    ) {
       throw e;
     }
     console.error(
@@ -110,10 +120,23 @@ async function loadBooking(reference: string): Promise<BookingRow | null> {
       }),
     );
     const { rows } = await bookingDb().query<BookingRow>(
-      `${BOOKING_SELECT_CORE},
-            null::text as pickup_place_id, null::float8 as pickup_lat, null::float8 as pickup_lng,
-            null::text as dropoff_place_id, null::float8 as dropoff_lat, null::float8 as dropoff_lng
-       ${BOOKING_FROM}`,
+      `select b.id, b.reference, b.booking_type, b.pickup_at, b.hours, b.passengers,
+              b.base_price_cents, b.price_cents, b.vat_rate_bp, b.vat_cents,
+              b.vip_security, b.invoice_status, b.customer_name, b.customer_email, b.customer_phone,
+              b.notes, b.flight_number, b.invoice_company, b.invoice_vat, b.invoice_tax_office,
+              b.invoice_address, c.name as class_name, zf.name as from_zone, zt.name as to_zone,
+              v.label as vehicle_label, b.vehicle_auto_assigned,
+              b.pickup_address, b.dropoff_address,
+              null::float8 as distance_km, null::int as duration_min, null::jsonb as price_breakdown,
+              null::text as guest_name, null::text as payment_method, null::text as account_company_name,
+              null::text as pickup_place_id, null::float8 as pickup_lat, null::float8 as pickup_lng,
+              null::text as dropoff_place_id, null::float8 as dropoff_lat, null::float8 as dropoff_lng
+         from public.bookings b
+         join public.vehicle_classes c on c.id = b.class_id
+         join public.zones zf on zf.id = b.from_zone_id
+         left join public.zones zt on zt.id = b.to_zone_id
+         left join public.vehicles v on v.id = b.vehicle_id
+        where b.reference = $1`,
       [reference],
     );
     return rows[0] ?? null;
@@ -268,6 +291,9 @@ export async function sendConfirmationEmails(
     companyEmail: co.companyEmail,
     returnLeg,
     paymentTotalCents,
+    guestName: booking.guest_name,
+    accountCompanyName: booking.account_company_name,
+    paymentMethod: booking.payment_method,
   };
 
   const customer = confirmationEmail(base);

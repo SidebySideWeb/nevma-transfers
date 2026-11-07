@@ -35,6 +35,8 @@ export type BookingAppProps = {
   whatsappHref?: string | null;
   /** Deep-link into the vehicle step (`/book/vehicle?q=&s=`). */
   initialVehicleQuery?: { quoteId: string; signature: string } | null;
+  /** `/business/app`: a signed-in company member books for a guest (on account, or by card). */
+  corporate?: { accessToken: string; payOnAccount: boolean; companyName: string } | null;
 };
 
 function skewFromDateHeader(dateHeader: string | null): number {
@@ -65,8 +67,11 @@ export default function BookingApp({
   distancePricing = false,
   whatsappHref = null,
   initialVehicleQuery = null,
+  corporate = null,
 }: BookingAppProps) {
   const [state, dispatch] = useReducer(bookingReducer, undefined, createInitialState);
+  const [costCenter, setCostCenter] = useState('');
+  const [onAccountRef, setOnAccountRef] = useState<string | null>(null);
   const [preferredClassKey, setPreferredClassKey] = useState<string | null>(null);
   const [pickedClassKey, setPickedClassKey] = useState<string | null>(null);
   const [pricesUpdated, setPricesUpdated] = useState(false);
@@ -236,7 +241,7 @@ export default function BookingApp({
     dispatch({ type: 'CLEAR_ERRORS' });
     try {
       const body = quoteBody();
-      const { data } = await bookingApi.quote(body);
+      const { data } = await bookingApi.quote(body, corporate?.accessToken);
       setPickedClassKey(null);
       if (opts?.refresh) {
         dispatch({ type: 'QUOTE_REFRESHED', quote: data });
@@ -375,11 +380,13 @@ export default function BookingApp({
       errors.dropoffAddress = msg('booking.error.dropoffAddress', 'Enter a drop-off address or hotel name.');
     }
     if (!state.details.name) errors.name = msg('booking.error.name', 'Enter your full name.');
-    if (!state.details.email) errors.email = msg('booking.error.email', 'Enter a valid email address.');
-    if (!state.details.phone) {
+    if (!corporate && !state.details.email) {
+      errors.email = msg('booking.error.email', 'Enter a valid email address.');
+    }
+    if (!corporate && !state.details.phone) {
       errors.phone = msg('booking.error.phone', 'Enter a phone number we can reach you on.');
     }
-    if (!state.details.consent) {
+    if (!corporate && !state.details.consent) {
       errors.consent = msg('booking.error.consent', 'Please accept the terms to continue.');
     }
     if (Object.keys(errors).length) {
@@ -391,6 +398,36 @@ export default function BookingApp({
     dispatch({ type: 'BUSY', busy: true });
     dispatch({ type: 'CLEAR_ERRORS' });
     try {
+      if (corporate) {
+        // Business account: the server prices from the signed quote and takes the member's email as contact.
+        if (!signed) {
+          dispatch({ type: 'SET_ERRORS', errors: {}, formError: strings['business.app.error'] ?? '' });
+          return;
+        }
+        const body = {
+          quoteId: state.quote!.quoteId,
+          signature: state.quote!.signature,
+          classKey: state.selectedClassKey,
+          pickupAddress: state.details.pickupAddress,
+          dropoffAddress: state.search.type === 'transfer' ? state.details.dropoffAddress : undefined,
+          passengers: state.search.passengers,
+          luggage: state.search.luggage,
+          extras: state.details.extras,
+          flightNumber: state.details.flightNumber || undefined,
+          notes: state.details.notes || undefined,
+          guestName: state.details.name,
+          guestPhone: state.details.phone || undefined,
+          costCenter: costCenter.trim() || undefined,
+        };
+        if (corporate.payOnAccount) {
+          const { data } = await bookingApi.corporateBookOnAccount(body, corporate.accessToken);
+          setOnAccountRef(data.reference);
+        } else {
+          const { data, dateHeader } = await bookingApi.corporateBookCard(body, corporate.accessToken);
+          dispatch({ type: 'BOOKING_OK', booking: data, serverSkewMs: skewFromDateHeader(dateHeader) });
+        }
+        return;
+      }
       const token = await getTurnstileToken(turnstileSiteKey);
       const customer = {
         name: state.details.name,
@@ -634,7 +671,7 @@ export default function BookingApp({
         onBack={() => {
           dispatch({ type: 'CLEAR_HOLD_EXPIRED' });
           dispatch({ type: 'SET_STEP', step: 'search' });
-          window.history.pushState(null, '', '/book#search');
+          window.history.pushState(null, '', `${window.location.pathname}#search`);
         }}
         onRefreshQuote={() => void submitQuote({ refresh: true })}
         onQuoteExpired={() => dispatch({ type: 'HOLD_EXPIRED' })}
@@ -648,6 +685,8 @@ export default function BookingApp({
   ) {
     main = (
       <StepDetails
+        corporate={!!corporate}
+        submitLabel={corporate?.payOnAccount ? strings['business.book.submit'] : undefined}
         strings={strings}
         options={options}
         search={state.search}
@@ -703,7 +742,47 @@ export default function BookingApp({
         onGoStep={goStep}
       />
       <section data-block="appBody" className="s39f3a" id="booking-app">
-        {main}
+        {corporate && onAccountRef ? (
+          <div className="s8f7a6" data-v2-extra>
+            <p className="s0a0a6" role="status" tabIndex={-1} ref={(el) => el?.focus()}>
+              {fill(strings['business.book.done'], { reference: onAccountRef })}
+            </p>
+            <button
+              type="button"
+              className="btn btn-gold"
+              onClick={() => {
+                setOnAccountRef(null);
+                setCostCenter('');
+                window.location.assign(window.location.pathname);
+              }}
+            >
+              {strings['business.book.another']}
+            </button>
+          </div>
+        ) : (
+          <>
+            {corporate && step === 'details' ? (
+              <div className="s8f7a6" data-v2-extra>
+                <div className="f2">
+                  <label htmlFor="b-cost-center">{strings['business.book.costCenter']}</label>
+                  <input
+                    id="b-cost-center"
+                    type="text"
+                    maxLength={80}
+                    value={costCenter}
+                    onChange={(e) => setCostCenter(e.target.value)}
+                    aria-describedby="b-corp-hint"
+                  />
+                </div>
+                <p className="js-hint" id="b-corp-hint">
+                  {strings['business.book.guest.hint']}{' '}
+                  {corporate.payOnAccount ? strings['business.book.onAccount'] : strings['business.book.card']}
+                </p>
+              </div>
+            ) : null}
+            {main}
+          </>
+        )}
         {summary ? <BookingSummary {...summary} /> : null}
       </section>
     </>

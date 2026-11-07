@@ -1,0 +1,138 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import Money from '../../components/Money.astro';
+import { corporateDb, corporateNotFound } from '../../lib/corporate';
+import { logListError } from '../../lib/bookings-list';
+import { athensTodayKey } from '../../lib/report-period';
+import { createSupabaseServerClient } from '../../lib/supabase';
+import { athensLocalToInstant } from '../../lib/time';
+
+const denied = corporateNotFound();
+if (denied) return denied;
+
+const staff = Astro.locals.staff!;
+const supabase = corporateDb(createSupabaseServerClient(Astro.cookies));
+const q = Astro.url.searchParams.get('q')?.trim() ?? '';
+
+// Bookings this month, Athens calendar month.
+const today = athensTodayKey();
+const [y, m] = today.split('-').map(Number) as [number, number];
+const monthStart = athensLocalToInstant(`${today.slice(0, 7)}-01T00:00`).toISOString();
+const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+const monthEnd = athensLocalToInstant(`${next}-01T00:00`).toISOString();
+
+let companiesQuery = supabase
+  .from('companies')
+  .select('id, name, kind, active')
+  .order('active', { ascending: false })
+  .order('name');
+if (q) companiesQuery = companiesQuery.ilike('name', `%${q.replace(/[%_,()]/g, ' ')}%`);
+
+const [companiesRes, usersRes, bookingsRes] = await Promise.all([
+  companiesQuery,
+  supabase.from('company_users').select('company_id').eq('active', true),
+  supabase
+    .from('bookings')
+    .select('company_id')
+    .not('company_id', 'is', null)
+    .not('status', 'in', '(cancelled,expired)')
+    .gte('pickup_at', monthStart)
+    .lt('pickup_at', monthEnd),
+]);
+
+const error = companiesRes.error ?? usersRes.error ?? bookingsRes.error;
+if (error) logListError('companies_list', error.message);
+const companies = (error ? [] : companiesRes.data) as {
+  id: string;
+  name: string;
+  kind: 'hotel' | 'agency' | 'company';
+  active: boolean;
+}[];
+
+const count = (rows: { company_id: string }[] | null) => {
+  const out = new Map<string, number>();
+  for (const r of rows ?? []) out.set(r.company_id, (out.get(r.company_id) ?? 0) + 1);
+  return out;
+};
+const userCount = count(usersRes.data);
+const monthCount = count(bookingsRes.data);
+
+const balances = new Map<string, number>(
+  await Promise.all(
+    companies.map(async (c) => {
+      const { data } = await supabase.rpc('company_open_balance_cents', { p_company_id: c.id });
+      return [c.id, Number(data ?? 0)] as const;
+    }),
+  ),
+);
+
+const KIND: Record<string, string> = { hotel: 'Hotel', agency: 'Agency', company: 'Company' };
+---
+
+<AdminLayout title="Companies" current="companies" staffEmail={staff.email}>
+  <a class="btn" href="/companies/new" slot="actions">New company</a>
+
+  {
+    error && (
+      <Banner tone="danger" role="alert">
+        The companies could not be loaded. Try again in a moment.
+      </Banner>
+    )
+  }
+
+  <form class="filters" aria-label="Find companies" method="get">
+    <div class="field" style="grid-column: span 2">
+      <label for="co-q">Search</label>
+      <input id="co-q" class="input" type="search" name="q" value={q} placeholder="Company name" autocomplete="off" />
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary btn-sm" type="submit">Search</button>
+      <a class="btn btn-quiet btn-sm" href="/companies">Clear</a>
+    </div>
+  </form>
+
+  {
+    !error && companies.length === 0 ? (
+      <EmptyState title="No companies" actionHref="/companies/new" actionLabel="New company">
+        {q ? 'No company matches this search.' : 'Add a hotel, agency or company to book on account.'}
+      </EmptyState>
+    ) : !error ? (
+      <div class="table-wrap" role="region" tabindex="0" aria-labelledby="co-cap">
+        <table class="table table-cards">
+          <caption id="co-cap" class="sr-only">Companies</caption>
+          <thead>
+            <tr>
+              <th scope="col">Company</th>
+              <th scope="col">Kind</th>
+              <th scope="col" class="num">Users</th>
+              <th scope="col" class="num">Bookings this month</th>
+              <th scope="col" class="num">Open balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              companies.map((c) => (
+                <tr class="is-link" data-href={`/companies/${c.id}`} tabindex="0">
+                  <td class="card-title" data-label="Company">
+                    <a href={`/companies/${c.id}`}>{c.name}</a>
+                    {!c.active && <span class="badge s-completed">Inactive</span>}
+                  </td>
+                  <td data-label="Kind">{KIND[c.kind] ?? c.kind}</td>
+                  <td class="num" data-label="Users">{userCount.get(c.id) ?? 0}</td>
+                  <td class="num" data-label="Bookings this month">{monthCount.get(c.id) ?? 0}</td>
+                  <td class="num" data-label="Open balance">
+                    <Money cents={balances.get(c.id) ?? 0} />
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    ) : null
+  }
+</AdminLayout>

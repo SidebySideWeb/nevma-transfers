@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
 import { features } from '@tem/features';
+import { applyCompanyDiscount, companyBasePrice } from '@tem/pricing';
 import { expandExtraCodes, formatEuro, normaliseExtraChoices, quoteHourly, quoteTransfer } from '../booking/pricing';
 import { assertLeadTime, formatLocal, localToInstant, toIsoWithOffset } from '../booking/time';
 import { BookingError } from '../booking/types';
@@ -256,6 +257,12 @@ export type QuoteOpts = {
   simulate?: boolean;
   /** Staff-only rate/settings overrides for "compare with unsaved". */
   isStaff?: boolean;
+  /** B9: authenticated company booker — prices/discount from Postgres, never the browser. */
+  company?: {
+    id: string;
+    prices: Record<string, number>;
+    discountPct: number;
+  } | null;
 };
 
 export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
@@ -323,6 +330,14 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     durationMinutes = body.hours * 60;
   }
 
+  const company =
+    features().corporate && opts.company
+      ? {
+          prices: opts.company.prices,
+          discountPct: opts.company.discountPct,
+        }
+      : null;
+
   const classes = (
     await db().query<{
       id: string;
@@ -364,6 +379,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
   for (const c of classes) {
     let baseCents: number | null = null;
     let reason: string | undefined;
+    let breakdown: { code: string; label: string; amount: number }[] | undefined;
 
     if (body.type === 'transfer') {
       const { rows: prices } = await db().query<{ price_cents: number }>(
@@ -377,6 +393,9 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       } else {
         baseCents = quoteTransfer({ zonePriceCents: prices[0].price_cents });
         anyPrice = true;
+        breakdown = [
+          { code: 'fixed_route', label: 'Fixed route price', amount: baseCents },
+        ];
       }
     } else {
       if (c.rate_cents == null || c.min_hours == null || c.max_hours == null) {
@@ -391,10 +410,33 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
             hours: body.hours,
           });
           anyPrice = true;
+          breakdown = [{ code: 'hourly', label: 'Hourly hire', amount: baseCents }];
         } catch (e) {
           if (e instanceof BookingError && e.stringKey === 'error.hours_range') throw e;
           baseCents = null;
           reason = 'no_price';
+        }
+      }
+    }
+
+    // B9 zone-path company pricing (distance path uses priceTrip's company arg).
+    if (baseCents != null && company) {
+      const corp = companyBasePrice(company.prices, c.key);
+      if (corp != null) {
+        baseCents = body.type === 'hourly' ? corp * body.hours : corp;
+        breakdown = [{ code: 'company_price', label: 'Company price', amount: baseCents }];
+      } else if (company.discountPct > 0) {
+        const { cents: next, saved } = applyCompanyDiscount(baseCents, company.discountPct);
+        if (saved > 0) {
+          breakdown = [
+            ...(breakdown ?? []),
+            {
+              code: 'company_discount',
+              label: `Company discount −${company.discountPct} %`,
+              amount: -saved,
+            },
+          ];
+          baseCents = next;
         }
       }
     }
@@ -416,17 +458,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       baseCents,
       available,
       ...(reason ? { reason } : {}),
-      ...(baseCents != null
-        ? {
-            breakdown: [
-              {
-                code: body.type === 'hourly' ? 'hourly' : 'fixed_route',
-                label: body.type === 'hourly' ? 'Hourly hire' : 'Fixed route price',
-                amount: baseCents,
-              },
-            ],
-          }
-        : {}),
+      ...(baseCents != null && breakdown ? { breakdown } : {}),
     });
   }
 
@@ -475,10 +507,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     prices[o.classKey] = {
       total: o.baseCents,
       available: o.available && o.baseCents != null,
-      breakdown:
-        o.baseCents != null
-          ? [{ code: 'fixed_route', label: 'Fixed route price', amount: o.baseCents }]
-          : [],
+      breakdown: o.breakdown ?? [],
       ...(o.reason ? { reason: o.reason } : {}),
     };
   }
@@ -558,6 +587,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       mode: f.pricingMode,
       zonePrice: (key) => zonePriceMap.get(key) ?? null,
       demand: demandByClass,
+      company,
       vatRateBp: ctx.vatRateBp,
     });
 
@@ -704,6 +734,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         mode: f.pricingMode,
         zonePrice: (key) => zonePriceMap.get(key) ?? null,
         demand: demandByClass,
+        company,
         vatRateBp: ctx.vatRateBp,
       });
       for (const [key, p] of Object.entries(priced.perClass)) {
@@ -961,7 +992,12 @@ export async function createHold(raw: unknown, visitorKey: string, ip?: string) 
 // POST /api/bookings from a signed quote (B3)
 // ---------------------------------------------------------------------------
 
-async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: string) {
+async function createBookingFromQuote(
+  raw: unknown,
+  visitorKey: string,
+  ip?: string,
+  opts?: { skipPayment?: boolean; skipTurnstile?: boolean },
+) {
   const parsed = QuoteCheckoutRequest.safeParse(raw);
   if (!parsed.success) {
     throw new BookingError('invalid_request', {
@@ -970,7 +1006,7 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
     });
   }
   const body = parsed.data;
-  await requireTurnstile(body.turnstileToken, ip);
+  if (!opts?.skipTurnstile) await requireTurnstile(body.turnstileToken, ip);
   if (ip) {
     await assertRateLimit(`book:ip:${ip}`, RATE.bookingPerIp.windowSeconds, RATE.bookingPerIp.max);
   }
@@ -1173,6 +1209,29 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
   const holdExpires = new Date(created.hold_expires_at);
   const timeoutSec = Math.max(1, Math.floor((holdExpires.getTime() - Date.now()) / 1000));
 
+  const { rows: vatRows } = await db().query<{ vat_rate_bp: number; vat_cents: number }>(
+    `select vat_rate_bp, vat_cents from public.bookings where id = $1::uuid`,
+    [created.booking_id],
+  );
+  const vat = vatRows[0]!;
+
+  if (opts?.skipPayment) {
+    return {
+      reference: created.reference,
+      returnReference: created.return_reference,
+      tripGroupId: created.trip_group_id,
+      status: 'pending' as const,
+      currency: created.currency,
+      lines: created.lines,
+      totalCents: created.price_cents,
+      vatRateBp: vat.vat_rate_bp,
+      vatCents: vat.vat_cents,
+      holdExpiresAt: toIsoWithOffset(holdExpires, settings.timezone),
+      checkoutUrl: null as string | null,
+      bookingId: created.booking_id,
+    };
+  }
+
   try {
     const order = await getPaymentProvider().createOrder({
       amountCents: created.price_cents,
@@ -1194,12 +1253,6 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
       ]);
     }
 
-    const { rows: vatRows } = await db().query<{ vat_rate_bp: number; vat_cents: number }>(
-      `select vat_rate_bp, vat_cents from public.bookings where id = $1::uuid`,
-      [created.booking_id],
-    );
-    const vat = vatRows[0]!;
-
     return {
       reference: created.reference,
       returnReference: created.return_reference,
@@ -1212,6 +1265,7 @@ async function createBookingFromQuote(raw: unknown, visitorKey: string, ip?: str
       vatCents: vat.vat_cents,
       holdExpiresAt: toIsoWithOffset(holdExpires, settings.timezone),
       checkoutUrl: order.checkoutUrl,
+      bookingId: created.booking_id,
     };
   } catch (e) {
     const err = new BookingError('payment_failed', {
@@ -1250,10 +1304,15 @@ export async function releaseHold(holdId: string, visitorKey: string): Promise<v
 // POST /api/bookings
 // ---------------------------------------------------------------------------
 
-export async function createBooking(raw: unknown, visitorKey: string, ip?: string) {
+export async function createBooking(
+  raw: unknown,
+  visitorKey: string,
+  ip?: string,
+  opts?: { skipPayment?: boolean; skipTurnstile?: boolean },
+) {
   rejectMoneyFields(raw);
   if (raw && typeof raw === 'object' && 'quoteId' in (raw as object)) {
-    return createBookingFromQuote(raw, visitorKey, ip);
+    return createBookingFromQuote(raw, visitorKey, ip, opts);
   }
   const parsed = BookingRequest.safeParse(raw);
   if (!parsed.success) {

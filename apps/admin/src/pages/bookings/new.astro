@@ -7,6 +7,8 @@ import Flag from '../../components/Flag.astro';
 import MoneyInput from '../../components/MoneyInput.astro';
 import Select from '../../components/Select.astro';
 import TimeField from '../../components/TimeField.astro';
+import { features } from '@tem/features';
+import { corporateDb } from '../../lib/corporate';
 import { createSupabaseServerClient } from '../../lib/supabase';
 
 const staff = Astro.locals.staff!;
@@ -87,7 +89,20 @@ const addressAutocomplete =
   (import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE ?? process.env.PUBLIC_ADDRESS_AUTOCOMPLETE) === 'true' &&
   Boolean(import.meta.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API_KEY);
 
+// B9: active companies for the company picker (only when FEATURE_CORPORATE is on).
+const corporate = features().corporate;
+const companies = corporate
+  ? (((
+      await corporateDb(supabase)
+        .from('companies')
+        .select('id, name, pay_on_account')
+        .eq('active', true)
+        .order('name')
+    ).data ?? []) as { id: string; name: string; pay_on_account: boolean }[])
+  : [];
+
 const pageData = {
+  companies: companies.map((c) => ({ id: c.id, payOnAccount: c.pay_on_account })),
   vehicleId: prefillVehicle?.id ?? '',
   holdText,
   extras: extras.map((e) => ({ code: e.code, name: e.name, priceCents: e.price_cents })),
@@ -154,6 +169,25 @@ const pageData = {
               <p class="error-text" id="nb-tel-err" hidden></p>
             </div>
           </div>
+          {
+            corporate && (
+              <div class="field">
+                <label for="nb-co">Company (optional)</label>
+                <Select
+                  id="nb-co"
+                  aria-describedby="nb-co-help"
+                  options={[
+                    { value: '', label: 'No company', selected: true },
+                    ...companies.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                />
+                <p class="help" id="nb-co-help">
+                  The company's fixed price or discount replaces the public price. On account is offered when the
+                  company may book on account.
+                </p>
+              </div>
+            )
+          }
           <details id="nb-inv">
             <summary>Invoice details (optional)</summary>
             <div class="grid-fields" style="margin-top:.75rem">

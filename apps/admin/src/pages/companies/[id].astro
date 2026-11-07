@@ -1,0 +1,673 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import Money from '../../components/Money.astro';
+import Select from '../../components/Select.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+import { corporateDb, corporateNotFound, parseCompanyTab, type CompanyTab } from '../../lib/corporate';
+import { centsToEuroInput } from '../../lib/money';
+import { athensTodayKey } from '../../lib/report-period';
+import { createSupabaseServerClient } from '../../lib/supabase';
+import { formatAthensShort } from '../../lib/time';
+
+const denied = corporateNotFound();
+if (denied) return denied;
+
+const staff = Astro.locals.staff!;
+const id = Astro.params.id!;
+const isNew = id === 'new';
+if (!isNew && !/^[0-9a-f-]{36}$/i.test(id)) return new Response(null, { status: 404 });
+const supabase = corporateDb(createSupabaseServerClient(Astro.cookies));
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const saved = Astro.getActionResult?.(actions.saveCompany);
+const priceSaved = Astro.getActionResult?.(actions.saveCompanyPrice);
+const priceDeleted = Astro.getActionResult?.(actions.deleteCompanyPrice);
+const invited = Astro.getActionResult?.(actions.inviteCompanyUser);
+const deactivated = Astro.getActionResult?.(actions.deactivateCompanyUser);
+const created = Astro.getActionResult?.(actions.createCompanyStatement);
+const sent = Astro.getActionResult?.(actions.sendCompanyStatement);
+const paid = Astro.getActionResult?.(actions.markCompanyStatementPaid);
+
+if (saved?.data && 'created' in saved.data && saved.data.created) {
+  return Astro.redirect(`/companies/${saved.data.id}?saved=1`);
+}
+
+const pageError = [saved, priceSaved, priceDeleted, invited, deactivated, created, sent, paid]
+  .map((r) => actionErr(r))
+  .find(Boolean);
+
+// A POSTed action re-renders this page without ?tab, so stay on the tab the action belongs to.
+const posted: [unknown, CompanyTab][] = [
+  [saved, 'details'],
+  [priceSaved, 'prices'],
+  [priceDeleted, 'prices'],
+  [invited, 'users'],
+  [deactivated, 'users'],
+  [created, 'statements'],
+  [sent, 'statements'],
+  [paid, 'statements'],
+];
+const tab: CompanyTab = isNew
+  ? 'details'
+  : Astro.url.searchParams.has('tab')
+    ? parseCompanyTab(Astro.url.searchParams.get('tab'))
+    : (posted.find(([r]) => r)?.[1] ?? 'details');
+
+type Company = {
+  id: string;
+  name: string;
+  kind: 'hotel' | 'agency' | 'company';
+  vat_number: string | null;
+  tax_office: string | null;
+  billing_address: string | null;
+  billing_email: string | null;
+  discount_pct: number | string;
+  pay_on_account: boolean;
+  credit_limit_cents: number | null;
+  payment_terms_days: number;
+  active: boolean;
+  notes: string | null;
+};
+
+let company: Company | null = null;
+if (!isNew) {
+  const { data } = await supabase.from('companies').select('*').eq('id', id).maybeSingle();
+  if (!data) return new Response(null, { status: 404 });
+  company = data as Company;
+}
+
+const [balanceRes, classesRes, zonesRes, pricesRes, usersRes, bookingsRes, statementsRes] = isNew
+  ? [null, null, null, null, null, null, null]
+  : await Promise.all([
+      supabase.rpc('company_open_balance_cents', { p_company_id: id }),
+      tab === 'prices'
+        ? supabase.from('vehicle_classes').select('id, name').order('sort_order').order('name')
+        : null,
+      tab === 'prices'
+        ? supabase.from('zones').select('id, name').eq('active', true).order('sort_order').order('name')
+        : null,
+      tab === 'prices'
+        ? supabase
+            .from('company_prices')
+            .select(
+              'id, booking_type, price_cents, class:vehicle_classes(name), from_zone:zones!company_prices_from_zone_id_fkey(name), to_zone:zones!company_prices_to_zone_id_fkey(name)',
+            )
+            .eq('company_id', id)
+            .order('booking_type')
+        : null,
+      tab === 'users'
+        ? supabase
+            .from('company_users')
+            .select('id, email, role, active, invited_at')
+            .eq('company_id', id)
+            .order('active', { ascending: false })
+            .order('email')
+        : null,
+      tab === 'bookings'
+        ? supabase
+            .from('bookings')
+            .select(
+              'reference, pickup_at, booking_type, status, payment_method, payment_status, price_cents, guest_name, cost_center, from_zone:zones!bookings_from_zone_id_fkey(name), to_zone:zones!bookings_to_zone_id_fkey(name)',
+            )
+            .eq('company_id', id)
+            .order('pickup_at', { ascending: false })
+            .limit(100)
+        : null,
+      tab === 'statements'
+        ? supabase
+            .from('company_statements')
+            .select('id, period_from, period_to, total_cents, status, paid_ref, sent_at, paid_at')
+            .eq('company_id', id)
+            .order('period_from', { ascending: false })
+        : null,
+    ]);
+
+const openBalance = Number(balanceRes?.data ?? 0);
+const classes = (classesRes?.data ?? []) as { id: string; name: string }[];
+const zones = (zonesRes?.data ?? []) as { id: string; name: string }[];
+const prices = (pricesRes?.data ?? []) as {
+  id: string;
+  booking_type: 'transfer' | 'hourly';
+  price_cents: number;
+  class: { name?: string } | null;
+  from_zone: { name?: string } | null;
+  to_zone: { name?: string } | null;
+}[];
+const users = (usersRes?.data ?? []) as {
+  id: string;
+  email: string;
+  role: string;
+  active: boolean;
+  invited_at: string;
+}[];
+const bookings = (bookingsRes?.data ?? []) as {
+  reference: string;
+  pickup_at: string;
+  booking_type: 'transfer' | 'hourly';
+  status: string;
+  payment_method: string | null;
+  payment_status: string;
+  price_cents: number;
+  guest_name: string | null;
+  cost_center: string | null;
+  from_zone: { name?: string } | null;
+  to_zone: { name?: string } | null;
+}[];
+const statements = (statementsRes?.data ?? []) as {
+  id: string;
+  period_from: string;
+  period_to: string;
+  total_cents: number;
+  status: 'draft' | 'sent' | 'paid';
+  paid_ref: string | null;
+  sent_at: string | null;
+  paid_at: string | null;
+}[];
+
+const today = athensTodayKey();
+const monthStart = `${today.slice(0, 7)}-01`;
+const STATEMENT_BADGE: Record<string, { cls: string; text: string }> = {
+  draft: { cls: 's-pending', text: 'Draft' },
+  sent: { cls: 's-assigned', text: 'Sent' },
+  paid: { cls: 's-confirmed', text: 'Paid' },
+};
+const title = company?.name ?? 'New company';
+const tabs: { key: CompanyTab; label: string }[] = [
+  { key: 'details', label: 'Details' },
+  { key: 'prices', label: 'Prices' },
+  { key: 'users', label: 'Users' },
+  { key: 'bookings', label: 'Bookings' },
+  { key: 'statements', label: 'Statements' },
+];
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+---
+
+<AdminLayout
+  title={title}
+  htmlTitle={`${title} - Elite Protection Admin`}
+  current="companies"
+  staffEmail={staff.email}
+  crumbs={[{ href: '/companies', label: 'Companies' }, { label: isNew ? 'New' : 'Company' }]}
+>
+  {pageError && <Banner tone="danger" role="alert">{pageError}</Banner>}
+  {(justSaved || (saved?.data && !actionErr(saved))) && <Banner tone="info" role="status">Company saved.</Banner>}
+  {priceSaved?.data && <Banner tone="info" role="status">Price saved.</Banner>}
+  {priceDeleted?.data && <Banner tone="info" role="status">Price removed.</Banner>}
+  {invited?.data && <Banner tone="info" role="status">Invitation sent.</Banner>}
+  {deactivated?.data && <Banner tone="info" role="status">User deactivated.</Banner>}
+  {created?.data && <Banner tone="info" role="status">Statement created as a draft.</Banner>}
+  {sent?.data && <Banner tone="info" role="status">Statement sent to the billing e-mail.</Banner>}
+  {paid?.data && <Banner tone="info" role="status">Statement marked as paid.</Banner>}
+
+  {
+    company && (
+      <div class="row" style="margin:-.5rem 0 1.25rem;gap:.75rem;flex-wrap:wrap;align-items:center">
+        <span class={`badge ${company.active ? 's-confirmed' : 's-completed'}`}>
+          {company.active ? 'Active' : 'Inactive'}
+        </span>
+        <span class="small">Open balance <strong><Money cents={openBalance} /></strong></span>
+        {company.credit_limit_cents != null && (
+          <span class="small muted">Credit limit <Money cents={company.credit_limit_cents} /></span>
+        )}
+      </div>
+    )
+  }
+
+  {
+    !isNew && (
+      <nav class="tabs" aria-label="Company sections">
+        {tabs.map((t) => (
+          <a href={`/companies/${id}?tab=${t.key}`} aria-current={tab === t.key ? 'page' : undefined}>
+            {t.label}
+          </a>
+        ))}
+      </nav>
+    )
+  }
+
+  {
+    tab === 'details' && (
+      <section class="panel" aria-labelledby="co-d">
+        <div class="panel-head"><h2 id="co-d">Details</h2></div>
+        <form method="POST" action={actions.saveCompany} class="panel-body stack-sm">
+          {company && <input type="hidden" name="id" value={company.id} />}
+          <div class="grid-fields">
+            <div class="field">
+              <label for="co-n">Name</label>
+              <input id="co-n" class="input" name="name" value={company?.name ?? ''} required />
+            </div>
+            <div class="field">
+              <label for="co-k">Kind</label>
+              <Select
+                id="co-k"
+                name="kind"
+                options={[
+                  { value: 'hotel', label: 'Hotel', selected: company?.kind === 'hotel' },
+                  { value: 'agency', label: 'Agency', selected: company?.kind === 'agency' },
+                  { value: 'company', label: 'Company', selected: !company || company.kind === 'company' },
+                ]}
+              />
+            </div>
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="co-v">VAT number</label>
+              <input id="co-v" class="input" name="vatNumber" value={company?.vat_number ?? ''} />
+            </div>
+            <div class="field">
+              <label for="co-t">Tax office</label>
+              <input id="co-t" class="input" name="taxOffice" value={company?.tax_office ?? ''} />
+            </div>
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="co-a">Billing address</label>
+              <input id="co-a" class="input" name="billingAddress" value={company?.billing_address ?? ''} />
+            </div>
+            <div class="field">
+              <label for="co-e">Billing e-mail</label>
+              <input id="co-e" class="input" type="email" name="billingEmail" value={company?.billing_email ?? ''} />
+            </div>
+          </div>
+          <div class="grid-fields">
+            <div class="field">
+              <label for="co-dp">Discount %</label>
+              <input id="co-dp" class="input" name="discountPct" inputmode="decimal" value={String(company?.discount_pct ?? 0)} />
+              <p class="help">Applied to the public price. A fixed company price on the Prices tab wins over it.</p>
+            </div>
+            <div class="field">
+              <label for="co-cl">Credit limit (empty = none)</label>
+              <div class="input-money">
+                <input
+                  id="co-cl"
+                  class="input"
+                  name="creditLimitEuros"
+                  inputmode="decimal"
+                  value={company?.credit_limit_cents != null ? centsToEuroInput(company.credit_limit_cents) : ''}
+                />
+              </div>
+            </div>
+            <div class="field">
+              <label for="co-pt">Payment terms (days)</label>
+              <input
+                id="co-pt"
+                class="input"
+                type="number"
+                min="1"
+                max="365"
+                name="paymentTermsDays"
+                value={company?.payment_terms_days ?? 30}
+                required
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label class="switch">
+              <input type="checkbox" name="payOnAccount" value="true" checked={company?.pay_on_account || undefined} />
+              Can book on account (invoice later)
+            </label>
+          </div>
+          <div class="field">
+            <label class="switch">
+              <input type="checkbox" name="active" value="true" checked={company ? company.active || undefined : true} />
+              Active
+            </label>
+          </div>
+          <div class="field">
+            <label for="co-no">Notes for the office</label>
+            <textarea id="co-no" class="input" name="notes">{company?.notes ?? ''}</textarea>
+          </div>
+          <div class="form-footer">
+            <button class="btn" type="submit">{isNew ? 'Create company' : 'Save company'}</button>
+          </div>
+        </form>
+      </section>
+    )
+  }
+
+  {
+    company && tab === 'prices' && (
+      <div class="stack">
+        <section class="panel" aria-labelledby="co-p">
+          <div class="panel-head"><h2 id="co-p">Fixed prices</h2></div>
+          {
+            prices.length === 0 ? (
+              <div class="panel-body">
+                <EmptyState title="No fixed prices">
+                  This company pays the public price less its discount. Add a fixed price below to override it.
+                </EmptyState>
+              </div>
+            ) : (
+              <div class="table-wrap" role="region" tabindex="0" aria-label="Company prices" style="border:0">
+                <table class="table table-cards">
+                  <thead>
+                    <tr>
+                      <th scope="col">Class</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">Route</th>
+                      <th scope="col" class="num">Price</th>
+                      <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prices.map((p) => (
+                      <tr>
+                        <td class="card-title" data-label="Class">{p.class?.name ?? '—'}</td>
+                        <td data-label="Type">{p.booking_type === 'hourly' ? 'Hourly' : 'Transfer'}</td>
+                        <td data-label="Route">
+                          {p.booking_type === 'hourly' ? '—' : `${p.from_zone?.name ?? '—'} → ${p.to_zone?.name ?? '—'}`}
+                        </td>
+                        <td class="num" data-label="Price">
+                          <Money cents={p.price_cents} />
+                          {p.booking_type === 'hourly' && <small class="muted"> per hour</small>}
+                        </td>
+                        <td class="actions" data-label="">
+                          <form method="POST" action={actions.deleteCompanyPrice}>
+                            <input type="hidden" name="id" value={p.id} />
+                            <input type="hidden" name="companyId" value={company!.id} />
+                            <button class="btn btn-quiet btn-sm" type="submit">Remove</button>
+                          </form>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          }
+        </section>
+
+        <section class="panel" aria-labelledby="co-pa">
+          <div class="panel-head"><h2 id="co-pa">Add or replace a price</h2></div>
+          <form method="POST" action={actions.saveCompanyPrice} class="panel-body stack-sm">
+            <input type="hidden" name="companyId" value={company.id} />
+            <div class="grid-fields">
+              <div class="field">
+                <label for="cp-c">Class</label>
+                <Select
+                  id="cp-c"
+                  name="classId"
+                  required
+                  options={classes.map((c) => ({ value: c.id, label: c.name }))}
+                />
+              </div>
+              <div class="field">
+                <label for="cp-t">Type</label>
+                <Select
+                  id="cp-t"
+                  name="bookingType"
+                  options={[
+                    { value: 'transfer', label: 'Transfer (fixed price)', selected: true },
+                    { value: 'hourly', label: 'Hourly (price per hour)' },
+                  ]}
+                />
+              </div>
+              <div class="field">
+                <label for="cp-p">Price</label>
+                <div class="input-money">
+                  <input id="cp-p" class="input" name="priceEuros" inputmode="decimal" required />
+                </div>
+              </div>
+            </div>
+            <div class="grid-fields">
+              <div class="field">
+                <label for="cp-f">From zone</label>
+                <Select id="cp-f" name="fromZoneId" options={[{ value: '', label: '—' }, ...zones.map((z) => ({ value: z.id, label: z.name }))]} />
+              </div>
+              <div class="field">
+                <label for="cp-z">To zone</label>
+                <Select id="cp-z" name="toZoneId" options={[{ value: '', label: '—' }, ...zones.map((z) => ({ value: z.id, label: z.name }))]} />
+              </div>
+            </div>
+            <p class="help">Zones are needed for transfer prices and ignored for hourly prices. Saving replaces the same class and route.</p>
+            <div class="form-footer"><button class="btn" type="submit">Save price</button></div>
+          </form>
+        </section>
+      </div>
+    )
+  }
+
+  {
+    company && tab === 'users' && (
+      <div class="stack">
+        <section class="panel" aria-labelledby="co-u">
+          <div class="panel-head"><h2 id="co-u">Users</h2></div>
+          {
+            users.length === 0 ? (
+              <div class="panel-body">
+                <EmptyState title="No users">Invite someone below so they can sign in and book for this company.</EmptyState>
+              </div>
+            ) : (
+              <div class="table-wrap" role="region" tabindex="0" aria-label="Company users" style="border:0">
+                <table class="table table-cards">
+                  <thead>
+                    <tr>
+                      <th scope="col">E-mail</th>
+                      <th scope="col">Role</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Invited</th>
+                      <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr>
+                        <td class="card-title" data-label="E-mail">{u.email}</td>
+                        <td data-label="Role">{u.role === 'admin' ? 'Admin' : 'Booker'}</td>
+                        <td data-label="Status">
+                          <span class={`badge ${u.active ? 's-confirmed' : 's-completed'}`}>
+                            {u.active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td data-label="Invited">{formatAthensShort(u.invited_at)}</td>
+                        <td class="actions" data-label="">
+                          {u.active && (
+                            <form method="POST" action={actions.deactivateCompanyUser}>
+                              <input type="hidden" name="id" value={u.id} />
+                              <input type="hidden" name="companyId" value={company!.id} />
+                              <button class="btn btn-quiet btn-sm" type="submit">Deactivate</button>
+                            </form>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          }
+        </section>
+
+        <section class="panel" aria-labelledby="co-ui">
+          <div class="panel-head"><h2 id="co-ui">Invite a user</h2></div>
+          <form method="POST" action={actions.inviteCompanyUser} class="panel-body stack-sm">
+            <input type="hidden" name="companyId" value={company.id} />
+            <div class="grid-fields">
+              <div class="field">
+                <label for="cu-e">E-mail</label>
+                <input id="cu-e" class="input" type="email" name="email" required autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="cu-r">Role</label>
+                <Select
+                  id="cu-r"
+                  name="role"
+                  options={[
+                    { value: 'booker', label: 'Booker (books trips)', selected: true },
+                    { value: 'admin', label: 'Admin (also manages users)' },
+                  ]}
+                />
+              </div>
+            </div>
+            <div class="form-footer"><button class="btn" type="submit">Send invitation</button></div>
+          </form>
+        </section>
+      </div>
+    )
+  }
+
+  {
+    company && tab === 'bookings' && (
+      <section class="panel" aria-labelledby="co-b">
+        <div class="panel-head"><h2 id="co-b">Bookings</h2><span class="muted small">Latest 100</span></div>
+        {
+          bookings.length === 0 ? (
+            <div class="panel-body">
+              <EmptyState title="No bookings">No bookings are linked to this company yet.</EmptyState>
+            </div>
+          ) : (
+            <div class="table-wrap" role="region" tabindex="0" aria-label="Company bookings" style="border:0">
+              <table class="table table-cards">
+                <thead>
+                  <tr>
+                    <th scope="col">Reference</th>
+                    <th scope="col">Pick-up</th>
+                    <th scope="col">Trip</th>
+                    <th scope="col">Guest</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Payment</th>
+                    <th scope="col" class="num">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookings.map((b) => (
+                    <tr>
+                      <td class="card-title" data-label="Reference">
+                        <a class="ref" href={`/bookings/${b.reference}`}>{b.reference}</a>
+                      </td>
+                      <td data-label="Pick-up">{formatAthensShort(b.pickup_at)}</td>
+                      <td data-label="Trip">
+                        {b.booking_type === 'hourly'
+                          ? `${b.from_zone?.name ?? '—'} · hourly`
+                          : `${b.from_zone?.name ?? '—'} → ${b.to_zone?.name ?? '—'}`}
+                      </td>
+                      <td data-label="Guest">
+                        {b.guest_name || '—'}
+                        {b.cost_center && <span class="sub">{b.cost_center}</span>}
+                      </td>
+                      <td data-label="Status"><StatusBadge status={b.status} /></td>
+                      <td data-label="Payment">
+                        {b.payment_method === 'on_account' ? 'On account · ' : ''}
+                        <StatusBadge kind="payment" status={b.payment_status} />
+                      </td>
+                      <td class="num" data-label="Price"><Money cents={b.price_cents} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+      </section>
+    )
+  }
+
+  {
+    company && tab === 'statements' && (
+      <div class="stack">
+        <section class="panel" aria-labelledby="co-s">
+          <div class="panel-head"><h2 id="co-s">Statements</h2></div>
+          {
+            statements.length === 0 ? (
+              <div class="panel-body">
+                <EmptyState title="No statements">Create one below for a period of on-account bookings.</EmptyState>
+              </div>
+            ) : (
+              <div class="table-wrap" role="region" tabindex="0" aria-label="Company statements" style="border:0">
+                <table class="table table-cards">
+                  <thead>
+                    <tr>
+                      <th scope="col">Period</th>
+                      <th scope="col" class="num">Total</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statements.map((s) => {
+                      const badge = STATEMENT_BADGE[s.status] ?? { cls: 'plain', text: s.status };
+                      return (
+                        <tr>
+                          <td class="card-title" data-label="Period">
+                            {s.period_from} → {s.period_to}
+                          </td>
+                          <td class="num" data-label="Total"><Money cents={s.total_cents} /></td>
+                          <td data-label="Status">
+                            <span class={`badge ${badge.cls}`}>{badge.text}</span>
+                            {s.paid_ref && <span class="small muted"> {s.paid_ref}</span>}
+                          </td>
+                          <td data-label="Actions">
+                            <div class="row" style="gap:.5rem;flex-wrap:wrap;align-items:center">
+                              <a class="btn btn-secondary btn-sm" href={`/companies/${company!.id}/statements/${s.id}/export.csv`}>
+                                CSV
+                              </a>
+                              {s.status !== 'paid' && (
+                                <form method="POST" action={actions.sendCompanyStatement}>
+                                  <input type="hidden" name="statementId" value={s.id} />
+                                  <input type="hidden" name="companyId" value={company!.id} />
+                                  <button
+                                    class="btn btn-secondary btn-sm"
+                                    type="submit"
+                                    disabled={!company!.billing_email || undefined}
+                                    title={company!.billing_email ? undefined : 'Add a billing e-mail on the Details tab first'}
+                                  >
+                                    {s.status === 'sent' ? 'Send again' : 'Send'}
+                                  </button>
+                                </form>
+                              )}
+                              {s.status !== 'paid' && (
+                                <form method="POST" action={actions.markCompanyStatementPaid} class="row" style="gap:.5rem;align-items:center">
+                                  <input type="hidden" name="statementId" value={s.id} />
+                                  <input type="hidden" name="companyId" value={company!.id} />
+                                  <label class="sr-only" for={`pr-${s.id}`}>Payment reference</label>
+                                  <input id={`pr-${s.id}`} class="input" name="paidRef" placeholder="Payment reference" required style="max-width:12rem" />
+                                  <button class="btn btn-sm" type="submit">Mark paid</button>
+                                </form>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          }
+        </section>
+
+        <section class="panel" aria-labelledby="co-sn">
+          <div class="panel-head"><h2 id="co-sn">New statement</h2></div>
+          <form method="POST" action={actions.createCompanyStatement} class="panel-body stack-sm">
+            <input type="hidden" name="companyId" value={company.id} />
+            <div class="grid-fields">
+              <div class="field">
+                <label for="cs-f">From</label>
+                <input id="cs-f" class="input" type="date" name="periodFrom" required value={monthStart} />
+              </div>
+              <div class="field">
+                <label for="cs-t">To</label>
+                <input id="cs-t" class="input" type="date" name="periodTo" required value={today} />
+              </div>
+            </div>
+            <p class="help">
+              The total is the on-account bookings in the period, cancellations excluded. Marking a statement as paid
+              settles those bookings.
+            </p>
+            <div class="form-footer"><button class="btn" type="submit">Create draft statement</button></div>
+          </form>
+        </section>
+      </div>
+    )
+  }
+</AdminLayout>

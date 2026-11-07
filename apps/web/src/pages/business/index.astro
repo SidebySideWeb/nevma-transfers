@@ -1,0 +1,113 @@
+---
+export const prerender = false;
+
+import { features, notFoundUnless } from '@tem/features';
+import SiteHeader from '../../components/v2/SiteHeader.astro';
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { getSiteSettings, loadUiStrings } from '../../lib/sanity/content';
+import { t, tAccent } from '../../lib/strings';
+
+const off = notFoundUnless(features().corporate);
+if (off) return off;
+
+await loadUiStrings();
+const settings = await getSiteSettings();
+const title = `${t('business.login.title')} - ${settings.companyName}`;
+---
+
+<PublicLayout
+  designPage="08-book"
+  title={title}
+  description={t('business.lead')}
+  robots="noindex,nofollow"
+>
+  <section data-block="appHero" class="bgx1 s5e090" data-v2-extra>
+    <SiteHeader settings={settings} pathname="/business" />
+    <div class="sc68e2">
+      <div class="s3a80d">
+        <span class="eyebrow">{t('business.eyebrow')}</span>
+        <h1 class="display sd5a38" set:html={tAccent('business.title')} />
+      </div>
+    </div>
+  </section>
+  <section data-block="appBody" class="s39f3a" data-v2-extra>
+    <div class="s8f7a6">
+      <p class="s0a0a6">{t('business.lead')}</p>
+      <form id="biz-login" class="biz-login" novalidate>
+        <h2 class="biz-h">{t('business.login.title')}</h2>
+        <div class="f2">
+          <label for="biz-email">{t('business.login.email')}</label>
+          <input id="biz-email" name="email" type="email" autocomplete="email" required />
+        </div>
+        <p id="biz-status" class="biz-note" role="status" aria-live="polite" tabindex="-1"></p>
+        <button
+          class="btn btn-gold"
+          type="submit"
+          data-sending={t('business.login.sending')}
+          data-sent={t('business.login.sent')}
+          data-error={t('business.login.error')}
+        >
+          {t('business.login.submit')}
+        </button>
+      </form>
+      <p class="s0a0a6">
+        {t('business.open.hint')}
+        <a href="/request-a-transfer">{t('business.open.link')}</a>
+      </p>
+    </div>
+  </section>
+</PublicLayout>
+
+<script>
+  const form = document.getElementById('biz-login') as HTMLFormElement | null;
+  const status = document.getElementById('biz-status');
+  const button = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!button || !status) return;
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value.trim();
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = button.dataset.sending ?? '';
+    let ok = false;
+    try {
+      const res = await fetch('/api/corporate/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      ok = res.ok;
+    } catch {
+      ok = false;
+    }
+    status.textContent = (ok ? button.dataset.sent : button.dataset.error) ?? '';
+    status.classList.toggle('biz-err', !ok);
+    button.textContent = label;
+    button.disabled = false;
+    status.focus();
+  });
+</script>
+
+<style is:global>
+  /* data-v2-extra: business pages reuse the booking hero/body; these parts are not in the design. */
+  .biz-login {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 28rem;
+    margin: var(--space-5) 0;
+  }
+  .biz-h {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 500;
+  }
+  .biz-note {
+    margin: 0;
+    min-height: 1.5em;
+    color: var(--color-muted);
+  }
+  .biz-note.biz-err {
+    color: var(--color-danger);
+  }
+</style>

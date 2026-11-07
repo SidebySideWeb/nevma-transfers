@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { applyCompanyDiscount, companyBasePrice } from '@tem/pricing';
 import type { Database } from './database.types';
 import { athensLocalToInstant } from './time';
 
@@ -16,6 +17,8 @@ export type TripInput = {
   hours?: number;
   passengers: number;
   luggage: number;
+  /** B9: show this company's fixed price or discount instead of the public list price. */
+  companyId?: string;
 };
 
 export type ClassOffer = {
@@ -108,6 +111,30 @@ export async function classAvailabilityForTrip(
       .order('price_cents', { ascending: false }),
   ]);
 
+  // B9: same rule as the web app: a fixed company price beats the discount; extras are not discounted.
+  let discountPct = 0;
+  const fixedByKey: Record<string, number> = {};
+  if (input.companyId) {
+    const db = supabase as unknown as SupabaseClient;
+    const [{ data: co }, { data: rows }] = await Promise.all([
+      db.from('companies').select('discount_pct').eq('id', input.companyId).eq('active', true).maybeSingle(),
+      (() => {
+        let q = db
+          .from('company_prices')
+          .select('class_id, price_cents')
+          .eq('company_id', input.companyId!)
+          .eq('booking_type', input.type);
+        if (input.type === 'transfer') q = q.eq('from_zone_id', trip.fromId).eq('to_zone_id', trip.toId!);
+        return q;
+      })(),
+    ]);
+    discountPct = Number(co?.discount_pct) || 0;
+    for (const r of (rows ?? []) as { class_id: string; price_cents: number }[]) {
+      const key = classesRes.data?.find((c) => c.id === r.class_id)?.key;
+      if (key) fixedByKey[key] = r.price_cents;
+    }
+  }
+
   const classes: ClassOffer[] = await Promise.all(
     (classesRes.data ?? []).map(async (c) => {
       const range = tripRange(pickup, trip.durationMinutes, c.buffer_minutes);
@@ -123,6 +150,11 @@ export async function classAvailabilityForTrip(
         if (r && input.hours && input.hours >= r.min_hours && input.hours <= r.max_hours) {
           priceCents = r.price_per_hour_cents * input.hours;
         }
+      }
+      if (input.companyId && priceCents != null) {
+        const fixed = companyBasePrice(fixedByKey, c.key);
+        priceCents =
+          fixed != null ? fixed * (input.type === 'hourly' ? (input.hours ?? 1) : 1) : applyCompanyDiscount(priceCents, discountPct).cents;
       }
       return {
         key: c.key,

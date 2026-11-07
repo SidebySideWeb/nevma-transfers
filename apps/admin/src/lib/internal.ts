@@ -24,6 +24,9 @@ async function postInternal(
     | '/api/internal/payments'
     | '/api/internal/drivers/invite'
     | '/api/internal/drivers/notify'
+    | '/api/internal/companies/invite'
+    | '/api/internal/companies/statement-send'
+    | '/api/internal/companies/statement-paid'
     | '/api/internal/flights/check'
     | '/api/internal/flights/delay',
   body: unknown,
@@ -104,6 +107,8 @@ export type OfficeBookingBody = {
   priceOverrideReason?: string;
   payment: 'link' | 'offline_paid' | 'offline_collect';
   offlineMethod?: 'cash' | 'bank_transfer' | 'on_account';
+  /** B9: book for a company (discount / fixed prices, on-account credit check). */
+  companyId?: string;
   emailCustomer: boolean;
 };
 
@@ -133,6 +138,27 @@ export async function callInternalDriverNotify(
   staffUserId: string,
 ) {
   return postInternal('/api/internal/drivers/notify', body, staffUserId);
+}
+
+export async function callInternalCompanyInvite(
+  body: { companyId: string; email: string; role: 'admin' | 'booker' },
+  staffUserId: string,
+) {
+  return postInternal('/api/internal/companies/invite', body, staffUserId);
+}
+
+export async function callInternalCompanyStatementSend(
+  body: { statementId: string },
+  staffUserId: string,
+) {
+  return postInternal('/api/internal/companies/statement-send', body, staffUserId);
+}
+
+export async function callInternalCompanyStatementPaid(
+  body: { statementId: string; paidRef: string },
+  staffUserId: string,
+) {
+  return postInternal('/api/internal/companies/statement-paid', body, staffUserId);
 }
 
 export async function callInternalFlightCheck(

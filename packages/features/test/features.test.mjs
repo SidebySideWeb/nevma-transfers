@@ -224,6 +224,18 @@ describe('filterAdminNav()', () => {
     assert.ok(!labels.includes('Flights'));
   });
 
+  it('Companies is hidden by default and shown when FEATURE_CORPORATE=true, after Customers', () => {
+    const off = filterAdminNav(features({}, silentLog().log));
+    assert.ok(!off.flatMap((g) => g.items.map((i) => i.id)).includes('companies'));
+
+    const on = filterAdminNav(features({ FEATURE_CORPORATE: 'true' }, silentLog().log));
+    const ops = on.find((g) => g.id === 'operations');
+    const ids = ops.items.map((i) => i.id);
+    assert.ok(ids.includes('companies'));
+    assert.equal(ids.indexOf('companies'), ids.indexOf('customers') + 1);
+    assert.equal(ops.items.find((i) => i.id === 'companies').href, '/companies');
+  });
+
   it('flightTracking shows Flights nav item', () => {
     const f = features(
       { FEATURE_FLIGHT_TRACKING: 'true', FLIGHT_PROVIDER: 'manual' },

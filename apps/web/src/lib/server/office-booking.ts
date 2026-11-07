@@ -1,10 +1,13 @@
 import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { features } from '@tem/features';
 import { parsePlace, placeColumns, PlacesError } from '@tem/places';
+import { applyCompanyDiscount, companyBasePrice } from '@tem/pricing';
 import { assertLeadTime, localToInstant, toIsoWithOffset } from '../booking/time';
 import { BookingError } from '../booking/types';
 import { rejectMoneyFields } from '../booking/validation';
+import { assertOnAccountAllowed, loadCompanyPriceMap } from './corporate';
 import { bookingDb } from './db';
 import { mapPgBookingError } from './http';
 import { getPaymentProvider } from './payments';
@@ -62,6 +65,8 @@ const OfficeBookingBody = z
     priceOverrideReason: z.string().min(1).optional(),
     payment: z.enum(['link', 'offline_paid', 'offline_collect']),
     offlineMethod: OfflineMethod.optional(),
+    /** B9: company account; its fixed price or discount replaces the public list price. */
+    companyId: z.uuid().optional(),
     emailCustomer: z.boolean().default(true),
   })
   .strict()
@@ -108,6 +113,13 @@ export type OfficeBookingResult = {
   checkoutUrl?: string;
   vivaTimeoutCapped?: boolean;
 };
+
+const companyError = (message: string) =>
+  new BookingError('invalid_request', {
+    stringKey: 'error.invalid_request',
+    message,
+    field: 'companyId',
+  });
 
 export async function createOfficeBooking(
   raw: unknown,
@@ -164,8 +176,51 @@ export async function createOfficeBooking(
     luggage: body.luggage,
   });
   const extras = await sumExtras(body.extras);
-  const listPriceCents = trip.baseCents + extras.totalCents;
+
+  // B9: a company's fixed price (per hour when hourly) beats its discount; extras are not discounted.
+  let baseCents = trip.baseCents;
+  let companyId: string | null = null;
+  let company: { companyId: string; payOnAccount: boolean; creditLimitCents: number | null } | null =
+    null;
+  if (body.companyId) {
+    if (!features().corporate) throw companyError('corporate_off');
+    const { rows } = await bookingDb().query<{
+      pay_on_account: boolean;
+      credit_limit_cents: number | null;
+      discount_pct: string;
+    }>(
+      `select pay_on_account, credit_limit_cents, discount_pct::text
+         from public.companies where id = $1::uuid and active`,
+      [body.companyId],
+    );
+    const c = rows[0];
+    if (!c) throw companyError('unknown_company');
+    companyId = body.companyId;
+    company = {
+      companyId,
+      payOnAccount: c.pay_on_account,
+      creditLimitCents: c.credit_limit_cents,
+    };
+    const prices = await loadCompanyPriceMap({
+      companyId,
+      bookingType: body.bookingType,
+      fromZoneId: trip.fromId,
+      toZoneId: trip.toId,
+    });
+    const fixed = companyBasePrice(prices, body.classKey);
+    baseCents =
+      fixed != null
+        ? body.bookingType === 'hourly'
+          ? fixed * (trip.hours ?? 1)
+          : fixed
+        : applyCompanyDiscount(trip.baseCents, Number(c.discount_pct) || 0).cents;
+  }
+
+  const listPriceCents = baseCents + extras.totalCents;
   const priceCents = body.priceOverrideCents ?? listPriceCents;
+  if (company && body.payment !== 'link' && body.offlineMethod === 'on_account') {
+    await assertOnAccountAllowed(company, priceCents);
+  }
   const overrideReason =
     body.priceOverrideCents != null && body.priceOverrideCents !== listPriceCents
       ? body.priceOverrideReason!.trim()
@@ -230,7 +285,7 @@ export async function createOfficeBooking(
          base_price_cents, price_cents, list_price_cents, price_override_reason,
          status, hold_expires_at, payment_status, payment_method,
          invoice_status, invoice_company, invoice_vat, invoice_tax_office, invoice_address,
-         visitor_key, cancel_token_hash, source, created_by, vip_security, vehicle_id
+         visitor_key, cancel_token_hash, source, created_by, vip_security, vehicle_id, company_id
        ) values (
          $1::public.booking_type, $2::uuid, $3::uuid, $4::uuid,
          $5, $6, $7::timestamptz, $8::int, $9::int, $10::tstzrange,
@@ -238,7 +293,7 @@ export async function createOfficeBooking(
          $18::int, $19::int, $20::int, $21,
          $22::public.booking_status, $23::timestamptz, $24::public.payment_status, $25,
          $26::public.invoice_status, $27, $28, $29, $30,
-         $31, $32, 'office', $33::uuid, $34, $35::uuid
+         $31, $32, 'office', $33::uuid, $34, $35::uuid, $36::uuid
        )
        returning id, reference, status, payment_status`,
       [
@@ -259,7 +314,7 @@ export async function createOfficeBooking(
         body.customer.email,
         body.customer.phone,
         body.notes ?? null,
-        trip.baseCents,
+        baseCents,
         priceCents,
         listPriceCents,
         overrideReason,
@@ -277,6 +332,7 @@ export async function createOfficeBooking(
         staffUserId,
         extras.vipSecurity,
         body.vehicleId ?? null,
+        companyId,
       ],
     );
     booking = rows[0]!;

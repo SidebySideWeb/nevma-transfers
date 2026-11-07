@@ -44,6 +44,11 @@ export type ConfirmationInput = {
   } | null;
   /** Combined payment when returnLeg is set. */
   paymentTotalCents?: number | null;
+  /** B9 corporate: guest travelling and the business account name. */
+  guestName?: string | null;
+  accountCompanyName?: string | null;
+  /** B9: when `on_account`, show an "On account" payment line. */
+  paymentMethod?: string | null;
 };
 
 export type OfficeNewInput = ConfirmationInput & {
@@ -345,9 +350,15 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
     : '';
 
   const analysis = priceAnalysisLines(input);
+  const accountLines = [
+    input.accountCompanyName ? `Business account: ${input.accountCompanyName}` : '',
+    input.guestName ? `Guest: ${input.guestName}` : '',
+    input.paymentMethod === 'on_account' ? 'Payment: On account' : '',
+  ].filter(Boolean);
   const text = [
     body,
     '',
+    accountLines.join('\n'),
     input.returnLeg ? 'Outbound' : '',
     tripLines(input),
     returnBlock,
@@ -367,6 +378,11 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
 
   const htmlBody = `
     <p style="margin:0 0 12px;">${escapeHtml(body)}</p>
+    ${
+      accountLines.length
+        ? `<p style="margin:0 0 12px;white-space:pre-line;">${escapeHtml(accountLines.join('\n'))}</p>`
+        : ''
+    }
     ${input.returnLeg ? `<p style="margin:0 0 4px;font-weight:600;">Outbound</p>` : ''}
     <p style="margin:0 0 8px;white-space:pre-line;">${escapeHtml(tripLines(input))}</p>
     ${

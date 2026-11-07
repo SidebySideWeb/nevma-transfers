@@ -25,6 +25,7 @@ type Hit = {
   last_booking_at: string | null;
 };
 type PageData = {
+  companies?: { id: string; payOnAccount: boolean }[];
   vehicleId: string;
   extras: { code: string; name: string; priceCents: number }[];
   addressAutocomplete?: boolean;
@@ -51,6 +52,8 @@ const idempotencyKey = crypto.randomUUID();
 const checked = (name: string) => form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
 const type = () => (checked('nb-type')?.value ?? 'transfer') as 'transfer' | 'hourly';
 const payment = () => (checked('nb-pay')?.value ?? 'link') as 'link' | 'offline_paid' | 'offline_collect';
+/** B9: chosen company (undefined when the picker is off or "No company"). */
+const companyId = () => document.querySelector<HTMLSelectElement>('#nb-co')?.value || undefined;
 const selectedText = (id: string) => ($<HTMLSelectElement>(id).selectedOptions[0]?.textContent ?? '').trim();
 
 // ---------- errors next to fields ----------
@@ -242,10 +245,26 @@ function tripInput() {
   if (!Number.isInteger(passengers) || passengers < 1 || !Number.isInteger(luggage) || luggage < 0) return null;
   if (type() === 'transfer') {
     if (!to || to === from) return null;
-    return { pickupLocal: pickupLocal(), type: 'transfer' as const, fromZone: from, toZone: to, passengers, luggage };
+    return {
+      pickupLocal: pickupLocal(),
+      type: 'transfer' as const,
+      fromZone: from,
+      toZone: to,
+      passengers,
+      luggage,
+      companyId: companyId(),
+    };
   }
   if (!Number.isInteger(hours) || hours < 1) return null;
-  return { pickupLocal: pickupLocal(), type: 'hourly' as const, fromZone: from, hours, passengers, luggage };
+  return {
+    pickupLocal: pickupLocal(),
+    type: 'hourly' as const,
+    fromZone: from,
+    hours,
+    passengers,
+    luggage,
+    companyId: companyId(),
+  };
 }
 
 function opt(value: string, label: string, meta?: string, disabled = false, selected = false) {
@@ -419,6 +438,22 @@ function renderSummary() {
     pays.append(strong);
   }
 }
+/** On account is offered with no company, or with a company that may book on account. */
+function renderMethods() {
+  const sel = $<HTMLSelectElement>('nb-meth');
+  const id = companyId();
+  const allowed = !id || (data.companies ?? []).find((c) => c.id === id)?.payOnAccount === true;
+  const prev = sel.value;
+  const options = [
+    opt('cash', 'Cash'),
+    opt('bank_transfer', 'Bank transfer'),
+    ...(allowed ? [opt('on_account', 'On account (invoice)')] : []),
+  ];
+  for (const o of options) o.selected = o.value === prev;
+  if (!options.some((o) => o.selected)) options[0]!.selected = true;
+  sel.replaceChildren(...options);
+  refreshSelect(sel);
+}
 function renderPayment() {
   $('nb-meth-field').hidden = payment() === 'link';
   $('nb-submit').textContent =
@@ -439,6 +474,10 @@ for (const id of ['nb-from', 'nb-to', 'nb-date', 'nb-time', 'nb-hours', 'nb-px',
   $(id).addEventListener('input', scheduleAvailability);
   $(id).addEventListener('change', scheduleAvailability);
 }
+document.getElementById('nb-co')?.addEventListener('change', () => {
+  renderMethods();
+  scheduleAvailability();
+});
 form.querySelectorAll('input[name="nb-type"]').forEach((r) =>
   r.addEventListener('change', () => {
     renderType();
@@ -477,6 +516,7 @@ const FIELD: Record<string, string> = {
   pickupLocal: 'nb-time',
   pickupAddress: 'nb-pa',
   customer: 'nb-name',
+  companyId: 'nb-co',
   invoice: 'nb-inv-addr',
   priceOverrideEuros: 'nb-ov',
   priceOverrideReason: 'nb-why',
@@ -562,6 +602,7 @@ form.addEventListener('submit', async (e) => {
     priceOverrideReason: $('nb-ovr').checked ? $('nb-why').value : undefined,
     payment: payment(),
     offlineMethod: payment() === 'link' ? undefined : ($('nb-meth').value as 'cash'),
+    companyId: companyId(),
     emailCustomer: $('nb-email').checked,
   });
 
