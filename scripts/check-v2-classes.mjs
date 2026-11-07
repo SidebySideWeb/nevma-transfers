@@ -43,7 +43,15 @@ const EXTRA_ALLOW = new Set([
   'is-invalid', // booking / form field error outline (page or component CSS)
   'turnstile-slot',
   'v2-menu-nojs', // noscript menu fallback in SiteHeader
+  // Non-v2 utilities used with data-v2-extra (booking-v2 / manage / corporate).
+  'panel',
+  'muted',
+  'small',
+  'input',
 ]);
+
+/** Intentional extras with component/page CSS (booking-v2, WhatsApp, corporate). */
+const EXTRA_PREFIXES = ['ep-', 'biz-'];
 
 function collectCssClasses(css) {
   const out = new Set();
@@ -134,6 +142,7 @@ for (const file of files) {
   for (const c of extractClasses(src)) {
     if (c.startsWith('js-')) continue;
     if (allowed.has(c)) continue;
+    if (EXTRA_PREFIXES.some((p) => c.startsWith(p))) continue;
     bad.push({ file: relative(ROOT, file).replaceAll('\\', '/'), className: c });
   }
 }
