@@ -3,11 +3,13 @@ export const prerender = false;
 
 import ManageBody from '../../../components/v2/status/ManageBody.astro';
 import StatusHero from '../../../components/v2/StatusHero.astro';
+import WhatsAppIcon from '../../../components/v2/WhatsAppIcon.astro';
 import PublicLayout from '../../../layouts/PublicLayout.astro';
 import { getSiteSettings, loadUiStrings } from '../../../lib/sanity/content';
 import { managePageView } from '../../../lib/server/booking-manage';
 import { escapeThenAccent } from '../../../lib/v2/accent';
 import { t } from '../../../lib/strings';
+import { siteWhatsappChrome } from '../../../lib/whatsapp-site';
 
 Astro.response.headers.set('Cache-Control', 'no-store');
 Astro.response.headers.set('Referrer-Policy', 'no-referrer');
@@ -16,6 +18,10 @@ await loadUiStrings();
 const settings = await getSiteSettings();
 const token = Astro.params.token ?? '';
 const view = await managePageView(token);
+const waManage =
+  view.kind === 'ok'
+    ? siteWhatsappChrome(settings, { ref: view.reference, pickupAt: view.pickupAt })
+    : null;
 
 const pageTitle = t('manage.title');
 const invalid = t('manage.linkInvalid');
@@ -89,6 +95,22 @@ const addressLine =
           pathname={`/booking/manage/${token}`}
         />
         {
+          waManage ? (
+            <section class="ep-wa-manage" data-v2-extra aria-label="WhatsApp">
+              <p class="ep-wa-manage-prompt">{t('manage.whatsapp.prompt')}</p>
+              <a
+                class="btn ep-wa-primary"
+                href={waManage.href}
+                target="_blank"
+                rel="noopener"
+              >
+                <WhatsAppIcon size={18} />
+                {t('manage.whatsapp.cta')}
+              </a>
+            </section>
+          ) : null
+        }
+        {
           view.kind === 'ok' && view.sibling && (
             <section class="panel" style="margin:1rem 0;padding:1rem" aria-label="Return trip">
               <h2 class="display" style="font-size:1.1rem;margin:0 0 0.5rem">
@@ -130,3 +152,29 @@ const addressLine =
     )
   }
 </PublicLayout>
+
+<style is:global>
+  .ep-wa-manage {
+    margin: 1rem 0 0;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid rgba(37, 211, 102, 0.35);
+    background: rgba(37, 211, 102, 0.08);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+  .ep-wa-manage-prompt {
+    margin: 0;
+    flex: 1 1 14rem;
+  }
+  .ep-wa-primary {
+    --wa-green: #25d366;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--wa-green) !important;
+    color: #fff !important;
+    border-color: var(--wa-green) !important;
+  }
+</style>

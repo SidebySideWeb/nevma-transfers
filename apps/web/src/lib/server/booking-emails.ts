@@ -1,6 +1,8 @@
 import 'server-only';
 import { Temporal } from '@js-temporal/polyfill';
+import { features, whatsappUrl } from '@tem/features';
 import { getSiteSettings, loadUiStrings } from '../sanity/content';
+import { t } from '../strings';
 import { bookingDb } from './db';
 import { sendEmail } from './email';
 import {
@@ -12,6 +14,7 @@ import {
   officeNewEmail,
   paymentLinkEmail,
   reminderEmail,
+  type EmailWhatsapp,
   type ExtraLine,
 } from './email-templates';
 import { getSettings } from './settings';
@@ -183,6 +186,22 @@ async function company() {
   };
 }
 
+/** Customer WhatsApp CTA when FEATURE_WHATSAPP is on (null otherwise). */
+function customerWhatsapp(
+  reference: string,
+  pickupAt?: Date | string | null,
+): EmailWhatsapp | null {
+  const f = features();
+  if (!f.whatsapp || !f.whatsappNumber) return null;
+  const url = whatsappUrl({
+    number: f.whatsappNumber,
+    ref: reference,
+    pickupAt: pickupAt ?? undefined,
+  });
+  if (!url) return null;
+  return { url, label: t('email.whatsapp.button') };
+}
+
 export async function sendConfirmationEmails(
   reference: string,
   cancelToken: string,
@@ -294,6 +313,7 @@ export async function sendConfirmationEmails(
     guestName: booking.guest_name,
     accountCompanyName: booking.account_company_name,
     paymentMethod: booking.payment_method,
+    whatsapp: customerWhatsapp(booking.reference, booking.pickup_at),
   };
 
   const customer = confirmationEmail(base);
@@ -353,6 +373,7 @@ export async function sendManageLinkEmail(input: {
     companyName: co.companyName,
     companyPhone: co.companyPhone,
     companyEmail: co.companyEmail,
+    whatsapp: customerWhatsapp(input.reference),
   });
   await sendEmail({
     to: input.to,
@@ -381,6 +402,7 @@ export async function sendPaymentLinkEmail(
     companyName: co.companyName,
     companyPhone: co.companyPhone,
     companyEmail: co.companyEmail,
+    whatsapp: customerWhatsapp(reference, booking.pickup_at),
   });
   await sendEmail({
     to: booking.customer_email,
@@ -403,7 +425,10 @@ export async function sendCancellationEmails(reference: string, refundCents = 0)
     companyPhone: co.companyPhone,
     companyEmail: co.companyEmail,
   };
-  const customer = cancelledCustomerEmail(input);
+  const customer = cancelledCustomerEmail({
+    ...input,
+    whatsapp: customerWhatsapp(reference, booking.pickup_at),
+  });
   await sendEmail({
     to: booking.customer_email,
     subject: customer.subject,
@@ -427,25 +452,32 @@ export async function sendLateRefundEmails(reference: string): Promise<void> {
   const booking = await loadBooking(reference);
   if (!booking) return;
   const co = await company();
-  const parts = lateRefundEmail({
+  const customerParts = lateRefundEmail({
+    reference,
+    companyName: co.companyName,
+    companyPhone: co.companyPhone,
+    companyEmail: co.companyEmail,
+    whatsapp: customerWhatsapp(reference, booking.pickup_at),
+  });
+  await sendEmail({
+    to: booking.customer_email,
+    subject: customerParts.subject,
+    html: customerParts.html,
+    text: customerParts.text,
+    tag: 'late_refund_customer',
+    reference,
+  });
+  const officeParts = lateRefundEmail({
     reference,
     companyName: co.companyName,
     companyPhone: co.companyPhone,
     companyEmail: co.companyEmail,
   });
   await sendEmail({
-    to: booking.customer_email,
-    subject: parts.subject,
-    html: parts.html,
-    text: parts.text,
-    tag: 'late_refund_customer',
-    reference,
-  });
-  await sendEmail({
     to: co.officeTo,
-    subject: parts.subject,
-    html: parts.html,
-    text: parts.text,
+    subject: officeParts.subject,
+    html: officeParts.html,
+    text: officeParts.text,
     tag: 'late_refund_office',
     reference,
   });
@@ -463,6 +495,7 @@ export async function sendReminderForRow(row: {
     companyName: co.companyName,
     companyPhone: co.companyPhone,
     companyEmail: co.companyEmail,
+    whatsapp: customerWhatsapp(row.reference, row.pickup_at),
   });
   await sendEmail({
     to: row.customer_email,

@@ -117,7 +117,7 @@ export function StepReview({
         <div className="eyebrow">{strings['booking.payBox.eyebrow']}</div>
         <h2 className="display se47a0">{fill(strings['booking.payBox.title'], { total })}</h2>
         <p className="s0a0a6">{strings['booking.payBox.body']}</p>
-        <div className="s8dac8">
+        <div className="s8dac8 ep-bar-cta-sticky" data-v2-extra>
           <button type="button" className="btn btn-gold s1c986" disabled={busy} onClick={onPay}>
             {busy ? strings['booking.loading'] : fill(strings['booking.pay'], { total })}
           </button>

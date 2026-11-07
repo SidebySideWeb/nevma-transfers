@@ -1,10 +1,12 @@
 ---
 import { features, publicFeatures } from '@tem/features';
 import SiteFooter from '../components/v2/SiteFooter.astro';
+import WhatsAppFloat from '../components/v2/WhatsAppFloat.astro';
 import { getSiteSettings, loadUiStrings } from '../lib/sanity/content';
 import { responsiveImage, type SanityImage } from '../lib/sanity/image';
 import type { ResolvedSeo } from '../lib/seo';
 import { v2PhotoUrl } from '../lib/v2/bg-image';
+import { siteWhatsappChrome } from '../lib/whatsapp-site';
 import '../styles/fonts.css';
 import '../styles/tokens.css';
 import '../styles/v2.css';
@@ -22,11 +24,14 @@ interface Props {
   rootClass?: string;
   /** When false, the page supplies its own footer (rare). */
   withFooter?: boolean;
+  /** Hide the floating WhatsApp control (e.g. book pages that manage it themselves). */
+  hideWhatsappFloat?: boolean;
 }
 
 await loadUiStrings();
 const settings = await getSiteSettings();
 const publicFeatureFlags = publicFeatures(features());
+const waChrome = siteWhatsappChrome(settings);
 
 const {
   designPage,
@@ -39,6 +44,7 @@ const {
   preloadImage,
   rootClass = 'sf2a7c',
   withFooter = true,
+  hideWhatsappFloat = false,
 } = Astro.props;
 
 const preload =
@@ -120,6 +126,11 @@ const bodyClass = `pg-${designPage}`;
         {withFooter ? <SiteFooter settings={settings} /> : null}
       </main>
     </div>
+    {
+      !hideWhatsappFloat && waChrome?.showFloatingButton ? (
+        <WhatsAppFloat href={waChrome.href} label={waChrome.label} />
+      ) : null
+    }
     <script>
       // Lazy V2 backgrounds: hero stays eager; below-fold use data-bg-image.
       const apply = (el: HTMLElement) => {

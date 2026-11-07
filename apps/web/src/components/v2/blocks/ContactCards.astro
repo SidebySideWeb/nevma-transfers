@@ -1,5 +1,7 @@
 ---
 import { getSiteSettings } from '../../../lib/sanity/content';
+import { siteWhatsappChrome } from '../../../lib/whatsapp-site';
+import WhatsAppIcon from '../WhatsAppIcon.astro';
 
 interface Props {
   section: Record<string, unknown>;
@@ -7,6 +9,7 @@ interface Props {
 }
 const { section } = Astro.props;
 const settings = await getSiteSettings();
+const wa = siteWhatsappChrome(settings);
 const callLabel = typeof section.callLabel === 'string' ? section.callLabel : 'Call · 24/7';
 const emailLabel = typeof section.emailLabel === 'string' ? section.emailLabel : 'Email';
 const emailNote = typeof section.emailNote === 'string' ? section.emailNote : '';
@@ -16,6 +19,17 @@ const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 ---
 
 <section data-block="contactCards" class="s6def7">
+  {
+    wa ? (
+      <a href={wa.href} class="card s90b27 ep-wa-card" target="_blank" rel="noopener" data-v2-extra>
+        <span class="eyebrow">{wa.label}</span>
+        <span class="s1a9b3 ep-wa-link">
+          <WhatsAppIcon size={18} />
+          Message us on WhatsApp
+        </span>
+      </a>
+    ) : null
+  }
   <a href={phoneHref} class="card s90b27">
     <span class="eyebrow">{callLabel}</span>
     <span class="s1a9b3">{settings.phone}</span>

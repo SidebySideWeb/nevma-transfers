@@ -290,3 +290,5 @@ export function filterAdminNav(f, groups = ADMIN_NAV) {
     })
     .filter(Boolean);
 }
+
+export { formatWhatsappPickup, whatsappDigits, whatsappUrl } from './whatsappUrl.mjs';

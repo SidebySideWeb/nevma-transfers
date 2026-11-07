@@ -6,9 +6,16 @@ import { dbFromPool, setBookingDb } from './db';
 import { setEmailTransport, type SendEmailInput } from './email';
 import {
   cancelledCustomerEmail,
+  cancelledOfficeEmail,
   confirmationEmail,
+  driverAssignmentEmail,
+  driverInviteEmail,
+  formConfirm,
+  formOffice,
   lateRefundEmail,
+  manageLinkEmail,
   officeNewEmail,
+  paymentLinkEmail,
   reminderEmail,
 } from './email-templates';
 import { fireOnConfirmed } from './hooks';
@@ -168,6 +175,91 @@ describe('emails (prompt 08)', () => {
 
       TEM Protection · +30 210 000 0000 (DEMO) · hello@example.com"
     `);
+  });
+
+  it('WhatsApp: confirmation includes wa.me in HTML and text under 102 KB; office has none', () => {
+    const wa = {
+      url: 'https://wa.me/306900000000?text=Hello%2C%20about%20my%20booking%20TEM-ABCDEF',
+      label: 'Message us on WhatsApp',
+    };
+    const conf = confirmationEmail({ ...baseConfirm, whatsapp: wa });
+    expect(conf.html).toContain('wa.me');
+    expect(conf.html).toContain('#25D366');
+    expect(conf.text).toContain('WhatsApp: https://wa.me/306900000000');
+    expect(Buffer.byteLength(conf.html, 'utf8')).toBeLessThan(102 * 1024);
+    expect(Buffer.byteLength(conf.text, 'utf8')).toBeLessThan(102 * 1024);
+
+    const office = officeNewEmail({
+      ...baseConfirm,
+      whatsapp: wa,
+      customerName: 'A Customer',
+      customerEmail: 'a@example.com',
+      customerPhone: '+30 6900000000',
+      adminUrl: 'https://admin.example.com/bookings/TEM-ABCDEF',
+    });
+    expect(office.html).not.toContain('wa.me');
+    expect(office.text).not.toContain('wa.me');
+  });
+
+  it('WhatsApp switch off: no wa.me in the 13 customer/office email examples', () => {
+    const examples = [
+      confirmationEmail(baseConfirm),
+      officeNewEmail({
+        ...baseConfirm,
+        customerName: 'A',
+        customerEmail: 'a@example.com',
+        customerPhone: '+30 1',
+        adminUrl: 'https://admin.example.com/bookings/TEM-ABCDEF',
+      }),
+      reminderEmail({ reference: 'TEM-ABCDEF', pickupAtLocal: 'Mon 1 Dec 2026, 10:00', ...company }),
+      cancelledCustomerEmail({ reference: 'TEM-ABCDEF', refundCents: 100, ...company }),
+      cancelledOfficeEmail({ reference: 'TEM-ABCDEF', refundCents: 100, ...company }),
+      paymentLinkEmail({
+        reference: 'TEM-ABCDEF',
+        pickupAtLocal: 'Mon 1 Dec 2026, 10:00',
+        holdEndsLocal: 'soon',
+        checkoutUrl: 'https://pay.example/x',
+        ...company,
+      }),
+      lateRefundEmail({ reference: 'TEM-ABCDEF', ...company }),
+      manageLinkEmail({
+        reference: 'TEM-ABCDEF',
+        manageUrl: 'https://example.com/booking/manage/tok',
+        ...company,
+      }),
+      driverAssignmentEmail({
+        kind: 'assigned',
+        reference: 'TEM-ABCDEF',
+        pickupAtLocal: 'Mon 1 Dec 2026, 10:00',
+        routeOrHours: 'A → B',
+        pickupAddress: 'Hilton',
+        passengers: 2,
+        driverName: 'D',
+        ...company,
+      }),
+      driverInviteEmail({ name: 'D', link: 'https://example.com/magic', ...company }),
+      formOffice({
+        formTitle: 'Contact',
+        name: 'A',
+        answers: [{ key: 'message', label: 'Message', value: 'Hi' }],
+        studioUrl: 'https://studio.example',
+        ...company,
+      }),
+      formConfirm({
+        formTitle: 'Contact',
+        name: 'A',
+        answers: [{ key: 'message', label: 'Message', value: 'Hi' }],
+        ...company,
+      }),
+      confirmationEmail({ ...baseConfirm, whatsapp: null }),
+    ];
+    expect(examples).toHaveLength(13);
+    for (const parts of examples) {
+      expect(parts.html).not.toContain('wa.me');
+      expect(parts.text).not.toContain('wa.me');
+      // Existing link check: https links stay absolute.
+      expect(parts.html).toMatch(/https?:\/\//);
+    }
   });
 
   it('AC-37: confirmation email uses stored VAT values; 13% renders VAT 13%', () => {

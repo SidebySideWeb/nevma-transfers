@@ -30,6 +30,41 @@ export const siteSettings = defineType({
     }),
     defineField({ name: 'defaultSeo', title: 'Default SEO', type: 'seo' }),
     defineField({ name: 'logo', title: 'Logo', type: 'image', options: imageOptions, fields: [altField] }),
+    defineField({
+      name: 'whatsapp',
+      title: 'WhatsApp',
+      type: 'object',
+      description:
+        'Shown when FEATURE_WHATSAPP is on. The phone number itself is WHATSAPP_NUMBER in the server env (one source for site and emails).',
+      fields: [
+        defineField({
+          name: 'enabled',
+          title: 'Show WhatsApp on the site',
+          type: 'boolean',
+          initialValue: true,
+        }),
+        defineField({
+          name: 'label',
+          title: 'Label',
+          type: 'string',
+          initialValue: 'WhatsApp',
+        }),
+        defineField({
+          name: 'greeting',
+          title: 'Greeting (optional)',
+          type: 'text',
+          rows: 2,
+          description: 'Overrides the default prefilled chat text when there is no booking.',
+        }),
+        defineField({
+          name: 'showFloatingButton',
+          title: 'Show floating button on phones',
+          type: 'boolean',
+          initialValue: true,
+        }),
+      ],
+      options: { collapsible: true, collapsed: false },
+    }),
     defineField({ name: 'internalNote', title: 'Internal note (never shown on the site)', type: 'string' }),
   ],
   preview: { prepare: () => ({ title: 'Site settings' }) },

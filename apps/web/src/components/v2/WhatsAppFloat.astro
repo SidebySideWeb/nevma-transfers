@@ -1,0 +1,66 @@
+---
+import WhatsAppIcon from './WhatsAppIcon.astro';
+
+interface Props {
+  href: string;
+  label?: string;
+}
+const { href, label = 'WhatsApp' } = Astro.props;
+---
+
+<a
+  class="ep-wa-float"
+  href={href}
+  target="_blank"
+  rel="noopener"
+  aria-label="Chat with us on WhatsApp"
+  data-v2-extra
+  data-wa-float
+>
+  <WhatsAppIcon size={28} />
+  <span class="visually-hidden">{label}</span>
+</a>
+
+<style is:global>
+  .ep-wa-float {
+    --wa-green: #25d366;
+    position: fixed;
+    z-index: 18;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--wa-green);
+    color: #fff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    text-decoration: none;
+  }
+  @media (max-width: 1023px) {
+    .ep-wa-float {
+      display: flex;
+    }
+    /* Hide while the booking sticky CTA is on screen so it never covers View options / Pay. */
+    body:has(.ep-bar-cta-sticky) .ep-wa-float {
+      display: none !important;
+    }
+  }
+  .ep-wa-float:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+  }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

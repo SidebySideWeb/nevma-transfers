@@ -299,7 +299,7 @@ export function StepVehicle({
         </>
       )}
 
-      <div className="s8dac8">
+      <div className="s8dac8 ep-bar-cta-sticky" data-v2-extra>
         <button type="button" className="btn btn-line" onClick={onBack} disabled={busy}>
           <span aria-hidden="true">←</span> {strings['booking.step.journey']}
         </button>

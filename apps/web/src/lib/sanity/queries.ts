@@ -145,6 +145,12 @@ export const SITE_SETTINGS_QUERY = defineQuery(`
     logo{
       ${imageProjection}
     },
+    whatsapp{
+      enabled,
+      label,
+      greeting,
+      showFloatingButton
+    },
     internalNote
   }
 `);

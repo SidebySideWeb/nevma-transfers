@@ -32,6 +32,12 @@ docs.push({
   openingHours: 'DEMO: every day, 24 hours',
   timezone: 'Europe/Athens',
   showFromPrices: true,
+  whatsapp: {
+    enabled: true,
+    label: 'WhatsApp',
+    greeting: null,
+    showFloatingButton: true,
+  },
   defaultSeo: { _type: 'seo', title: 'Elite Protection (DEMO)', description: 'DEMO description: premium transfers and VIP security in Athens. Book online.' },
   internalNote: DEMO_NOTE,
 });

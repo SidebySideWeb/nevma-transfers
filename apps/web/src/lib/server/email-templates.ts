@@ -7,6 +7,9 @@ export type EmailParts = { subject: string; html: string; text: string };
 
 export type ExtraLine = { label: string; cents: number };
 
+/** Optional WhatsApp CTA for customer emails (skipped when null/undefined). */
+export type EmailWhatsapp = { url: string; label?: string };
+
 export type ConfirmationInput = {
   reference: string;
   bookingType: 'transfer' | 'hourly';
@@ -27,6 +30,8 @@ export type ConfirmationInput = {
   companyName: string;
   companyPhone: string;
   companyEmail: string;
+  /** Customer emails only; office templates ignore this. */
+  whatsapp?: EmailWhatsapp | null;
   /** Distance pricing (B4). */
   distanceKm?: number | null;
   durationMin?: number | null;
@@ -81,6 +86,7 @@ export type ReminderInput = {
   companyName: string;
   companyPhone: string;
   companyEmail: string;
+  whatsapp?: EmailWhatsapp | null;
 };
 
 export type CancelledInput = {
@@ -89,6 +95,7 @@ export type CancelledInput = {
   companyName: string;
   companyPhone: string;
   companyEmail: string;
+  whatsapp?: EmailWhatsapp | null;
 };
 
 export type LateRefundInput = {
@@ -96,6 +103,7 @@ export type LateRefundInput = {
   companyName: string;
   companyPhone: string;
   companyEmail: string;
+  whatsapp?: EmailWhatsapp | null;
 };
 
 function siteBaseUrl(): string {
@@ -110,7 +118,41 @@ function accentLink(href: string, label: string): string {
   return `<a href="${escapeHtml(href)}" style="color:${th.accent};text-decoration:none;">${escapeHtml(label)}</a>`;
 }
 
-function wrapHtml(title: string, bodyHtml: string, company: { name: string; phone: string; email: string }): string {
+const WA_GREEN = '#25D366';
+
+/** Green bulletproof WhatsApp button (VML for Outlook) + plain link fallback. */
+export function whatsappBlockHtml(wa: EmailWhatsapp): string {
+  const label = (wa.label && wa.label.trim()) || t('email.whatsapp.button');
+  const url = wa.url;
+  return `
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin:20px 0 8px;">
+      <tr>
+        <td align="left">
+          <!--[if mso]>
+          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(url)}" style="height:44px;v-text-anchor:middle;width:260px;" arcsize="10%" stroke="f" fillcolor="${WA_GREEN}">
+            <w:anchorlock/>
+            <center style="color:#ffffff;font-family:sans-serif;font-size:15px;font-weight:600;">${escapeHtml(label)}</center>
+          </v:roundrect>
+          <![endif]-->
+          <!--[if !mso]><!-->
+          <a href="${escapeHtml(url)}"
+             style="background-color:${WA_GREEN};border-radius:6px;color:#ffffff;display:inline-block;font-family:${th.font};font-size:15px;font-weight:600;line-height:44px;text-align:center;text-decoration:none;width:260px;-webkit-text-size-adjust:none;mso-hide:all;">
+            ${escapeHtml(label)}
+          </a>
+          <!--<![endif]-->
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:${th.muted};word-break:break-all;">
+      ${accentLink(url, url)}
+    </p>`;
+}
+
+function wrapHtml(
+  title: string,
+  bodyHtml: string,
+  company: { name: string; phone: string; email: string; whatsapp?: EmailWhatsapp | null },
+): string {
   const base = siteBaseUrl();
   const logoUrl = `${base}${th.logoPath}`;
   const telHref = `tel:${company.phone.replace(/[^\d+]/g, '')}`;
@@ -124,6 +166,7 @@ function wrapHtml(title: string, bodyHtml: string, company: { name: string; phon
   const legalHtml = legal.map((l) => accentLink(l.href, l.label)).join(
     `<span style="color:${th.borderMuted};padding:0 8px;">·</span>`,
   );
+  const waHtml = company.whatsapp?.url ? whatsappBlockHtml(company.whatsapp) : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -146,6 +189,7 @@ function wrapHtml(title: string, bodyHtml: string, company: { name: string; phon
         <tr><td style="height:1px;line-height:1px;font-size:0;background:${th.borderMuted};">&nbsp;</td></tr>
         <tr><td style="padding:28px 28px 8px;font-size:16px;line-height:1.6;color:${th.text};">
           ${bodyHtml}
+          ${waHtml}
         </td></tr>
         <tr><td style="padding:8px 28px 0;">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
@@ -171,6 +215,19 @@ function wrapHtml(title: string, bodyHtml: string, company: { name: string; phon
   </table>
 </body>
 </html>`;
+}
+
+function whatsappTextLine(wa?: EmailWhatsapp | null): string[] {
+  return wa?.url ? ['', `WhatsApp: ${wa.url}`] : [];
+}
+
+function companyWrap(
+  name: string,
+  phone: string,
+  email: string,
+  whatsapp?: EmailWhatsapp | null,
+): { name: string; phone: string; email: string; whatsapp?: EmailWhatsapp | null } {
+  return { name, phone, email, whatsapp: whatsapp?.url ? whatsapp : null };
 }
 
 function escapeHtml(s: string): string {
@@ -303,23 +360,24 @@ export function manageLinkEmail(input: {
   companyName: string;
   companyPhone: string;
   companyEmail: string;
+  whatsapp?: EmailWhatsapp | null;
 }): EmailParts {
   const subject = t('email.manageLink.subject', { reference: input.reference });
   const body = t('email.manageLink.body', {
     reference: input.reference,
     manageUrl: input.manageUrl,
   });
-  const text = [body, '', companyFooter(input)].join('\n');
+  const text = [body, ...whatsappTextLine(input.whatsapp), '', companyFooter(input)].join('\n');
   const htmlBody = `<p style="margin:0 0 12px;">${escapeHtml(body)}</p>
     <p style="margin:16px 0;"><a href="${escapeHtml(input.manageUrl)}" style="color:${th.accent};">Open your booking</a></p>`;
   return {
     subject,
     text,
-    html: wrapHtml(subject, htmlBody, {
-      name: input.companyName,
-      phone: input.companyPhone,
-      email: input.companyEmail,
-    }),
+    html: wrapHtml(
+      subject,
+      htmlBody,
+      companyWrap(input.companyName, input.companyPhone, input.companyEmail, input.whatsapp),
+    ),
   };
 }
 
@@ -365,7 +423,7 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
   if (vip) textParts.push('', vip);
   if (invoiceNote) textParts.push('', invoiceNote);
   textParts.push('', cancel, `You can cancel online until ${input.cancelWindowHours} hours before pick-up.`);
-  textParts.push('', companyFooter(input));
+  textParts.push(...whatsappTextLine(input.whatsapp), '', companyFooter(input));
   const text = textParts.join('\n');
 
   const htmlBody = `
@@ -402,11 +460,11 @@ export function confirmationEmail(input: ConfirmationInput): EmailParts {
   return {
     subject,
     text,
-    html: wrapHtml(subject, htmlBody, {
-      name: input.companyName,
-      phone: input.companyPhone,
-      email: input.companyEmail,
-    }),
+    html: wrapHtml(
+      subject,
+      htmlBody,
+      companyWrap(input.companyName, input.companyPhone, input.companyEmail, input.whatsapp),
+    ),
   };
 }
 
@@ -502,6 +560,8 @@ export function officeNewEmail(input: OfficeNewInput): EmailParts {
       name: input.companyName,
       phone: input.companyPhone,
       email: input.companyEmail,
+      // Office emails never include WhatsApp.
+      whatsapp: null,
     }),
   };
 }
@@ -512,16 +572,16 @@ export function reminderEmail(input: ReminderInput): EmailParts {
     reference: input.reference,
     pickupAt: `${input.pickupAtLocal} (Athens)`,
   });
-  const text = [body, '', companyFooter(input)].join('\n');
+  const text = [body, ...whatsappTextLine(input.whatsapp), '', companyFooter(input)].join('\n');
   const htmlBody = `<p style="margin:0;">${escapeHtml(body)}</p>`;
   return {
     subject,
     text,
-    html: wrapHtml(subject, htmlBody, {
-      name: input.companyName,
-      phone: input.companyPhone,
-      email: input.companyEmail,
-    }),
+    html: wrapHtml(
+      subject,
+      htmlBody,
+      companyWrap(input.companyName, input.companyPhone, input.companyEmail, input.whatsapp),
+    ),
   };
 }
 
@@ -532,7 +592,9 @@ export function cancelledCustomerEmail(input: CancelledInput): EmailParts {
     input.refundCents && input.refundCents > 0
       ? t('email.refunded.body', { amount: formatEuro(input.refundCents) })
       : '';
-  const text = [body, refund, '', companyFooter(input)].filter(Boolean).join('\n');
+  const text = [body, refund, ...whatsappTextLine(input.whatsapp), '', companyFooter(input)]
+    .filter(Boolean)
+    .join('\n');
   const htmlBody = `
     <p style="margin:0 0 8px;">${escapeHtml(body)}</p>
     ${refund ? `<p style="margin:0;">${escapeHtml(refund)}</p>` : ''}
@@ -540,11 +602,11 @@ export function cancelledCustomerEmail(input: CancelledInput): EmailParts {
   return {
     subject,
     text,
-    html: wrapHtml(subject, htmlBody, {
-      name: input.companyName,
-      phone: input.companyPhone,
-      email: input.companyEmail,
-    }),
+    html: wrapHtml(
+      subject,
+      htmlBody,
+      companyWrap(input.companyName, input.companyPhone, input.companyEmail, input.whatsapp),
+    ),
   };
 }
 
@@ -567,6 +629,7 @@ export function cancelledOfficeEmail(input: CancelledInput): EmailParts {
       name: input.companyName,
       phone: input.companyPhone,
       email: input.companyEmail,
+      whatsapp: null,
     }),
   };
 }
@@ -579,6 +642,7 @@ export type PaymentLinkInput = {
   companyName: string;
   companyPhone: string;
   companyEmail: string;
+  whatsapp?: EmailWhatsapp | null;
 };
 
 export function paymentLinkEmail(input: PaymentLinkInput): EmailParts {
@@ -589,7 +653,14 @@ export function paymentLinkEmail(input: PaymentLinkInput): EmailParts {
     holdEnds: input.holdEndsLocal,
   });
   const button = t('email.paymentLink.button');
-  const text = [body, '', `${button}: ${input.checkoutUrl}`, '', companyFooter(input)].join('\n');
+  const text = [
+    body,
+    '',
+    `${button}: ${input.checkoutUrl}`,
+    ...whatsappTextLine(input.whatsapp),
+    '',
+    companyFooter(input),
+  ].join('\n');
   const htmlBody = `
     <p style="margin:0 0 16px;">${escapeHtml(body)}</p>
     <p style="margin:0;">
@@ -602,18 +673,24 @@ export function paymentLinkEmail(input: PaymentLinkInput): EmailParts {
   return {
     subject,
     text,
-    html: wrapHtml(subject, htmlBody, {
-      name: input.companyName,
-      phone: input.companyPhone,
-      email: input.companyEmail,
-    }),
+    html: wrapHtml(
+      subject,
+      htmlBody,
+      companyWrap(input.companyName, input.companyPhone, input.companyEmail, input.whatsapp),
+    ),
   };
 }
 
 export function lateRefundEmail(input: LateRefundInput): EmailParts {
   const subject = t('email.lateRefund.subject', { reference: input.reference });
   const body = t('email.lateRefund.body');
-  const text = [body, `Reference: ${input.reference}`, '', companyFooter(input)].join('\n');
+  const text = [
+    body,
+    `Reference: ${input.reference}`,
+    ...whatsappTextLine(input.whatsapp),
+    '',
+    companyFooter(input),
+  ].join('\n');
   const htmlBody = `
     <p style="margin:0 0 8px;">${escapeHtml(body)}</p>
     <p style="margin:0;">Reference: ${escapeHtml(input.reference)}</p>
@@ -621,11 +698,11 @@ export function lateRefundEmail(input: LateRefundInput): EmailParts {
   return {
     subject,
     text,
-    html: wrapHtml(subject, htmlBody, {
-      name: input.companyName,
-      phone: input.companyPhone,
-      email: input.companyEmail,
-    }),
+    html: wrapHtml(
+      subject,
+      htmlBody,
+      companyWrap(input.companyName, input.companyPhone, input.companyEmail, input.whatsapp),
+    ),
   };
 }
 

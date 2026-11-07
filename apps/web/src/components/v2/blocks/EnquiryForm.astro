@@ -13,12 +13,14 @@ import { fromPriceForClass, getCatalog } from '../../../lib/server/catalog';
 import { t } from '../../../lib/strings';
 import { bgImage } from '../../../lib/v2/bg-image';
 import type { CtaLinkData } from '../../../lib/v2/cta';
+import { siteWhatsappChrome } from '../../../lib/whatsapp-site';
 import CtaLink from '../CtaLink.astro';
 import F2 from '../forms/F2.astro';
 import FormDateField from '../forms/FormDateField';
 import FormDropdown from '../forms/FormDropdown';
 import FormFoot from '../forms/FormFoot.astro';
 import Heading from '../Heading.astro';
+import WhatsAppIcon from '../WhatsAppIcon.astro';
 import RequestAddressField from '../../forms/RequestAddressField';
 
 interface Props {
@@ -41,6 +43,7 @@ const THUMB: Record<string, string> = {
 
 const { section } = Astro.props;
 const settings = await getSiteSettings();
+const wa = siteWhatsappChrome(settings);
 const layout: Layout =
   section.layout === 'security' || section.layout === 'request' ? section.layout : 'contact';
 const formKey = FORM_KEY[layout];
@@ -229,6 +232,20 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
           {str(section.asideBadge) ? <div class="s51833">{str(section.asideBadge)}</div> : null}
           {str(section.asideTitle) ? <div class="eyebrow s7f5e0">{str(section.asideTitle)}</div> : null}
           <div class="sc4784"></div>
+          {
+            wa ? (
+              <a
+                class="s91789 ep-wa-link"
+                href={wa.href}
+                target="_blank"
+                rel="noopener"
+                data-v2-extra
+              >
+                <WhatsAppIcon size={14} />
+                {wa.label}
+              </a>
+            ) : null
+          }
           <a class="s91789" href={tel(settings.phone)}>{settings.phone}</a>
           {settings.mobilePhone ? <a class="s91789" href={tel(settings.mobilePhone)}>{settings.mobilePhone}</a> : null}
           <a class="s3b875" href={`mailto:${settings.email}`}>{settings.email}</a>
@@ -238,6 +255,16 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
     </section>
   ) : layout === 'contact' ? (
     <section data-block="enquiryForm" class="s1bd29">
+      {
+        wa ? (
+          <div class="ep-wa-contact-cta" data-v2-extra>
+            <a class="btn btn-gold ep-wa-primary" href={wa.href} target="_blank" rel="noopener">
+              <WhatsAppIcon size={18} />
+              {t('contact.whatsapp.cta')}
+            </a>
+          </div>
+        ) : null
+      }
       <form class="seddc3" method="post" action={`/api/forms/${formKey}`} novalidate data-tem-form={formKey} data-strings={formStrings}>
         {errorEntries.length ? (
           <div class="notice notice-danger" role="alert" tabindex="-1" id="form-error-summary">
@@ -407,6 +434,20 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
         </div>
         <div class="s5055b">
           {str(section.asideBadge) ? <div class="eyebrow">{str(section.asideBadge)}</div> : null}
+          {
+            wa ? (
+              <a
+                class="s91789 ep-wa-link"
+                href={wa.href}
+                target="_blank"
+                rel="noopener"
+                data-v2-extra
+              >
+                <WhatsAppIcon size={14} />
+                {wa.label}
+              </a>
+            ) : null
+          }
           <a class="s91789" href={tel(settings.phone)}>{settings.phone}</a>
           <a class="s19255" href={`mailto:${settings.email}`}>{settings.email}</a>
         </div>
@@ -416,6 +457,22 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
 }
 
 <style is:global>
+  .ep-wa-contact-cta {
+    margin: 0 0 1.25rem;
+  }
+  .ep-wa-primary {
+    --wa-green: #25d366;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--wa-green) !important;
+    color: #fff !important;
+    border-color: var(--wa-green) !important;
+  }
+  .ep-wa-primary:hover,
+  .ep-wa-primary:focus-visible {
+    filter: brightness(1.08);
+  }
   /* Kit 2 form states that v2.css (a copy of the design) does not have. */
   .js-hp {
     position: absolute;

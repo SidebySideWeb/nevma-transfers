@@ -2,6 +2,8 @@
 import type { SiteSettings } from '../../lib/sanity/content';
 import { isBookingOpen } from '../../lib/booking-open';
 import { t } from '../../lib/strings';
+import { siteWhatsappChrome } from '../../lib/whatsapp-site';
+import WhatsAppIcon from './WhatsAppIcon.astro';
 
 interface Props {
   settings: SiteSettings;
@@ -12,6 +14,7 @@ interface Props {
 
 const { settings, pathname = '/', menuOnly = false } = Astro.props;
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
+const wa = siteWhatsappChrome(settings);
 const bookingOpen = isBookingOpen();
 const bookHref = bookingOpen ? '/book' : '/request-a-transfer';
 const bookLabel = bookingOpen ? t('nav.book') : t('site.requestQuote');
@@ -56,6 +59,20 @@ const items = [
       }
     </nav>
     <div class="sb7318">
+      {
+        wa ? (
+          <a
+            class="hide-m ep-wa-link sf0e3c"
+            href={wa.href}
+            target="_blank"
+            rel="noopener"
+            data-v2-extra
+          >
+            <WhatsAppIcon size={16} />
+            <span>{wa.label}</span>
+          </a>
+        ) : null
+      }
       <a class="hide-m sf0e3c" href={phoneHref}>{settings.phone}</a>
       <a class="btn btn-gold hide-m sb2d40" href={bookHref}>{bookLabel}</a>
       <button
@@ -107,6 +124,17 @@ const items = [
 <script src="../../scripts/v2-menu.ts"></script>
 
 <style is:global>
+  .ep-wa-link {
+    --wa-green: #25d366;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--wa-green) !important;
+  }
+  .ep-wa-link:hover,
+  .ep-wa-link:focus-visible {
+    color: #5dff9a !important;
+  }
   #menu {
     display: none;
   }

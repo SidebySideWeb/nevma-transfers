@@ -20,7 +20,7 @@ function formatVatRate(bp: number): string {
   return String(Number((bp / 100).toFixed(2)));
 }
 import { mapsDirectionsUrl } from '@tem/places';
-import { features } from '@tem/features';
+import { features, whatsappUrl } from '@tem/features';
 import { classifyDriverOffer, type DriverBookingSlice } from '../../lib/free-drivers';
 import { parseTstzRange, rangesOverlap } from '../../lib/range';
 import { createSupabaseServerClient } from '../../lib/supabase';
@@ -30,7 +30,8 @@ import { tripStatusWord } from '../../lib/trip-status';
 const staff = Astro.locals.staff!;
 const reference = Astro.params.reference!;
 const supabase = createSupabaseServerClient(Astro.cookies);
-const flightTrackingOn = features().flightTracking;
+const featureFlags = features();
+const flightTrackingOn = featureFlags.flightTracking;
 const flightProvider = (
   import.meta.env.FLIGHT_PROVIDER ||
   process.env.FLIGHT_PROVIDER ||
@@ -951,7 +952,33 @@ if (found && booking) {
                   <dt>Email</dt>
                   <dd>{booking.customer_email || '—'}</dd>
                   <dt>Phone</dt>
-                  <dd>{booking.customer_phone ? <Phone value={booking.customer_phone} /> : '—'}</dd>
+                  <dd>
+                    {
+                      booking.customer_phone ? (
+                        <>
+                          <Phone value={booking.customer_phone} />
+                          {
+                            (() => {
+                              const href = whatsappUrl({
+                                number: booking.customer_phone,
+                                ref: booking.reference,
+                              });
+                              return href ? (
+                                <>
+                                  {' '}
+                                  <a href={href} target="_blank" rel="noopener">
+                                    WhatsApp
+                                  </a>
+                                </>
+                              ) : null;
+                            })()
+                          }
+                        </>
+                      ) : (
+                        '—'
+                      )
+                    }
+                  </dd>
                   <dt>Notes</dt>
                   <dd>{booking.notes || '—'}</dd>
                   {booking.vip_security && (

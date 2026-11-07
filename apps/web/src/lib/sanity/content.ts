@@ -4,6 +4,13 @@ import { SITE_SETTINGS_QUERY, UI_STRINGS_QUERY } from './queries';
 import { setStringOverrides, type UiStringKey } from '../strings';
 import { seedUiStringOverrides } from './v2-seed-strings';
 
+export type SiteWhatsapp = {
+  enabled?: boolean | null;
+  label?: string | null;
+  greeting?: string | null;
+  showFloatingButton?: boolean | null;
+};
+
 export type SiteSettings = {
   companyName: string;
   tagline?: string;
@@ -22,6 +29,7 @@ export type SiteSettings = {
     image?: SanityImage;
   } | null;
   logo?: SanityImage;
+  whatsapp?: SiteWhatsapp | null;
   internalNote?: string;
 };
 
@@ -38,6 +46,12 @@ const FALLBACK_SETTINGS: SiteSettings = {
   defaultSeo: {
     title: 'Elite Protection (DEMO)',
     description: 'DEMO description: premium transfers and VIP security in Athens. Book online.',
+  },
+  whatsapp: {
+    enabled: true,
+    label: 'WhatsApp',
+    greeting: null,
+    showFloatingButton: true,
   },
 };
 

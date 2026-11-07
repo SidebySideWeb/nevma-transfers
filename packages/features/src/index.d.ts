@@ -60,3 +60,21 @@ export declare function filterAdminNav(
   f: Features,
   groups?: readonly AdminNavGroup[],
 ): AdminNavGroup[];
+
+/** International digits for wa.me, or null if invalid. Greek national → 30…. */
+export declare function whatsappDigits(raw: string | null | undefined): string | null;
+/** "23 Nov, 18:34" in Europe/Athens, or null. */
+export declare function formatWhatsappPickup(
+  pickupAt: string | Date | null | undefined,
+): string | null;
+/**
+ * Free WhatsApp click-to-chat URL. Returns null when the number is missing/invalid.
+ * Prefill never includes name, address, phone or price (`name` is ignored).
+ */
+export declare function whatsappUrl(opts?: {
+  number?: string | null;
+  ref?: string | null;
+  pickupAt?: string | Date | null;
+  text?: string | null;
+  name?: string | null;
+}): string | null;

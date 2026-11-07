@@ -2,6 +2,8 @@
 import type { SiteSettings } from '../../lib/sanity/content';
 import { isBookingOpen } from '../../lib/booking-open';
 import { t } from '../../lib/strings';
+import { siteWhatsappChrome } from '../../lib/whatsapp-site';
+import WhatsAppIcon from './WhatsAppIcon.astro';
 
 interface Props {
   settings: SiteSettings;
@@ -12,6 +14,7 @@ const year = new Date().getFullYear();
 const phoneHref = `tel:${settings.phone.replace(/[^\d+]/g, '')}`;
 const mobile = settings.mobilePhone || '';
 const mobileHref = mobile ? `tel:${mobile.replace(/[^\d+]/g, '')}` : '';
+const wa = siteWhatsappChrome(settings);
 const bookingOpen = isBookingOpen();
 const bookHref = bookingOpen ? '/book' : '/request-a-transfer';
 ---
@@ -37,6 +40,20 @@ const bookHref = bookingOpen ? '/book' : '/request-a-transfer';
     </div>
     <div class="s59eb5">
       <div class="eyebrow sac4ba">{t('site.footer.247')}</div>
+      {
+        wa ? (
+          <a
+            class="s53c3d ep-wa-link"
+            href={wa.href}
+            target="_blank"
+            rel="noopener"
+            data-v2-extra
+          >
+            <WhatsAppIcon size={14} />
+            {wa.label}
+          </a>
+        ) : null
+      }
       <a class="s53c3d" href={phoneHref}>{settings.phone}</a>
       {mobile && mobileHref ? <a class="s53c3d" href={mobileHref}>{mobile}</a> : null}
       <a class="s19255" href={`mailto:${settings.email}`}>{settings.email}</a>

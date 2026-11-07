@@ -169,6 +169,14 @@ export const uiStringDefaults: UiStringDefault[] = [
   { area: 'booking', key: 'manage.cancel', value: 'Cancel this booking' },
   { area: 'booking', key: 'manage.changesByPhone', value: 'To change the time, vehicle or addresses, please call the office. Online changes are not available yet.' },
   { area: 'booking', key: 'manage.linkInvalid', value: 'This link is no longer valid. Use Find my booking to get a new one.' },
+  {
+    area: 'booking',
+    key: 'manage.whatsapp.prompt',
+    value: 'Questions about this booking? Message us on WhatsApp',
+  },
+  { area: 'booking', key: 'manage.whatsapp.cta', value: 'Message us on WhatsApp' },
+  { area: 'forms', key: 'contact.whatsapp.cta', value: 'Message us on WhatsApp' },
+  { area: 'emails', key: 'email.whatsapp.button', value: 'Message us on WhatsApp' },
   { area: 'emails', key: 'email.manageLink.subject', value: 'Your secure link for booking {reference}' },
   { area: 'emails', key: 'email.manageLink.body', value: 'Use this secure link to see or manage booking {reference}: {manageUrl}. It replaces any earlier link we sent you.' },
   // --- kit 2: site navigation and content pages ---
