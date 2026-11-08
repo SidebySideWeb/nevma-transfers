@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { features } from '@tem/features';
 import { applyCompanyDiscount, companyBasePrice } from '@tem/pricing';
 import { expandExtraCodes, formatEuro, normaliseExtraChoices, quoteHourly, quoteTransfer } from '../booking/pricing';
+import { placeLabel, transferRouteLabel } from '../booking/route-label';
 import { assertLeadTime, formatLocal, localToInstant, toIsoWithOffset } from '../booking/time';
 import { BookingError } from '../booking/types';
 import {
@@ -1774,10 +1775,13 @@ type CardRow = {
   class_name: string;
   from_name: string | null;
   to_name: string | null;
+  pickup_address: string | null;
+  dropoff_address: string | null;
 };
 
 const CARD_COLUMNS = `b.reference, b.pickup_at, b.booking_type, b.hours, b.duration_minutes,
        b.passengers, b.luggage, c.key as class_key, c.name as class_name,
+       b.pickup_address, b.dropoff_address,
        zf.name as from_name, zt.name as to_name`;
 const CARD_JOINS = `join public.vehicle_classes c on c.id = b.class_id
        left join public.zones zf on zf.id = b.from_zone_id
@@ -1789,6 +1793,7 @@ async function toReturnCard(row: CardRow): Promise<ReturnCard> {
     (await loadSanityVehicleClasses()).find((c) => c.key === row.class_key)?.photos?.[0]?.url ??
     null;
   const hours = row.hours ?? Math.round(row.duration_minutes / 60);
+  const from = placeLabel(row.from_name, row.pickup_address);
   return {
     reference: row.reference,
     classKey: row.class_key,
@@ -1797,8 +1802,8 @@ async function toReturnCard(row: CardRow): Promise<ReturnCard> {
     pickupLabel: formatLocal(new Date(row.pickup_at), settings.timezone),
     routeLabel:
       row.booking_type === 'hourly'
-        ? `${row.from_name ?? '-'} · ${hours} h`
-        : `${row.from_name ?? '-'} → ${row.to_name ?? '-'}`,
+        ? `${from} · ${hours} h`
+        : transferRouteLabel(row.from_name, row.to_name, row.pickup_address, row.dropoff_address),
     passengers: row.passengers,
     luggage: row.luggage,
   };
@@ -1986,7 +1991,7 @@ export async function cancelPageView(token: string): Promise<CancelPageView> {
   const tripLabel =
     b.booking_type === 'hourly'
       ? `${Math.round(b.duration_minutes / 60)} h`
-      : `${b.from_name ?? '-'} → ${b.to_name ?? '-'}`;
+      : transferRouteLabel(b.from_name, b.to_name, b.pickup_address, b.dropoff_address);
 
   return {
     kind: 'ok',

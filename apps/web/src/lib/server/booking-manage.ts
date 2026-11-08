@@ -1,5 +1,6 @@
 import 'server-only';
 import { formatEuro } from '../booking/pricing';
+import { transferRouteLabel } from '../booking/route-label';
 import { formatLocal } from '../booking/time';
 import { hashCancelToken, loadSanityVehicleClasses } from './booking-service';
 import { bookingDb } from './db';
@@ -160,9 +161,12 @@ export async function managePageView(token: string): Promise<ManagePageView> {
         price_cents: number;
         from_name: string | null;
         to_name: string | null;
+        pickup_address: string | null;
+        dropoff_address: string | null;
         leg: number | null;
       }>(
         `select b.reference, b.status, b.pickup_at, b.booking_type, b.hours, b.duration_minutes, b.price_cents, b.leg,
+                b.pickup_address, b.dropoff_address,
                 zf.name as from_name, zt.name as to_name
            from public.bookings b
            left join public.zones zf on zf.id = b.from_zone_id
@@ -180,7 +184,7 @@ export async function managePageView(token: string): Promise<ManagePageView> {
           routeOrHours:
             s.booking_type === 'hourly'
               ? `${s.hours ?? Math.round(s.duration_minutes / 60)} h`
-              : `${s.from_name ?? '—'} → ${s.to_name ?? '—'}`,
+              : transferRouteLabel(s.from_name, s.to_name, s.pickup_address, s.dropoff_address),
           priceLabel: formatEuro(s.price_cents),
           leg: s.leg,
         };
@@ -202,7 +206,7 @@ export async function managePageView(token: string): Promise<ManagePageView> {
   const routeOrHours =
     b.booking_type === 'hourly'
       ? `${b.hours ?? Math.round(b.duration_minutes / 60)} h${hourlyKm ? ` · ${hourlyKm}` : ''}`
-      : `${b.from_name ?? '—'} → ${b.to_name ?? '—'}${distMeta ? ` · ${distMeta}` : ''}`;
+      : `${transferRouteLabel(b.from_name, b.to_name, b.pickup_address, b.dropoff_address)}${distMeta ? ` · ${distMeta}` : ''}`;
 
   return {
     kind: 'ok',
