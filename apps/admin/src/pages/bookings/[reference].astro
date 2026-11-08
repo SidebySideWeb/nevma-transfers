@@ -345,20 +345,20 @@ const customerWhatsAppHref =
   booking?.customer_phone && features().whatsapp
     ? whatsappUrl({ number: booking.customer_phone, ref: booking.reference })
     : null;
-const priceBreakdown = (Array.isArray(booking?.price_breakdown) ? booking.price_breakdown : []) as {
-  label?: string;
-  code?: string;
-  amount?: number;
-}[];
+type PriceLine = { label?: string; code?: string; amount?: number };
+const priceBreakdown: PriceLine[] = Array.isArray(booking?.price_breakdown)
+  ? (booking.price_breakdown as PriceLine[])
+  : [];
 const hasPriceBreakdown = priceBreakdown.length > 0;
 const fromLabel = fromName || booking?.pickup_address || '—';
 const toLabel = toName || booking?.dropoff_address || '—';
+const subtitleTime = booking
+  ? formatAthensShort(booking.pickup_at).replace(/ (?=\d\d:\d\d$)/, ' · ')
+  : '';
 const bookingSubtitle = booking
-  ? `${formatAthensShort(booking.pickup_at).replace(/ (?=\d{2}:\d{2}$)/, ' · ')} · ${
-      booking.booking_type === 'hourly'
-        ? `${fromLabel} · ${Math.round((booking.duration_minutes || 0) / 60)} h`
-        : `${fromLabel} → ${toLabel}`
-    }`
+  ? booking.booking_type === 'hourly'
+    ? `${subtitleTime} · ${fromLabel} · ${Math.round((booking.duration_minutes || 0) / 60)} h`
+    : `${subtitleTime} · ${fromLabel} → ${toLabel}`
   : '';
 ---
 
