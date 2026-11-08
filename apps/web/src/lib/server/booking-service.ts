@@ -305,7 +305,15 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     await assertRateLimit(`quote:ip:${ip}`, lim.windowSeconds, lim.max);
   }
 
-  const { simulate: _s, overrides: _o, ...quoteRaw } = rawObj;
+  // Places stay on `raw` for distance/hybrid pricing below; the core quote schema is zones + time.
+  const {
+    simulate: _s,
+    overrides: _o,
+    pickupPlace: _pp,
+    dropoffPlace: _dp,
+    stops: _st,
+    ...quoteRaw
+  } = rawObj;
   const parsed = QuoteRequest.safeParse(quoteRaw);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
@@ -340,7 +348,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
   const pickup = localToInstant(body.pickupLocal, settings.timezone);
   assertLeadTime(pickup, new Date(), settings.minLeadMinutes);
 
-  const from = await zoneByCode(body.fromZone);
+  const from = await zoneByCode(body.fromZone, 'fromZone');
   let toId: string | null = null;
   let durationMinutes: number;
 
@@ -352,7 +360,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         field: 'toZone',
       });
     }
-    const to = await zoneByCode(body.toZone);
+    const to = await zoneByCode(body.toZone, 'toZone');
     toId = to.id;
     durationMinutes = await routeDuration(from.id, to.id);
   } else {

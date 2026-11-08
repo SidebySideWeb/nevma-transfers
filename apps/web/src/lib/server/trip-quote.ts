@@ -28,7 +28,10 @@ function db(): BookingDb {
   return bookingDb();
 }
 
-export async function zoneByCode(code: string): Promise<{ id: string; code: string; name: string }> {
+export async function zoneByCode(
+  code: string,
+  field: 'fromZone' | 'toZone' = 'fromZone',
+): Promise<{ id: string; code: string; name: string }> {
   const { rows } = await db().query<{ id: string; code: string; name: string }>(
     `select id, code, name from public.zones where code = $1 and active`,
     [code],
@@ -37,7 +40,7 @@ export async function zoneByCode(code: string): Promise<{ id: string; code: stri
     throw new BookingError('invalid_request', {
       stringKey: 'error.invalid_request',
       message: `unknown zone ${code}`,
-      field: code.includes('from') ? 'fromZone' : 'toZone',
+      field,
     });
   }
   return rows[0];
@@ -121,7 +124,7 @@ export async function quoteTrip(input: {
         field: 'toZone',
       });
     }
-    const to = await zoneByCode(input.toZone);
+    const to = await zoneByCode(input.toZone, 'toZone');
     const durationMinutes = await routeDuration(from.id, to.id);
     const { rows: prices } = await db().query<{ price_cents: number }>(
       `select price_cents from public.zone_prices

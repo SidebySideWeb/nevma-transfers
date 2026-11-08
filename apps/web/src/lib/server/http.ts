@@ -42,7 +42,12 @@ export function fail(error: BookingError | unknown, httpOverride?: number): Resp
       message: t(error.stringKey, error.vars),
     };
     if (error.field) {
-      body.fields = { [error.field]: body.message };
+      // Prefer the specific message when the server set one (e.g. Zod / zone errors).
+      const detail =
+        error.message && error.message !== error.code && error.message !== 'invalid_request'
+          ? error.message
+          : body.message;
+      body.fields = { [error.field]: detail };
     }
     const ref = (error as BookingError & { reference?: string }).reference;
     if (ref) body.reference = ref;
