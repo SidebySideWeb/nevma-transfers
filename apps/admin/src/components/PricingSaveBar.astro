@@ -43,23 +43,46 @@ const { formId, dirtyLabel = 'Unsaved changes' } = Astro.props;
     const form = formId ? document.getElementById(formId) : null;
     if (!form) return;
     const discard = document.getElementById('pricing-discard');
-    const initial = new FormData(form);
+    // Rates / hourly pages keep editable values in unnamed inputs and pack them into
+    // rowsJson on submit — FormData alone never sees those edits.
+    const fieldValue = (el) => {
+      if (el instanceof HTMLInputElement) {
+        if (el.type === 'checkbox' || el.type === 'radio') return el.checked ? '1' : '0';
+        return el.value;
+      }
+      if (el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) return el.value;
+      return '';
+    };
+    const snapshotFields = () => {
+      /** @type {Map<string, string>} */
+      const map = new Map();
+      form.querySelectorAll('input, select, textarea').forEach((el, i) => {
+        if (!(el instanceof HTMLElement) || el.disabled) return;
+        if (el instanceof HTMLInputElement && (el.type === 'hidden' || el.type === 'submit' || el.type === 'button'))
+          return;
+        const key = el.getAttribute('name') || el.id || `i${i}`;
+        map.set(key, fieldValue(el));
+      });
+      return map;
+    };
+    let initial = snapshotFields();
     const snap = () => {
-      const fd = new FormData(form);
-      const keys = new Set([...initial.keys(), ...fd.keys()]);
-      for (const k of keys) {
-        if (String(initial.get(k) ?? '') !== String(fd.get(k) ?? '')) return true;
+      const now = snapshotFields();
+      if (now.size !== initial.size) return true;
+      for (const [k, v] of now) {
+        if (initial.get(k) !== v) return true;
       }
       return false;
     };
     const refresh = () => {
-      const dirty = snap();
-      bar.hidden = !dirty;
+      bar.hidden = !snap();
     };
     form.addEventListener('input', refresh);
     form.addEventListener('change', refresh);
     discard?.addEventListener('click', () => {
       form.reset();
+      // reset() is sync for values; re-snapshot so the bar hides.
+      initial = snapshotFields();
       refresh();
     });
     window.addEventListener('beforeunload', (e) => {
