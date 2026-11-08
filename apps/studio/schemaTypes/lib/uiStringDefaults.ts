@@ -28,6 +28,10 @@ export const uiStringDefaults: UiStringDefault[] = [
     value: 'Different drop-off address',
   },
   { area: 'booking', key: 'booking.return.add', value: 'Add return' },
+  { area: 'booking', key: 'booking.return.date', value: 'Return date' },
+  { area: 'booking', key: 'booking.return.time', value: 'Return time' },
+  { area: 'booking', key: 'booking.return.flight', value: 'Return flight number' },
+  { area: 'booking', key: 'booking.routes.suggest', value: 'Popular routes' },
   {
     area: 'booking',
     key: 'booking.airport.hintTracking',

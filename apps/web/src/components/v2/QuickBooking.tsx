@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
 import { BrandDropdown } from './BrandDropdown';
 import { DateField } from './DateField';
+import { TimeField } from './TimeField';
 
 export type QuickZone = { code: string; name: string };
 export type QuickHourly = { minHours: number; maxHours: number };
+export type QuickRoute = { fromCode: string; toCode: string; label: string };
 
 export type QuickBookingProps = {
   zones: QuickZone[];
   hourlyBounds: QuickHourly;
+  routes?: QuickRoute[];
   labels: {
     form: string;
     from: string;
@@ -22,6 +25,7 @@ export type QuickBookingProps = {
     hourly: string;
     fewerHours: string;
     moreHours: string;
+    routesSuggest?: string;
   };
   defaultFrom?: string;
   defaultTo?: string;
@@ -71,6 +75,7 @@ export function quickBookingQuery(input: {
 export function QuickBooking({
   zones,
   hourlyBounds,
+  routes = [],
   labels,
   defaultFrom,
   defaultTo,
@@ -109,9 +114,22 @@ export function QuickBooking({
         window.location.assign(href);
       }}
     >
-      <style>{`.s70eaa .ddl{position:absolute;left:0;right:0;top:100%;margin:2px 0 0;padding:4px 0;list-style:none;background:#15181A;border:1px solid #CFA45F;box-shadow:0 16px 40px rgba(0,0,0,.6);z-index:31}.s70eaa [data-v2-extra]{display:flex;flex:1 1 100%;gap:8px;padding:10px 18px;box-sizing:border-box;border-bottom:1px solid rgba(207,164,95,.22)}.s70eaa [data-v2-extra] .dd-btn{flex:1;justify-content:center;height:36px;border:1px solid rgba(207,164,95,.45);padding:0 12px}.s70eaa [data-v2-extra] .dd-btn[aria-pressed="true"]{background:#E7C687;color:#0A0A0B}`}</style>
+      <style>{`
+.s70eaa .ddl{position:absolute;left:0;right:0;top:100%;margin:2px 0 0;padding:4px 0;list-style:none;background:#15181A;border:1px solid #CFA45F;box-shadow:0 16px 40px rgba(0,0,0,.6);z-index:31}
+.s70eaa [data-v2-extra].js-trip{display:flex;flex:1 1 100%;gap:8px;padding:10px 18px;box-sizing:border-box;border-bottom:1px solid rgba(207,164,95,.22)}
+.s70eaa [data-v2-extra].js-trip .dd-btn{flex:1;justify-content:center;height:36px;border:1px solid rgba(207,164,95,.45);padding:0 12px}
+.s70eaa [data-v2-extra].js-trip .dd-btn[aria-pressed="true"]{background:#E7C687;color:#0A0A0B}
+.s70eaa .ep-route-suggest{flex:1 1 100%;display:flex;flex-direction:column;gap:8px;padding:10px 18px 4px;box-sizing:border-box;border-bottom:1px solid rgba(207,164,95,.22)}
+.s70eaa .ep-route-suggest-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#c9a45c}
+.s70eaa .ep-route-suggest-list{display:flex;flex-wrap:wrap;gap:8px}
+.s70eaa .ep-route-chip{appearance:none;border:1px solid rgba(207,164,95,.45);background:transparent;color:#f4f0e6;font-family:Jost,sans-serif;font-size:13px;padding:8px 12px;cursor:pointer}
+.s70eaa .ep-route-chip[aria-pressed="true"],.s70eaa .ep-route-chip:hover{background:#e7c687;color:#0a0a0b}
+.s70eaa .ep-time-field{padding:14px 18px;box-sizing:border-box;border-right:1px solid rgba(207,164,95,.22)}
+.s70eaa .ep-time-row .dd-btn{height:30px;min-height:30px}
+@media (max-width:960px){.s70eaa .ep-time-field{border-right:0;border-bottom:1px solid rgba(207,164,95,.22)}}
+`}</style>
 
-      <div data-v2-extra role="radiogroup" aria-label={`${labels.transfer} / ${labels.hourly}`}>
+      <div data-v2-extra className="js-trip" role="radiogroup" aria-label={`${labels.transfer} / ${labels.hourly}`}>
         <button
           type="button"
           className="dd-btn"
@@ -130,6 +148,33 @@ export function QuickBooking({
         </button>
         <input type="hidden" name="type" value={type} />
       </div>
+
+      {type === 'transfer' && routes.length > 0 ? (
+        <div className="ep-route-suggest" data-v2-extra>
+          <span className="ep-route-suggest-label">
+            {labels.routesSuggest ?? 'Popular routes'}
+          </span>
+          <div className="ep-route-suggest-list">
+            {routes.map((r) => {
+              const active = from === r.fromCode && to === r.toCode;
+              return (
+                <button
+                  key={`${r.fromCode}-${r.toCode}`}
+                  type="button"
+                  className="ep-route-chip"
+                  aria-pressed={active}
+                  onClick={() => {
+                    setFrom(r.fromCode);
+                    setTo(r.toCode);
+                  }}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <BrandDropdown
         id="q-from"
@@ -197,16 +242,14 @@ export function QuickBooking({
         value={date}
         onChange={setDate}
       />
-      <div className="field s10827">
-        <label htmlFor="q-time">{labels.time}</label>
-        <input
-          id="q-time"
-          name="time"
-          type="time"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-        />
-      </div>
+      <TimeField
+        id="q-time"
+        label={labels.time}
+        value={time}
+        onChange={setTime}
+        fieldClass="field ep-time"
+      />
+      <input type="hidden" name="time" value={time} />
       <div className="field s87a0c">
         <label htmlFor="q-pax">{labels.passengers}</label>
         <input

@@ -686,9 +686,28 @@ body.pg-15-manage-booking .srow span:last-child{color:#F4F0E6}
 @media (prefers-reduced-motion: reduce){.spin{animation:none}}
 /* Address autocomplete (docs/ADDRESS-AUTOCOMPLETE.md) — additive; closed list matches zone .ddl */
 .ep-address{position:relative}
-.ep-address-ddl{z-index:40}
-.ep-address-main{font-weight:600;display:block}
-.ep-address-sec{display:block;font-size:13px;color:#8e887b}
+/* Wider than the narrow booking-bar field so airport/hotel names stay readable. */
+.ep-address-ddl{
+  z-index:40;
+  width:max(100%,min(28rem,calc(100vw - 2rem)));
+  min-width:100%;
+  right:auto;
+  left:0;
+}
+.ep-address-ddl .dd-opt{
+  flex-wrap:wrap;
+  align-items:flex-start;
+  column-gap:8px;
+  row-gap:2px;
+  min-height:auto;
+  padding:10px 16px;
+}
+.ep-address-ddl .sb5725{flex:0 0 20px;padding-top:2px}
+.ep-address-main{font-weight:600;display:block;flex:1 1 calc(100% - 28px);min-width:0}
+.ep-address-sec{display:block;font-size:13px;color:#8e887b;flex:1 1 100%;padding-left:28px;min-width:0}
+.ep-address-ddl .dd-opt:hover .ep-address-sec,
+.ep-address-ddl .dd-opt:focus-visible .ep-address-sec,
+.ep-address-ddl .dd-opt[aria-selected="true"] .ep-address-sec{color:inherit;opacity:.8}
 .ep-address-attr{padding:8px 12px 10px;opacity:.85}
 .ep-address-attr img{display:block;height:14px;width:auto}
 /* Triple-class V2 rules (e.g. .sc16b1.sc16b1.sc16b1{display:flex}) beat the UA [hidden] rule. */

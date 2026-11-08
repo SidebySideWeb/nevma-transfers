@@ -145,4 +145,33 @@ describe('QuickBooking', () => {
     );
     expect(href).not.toMatch(/price|amount|total/i);
   });
+
+  it('route chip fills from and to', async () => {
+    const user = userEvent.setup();
+    render(
+      <QuickBooking
+        zones={options.map((o) => ({ code: o.value, name: o.label }))}
+        hourlyBounds={{ minHours: 3, maxHours: 12 }}
+        labels={{ ...labels, routesSuggest: 'Popular routes' }}
+        routes={[
+          {
+            fromCode: 'athens-centre',
+            toCode: 'piraeus-port',
+            label: 'Athens → Piraeus',
+          },
+        ]}
+        defaultFrom="ath-airport"
+        defaultTo="athens-centre"
+      />,
+    );
+    expect(screen.getByRole('link', { name: labels.submit }).getAttribute('href')).toContain(
+      'from=ath-airport',
+    );
+    await user.click(screen.getByRole('button', { name: 'Athens → Piraeus' }));
+    expect(screen.getByRole('button', { name: /From/i }).textContent).toContain('Athens');
+    expect(screen.getByRole('button', { name: /To/i }).textContent).toContain('Piraeus port');
+    const href = screen.getByRole('link', { name: labels.submit }).getAttribute('href') ?? '';
+    expect(href).toContain('from=athens-centre');
+    expect(href).toContain('to=piraeus-port');
+  });
 });

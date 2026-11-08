@@ -31,12 +31,24 @@ const showQuick = isHome && section.showQuickBooking === true;
 const path = pathname.replace(/\/$/, '') || '/';
 
 let zones: { code: string; name: string }[] = [];
+let routes: { fromCode: string; toCode: string; label: string }[] = [];
 let hourlyBounds = { minHours: 3, maxHours: 12 };
 if (showQuick) {
   try {
     const cat = await getCatalog();
     // Design board labels omit the DEMO seed prefix (same as EnquiryForm).
-    zones = cat.zones.map((z) => ({ code: z.code, name: z.name.replace(/^DEMO\s+/i, '') }));
+    const strip = (n: string) => n.replace(/^DEMO\s+/i, '');
+    const zoneName = new Map(cat.zones.map((z) => [z.code, strip(z.name)]));
+    zones = cat.zones.map((z) => ({ code: z.code, name: strip(z.name) }));
+    const priced = new Set(cat.prices.map((p) => `${p.fromCode}|${p.toCode}`));
+    routes = cat.routes
+      .filter((r) => priced.has(`${r.fromCode}|${r.toCode}`))
+      .slice(0, 12)
+      .map((r) => ({
+        fromCode: r.fromCode,
+        toCode: r.toCode,
+        label: `${zoneName.get(r.fromCode) ?? r.fromCode} → ${zoneName.get(r.toCode) ?? r.toCode}`,
+      }));
     if (cat.hourly.length) {
       hourlyBounds = {
         minHours: Math.min(...cat.hourly.map((h) => h.minHours)),
@@ -45,6 +57,7 @@ if (showQuick) {
     }
   } catch {
     zones = [];
+    routes = [];
   }
 }
 
@@ -62,6 +75,7 @@ const quickLabels = {
   hourly: t('booking.toggle.hourly'),
   fewerHours: t('site.quick.fewerHours'),
   moreHours: t('site.quick.moreHours'),
+  routesSuggest: t('booking.routes.suggest'),
 };
 
 type Shell = {
@@ -122,7 +136,13 @@ if (path === '/legal') {
           </div>
         )}
         {showQuick ? (
-          <QuickBooking client:load zones={zones} hourlyBounds={hourlyBounds} labels={quickLabels} />
+          <QuickBooking
+            client:load
+            zones={zones}
+            routes={routes}
+            hourlyBounds={hourlyBounds}
+            labels={quickLabels}
+          />
         ) : null}
         {widgetNote ? <div class="s8ad2a">{widgetNote}</div> : null}
       </div>

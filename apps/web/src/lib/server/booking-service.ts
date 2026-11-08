@@ -234,6 +234,28 @@ export async function bookingOptions() {
     /* 0025 not applied — defaults */
   }
 
+  const zoneName = new Map(zones.map((z) => [z.code, z.name]));
+  const { rows: routeRows } = await db().query<{
+    from_code: string;
+    to_code: string;
+  }>(
+    `select zf.code as from_code, zt.code as to_code
+       from public.zone_routes zr
+       join public.zone_prices zp
+         on zp.from_zone_id = zr.from_zone_id and zp.to_zone_id = zr.to_zone_id
+       join public.zones zf on zf.id = zr.from_zone_id
+       join public.zones zt on zt.id = zr.to_zone_id
+      where zf.active and zt.active
+      group by zf.code, zt.code, zf.sort_order, zt.sort_order
+      order by zf.sort_order, zt.sort_order
+      limit 12`,
+  );
+  const routes = routeRows.map((r) => ({
+    fromCode: r.from_code,
+    toCode: r.to_code,
+    label: `${(zoneName.get(r.from_code) ?? r.from_code).replace(/^DEMO\s+/i, '')} → ${(zoneName.get(r.to_code) ?? r.to_code).replace(/^DEMO\s+/i, '')}`,
+  }));
+
   return {
     timezone: settings.timezone,
     minLeadMinutes: settings.minLeadMinutes,
@@ -243,6 +265,7 @@ export async function bookingOptions() {
     returnTrip: f.returnTrip,
     flightTracking: f.flightTracking,
     zones: zones.map((z) => ({ code: z.code, name: z.name })),
+    routes,
     classes,
     extras,
   };

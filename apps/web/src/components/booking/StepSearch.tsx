@@ -8,7 +8,8 @@ import {
 } from '../../lib/booking/hourly-labels';
 import { BrandDropdown } from '../v2/BrandDropdown';
 import { DateField } from '../v2/DateField';
-import { joinLocal, requestQuoteHref, splitLocal } from './v2/journey';
+import { TimeField } from '../v2/TimeField';
+import { joinLocal, requestQuoteHref, splitLocal, zoneName } from './v2/journey';
 import { AddressField } from './AddressField';
 import type { BookingStrings, DetailsState, OptionsData, SearchState } from './types';
 
@@ -86,18 +87,6 @@ function CountStepper({ id, label, value, min, max, fewer, more, onChange }: Ste
     </>
   );
 }
-
-function timeOptions(): string[] {
-  const out: string[] = [];
-  for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 5) {
-      out.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-    }
-  }
-  return out;
-}
-
-const TIMES = timeOptions();
 
 export function StepSearch({
   strings,
@@ -281,6 +270,40 @@ export function StepSearch({
         </button>
       </div>
 
+      {search.type === 'transfer' && (options.routes?.length ?? 0) > 0 ? (
+        <div className="ep-route-suggest" data-v2-extra>
+          <span className="ep-route-suggest-label">
+            {strings['booking.routes.suggest'] ?? 'Popular routes'}
+          </span>
+          <div className="ep-route-suggest-list">
+            {options.routes!.map((r) => {
+              const active = search.fromZone === r.fromCode && search.toZone === r.toCode;
+              return (
+                <button
+                  key={`${r.fromCode}-${r.toCode}`}
+                  type="button"
+                  className="ep-route-chip"
+                  aria-pressed={active}
+                  onClick={() => {
+                    const fromLabel = zoneName(options, r.fromCode) || r.fromCode;
+                    const toLabel = zoneName(options, r.toCode) || r.toCode;
+                    onChange({ fromZone: r.fromCode, toZone: r.toCode });
+                    onChangeDetails({
+                      pickupAddress: fromLabel,
+                      dropoffAddress: toLabel,
+                      pickupPlace: null,
+                      dropoffPlace: null,
+                    });
+                  }}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <div className="ep-bar-row">
         {!hideZones ? (
           <BrandDropdown
@@ -418,26 +441,16 @@ export function StepSearch({
           </div>
         ) : null}
 
-        <div className={wrapClass('ep-bar-field', 'pickupLocal')}>
-          <BrandDropdown
-            id="b-time"
-            name="pickupTime"
-            label={strings['booking.time'] ?? 'Pick-up time'}
-            options={TIMES.map((t) => ({ value: t, label: t }))}
-            value={
-              time && TIMES.includes(time.slice(0, 5))
-                ? time.slice(0, 5)
-                : time
-                  ? TIMES.reduce((best, t) => (t <= time.slice(0, 5) ? t : best), '00:00')
-                  : ''
-            }
-            onChange={(t) => onChange({ pickupLocal: joinLocal(date, t) })}
-            fieldClass="field ep-time-dd"
-            error={errors.pickupLocal}
-            {...invalid('pickupLocal', 'b-time')}
-          />
-          <span className="js-hint">{strings['booking.athensHint'] ?? 'Athens time'}</span>
-        </div>
+        <TimeField
+          id="b-time"
+          label={strings['booking.time'] ?? 'Pick-up time'}
+          value={time || '12:00'}
+          onChange={(t) => onChange({ pickupLocal: joinLocal(date, t) })}
+          hint={strings['booking.athensHint'] ?? 'Athens time'}
+          fieldClass={wrapClass('ep-bar-field ep-time', 'pickupLocal')}
+          error={errors.pickupLocal}
+          {...invalid('pickupLocal', 'b-time')}
+        />
 
         <div className="ep-bar-cta ep-bar-cta-desktop">
           <button className="btn btn-gold sd0928" type="submit" disabled={busy}>
@@ -459,53 +472,45 @@ export function StepSearch({
               onChange={(e) =>
                 onChange({
                   returnOn: e.target.checked,
-                  ...(e.target.checked ? {} : { returnPickupLocal: '', returnFlightNumber: '' }),
+                  ...(e.target.checked
+                    ? {
+                        returnPickupLocal:
+                          search.returnPickupLocal || joinLocal(date || earliest.slice(0, 10), time || '12:00'),
+                      }
+                    : { returnPickupLocal: '', returnFlightNumber: '' }),
                 })
               }
             />
             <span>{strings['booking.return.add'] ?? 'Add return'}</span>
           </label>
           {returnOn ? (
-            <div className="ep-return-fields grid">
-              <div className={wrapClass('f2', 'returnPickupLocal')}>
-                <label className="lbl" htmlFor="b-return-date">
-                  {strings['booking.return.date'] ?? 'Return date'}
-                </label>
-                <DateField
-                  id="b-return-date"
-                  label={strings['booking.return.date'] ?? 'Return date'}
-                  value={returnDate}
-                  min={date || earliest.slice(0, 10)}
-                  onChange={(d) => onChange({ returnPickupLocal: joinLocal(d, returnTime || '12:00') })}
-                  {...invalid('returnPickupLocal', 'b-return-date')}
-                />
+            <div className="ep-return-fields">
+              <DateField
+                id="b-return-date"
+                label={strings['booking.return.date'] ?? 'Return date'}
+                value={returnDate}
+                min={date || earliest.slice(0, 10)}
+                onChange={(d) => onChange({ returnPickupLocal: joinLocal(d, returnTime || time || '12:00') })}
+                fieldClass={wrapClass('f2 ep-return-date', 'returnPickupLocal')}
+                {...invalid('returnPickupLocal', 'b-return-date')}
+              >
                 {err('returnPickupLocal', 'b-return-date')}
-              </div>
-              <div className={wrapClass('f2', 'returnPickupLocal')}>
-                <label className="lbl" htmlFor="b-return-time">
-                  {strings['booking.return.time'] ?? 'Return time'}
-                </label>
-                <BrandDropdown
-                  id="b-return-time"
-                  label={strings['booking.return.time'] ?? 'Return time'}
-                  options={TIMES.map((t) => ({ value: t, label: t }))}
-                  value={returnTime ? TIMES.reduce((best, t) => (t <= returnTime.slice(0, 5) ? t : best), '00:00') : ''}
-                  onChange={(t) =>
-                    onChange({ returnPickupLocal: joinLocal(returnDate || date, t) })
-                  }
-                  fieldClass="field ep-time-dd"
-                  error={errors.returnPickupLocal}
-                  {...invalid('returnPickupLocal', 'b-return-time')}
-                />
-              </div>
+              </DateField>
+              <TimeField
+                id="b-return-time"
+                label={strings['booking.return.time'] ?? 'Return time'}
+                value={returnTime || time || '12:00'}
+                onChange={(t) => onChange({ returnPickupLocal: joinLocal(returnDate || date, t) })}
+                fieldClass={wrapClass('f2 ep-return-time', 'returnPickupLocal')}
+                {...invalid('returnPickupLocal', 'b-return-time')}
+              />
               {airportDropoff ? (
-                <div className="f2">
-                  <label className="lbl" htmlFor="b-return-flight">
+                <div className="f2 ep-return-flight">
+                  <label htmlFor="b-return-flight">
                     {strings['booking.return.flight'] ?? 'Return flight number'}
                   </label>
                   <input
                     id="b-return-flight"
-                    className="input"
                     value={search.returnFlightNumber ?? ''}
                     onChange={(e) =>
                       onChange({ returnFlightNumber: normaliseFlightNumber(e.target.value) })

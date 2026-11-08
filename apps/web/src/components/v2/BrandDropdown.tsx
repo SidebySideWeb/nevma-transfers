@@ -13,6 +13,8 @@ export type BrandDropdownProps = {
   required?: boolean;
   disabled?: boolean;
   error?: string | null;
+  /** Visually hide the label (still exposed to AT via the button). */
+  hideLabel?: boolean;
   'aria-invalid'?: boolean | 'true' | 'false';
   'aria-describedby'?: string;
 };
@@ -29,6 +31,7 @@ export function BrandDropdown({
   required,
   disabled,
   error,
+  hideLabel = false,
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedBy,
 }: BrandDropdownProps) {
@@ -103,7 +106,26 @@ export function BrandDropdown({
 
   return (
     <div className={`${fieldClass}${invalid ? ' is-invalid' : ''}`.trim()} ref={root}>
-      <label id={labelId} htmlFor={id}>
+      <label
+        id={labelId}
+        htmlFor={id}
+        className={hideLabel ? 'sr-only' : undefined}
+        style={
+          hideLabel
+            ? {
+                position: 'absolute',
+                width: 1,
+                height: 1,
+                padding: 0,
+                margin: -1,
+                overflow: 'hidden',
+                clip: 'rect(0, 0, 0, 0)',
+                whiteSpace: 'nowrap',
+                border: 0,
+              }
+            : undefined
+        }
+      >
         {label}
       </label>
       <button

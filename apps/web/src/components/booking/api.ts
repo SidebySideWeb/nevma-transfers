@@ -63,6 +63,8 @@ export const bookingApi = {
       returnTrip: boolean;
       flightTracking: boolean;
       zones: { code: string; name: string }[];
+      /** Admin zone pairs (zone_routes) for suggestion chips. */
+      routes?: { fromCode: string; toCode: string; label: string }[];
       classes: {
         key: string;
         name: string;
