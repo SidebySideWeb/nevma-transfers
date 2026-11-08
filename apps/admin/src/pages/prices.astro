@@ -69,17 +69,22 @@ const priceMap = new Map(
 );
 
 type RouteRow = {
+  from_zone_id: string;
+  to_zone_id: string;
   duration_minutes: number;
-  from_zone: { name: string } | null;
-  to_zone: { name: string } | null;
+  featured: boolean;
+  featured_order: number;
+  from_zone: { name: string; display_place_id: string | null } | null;
+  to_zone: { name: string; display_place_id: string | null } | null;
 };
 
 const routesRes = await supabase.from('zone_routes').select(
-  'duration_minutes, from_zone:zones!zone_routes_from_zone_id_fkey(name), to_zone:zones!zone_routes_to_zone_id_fkey(name)',
+  'from_zone_id, to_zone_id, duration_minutes, featured, featured_order, from_zone:zones!zone_routes_from_zone_id_fkey(name, display_place_id), to_zone:zones!zone_routes_to_zone_id_fkey(name, display_place_id)',
 );
 if (routesRes.error) logListError('prices_routes', routesRes.error.message);
 const routes = (routesRes.error ? [] : (routesRes.data ?? [])) as RouteRow[];
 const zones = zonesLoad.ok ? zonesLoad.rows : [];
+const featuredErr = actionErr(Astro.getActionResult?.(actions.saveFeaturedRoutes));
 
 const listError =
   (!classesLoad.ok && classesLoad.message) ||
@@ -209,35 +214,80 @@ const shortName = (name: string) =>
   }
 
   <section class="stack" aria-labelledby="r-h">
-    <h2 id="r-h">Routes (duration minutes)</h2>
-    <div class="table-wrap" role="region" tabindex="0" aria-label="Data table">
-      <table class="table table-cards">
-        <thead>
-          <tr>
-            <th scope="col">Route</th>
-            <th scope="col" class="num">Minutes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            routes.map((r) => {
-              const from = r.from_zone?.name?.trim() || '—';
-              const to = r.to_zone?.name?.trim() || '—';
-              return (
-                <tr>
-                  <td data-label="Route">
-                    {from} <span class="muted" aria-hidden="true">→</span> {to}
-                  </td>
-                  <td class="num" data-label="Minutes">
-                    {r.duration_minutes}
-                  </td>
-                </tr>
-              );
-            })
-          }
-        </tbody>
-      </table>
-    </div>
+    <h2 id="r-h">Popular routes (booking widget)</h2>
+    <p class="muted">
+      Show up to 8 routes in the search widget. Both zones need a widget address (Zones → Edit).
+    </p>
+    {
+      featuredErr && (
+        <Banner tone="danger" role="alert">
+          {featuredErr}
+        </Banner>
+      )
+    }
+    <form method="POST" action={actions.saveFeaturedRoutes} class="stack" id="featured-form">
+      <input type="hidden" name="rowsJson" id="featuredRowsJson" value="[]" />
+      <div class="table-wrap" role="region" tabindex="0" aria-label="Popular routes">
+        <table class="table table-cards">
+          <thead>
+            <tr>
+              <th scope="col">Route</th>
+              <th scope="col" class="num">Minutes</th>
+              <th scope="col">Show</th>
+              <th scope="col" class="num">Order</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              routes.map((r) => {
+                const from = r.from_zone?.name?.trim() || '—';
+                const to = r.to_zone?.name?.trim() || '—';
+                const ready = Boolean(r.from_zone?.display_place_id && r.to_zone?.display_place_id);
+                return (
+                  <tr
+                    data-featured-row
+                    data-from={r.from_zone_id}
+                    data-to={r.to_zone_id}
+                  >
+                    <td data-label="Route">
+                      {from} <span class="muted" aria-hidden="true">→</span> {to}
+                      {!ready && (
+                        <p class="help">Add the widget address to both zones to show this route</p>
+                      )}
+                    </td>
+                    <td class="num" data-label="Minutes">
+                      {r.duration_minutes}
+                    </td>
+                    <td data-label="Show">
+                      <label class="switch">
+                        <input
+                          type="checkbox"
+                          data-featured
+                          checked={r.featured || undefined}
+                          disabled={!ready || undefined}
+                        />
+                        <span class="sr-only">Show in popular routes</span>
+                      </label>
+                    </td>
+                    <td class="num" data-label="Order">
+                      <input
+                        class="input"
+                        type="number"
+                        data-featured-order
+                        value={r.featured_order ?? 100}
+                        style="width:5rem"
+                        disabled={!ready || undefined}
+                      />
+                    </td>
+                  </tr>
+                );
+              })
+            }
+          </tbody>
+        </table>
+      </div>
+      <button class="btn" type="submit">Save popular routes</button>
+    </form>
   </section>
 </AdminLayout>
 
@@ -269,6 +319,17 @@ const shortName = (name: string) =>
       if (key) values[key] = el.value;
     });
     if (hidden) hidden.value = JSON.stringify(values);
+  });
+
+  document.getElementById('featured-form')?.addEventListener('submit', () => {
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-featured-row]')].map((tr) => ({
+      fromId: tr.dataset.from,
+      toId: tr.dataset.to,
+      featured: Boolean(tr.querySelector<HTMLInputElement>('[data-featured]')?.checked),
+      order: Number(tr.querySelector<HTMLInputElement>('[data-featured-order]')?.value || 100),
+    }));
+    const out = document.getElementById('featuredRowsJson') as HTMLInputElement | null;
+    if (out) out.value = JSON.stringify(rows);
   });
 </script>
 

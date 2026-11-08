@@ -17,6 +17,15 @@ const ZONE_KINDS = [
   { value: 'other', label: 'Other' },
 ] as const;
 
+const DISPLAY_KINDS = [
+  { value: '', label: '—' },
+  { value: 'airport', label: 'Airport' },
+  { value: 'port', label: 'Port' },
+  { value: 'station', label: 'Station' },
+  { value: 'hotel', label: 'Hotel' },
+  { value: 'area', label: 'Area' },
+] as const;
+
 const staff = Astro.locals.staff!;
 const supabase = createSupabaseServerClient(Astro.cookies);
 
@@ -130,6 +139,42 @@ const zoneList = withDemoOfflineLast(zones ?? []);
               <div class="field"><label for={`zk-${z.id}`}>Kind</label><Select id={`zk-${z.id}`} name="kind" options={ZONE_KINDS.map((k) => ({ value: k.value, label: k.label, selected: (z.kind ?? 'area') === k.value }))} /></div>
             </div>
             <label class="switch"><input type="checkbox" name="active" value="true" checked={z.active} /> {z.active ? 'On' : 'Off'}</label>
+            <fieldset class="stack-sm" style="border:0;padding:0;margin:0">
+              <legend class="eyebrow">Address shown in the booking widget</legend>
+              <p class="help">Filled into Pick-up / Drop-off when a popular route is chosen. Clear all fields to remove.</p>
+              <div class="field">
+                <label for={`zda-${z.id}`}>Address</label>
+                <input
+                  class="input"
+                  id={`zda-${z.id}`}
+                  name="displayAddress"
+                  value={z.display_address ?? ''}
+                  data-zone-display-addr
+                  autocomplete="off"
+                  placeholder="Start typing an address"
+                />
+              </div>
+              <input type="hidden" name="displayPlaceId" id={`zdp-${z.id}`} value={z.display_place_id ?? ''} data-zone-display-place />
+              <input type="hidden" name="displayLat" id={`zdlat-${z.id}`} value={z.display_lat ?? ''} data-zone-display-lat />
+              <input type="hidden" name="displayLng" id={`zdlng-${z.id}`} value={z.display_lng ?? ''} data-zone-display-lng />
+              <div class="field">
+                <label for={`zdk-${z.id}`}>Type</label>
+                <Select
+                  id={`zdk-${z.id}`}
+                  name="displayKind"
+                  options={DISPLAY_KINDS.map((k) => ({
+                    value: k.value,
+                    label: k.label,
+                    selected: (z.display_kind ?? '') === k.value,
+                  }))}
+                />
+              </div>
+              {z.display_address ? (
+                <p class="muted small">{z.display_address} ({z.display_lat}, {z.display_lng})</p>
+              ) : (
+                <p class="muted small">No widget address yet.</p>
+              )}
+            </fieldset>
           </div>
           <div class="dialog-foot">
             {canDelete ? <button class="btn btn-quiet btn-sm btn-delete-muted" type="submit" formaction={actions.deleteZone} data-confirm={`Delete ${z.name}? This cannot be undone.`}>Delete</button> : <span class="muted small">In use by bookings</span>}
@@ -192,20 +237,56 @@ const zoneList = withDemoOfflineLast(zones ?? []);
   </form>
 </dialog>
 
-<script is:inline>
+<script>
+  import { enhanceAddressField } from '../scripts/address-autocomplete';
+
   document.querySelectorAll('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.getElementById(btn.getAttribute('data-open'))?.showModal();
+      document.getElementById(btn.getAttribute('data-open')!)?.showModal();
     });
   });
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.getElementById(btn.getAttribute('data-close'))?.close();
+      document.getElementById(btn.getAttribute('data-close')!)?.close();
     });
   });
   document.querySelectorAll('[data-confirm]').forEach((btn) => {
     btn.addEventListener('click', (event) => {
       if (!window.confirm(btn.getAttribute('data-confirm'))) event.preventDefault();
+    });
+  });
+
+  const placesOn = Boolean(
+    import.meta.env.GOOGLE_PLACES_API_KEY ||
+      import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE === 'true',
+  );
+  document.querySelectorAll<HTMLInputElement>('[data-zone-display-addr]').forEach((input) => {
+    const form = input.closest('form');
+    if (!form) return;
+    const place = form.querySelector<HTMLInputElement>('[data-zone-display-place]');
+    const lat = form.querySelector<HTMLInputElement>('[data-zone-display-lat]');
+    const lng = form.querySelector<HTMLInputElement>('[data-zone-display-lng]');
+    enhanceAddressField(input, {
+      enabled: placesOn,
+      onPlace: (p) => {
+        if (!place || !lat || !lng) return;
+        if (!p) {
+          place.value = '';
+          lat.value = '';
+          lng.value = '';
+          return;
+        }
+        place.value = p.placeId;
+        lat.value = String(p.lat);
+        lng.value = String(p.lng);
+      },
+    });
+    input.addEventListener('input', () => {
+      if (!input.value.trim() && place && lat && lng) {
+        place.value = '';
+        lat.value = '';
+        lng.value = '';
+      }
     });
   });
 </script>

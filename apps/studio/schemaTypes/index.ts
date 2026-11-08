@@ -9,12 +9,13 @@ import { formSubmission } from './formSubmission';
 import { page } from './page';
 import { route } from './route';
 import { seo } from './seo';
+import { bookingWidget } from './bookingWidget';
 import { siteSettings } from './siteSettings';
 import { uiStrings } from './uiStrings';
 import { vehicleClass } from './vehicleClass';
 
 export const schemaTypes = [
-  siteSettings, uiStrings, vehicleClass, page, route, form, formSubmission,
+  siteSettings, bookingWidget, uiStrings, vehicleClass, page, route, form, formSubmission,
   seo, hero, richText, ctaBand, faq, ...kit2Sections,
   ...v2SharedTypes, ...v2SectionTypes,
 ];

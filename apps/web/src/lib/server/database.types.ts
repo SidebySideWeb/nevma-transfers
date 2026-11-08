@@ -828,14 +828,14 @@ isOneToOne: false
                   ]
                 },"zone_routes": {
                   Row: {
-                    "duration_minutes": number,"from_zone_id": string,"is_demo": boolean,"to_zone_id": string
+                    "duration_minutes": number,"featured": boolean,"featured_order": number,"from_zone_id": string,"is_demo": boolean,"to_zone_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "duration_minutes": number,"from_zone_id": string,"is_demo"?: boolean,"to_zone_id": string
+                    "duration_minutes": number,"featured"?: boolean,"featured_order"?: number,"from_zone_id": string,"is_demo"?: boolean,"to_zone_id": string
                   }
                   Update: {
-                    "duration_minutes"?: number,"from_zone_id"?: string,"is_demo"?: boolean,"to_zone_id"?: string
+                    "duration_minutes"?: number,"featured"?: boolean,"featured_order"?: number,"from_zone_id"?: string,"is_demo"?: boolean,"to_zone_id"?: string
                   }
                   Relationships: [
                     {
@@ -854,14 +854,14 @@ isOneToOne: false
                   ]
                 },"zones": {
                   Row: {
-                    "active": boolean,"code": string,"id": string,"is_demo": boolean,"kind": string,"name": string,"sort_order": number
+                    "active": boolean,"code": string,"display_address": string | null,"display_kind": string | null,"display_lat": number | null,"display_lng": number | null,"display_place_id": string | null,"id": string,"is_demo": boolean,"kind": string,"name": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"code": string,"id"?: string,"is_demo"?: boolean,"kind"?: string,"name": string,"sort_order"?: number
+                    "active"?: boolean,"code": string,"display_address"?: string | null,"display_kind"?: string | null,"display_lat"?: number | null,"display_lng"?: number | null,"display_place_id"?: string | null,"id"?: string,"is_demo"?: boolean,"kind"?: string,"name": string,"sort_order"?: number
                   }
                   Update: {
-                    "active"?: boolean,"code"?: string,"id"?: string,"is_demo"?: boolean,"kind"?: string,"name"?: string,"sort_order"?: number
+                    "active"?: boolean,"code"?: string,"display_address"?: string | null,"display_kind"?: string | null,"display_lat"?: number | null,"display_lng"?: number | null,"display_place_id"?: string | null,"id"?: string,"is_demo"?: boolean,"kind"?: string,"name"?: string,"sort_order"?: number
                   }
                   Relationships: [
                     
@@ -872,6 +872,14 @@ isOneToOne: false
             "calendar_items": {
                   Row: {
                     "booking_id": string | null,"booking_type": string | null,"class_id": string | null,"ends_at": string | null,"kind": string | null,"label": string | null,"pickup_at": string | null,"range": unknown,"reason": string | null,"reference": string | null,"source": string | null,"status": string | null,"vehicle_auto_assigned": boolean | null,"vehicle_id": string | null,"vip_security": boolean | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"featured_routes": {
+                  Row: {
+                    "duration_minutes": number | null,"featured_order": number | null,"from_address": string | null,"from_code": string | null,"from_kind": string | null,"from_lat": number | null,"from_lng": number | null,"from_name": string | null,"from_place_id": string | null,"from_price_cents": number | null,"from_zone_id": string | null,"to_address": string | null,"to_code": string | null,"to_kind": string | null,"to_lat": number | null,"to_lng": number | null,"to_name": string | null,"to_place_id": string | null,"to_zone_id": string | null
                   }
                   ComputedFields: never
                   Relationships: [

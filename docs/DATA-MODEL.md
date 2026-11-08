@@ -19,8 +19,8 @@ Conventions: money in integer cents (`int`, `check >= 0`), currency `char(3)` de
 | --- | --- | --- |
 | `vehicle_classes` | `id`, `key` (unique, joins Sanity), `name` (internal), `max_passengers`, `max_luggage`, `buffer_minutes` (default 30, 0–240), `sort_order`, `active` | |
 | `vehicles` | `id`, `class_id`, `label`, `status` (`active`, `maintenance`, `retired`), `note` (staff-only model/colour/plate) | only `active` vehicles count for availability |
-| `zones` | `id`, `code` (unique), `name`, `sort_order`, `active` | |
-| `zone_routes` | `from_zone_id`, `to_zone_id`, `duration_minutes` | directed (A→B and B→A are two rows); `from <> to` |
+| `zones` | `id`, `code` (unique), `name`, `sort_order`, `active`, `display_address` / `display_place_id` / `display_lat` / `display_lng` / `display_kind` (0033, booking widget) | display place is all-or-nothing; kind ∈ airport\|port\|station\|hotel\|area |
+| `zone_routes` | `from_zone_id`, `to_zone_id`, `duration_minutes`, `featured`, `featured_order` (0033) | directed (A→B and B→A are two rows); `from <> to` |
 | `zone_prices` | `from_zone_id`, `to_zone_id`, `class_id`, `price_cents`, `currency` | needs a route; no row = no online price (`no_price`) |
 | `hourly_rates` | `class_id` (PK), `price_per_hour_cents`, `min_hours` (default 3), `max_hours` (default 12), `currency` | `1 <= min <= max <= 24`; no row = class not offered by the hour |
 | `extras` | `id`, `code` (unique), `name`, `price_cents`, `active` | codes used by the site: `night-surcharge`, `vip-security` |
@@ -205,3 +205,7 @@ Staff pricing/setup audit log (`admin_activity`) for B5 saves.
 ## 0032 — Booking v2 fixes (8 Nov 2026)
 
 Post-review fixes for 0024–0031 (do not edit earlier migrations). Distance-priced bookings/holds may omit zones (`from_zone_id` nullable; type check allows lat/lng + `distance_km`). `quotes.company_id` for business-area quotes; public `create_booking_from_quote` refuses those and checks passengers/luggage against the quote and class. Return checkout: outbound hold counted before return window; total must equal outbound + return. `record_viva_payment` returns per-leg `legs[]` with worst outcome on top. `shift_pickup` ignores `hold_expires_at` and respects `blocked_slots`. Rate views use `security_invoker`. Corporate helpers: `company_open_balance_cents` is service-role only; authenticated use `my_company_open_balance_cents()`. `admin_activity.actor_id` must be the signed-in staff user. Tighter LGAV/port `pricing_areas` polygons (verify on a map before fees). Append-only rates/settings; new classes get zero `class_rates`.
+
+## 0033 — Booking widget popular routes (8 Nov 2026)
+
+Zones get a display place for the expanding search widget. `zone_routes.featured` / `featured_order` mark popular routes. View `featured_routes` (security_invoker): featured pairs where both zones are active with a display place and at least one priced active class; returns lowest `from_price_cents`. Anon cannot select the view; the site reads it with the service role / `DATABASE_URL`.

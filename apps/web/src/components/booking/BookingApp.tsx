@@ -9,6 +9,7 @@ import { loadQuoteSession, saveQuoteSession, vehicleUrl } from './quote-session'
 import { bookingReducer, createInitialState, stepFromHash } from './reducer';
 import { StepDetails } from './StepDetails';
 import { StepReview, type ReviewTarget } from './StepReview';
+import { readSearchPlaces } from './SearchWidget';
 import { StepSearch } from './StepSearch';
 import { StepVehicle, defaultVehicleKey } from './StepVehicle';
 import { getTurnstileToken } from './turnstile';
@@ -91,6 +92,9 @@ export default function BookingApp({
           dispatch({ type: 'SET_SEARCH', patch: prefill.search });
         }
         if (prefill.classKey) setPreferredClassKey(prefill.classKey);
+        // B4b: addresses and place data the home search widget stored for this visit.
+        const stored = readSearchPlaces();
+        if (stored) dispatch({ type: 'SET_DETAILS', patch: stored });
 
         const session = loadQuoteSession();
         const wantVehicle =
@@ -648,6 +652,7 @@ export default function BookingApp({
         addressAutocomplete={addressAutocomplete}
         distancePricing={distancePricing}
         whatsappHref={whatsappHref}
+        widget
         onChange={(patch) => dispatch({ type: 'SET_SEARCH', patch })}
         onChangeDetails={(patch) => dispatch({ type: 'SET_DETAILS', patch })}
         onSubmit={submitQuote}

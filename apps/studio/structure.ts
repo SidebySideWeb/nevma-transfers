@@ -1,7 +1,7 @@
 import type { StructureResolver } from 'sanity/structure';
 
 // Documents that exist exactly once, with a fixed _id equal to the type name.
-export const singletonTypes = new Set(['siteSettings', 'uiStrings']);
+export const singletonTypes = new Set(['siteSettings', 'uiStrings', 'bookingWidget']);
 export const singletonActions = new Set(['publish', 'discardChanges', 'restore']);
 // Created by the site's server only, never from "Create new".
 export const serverOnlyTypes = new Set(['formSubmission']);
@@ -31,6 +31,10 @@ export const structure: StructureResolver = (S) =>
     .items([
       S.listItem().title('Site settings').id('siteSettings').child(S.document().schemaType('siteSettings').documentId('siteSettings')),
       S.listItem().title('UI strings').id('uiStrings').child(S.document().schemaType('uiStrings').documentId('uiStrings')),
+      S.listItem()
+        .title('Booking widget')
+        .id('bookingWidget')
+        .child(S.document().schemaType('bookingWidget').documentId('bookingWidget')),
       S.divider(),
       S.documentTypeListItem('page').title('Pages'),
       S.documentTypeListItem('route').title('Routes'),

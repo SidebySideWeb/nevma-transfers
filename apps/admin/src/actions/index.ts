@@ -862,21 +862,86 @@ export const server = {
       kind: z.enum(['airport', 'city', 'port', 'area', 'other']).optional(),
       sortOrder: z.coerce.number().int(),
       active: z.string().optional(),
+      displayAddress: z.string().optional(),
+      displayPlaceId: z.string().optional(),
+      displayLat: z.string().optional(),
+      displayLng: z.string().optional(),
+      displayKind: z.enum(['airport', 'port', 'station', 'hotel', 'area', '']).optional(),
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
       const supabase = createSupabaseServerClient(ctx.cookies);
+      const addr = (input.displayAddress ?? '').trim();
+      const placeId = (input.displayPlaceId ?? '').trim();
+      const latRaw = (input.displayLat ?? '').trim();
+      const lngRaw = (input.displayLng ?? '').trim();
+      const displayKind = input.displayKind || null;
+      let display_address: string | null = null;
+      let display_place_id: string | null = null;
+      let display_lat: number | null = null;
+      let display_lng: number | null = null;
+      if (placeId || latRaw || lngRaw || addr) {
+        const lat = Number(latRaw);
+        const lng = Number(lngRaw);
+        if (!placeId || !addr || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'Widget address needs address, place id, lat and lng together (or clear all).',
+          });
+        }
+        display_address = addr;
+        display_place_id = placeId;
+        display_lat = lat;
+        display_lng = lng;
+      }
       const { error } = await supabase
         .from('zones')
         .update({
           name: input.name,
           sort_order: input.sortOrder,
           active: input.active === 'true' || input.active === 'on',
+          display_address,
+          display_place_id,
+          display_lat,
+          display_lng,
+          display_kind: displayKind || null,
           ...(input.kind ? { kind: input.kind } : {}),
           ...(input.code ? { code: input.code } : {}),
         })
         .eq('id', input.id);
       if (error) throwDb(error, 'Lower-case letters, numbers and hyphens.');
+      markPricesChanged(ctx.cookies);
+      return { ok: true };
+    },
+  }),
+
+  saveFeaturedRoutes: defineAction({
+    accept: 'form',
+    input: z.object({
+      rowsJson: z.string().min(2),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      type Row = { fromId: string; toId: string; featured: boolean; order: number };
+      let rows: Row[];
+      try {
+        rows = JSON.parse(input.rowsJson) as Row[];
+      } catch {
+        throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid featured routes payload' });
+      }
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      for (const row of rows) {
+        if (!row.fromId || !row.toId) continue;
+        const { error } = await supabase
+          .from('zone_routes')
+          .update({
+            featured: Boolean(row.featured),
+            featured_order: Number.isFinite(row.order) ? Math.floor(row.order) : 100,
+          })
+          .eq('from_zone_id', row.fromId)
+          .eq('to_zone_id', row.toId);
+        if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
+      }
       markPricesChanged(ctx.cookies);
       return { ok: true };
     },

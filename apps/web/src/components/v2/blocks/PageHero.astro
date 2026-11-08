@@ -2,10 +2,11 @@
 import SiteHeader from '../SiteHeader.astro';
 import Heading from '../Heading.astro';
 import CtaLink from '../CtaLink.astro';
-import { QuickBooking } from '../QuickBooking';
+import { SearchWidget } from '../../booking/SearchWidget';
 import { bgImage } from '../../../lib/v2/bg-image';
 import { getSiteSettings } from '../../../lib/sanity/content';
 import { getCatalog } from '../../../lib/server/catalog';
+import { getSettings } from '../../../lib/server/settings';
 import { t } from '../../../lib/strings';
 import type { CtaLinkData } from '../../../lib/v2/cta';
 import type { SanityImage } from '../../../lib/sanity/image';
@@ -30,52 +31,44 @@ const widgetNote = typeof section.widgetNote === 'string' ? section.widgetNote :
 const showQuick = isHome && section.showQuickBooking === true;
 const path = pathname.replace(/\/$/, '') || '/';
 
-let zones: { code: string; name: string }[] = [];
-let routes: { fromCode: string; toCode: string; label: string }[] = [];
-let hourlyBounds = { minHours: 3, maxHours: 12 };
+// Build-time values for the home search widget; the widget falls back to its own defaults.
+let hourBounds = { min: 3, max: 12 };
+let minLeadMinutes: number | undefined;
+let timezone: string | undefined;
 if (showQuick) {
   try {
     const cat = await getCatalog();
-    // Design board labels omit the DEMO seed prefix (same as EnquiryForm).
-    const strip = (n: string) => n.replace(/^DEMO\s+/i, '');
-    const zoneName = new Map(cat.zones.map((z) => [z.code, strip(z.name)]));
-    zones = cat.zones.map((z) => ({ code: z.code, name: strip(z.name) }));
-    const priced = new Set(cat.prices.map((p) => `${p.fromCode}|${p.toCode}`));
-    routes = cat.routes
-      .filter((r) => priced.has(`${r.fromCode}|${r.toCode}`))
-      .slice(0, 12)
-      .map((r) => ({
-        fromCode: r.fromCode,
-        toCode: r.toCode,
-        label: `${zoneName.get(r.fromCode) ?? r.fromCode} → ${zoneName.get(r.toCode) ?? r.toCode}`,
-      }));
     if (cat.hourly.length) {
-      hourlyBounds = {
-        minHours: Math.min(...cat.hourly.map((h) => h.minHours)),
-        maxHours: Math.max(...cat.hourly.map((h) => h.maxHours)),
+      hourBounds = {
+        min: Math.min(...cat.hourly.map((h) => h.minHours)),
+        max: Math.max(...cat.hourly.map((h) => h.maxHours)),
       };
     }
   } catch {
-    zones = [];
-    routes = [];
+    /* defaults */
+  }
+  try {
+    const settings = await getSettings();
+    minLeadMinutes = settings.minLeadMinutes;
+    timezone = settings.timezone;
+  } catch {
+    /* defaults */
   }
 }
 
-const quickLabels = {
-  form: t('site.quick.label'),
-  from: t('site.quick.from'),
-  to: t('site.quick.to'),
-  hours: t('site.quick.hours'),
-  date: t('site.quick.date'),
-  time: t('site.quick.time'),
-  passengers: t('site.quick.passengers'),
-  submit: t('site.quick.submit'),
-  swap: t('site.quick.swap'),
-  transfer: t('booking.toggle.oneWay'),
-  hourly: t('booking.toggle.hourly'),
-  fewerHours: t('site.quick.fewerHours'),
-  moreHours: t('site.quick.moreHours'),
-  routesSuggest: t('booking.routes.suggest'),
+// Popular routes are fetched by the widget from /api/routes/featured on first focus.
+const widgetStrings = {
+  tabRoute: t('booking.toggle.oneWay'),
+  tabHour: t('booking.toggle.hourly'),
+  pickup: t('booking.pickup.address'),
+  dropoff: t('booking.dropoff.address'),
+  date: t('booking.date'),
+  time: t('booking.time'),
+  duration: t('booking.hours.duration'),
+  flight: t('booking.flight'),
+  flightPlaceholder: t('form.placeholder.flight'),
+  viewOptions: t('booking.search.viewOptions'),
+  popularRoutes: t('booking.routes.suggest'),
 };
 
 type Shell = {
@@ -136,12 +129,14 @@ if (path === '/legal') {
           </div>
         )}
         {showQuick ? (
-          <QuickBooking
+          <SearchWidget
             client:load
-            zones={zones}
-            routes={routes}
-            hourlyBounds={hourlyBounds}
-            labels={quickLabels}
+            mode="home"
+            strings={widgetStrings}
+            hourBounds={hourBounds}
+            minLeadMinutes={minLeadMinutes}
+            timezone={timezone}
+            addressAutocomplete={import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE === 'true'}
           />
         ) : null}
         {widgetNote ? <div class="s8ad2a">{widgetNote}</div> : null}

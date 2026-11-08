@@ -32,7 +32,7 @@ describe('studio schema', () => {
   const names = schemaTypes.map((t: AnyDef) => t.name);
 
   it('registers every kit 1 and kit 2 content type', () => {
-    for (const n of ['siteSettings', 'uiStrings', 'vehicleClass', 'page', 'seo', 'hero', 'richText', 'ctaBand', 'faq',
+    for (const n of ['siteSettings', 'bookingWidget', 'uiStrings', 'vehicleClass', 'page', 'seo', 'hero', 'richText', 'ctaBand', 'faq',
       'route', 'form', 'formSubmission', 'featureGrid', 'imageText', 'steps', 'vehicleClassList', 'routeList', 'contactDetails', 'formBlock']) {
       expect(names).toContain(n);
     }
@@ -99,7 +99,7 @@ describe('studio schema', () => {
   });
 
   it('singletons cannot be created a second time', () => {
-    expect([...singletonTypes].sort()).toEqual(['siteSettings', 'uiStrings']);
+    expect([...singletonTypes].sort()).toEqual(['bookingWidget', 'siteSettings', 'uiStrings']);
     const prev = [
       { templateId: 'siteSettings' },
       { templateId: 'uiStrings' },

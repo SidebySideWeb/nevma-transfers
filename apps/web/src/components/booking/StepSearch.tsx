@@ -11,6 +11,7 @@ import { DateField } from '../v2/DateField';
 import { TimeField } from '../v2/TimeField';
 import { joinLocal, requestQuoteHref, splitLocal, zoneName } from './v2/journey';
 import { AddressField } from './AddressField';
+import { SearchWidget, type SearchWidgetPayload } from './SearchWidget';
 import type { BookingStrings, DetailsState, OptionsData, SearchState } from './types';
 
 type FlightLookupResult = {
@@ -31,6 +32,8 @@ type Props = {
   /** FEATURE_DISTANCE_PRICING: Attica check + out-of-area message under the field. */
   distancePricing?: boolean;
   whatsappHref?: string | null;
+  /** B4b: render the shared expanding SearchWidget instead of the legacy bar. */
+  widget?: boolean;
   onChange: (patch: Partial<SearchState>) => void;
   onChangeDetails: (patch: Partial<DetailsState>) => void;
   onSubmit: () => void;
@@ -99,6 +102,7 @@ export function StepSearch({
   addressAutocomplete,
   distancePricing = false,
   whatsappHref = null,
+  widget = false,
   onChange,
   onChangeDetails,
   onSubmit,
@@ -130,6 +134,11 @@ export function StepSearch({
     () => earliestPickupLocal(new Date(), options.minLeadMinutes, options.timezone),
     [options.minLeadMinutes, options.timezone],
   );
+
+  const applyWidget = (p: SearchWidgetPayload) => {
+    onChange(p.search);
+    onChangeDetails(p.details);
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -242,6 +251,53 @@ export function StepSearch({
         </div>
       )}
 
+      {widget ? (
+        <SearchWidget
+          mode="book"
+          strings={{
+            tabRoute: oneWay,
+            tabHour: byHour,
+            pickup: strings['booking.pickup.address'],
+            dropoff: strings['booking.dropoff.address'],
+            date: strings['booking.date'],
+            time: strings['booking.time'],
+            duration: strings['booking.hours.duration'],
+            flight: strings['booking.flight'],
+            flightPlaceholder: strings['form.placeholder.flight'],
+            flightHint: strings['booking.airport.hint'],
+            viewOptions: strings['booking.search.viewOptions'],
+            popularRoutes: strings['booking.routes.suggest'],
+            emptyMessage: strings['booking.widget.emptyMessage'],
+          }}
+          minLeadMinutes={options.minLeadMinutes}
+          timezone={options.timezone}
+          kmPerHour={kmPerHour}
+          hourBounds={hourBounds}
+          addressAutocomplete={addressAutocomplete}
+          checkServiceArea={distancePricing}
+          errors={errors}
+          busy={busy}
+          initial={{
+            type: search.type,
+            hours: search.hours,
+            date,
+            time,
+            pickupAddress: details.pickupAddress,
+            pickupPlace: details.pickupPlace,
+            pickupKind: !distancePricing && isAirportZone(fromZoneMeta) ? 'airport' : null,
+            dropoffAddress: details.dropoffAddress,
+            dropoffPlace: details.dropoffPlace,
+            flightNumber: details.flightNumber,
+          }}
+          onChange={applyWidget}
+          onSubmit={(p) => {
+            applyWidget(p);
+            onSubmit();
+          }}
+        />
+      ) : null}
+
+      {!widget && (
       <div
         data-v2-extra
         className="js-trip ep-tabs"
@@ -269,8 +325,40 @@ export function StepSearch({
           <span>{byHour}</span>
         </button>
       </div>
+      )}
 
-      {search.type === 'transfer' && (options.routes?.length ?? 0) > 0 ? (
+      {widget ? (
+        !hideZones && (
+          <div className="ep-bar-row" data-v2-extra>
+            <BrandDropdown
+              id="b-from"
+              name="fromZone"
+              label={strings['booking.pickup.zone'] ?? 'Pick-up'}
+              options={zones}
+              value={search.fromZone}
+              onChange={(fromZone) => onChange({ fromZone })}
+              fieldClass="field sf1db8 ep-bar-field"
+              error={errors.fromZone}
+              {...invalid('fromZone', 'b-from')}
+            />
+            {hourly ? null : (
+              <BrandDropdown
+                id="b-to"
+                name="toZone"
+                label={strings['booking.dropoff.zone'] ?? 'Drop-off'}
+                options={zones}
+                value={search.toZone}
+                onChange={(toZone) => onChange({ toZone })}
+                fieldClass="field s636a1 ep-bar-field"
+                error={errors.toZone}
+                {...invalid('toZone', 'b-to')}
+              />
+            )}
+          </div>
+        )
+      ) : null}
+
+      {!widget && search.type === 'transfer' && (options.routes?.length ?? 0) > 0 ? (
         <div className="ep-route-suggest" data-v2-extra>
           <span className="ep-route-suggest-label">
             {strings['booking.routes.suggest'] ?? 'Popular routes'}
@@ -304,6 +392,7 @@ export function StepSearch({
         </div>
       ) : null}
 
+      {!widget && (
       <div className="ep-bar-row">
         {!hideZones ? (
           <BrandDropdown
@@ -462,6 +551,7 @@ export function StepSearch({
           </button>
         </div>
       </div>
+      )}
 
       {returnTrip && search.type === 'transfer' ? (
         <div className="ep-return" data-v2-extra>
@@ -526,7 +616,7 @@ export function StepSearch({
         <div className="ep-return ep-return-hidden" hidden aria-hidden="true" data-v2-extra />
       )}
 
-      {showAirportHint ? (
+      {showAirportHint && !widget ? (
         <div className="ep-airport-hint" role="status" data-v2-extra>
           <span className="ep-airport-icon" aria-hidden="true">
             ✈
@@ -573,15 +663,17 @@ export function StepSearch({
         </a>
       </div>
 
-      <div className="ep-bar-cta-sticky" data-v2-extra>
-        <button className="btn btn-gold sd0928" type="submit" disabled={busy}>
-          {busy
-            ? strings['booking.loading']
-            : (strings['booking.search.viewOptions'] ??
-              strings['booking.search.submit'] ??
-              'View options')}
-        </button>
-      </div>
+      {!widget && (
+        <div className="ep-bar-cta-sticky" data-v2-extra>
+          <button className="btn btn-gold sd0928" type="submit" disabled={busy}>
+            {busy
+              ? strings['booking.loading']
+              : (strings['booking.search.viewOptions'] ??
+                strings['booking.search.submit'] ??
+                'View options')}
+          </button>
+        </div>
+      )}
 
       {/* Expose earliest for tests / parent validation without a second clock. */}
       <input type="hidden" name="earliestPickup" value={earliest} readOnly aria-hidden="true" />

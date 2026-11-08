@@ -33,7 +33,7 @@ type Suggestion = { placeId: string; label: string; main: string; secondary: str
 
 const DEBOUNCE_MS = 300;
 
-async function postJson<T>(url: string, body: unknown): Promise<{ ok: true; data: T } | { ok: false }> {
+export async function postJson<T>(url: string, body: unknown): Promise<{ ok: true; data: T } | { ok: false }> {
   try {
     const res = await fetch(url, {
       method: 'POST',

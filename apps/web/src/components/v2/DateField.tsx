@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import './DateField.css';
 
-const DOW = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const;
-const MONTHS = [
+export const DOW = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const;
+export const MONTHS = [
   'January',
   'February',
   'March',
@@ -43,7 +43,7 @@ function parseIso(iso: string): { y: number; m: number; d: number } | null {
   return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
 }
 
-function toIso(y: number, m: number, d: number): string {
+export function toIso(y: number, m: number, d: number): string {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
@@ -53,7 +53,7 @@ function todayIso(): string {
 }
 
 /** Monday-first grid cells for a month (null = padding). */
-function monthCells(y: number, m: number): (number | null)[] {
+export function monthCells(y: number, m: number): (number | null)[] {
   const first = new Date(Date.UTC(y, m - 1, 1));
   // getUTCDay: 0=Sun … → Monday-first offset
   const start = (first.getUTCDay() + 6) % 7;
