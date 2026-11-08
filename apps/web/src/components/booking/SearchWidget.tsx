@@ -780,10 +780,16 @@ export function SearchWidget(props: SearchWidgetProps) {
           {type === 'transfer' ? (
             addr('dropoff', dropoff, s.dropoff, 'dropoffAddress')
           ) : (
-            <div className={cls('duration', '', 'hours')}>
+            <div className={cls('duration', 'ep-sw-field--duration', 'hours')}>
               <label htmlFor={id('duration')}>{s.duration}</label>
-              <button type="button" {...combo('duration')} ref={reg('duration')} aria-invalid={bad('hours') || undefined}>
-                <span>{hourlyDurationLabel(hours, kmPerHour)}</span>
+              <button
+                type="button"
+                {...combo('duration')}
+                ref={reg('duration')}
+                aria-invalid={bad('hours') || undefined}
+                title={hourlyDurationLabel(hours, kmPerHour)}
+              >
+                <span>{hours === 1 ? '1 hour' : `${hours} hours`}</span>
                 <span aria-hidden="true">⌄</span>
               </button>
             </div>

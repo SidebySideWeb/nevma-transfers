@@ -68,7 +68,12 @@
   padding: 14px 18px;
 }
 .ep-sw-field--date {
-  flex: 0.8 1 0;
+  flex: 0.75 1 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+.ep-sw-field--duration {
+  flex: 0 1 7.5rem;
+  max-width: 8.5rem;
   border-left: 1px solid rgba(255, 255, 255, 0.18);
 }
 .ep-sw-field label {
@@ -87,6 +92,7 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
+  min-width: 0;
   height: 32px;
   padding: 0;
   border: 0;
@@ -99,9 +105,17 @@
   cursor: pointer;
   transition: border-color 0.2s;
 }
+.ep-sw-field button > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 .ep-sw-field input {
   cursor: text;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ep-sw-field input::placeholder,
 .ep-sw-field button[data-empty='1'] {
