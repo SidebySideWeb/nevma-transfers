@@ -142,7 +142,7 @@ export function StepSearch({
   const hourly = search.type === 'hourly';
   const fewer = strings['form.stepper.fewer'] ?? '';
   const more = strings['form.stepper.more'] ?? '';
-  const oneWay = strings['booking.toggle.oneWay'] ?? strings['booking.toggle.transfer'] ?? 'One way';
+  const oneWay = strings['booking.toggle.oneWay'] ?? strings['booking.toggle.transfer'] ?? 'By route';
   const byHour = strings['booking.toggle.hourly'] ?? 'By the hour';
   const err = (k: string, id: string) =>
     errors[k] ? (

@@ -13,7 +13,7 @@ export const uiStringDefaults: UiStringDefault[] = [
   // --- booking flow ---
   { area: 'booking', key: 'booking.search.title', value: 'Where and when?' },
   { area: 'booking', key: 'booking.toggle.transfer', value: 'Transfer' },
-  { area: 'booking', key: 'booking.toggle.oneWay', value: 'One way' },
+  { area: 'booking', key: 'booking.toggle.oneWay', value: 'By route' },
   { area: 'booking', key: 'booking.toggle.hourly', value: 'By the hour' },
   { area: 'booking', key: 'booking.pickup.zone', value: 'Pick-up' },
   { area: 'booking', key: 'booking.dropoff.zone', value: 'Drop-off' },

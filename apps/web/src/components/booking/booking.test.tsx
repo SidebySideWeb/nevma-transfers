@@ -11,7 +11,7 @@ import { initialDetails, initialSearch } from './types';
 const strings: Record<string, string> = {
   'booking.search.title': 'Book your ride',
   'booking.toggle.transfer': 'Transfer',
-  'booking.toggle.oneWay': 'One way',
+  'booking.toggle.oneWay': 'By route',
   'booking.toggle.hourly': 'By the hour',
   'booking.pickup.zone': 'Pick-up',
   'booking.dropoff.zone': 'Drop-off',
