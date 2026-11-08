@@ -550,6 +550,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
   }
 
   // Distance / hybrid: when the switch is on and places are supplied, re-price with Routes + priceTrip.
+  // Hybrid/zones with a full fixed-route matrix skip Google Routes (BOOKING-V2-PLAN §3 step 2).
   let distanceKm: number | null = null;
   let durationMin = durationMinutes;
   const rawPlaces = raw as {
@@ -557,6 +558,10 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     dropoffPlace?: { lat?: number; lng?: number; placeId?: string };
     stops?: { lat: number; lng: number }[];
   };
+  const hybridFixedRoute =
+    (f.pricingMode === 'hybrid' || f.pricingMode === 'zones') &&
+    options.length > 0 &&
+    options.every((o) => o.baseCents != null);
   if (
     f.distancePricing &&
     body.type === 'transfer' &&
@@ -573,103 +578,124 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       lng: Number(rawPlaces.dropoffPlace.lng),
     };
     await assertInServiceArea([origin, destination]);
-    const routed = await routeDistance({
-      origin,
-      destination,
-      stops: rawPlaces.stops,
-      departAt: pickup,
-    });
-    distanceKm = routed.distanceKm;
-    durationMin = routed.durationMin;
+    if (!hybridFixedRoute) {
+      try {
+        const routed = await routeDistance({
+          origin,
+          destination,
+          stops: rawPlaces.stops,
+          departAt: pickup,
+        });
+        distanceKm = routed.distanceKm;
+        durationMin = routed.durationMin;
 
-    const ctx = await loadPricingContext();
-    const rates = { ...ctx.rates };
-    if (overrides?.rates) {
-      for (const [key, patch] of Object.entries(overrides.rates)) {
-        rates[key] = { ...(rates[key] ?? {}), ...patch, class_key: key } as (typeof rates)[string];
-      }
-    }
-    const settingsDoc = {
-      ...ctx.settings,
-      ...(overrides?.settings ?? {}),
-    } as typeof ctx.settings;
-    const zonePriceMap = new Map<string, number | null>();
-    for (const c of classes) {
-      zonePriceMap.set(c.key, await zonePriceCents(from.id, toId, c.id));
-    }
-    const demandSnaps = await demandFactorsForClasses({
-      classes: classes.map((c) => ({ id: c.id, key: c.key })),
-      pickupAt: pickup,
-      durationMin,
-      demand: settingsDoc.demand,
-    });
-    const demandByClass = Object.fromEntries(
-      Object.entries(demandSnaps).map(([k, s]) => [k, s.factor]),
-    );
-    const priced = priceTrip({
-      trip: {
-        type: 'transfer',
-        pickupAt: pickup,
-        distanceKm,
-        durationMin,
-        stops: (rawPlaces.stops as { lat: number; lng: number }[]) ?? [],
-        pickup: origin,
-        dropoff: destination,
-      },
-      classes: classes.map((c) => ({ key: c.key })),
-      rates,
-      settings: settingsDoc,
-      periods: ctx.periods,
-      areas: ctx.areas,
-      mode: f.pricingMode,
-      zonePrice: (key) => zonePriceMap.get(key) ?? null,
-      demand: demandByClass,
-      company,
-      vatRateBp: ctx.vatRateBp,
-    });
-
-    for (const [key, p] of Object.entries(priced.perClass)) {
-      const cls = classes.find((c) => c.key === key);
-      const snap = demandSnaps[key];
-      let available = p.available && !snap?.unavailable;
-      if (available && cls) {
-        const { rows: avail } = await db().query<{ n: number }>(
-          `select public.class_availability(
-             $1::uuid,
-             public.blocked_range_for($2::timestamptz, $3::int, $4::int)
-           ) as n`,
-          [cls.id, pickup.toISOString(), durationMin, cls.buffer_minutes],
-        );
-        available = (avail[0]?.n ?? 0) > 0;
-      }
-      const demandFactor = p.demandFactor ?? snap?.factor ?? 1;
-      prices[key] = {
-        total: available && p.available ? p.total : null,
-        net: p.net,
-        vat: p.vat,
-        breakdown: p.breakdown,
-        available,
-        demandFactor,
-        ...(p.reason || snap?.unavailable ? { reason: p.reason ?? 'unavailable' } : {}),
-      };
-      const opt = options.find((o) => o.classKey === key);
-      if (opt) {
-        if (available && p.available) {
-          opt.baseCents = p.total;
-          opt.available = true;
-          opt.breakdown = simulate ? p.breakdown : publicBreakdown(p.breakdown);
-          delete opt.reason;
-        } else {
-          opt.baseCents = null;
-          opt.available = false;
-          opt.breakdown = undefined;
-          opt.reason = snap?.unavailable ? 'unavailable' : (p.reason ?? 'not_priced');
+        const ctx = await loadPricingContext();
+        const rates = { ...ctx.rates };
+        if (overrides?.rates) {
+          for (const [key, patch] of Object.entries(overrides.rates)) {
+            rates[key] = { ...(rates[key] ?? {}), ...patch, class_key: key } as (typeof rates)[string];
+          }
         }
+        const settingsDoc = {
+          ...ctx.settings,
+          ...(overrides?.settings ?? {}),
+        } as typeof ctx.settings;
+        const zonePriceMap = new Map<string, number | null>();
+        for (const c of classes) {
+          zonePriceMap.set(c.key, await zonePriceCents(from.id, toId, c.id));
+        }
+        const demandSnaps = await demandFactorsForClasses({
+          classes: classes.map((c) => ({ id: c.id, key: c.key })),
+          pickupAt: pickup,
+          durationMin,
+          demand: settingsDoc.demand,
+        });
+        const demandByClass = Object.fromEntries(
+          Object.entries(demandSnaps).map(([k, s]) => [k, s.factor]),
+        );
+        const priced = priceTrip({
+          trip: {
+            type: 'transfer',
+            pickupAt: pickup,
+            distanceKm,
+            durationMin,
+            stops: (rawPlaces.stops as { lat: number; lng: number }[]) ?? [],
+            pickup: origin,
+            dropoff: destination,
+          },
+          classes: classes.map((c) => ({ key: c.key })),
+          rates,
+          settings: settingsDoc,
+          periods: ctx.periods,
+          areas: ctx.areas,
+          mode: f.pricingMode,
+          zonePrice: (key) => zonePriceMap.get(key) ?? null,
+          demand: demandByClass,
+          company,
+          vatRateBp: ctx.vatRateBp,
+        });
+
+        for (const [key, p] of Object.entries(priced.perClass)) {
+          const cls = classes.find((c) => c.key === key);
+          const snap = demandSnaps[key];
+          let available = p.available && !snap?.unavailable;
+          if (available && cls) {
+            const { rows: avail } = await db().query<{ n: number }>(
+              `select public.class_availability(
+                 $1::uuid,
+                 public.blocked_range_for($2::timestamptz, $3::int, $4::int)
+               ) as n`,
+              [cls.id, pickup.toISOString(), durationMin, cls.buffer_minutes],
+            );
+            available = (avail[0]?.n ?? 0) > 0;
+          }
+          const demandFactor = p.demandFactor ?? snap?.factor ?? 1;
+          prices[key] = {
+            total: available && p.available ? p.total : null,
+            net: p.net,
+            vat: p.vat,
+            breakdown: p.breakdown,
+            available,
+            demandFactor,
+            ...(p.reason || snap?.unavailable ? { reason: p.reason ?? 'unavailable' } : {}),
+          };
+          const opt = options.find((o) => o.classKey === key);
+          if (opt) {
+            if (available && p.available) {
+              opt.baseCents = p.total;
+              opt.available = true;
+              opt.breakdown = simulate ? p.breakdown : publicBreakdown(p.breakdown);
+              delete opt.reason;
+            } else {
+              opt.baseCents = null;
+              opt.available = false;
+              opt.breakdown = undefined;
+              opt.reason = snap?.unavailable ? 'unavailable' : (p.reason ?? 'not_priced');
+            }
+          }
+        }
+        settingsId = ctx.settingsId;
+        ttlMin = ctx.settings.quote_ttl_min ?? ttlMin;
+        (pricingVersionExtras as { rateIds?: Record<string, string> }).rateIds = ctx.rateIds;
+      } catch (e) {
+        // Hybrid/zones: keep the fixed-route quote when Google Routes is down.
+        if (
+          !(e instanceof BookingError) ||
+          e.code !== 'unavailable' ||
+          !(f.pricingMode === 'hybrid' || f.pricingMode === 'zones') ||
+          !anyPrice
+        ) {
+          throw e;
+        }
+        console.error(
+          JSON.stringify({
+            level: 'warn',
+            code: 'route_fallback_zones',
+            detail: e.message.slice(0, 120),
+          }),
+        );
       }
     }
-    settingsId = ctx.settingsId;
-    ttlMin = ctx.settings.quote_ttl_min ?? ttlMin;
-    (pricingVersionExtras as { rateIds?: Record<string, string> }).rateIds = ctx.rateIds;
   }
 
   let returnPickupAt: Date | null = null;
@@ -696,6 +722,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     let returnRouted: { distanceKm: number; durationMin: number } | null = null;
     if (
       f.distancePricing &&
+      !hybridFixedRoute &&
       rawPlaces.pickupPlace?.lat != null &&
       rawPlaces.dropoffPlace?.lat != null
     ) {
@@ -708,13 +735,31 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         lng: Number(rawPlaces.pickupPlace.lng),
       };
       await assertInServiceArea([origin, destination]);
-      returnRouted = await routeDistance({
-        origin,
-        destination,
-        departAt: returnPickupAt,
-      });
-      returnDistanceKm = returnRouted.distanceKm;
-      returnDurationMin = returnRouted.durationMin;
+      try {
+        returnRouted = await routeDistance({
+          origin,
+          destination,
+          departAt: returnPickupAt,
+        });
+        returnDistanceKm = returnRouted.distanceKm;
+        returnDurationMin = returnRouted.durationMin;
+      } catch (e) {
+        if (
+          !(e instanceof BookingError) ||
+          e.code !== 'unavailable' ||
+          !(f.pricingMode === 'hybrid' || f.pricingMode === 'zones')
+        ) {
+          throw e;
+        }
+        console.error(
+          JSON.stringify({
+            level: 'warn',
+            code: 'route_fallback_zones_return',
+            detail: e.message.slice(0, 120),
+          }),
+        );
+        returnDurationMin = await routeDuration(toId, from.id);
+      }
     } else {
       returnDurationMin = await routeDuration(toId, from.id);
     }
