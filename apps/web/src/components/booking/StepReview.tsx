@@ -41,7 +41,7 @@ export function StepReview({
   children,
 }: Props) {
   const cls = options.classes.find((c) => c.key === classKey);
-  const route = routeLines(strings, options, search);
+  const route = routeLines(strings, options, search, details);
   const when = formatWhen(search.pickupLocal);
   const total = formatEuroV2(booking.totalCents);
   const vip = details.extras.some((e) => e.code === 'vip-security');

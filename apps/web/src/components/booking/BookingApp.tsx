@@ -555,7 +555,7 @@ export default function BookingApp({
 
   let summary: BookingSummaryProps | null = null;
   if (options && shownClass) {
-    const route = routeLines(strings, options, state.search);
+    const route = routeLines(strings, options, state.search, state.details);
     const when = formatWhen(state.search.pickupLocal);
     const quoted = state.quote?.options.find((o) => o.classKey === shownClass.key);
     const lineLabel =
@@ -686,6 +686,7 @@ export default function BookingApp({
         strings={strings}
         options={options}
         search={state.search}
+        details={state.details}
         quote={state.quote}
         contact={contact}
         busy={state.busy}

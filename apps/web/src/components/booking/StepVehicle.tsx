@@ -2,12 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { hourlyDurationLabel } from '../../lib/booking/hourly-labels';
 import { formatEuroV2 } from './format';
 import { fill, formatWhen, requestQuoteHref, routeLines } from './v2/journey';
-import type { BookingStrings, ContactInfo, OptionsData, QuoteData, SearchState } from './types';
+import type {
+  BookingStrings,
+  ContactInfo,
+  DetailsState,
+  OptionsData,
+  QuoteData,
+  SearchState,
+} from './types';
 
 type Props = {
   strings: BookingStrings;
   options: OptionsData;
   search: SearchState;
+  details: DetailsState;
   quote: QuoteData;
   contact: ContactInfo;
   busy: boolean;
@@ -86,6 +94,7 @@ export function StepVehicle({
   strings,
   options,
   search,
+  details,
   quote,
   contact,
   busy,
@@ -101,7 +110,7 @@ export function StepVehicle({
   pricesUpdated = false,
 }: Props) {
   const classByKey = new Map(options.classes.map((c) => [c.key, c]));
-  const route = routeLines(strings, options, search);
+  const route = routeLines(strings, options, search, details);
   const selected = defaultVehicleKey(quote, pickedClassKey, preferredClassKey);
   const selectedName = (selected && classByKey.get(selected)?.name) || selected || '';
   const shown = quote.options.filter(visible);
@@ -158,23 +167,19 @@ export function StepVehicle({
 
       <div className="ep-route-card" data-v2-extra>
         <div className="ep-route-main">
-          <p className="ep-route-fromto">
-            <strong>{route.from}</strong>
+          <div className="ep-route-fromto">
+            {route.from ? <strong>{route.from}</strong> : null}
             {route.to ? (
               <>
-                {' '}
                 <span className="sbbc0f" aria-hidden="true">
-                  →
-                </span>{' '}
+                  ↓
+                </span>
                 <strong>{route.to}</strong>
               </>
-            ) : (
-              <>
-                {' '}
-                · {route.second}
-              </>
-            )}
-          </p>
+            ) : route.second && !route.to ? (
+              <span className="ep-route-second">{route.second}</span>
+            ) : null}
+          </div>
           {when ? (
             <p className="ep-route-when">
               {when.date}, {when.time}{' '}
@@ -183,7 +188,7 @@ export function StepVehicle({
           ) : null}
           {distLine ? <p className="ep-route-meta">{distLine}</p> : null}
         </div>
-        <button type="button" className="sd347e" onClick={onBack}>
+        <button type="button" className="editbtn" onClick={onBack}>
           {strings['booking.edit'] ?? 'Edit'}
         </button>
       </div>

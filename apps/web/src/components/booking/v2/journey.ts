@@ -45,26 +45,40 @@ export function hoursText(strings: BookingStrings, hours: number): string {
   return fill(strings['booking.cancel.hours'], { hours });
 }
 
+/** Prefer the typed / Google address; fall back to the zone name (zones / hybrid). */
+function endLabel(
+  options: OptionsData,
+  zoneCode: string | undefined,
+  address: string | undefined,
+): string {
+  const addr = (address ?? '').trim();
+  if (addr) return addr;
+  const code = (zoneCode ?? '').trim();
+  return code ? zoneName(options, code) : '';
+}
+
 /**
  * Route for the summary (`from`, then `to` or, for hourly hire, `second` = "By the hour · 4 hours")
  * and one-line `text` for the vehicle intro and the review row.
+ * Distance mode: use pickup/dropoff addresses. Zones mode: zone names when addresses are empty.
  */
 export function routeLines(
   strings: BookingStrings,
   options: OptionsData,
   search: Pick<SearchState, 'type' | 'fromZone' | 'toZone' | 'hours'>,
+  details?: Pick<DetailsState, 'pickupAddress' | 'dropoffAddress'> | null,
 ): { from: string; to: string | null; second: string; text: string } {
-  const from = zoneName(options, search.fromZone);
+  const from = endLabel(options, search.fromZone, details?.pickupAddress);
   if (search.type === 'transfer') {
-    const to = zoneName(options, search.toZone);
-    return { from, to, second: to, text: `${from} → ${to}` };
+    const to = endLabel(options, search.toZone, details?.dropoffAddress);
+    return { from, to, second: to, text: from && to ? `${from} → ${to}` : from || to };
   }
   const hours = hoursText(strings, search.hours);
   return {
     from,
     to: null,
     second: `${strings['booking.toggle.hourly'] ?? ''} · ${hours}`,
-    text: `${from} · ${hours}`,
+    text: from ? `${from} · ${hours}` : hours,
   };
 }
 
