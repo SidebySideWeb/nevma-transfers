@@ -308,9 +308,15 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
   const { simulate: _s, overrides: _o, ...quoteRaw } = rawObj;
   const parsed = QuoteRequest.safeParse(quoteRaw);
   if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    const field =
+      first && typeof first.path[0] === 'string'
+        ? String(first.path[0] === 'return' ? 'returnPickupLocal' : first.path[0])
+        : undefined;
     throw new BookingError('invalid_request', {
       stringKey: 'error.invalid_request',
-      message: parsed.error.message,
+      message: first?.message ?? parsed.error.message,
+      field,
     });
   }
   const body = parsed.data;

@@ -14,6 +14,15 @@ const returnLeg = z
   })
   .strict();
 
+const placePayload = z
+  .object({
+    placeId: z.string().min(10),
+    lat: z.number(),
+    lng: z.number(),
+  })
+  .strict()
+  .optional();
+
 const quoteTransfer = z
   .object({
     type: z.literal('transfer'),
@@ -23,6 +32,8 @@ const quoteTransfer = z
     passengers: z.number().int().positive(),
     luggage: z.number().int().nonnegative(),
     return: returnLeg.optional(),
+    pickupPlace: placePayload,
+    dropoffPlace: placePayload,
   })
   .strict();
 
@@ -34,6 +45,7 @@ const quoteHourly = z
     pickupLocal,
     passengers: z.number().int().positive(),
     luggage: z.number().int().nonnegative(),
+    pickupPlace: placePayload,
   })
   .strict();
 
@@ -66,15 +78,6 @@ const holdHourly = z
   .strict();
 
 export const HoldRequest = z.discriminatedUnion('type', [holdTransfer, holdHourly]);
-
-const placePayload = z
-  .object({
-    placeId: z.string().min(10),
-    lat: z.number(),
-    lng: z.number(),
-  })
-  .strict()
-  .optional();
 
 const extrasField = z
   .array(

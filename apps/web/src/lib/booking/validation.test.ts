@@ -32,6 +32,25 @@ describe('zod request schemas', () => {
     ).toThrow();
   });
 
+  it('accepts Places on a transfer quote (B4b widget)', () => {
+    const parsed = QuoteRequest.parse({
+      type: 'transfer',
+      fromZone: 'demo-airport',
+      toZone: 'demo-centre',
+      pickupLocal: '2026-12-01T10:00',
+      passengers: 2,
+      luggage: 2,
+      pickupPlace: { placeId: 'ChIJabcdefghij', lat: 37.93, lng: 23.94 },
+      dropoffPlace: { placeId: 'ChIJklmnopqrst', lat: 37.97, lng: 23.73 },
+      return: { pickupLocal: '2026-12-08T19:30' },
+    });
+    expect(parsed.type).toBe('transfer');
+    if (parsed.type === 'transfer') {
+      expect(parsed.pickupPlace?.placeId).toBe('ChIJabcdefghij');
+      expect(parsed.return?.pickupLocal).toBe('2026-12-08T19:30');
+    }
+  });
+
   it('parses an hourly hold request', () => {
     const parsed = HoldRequest.parse({
       type: 'hourly',
