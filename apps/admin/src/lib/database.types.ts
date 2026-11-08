@@ -652,6 +652,20 @@ isOneToOne: false
       referencedColumns: ["user_id"]
     }
                   ]
+                },"quote_failures": {
+                  Row: {
+                    "at": string,"detail": string | null,"distance_km": number | null,"duration_min": number | null,"http_status": number,"id": number,"ip_hash": string | null,"reason": string,"request": Json
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "at"?: string,"detail"?: string | null,"distance_km"?: number | null,"duration_min"?: number | null,"http_status": number,"id"?: number,"ip_hash"?: string | null,"reason": string,"request"?: Json
+                  }
+                  Update: {
+                    "at"?: string,"detail"?: string | null,"distance_km"?: number | null,"duration_min"?: number | null,"http_status"?: number,"id"?: number,"ip_hash"?: string | null,"reason"?: string,"request"?: Json
+                  }
+                  Relationships: [
+
+                  ]
                 },"quotes": {
                   Row: {
                     "company_id": string | null,"created_at": string,"distance_km": number | null,"dropoff_address": string | null,"dropoff_lat": number | null,"dropoff_lng": number | null,"dropoff_place_id": string | null,"duration_min": number,"expires_at": string,"from_zone_code": string | null,"hours": number | null,"id": string,"ip_hash": string | null,"luggage": number,"mode": string,"passengers": number,"pickup_address": string | null,"pickup_at": string,"pickup_lat": number | null,"pickup_lng": number | null,"pickup_place_id": string | null,"prices": Json,"pricing_version": Json,"return_distance_km": number | null,"return_duration_min": number | null,"return_flight_number": string | null,"return_pickup_at": string | null,"stops": Json,"to_zone_code": string | null

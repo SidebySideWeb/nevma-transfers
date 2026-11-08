@@ -129,6 +129,15 @@ export const uiStringDefaults: UiStringDefault[] = [
   { area: 'errors', key: 'error.payment_failed', value: 'We could not start the payment. Please try again.' },
   { area: 'errors', key: 'error.lead_time', value: 'Please choose a pick-up time at least {hours} hours from now, or contact us.' },
   { area: 'errors', key: 'error.hours_range', value: 'Please choose between {min} and {max} hours.' },
+  // FIX-2 distance-first quote errors (one per API error code)
+  { area: 'errors', key: 'error.return_before_outbound', value: 'Return must be later than the outbound pick-up.' },
+  { area: 'errors', key: 'error.pickup_too_soon', value: 'Choose a pick-up time later than {hours} hours from now.' },
+  { area: 'errors', key: 'error.outside_area', value: 'This trip is outside our service area. Request a quote.' },
+  { area: 'errors', key: 'error.no_route', value: "We can't find a road route between these places." },
+  { area: 'errors', key: 'error.quote_only_distance', value: 'This trip needs a custom quote. Request a quote.' },
+  { area: 'errors', key: 'error.not_priced', value: "We can't price this trip online. Request a quote." },
+  { area: 'errors', key: 'error.service_unavailable', value: "We couldn't price this trip right now. Try again or call us." },
+  { area: 'booking', key: 'booking.quote.request', value: 'Request a quote' },
   { area: 'errors', key: 'error.turnstile', value: 'We could not verify that you are human. Please try again.' },
   // --- emails ---
   { area: 'emails', key: 'email.confirmation.subject', value: 'Your booking {reference} is confirmed' },

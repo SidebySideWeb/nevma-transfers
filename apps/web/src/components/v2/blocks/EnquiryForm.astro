@@ -323,6 +323,7 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
             <RequestAddressField
               client:load
               id="r-pick"
+              query="pickup"
               name="pickupAddress"
               placePrefix="pickup"
               label={t('form.pickupAddress')}
@@ -334,6 +335,7 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
             <RequestAddressField
               client:load
               id="r-drop"
+              query="dropoff"
               name="dropoffAddress"
               placePrefix="dropoff"
               label={t('form.dropoffAddress')}
@@ -345,6 +347,7 @@ const roman = ['i.', 'ii.', 'iii.', 'iv.'];
             <FormDateField
               client:load
               id="r-date"
+              query="date"
               name="pickupDate"
               label={t('form.date')}
               initial={pickupDate ?? ''}

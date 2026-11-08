@@ -11,7 +11,9 @@ export declare class PlacesError extends Error {
 }
 export declare class RouteUnavailable extends Error {
   code: 'route_unavailable';
-  constructor(message?: string);
+  /** `no_route`: Google answered but found no road route. `routing_failed`: timeout, 5xx, quota. */
+  reason: 'no_route' | 'routing_failed';
+  constructor(message?: string, reason?: 'no_route' | 'routing_failed');
 }
 export interface Suggestion {
   placeId: string;

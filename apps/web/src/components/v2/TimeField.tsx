@@ -59,6 +59,8 @@ export type TimeFieldProps = {
   error?: string | null;
   'aria-invalid'?: boolean | 'true' | 'false';
   'aria-describedby'?: string;
+  /** An empty `value` shows blank lists (no 12:00 default) until the customer picks a time. */
+  allowEmpty?: boolean;
 };
 
 /** Hour (1–12) + minutes (:00/:30) + AM/PM — three short lists. */
@@ -66,6 +68,7 @@ export function TimeField({
   id,
   label,
   value,
+  allowEmpty = false,
   onChange,
   hint,
   fieldClass = 'field ep-time',
@@ -74,6 +77,7 @@ export function TimeField({
   'aria-describedby': ariaDescribedBy,
 }: TimeFieldProps) {
   const { hour, minute, period } = splitTime12(value || '12:00');
+  const blank = allowEmpty && !value;
   const described =
     [ariaDescribedBy, hint ? `${id}-hint` : null, error ? `${id}-err` : null]
       .filter(Boolean)
@@ -89,7 +93,7 @@ export function TimeField({
           id={`${id}-hour`}
           label="Hour"
           options={HOUR_OPTIONS}
-          value={HOUR_OPTIONS.some((o) => o.value === hour) ? hour : '12'}
+          value={blank ? '' : HOUR_OPTIONS.some((o) => o.value === hour) ? hour : '12'}
           onChange={(h) => onChange(joinTime12(h, minute, period))}
           fieldClass="field ep-time-hour"
           hideLabel
@@ -101,7 +105,7 @@ export function TimeField({
           id={`${id}-min`}
           label="Minutes"
           options={[...MINUTE_OPTIONS]}
-          value={minute === '30' ? '30' : '00'}
+          value={blank ? '' : minute === '30' ? '30' : '00'}
           onChange={(mm) => onChange(joinTime12(hour, mm, period))}
           fieldClass="field ep-time-min"
           hideLabel
@@ -112,7 +116,7 @@ export function TimeField({
           id={`${id}-period`}
           label="AM/PM"
           options={[...PERIOD_OPTIONS]}
-          value={period}
+          value={blank ? '' : period}
           onChange={(p) => onChange(joinTime12(hour, minute, p as Period))}
           fieldClass="field ep-time-period"
           hideLabel

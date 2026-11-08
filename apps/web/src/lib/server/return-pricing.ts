@@ -70,10 +70,10 @@ export function assertReturnAfterOutbound(
 ): void {
   const end = outboundPickup.getTime() + outboundDurationMin * 60_000;
   if (returnPickup.getTime() < end) {
-    throw new BookingError('invalid_request', {
-      stringKey: 'booking.return.tooSoon',
-      message: 'return_too_soon',
-      field: 'return',
+    throw new BookingError('return_before_outbound', {
+      stringKey: 'error.return_before_outbound',
+      message: 'return_before_outbound',
+      field: 'returnPickupLocal',
     });
   }
 }

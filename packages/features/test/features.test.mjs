@@ -192,6 +192,18 @@ describe('filterAdminNav()', () => {
     assert.ok(labels.includes('Extras'));
     assert.ok(!labels.includes('Fixed routes'));
     assert.ok(!labels.includes('Rates'));
+    assert.ok(!labels.includes('Long distance'));
+    assert.ok(!labels.includes('Quote failures'));
+  });
+
+  it('FIX-2: distancePricing shows Long distance and Quote failures', () => {
+    const f = features(
+      { FEATURE_DISTANCE_PRICING: 'true', GOOGLE_MAPS_SERVER_KEY: 'k', QUOTE_SIGNING_SECRET: 's' },
+      silentLog().log,
+    );
+    const labels = filterAdminNav(f).flatMap((g) => g.items.map((i) => i.label));
+    assert.ok(labels.includes('Long distance'));
+    assert.ok(labels.includes('Quote failures'));
   });
 
   it('with distancePricing off, Pricing menu matches the legacy items', () => {

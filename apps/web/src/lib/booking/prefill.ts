@@ -90,16 +90,20 @@ export function quoteRequestBody(
   >,
   classKey?: string,
   places?: {
-    pickupPlace?: { placeId: string; lat: number; lng: number } | null;
-    dropoffPlace?: { placeId: string; lat: number; lng: number } | null;
+    pickupPlace?: { placeId?: string; lat: number; lng: number } | null;
+    dropoffPlace?: { placeId?: string; lat: number; lng: number } | null;
   },
+  /** Distance pricing (FIX-2): the places are the whole request; zones are never sent. */
+  placesOnly = false,
 ): Record<string, unknown> {
+  // Empty zones are omitted: the server prices zone modes from them, distance mode ignores them.
+  const sendZones = !placesOnly;
   const base =
     search.type === 'transfer'
       ? {
           type: 'transfer' as const,
-          fromZone: search.fromZone,
-          toZone: search.toZone,
+          ...(sendZones && search.fromZone ? { fromZone: search.fromZone } : {}),
+          ...(sendZones && search.toZone ? { toZone: search.toZone } : {}),
           pickupLocal: search.pickupLocal,
           passengers: search.passengers,
           luggage: search.luggage,
@@ -116,7 +120,7 @@ export function quoteRequestBody(
         }
       : {
           type: 'hourly' as const,
-          fromZone: search.fromZone,
+          ...(sendZones && search.fromZone ? { fromZone: search.fromZone } : {}),
           hours: search.hours,
           pickupLocal: search.pickupLocal,
           passengers: search.passengers,

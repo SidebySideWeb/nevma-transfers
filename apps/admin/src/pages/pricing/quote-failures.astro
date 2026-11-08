@@ -1,0 +1,100 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+const REASONS = [
+  'return_before_outbound',
+  'pickup_too_soon',
+  'no_route',
+  'outside_area',
+  'quote_only_distance',
+  'not_priced',
+  'unavailable',
+  'routing_failed',
+  'pricing_failed',
+  'invalid_request',
+  'other',
+];
+const asked = Astro.url.searchParams.get('reason') ?? '';
+const reason = REASONS.includes(asked) ? asked : '';
+
+let q = supabase
+  .from('quote_failures')
+  .select('id, at, http_status, reason, detail, request, distance_km, duration_min')
+  .gte('at', new Date(Date.now() - 30 * 86_400_000).toISOString())
+  .order('at', { ascending: false })
+  .limit(200);
+if (reason) q = q.eq('reason', reason);
+const { data: rows } = await q;
+
+type Req = { type?: string; pickupLocal?: string; passengers?: number };
+const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/Athens' });
+---
+
+<AdminLayout title="Quote failures" current="pricing-quote-failures" staffEmail={staff.email}>
+  <p class="muted">
+    Quotes that did not return a price, last 30 days (newest 200). No names or contact details are stored.
+  </p>
+  <form method="GET" class="row" style="margin-bottom:1rem">
+    <div class="field">
+      <label for="qf-reason">Reason</label>
+      <select id="qf-reason" name="reason" class="input">
+        <option value="">All</option>
+        {REASONS.map((r) => <option value={r} selected={r === reason}>{r}</option>)}
+      </select>
+    </div>
+    <button class="btn btn-secondary" type="submit">Filter</button>
+  </form>
+
+  <section class="panel">
+    <div class="panel-body">
+      {
+        (rows ?? []).length === 0 ? (
+          <p class="muted">No failed quotes.</p>
+        ) : (
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">When (Athens)</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Status</th>
+                <th scope="col">Type</th>
+                <th scope="col">Pick-up</th>
+                <th scope="col">Distance</th>
+                <th scope="col">Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(rows ?? []).map((r) => {
+                const req = (r.request ?? {}) as Req;
+                return (
+                  <tr>
+                    <td>{when(r.at)}</td>
+                    <td class="mono">{r.reason}</td>
+                    <td>{r.http_status}</td>
+                    <td>{req.type ?? '—'}</td>
+                    <td>{req.pickupLocal ?? '—'}</td>
+                    <td>
+                      {r.distance_km != null ? `${r.distance_km} km` : '—'}
+                      {r.duration_min != null ? `, ${r.duration_min} min` : ''}
+                    </td>
+                    <td class="muted small">{r.detail ?? ''}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )
+      }
+    </div>
+  </section>
+</AdminLayout>

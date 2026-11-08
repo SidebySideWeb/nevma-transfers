@@ -293,6 +293,25 @@ describe('hybrid / zones / not_priced', () => {
   });
 });
 
+describe('FIX-2 long_distance factor', () => {
+  const LD = { over_km: 40, factor: 1.1 };
+
+  it('applies the factor over over_km, with a long_distance breakdown line', () => {
+    const near = price({ trip: { distanceKm: 40 }, settings: { long_distance: LD } });
+    const far = price({ trip: { distanceKm: 60 }, settings: { long_distance: LD } });
+    const plain = price({ trip: { distanceKm: 60 } });
+    assert.equal(near.perClass.e.breakdown.some((l) => l.code === 'long_distance'), false);
+    const line = far.perClass.e.breakdown.find((l) => l.code === 'long_distance');
+    assert.ok(line && line.amount > 0);
+    assert.ok(far.perClass.e.total > plain.perClass.e.total);
+  });
+
+  it('is off when null', () => {
+    const r = price({ trip: { distanceKm: 99 }, settings: { long_distance: null } });
+    assert.equal(r.perClass.e.breakdown.some((l) => l.code === 'long_distance'), false);
+  });
+});
+
 describe('hourly', () => {
   it('hours × hourly rate and kmIncluded', () => {
     const r = priceTrip({

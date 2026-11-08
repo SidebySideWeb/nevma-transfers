@@ -32,6 +32,10 @@ export type PricingSettings = {
   rounding: 1 | 5;
   return_discount_pct?: number;
   quote_ttl_min?: number;
+  /** FIX-2 (0036): over `over_km` multiply the distance price by `factor`. Null/absent = off. */
+  long_distance?: { over_km: number; factor: number } | null;
+  /** FIX-2 (0036): above this distance the site offers "request a quote". Null/absent = off. */
+  quote_only_over_km?: number | null;
   demand?: {
     enabled: boolean;
     steps: Array<{ over: number; factor: number }>;

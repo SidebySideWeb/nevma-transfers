@@ -21,7 +21,17 @@ import {
   type HeroStepKey,
 } from './v2/BookingHero';
 import { BookingSummary, type BookingSummaryProps } from './v2/BookingSummary';
-import { fill, formatWhen, hoursText, isPickupLocal, routeLines } from './v2/journey';
+import {
+  fill,
+  formatWhen,
+  hoursText,
+  isPickupLocal,
+  QUOTE_REQUEST_ERRORS,
+  requestQuoteTripHref,
+  routeLines,
+} from './v2/journey';
+
+const isQuoteRequestError = (code: string) => (QUOTE_REQUEST_ERRORS as readonly string[]).includes(code);
 
 export type BookingAppProps = {
   strings: BookingStrings;
@@ -76,6 +86,8 @@ export default function BookingApp({
   const [preferredClassKey, setPreferredClassKey] = useState<string | null>(null);
   const [pickedClassKey, setPickedClassKey] = useState<string | null>(null);
   const [pricesUpdated, setPricesUpdated] = useState(false);
+  /** outside_area / quote_only_distance / not_priced: the search step offers "Request a quote". */
+  const [quoteIssue, setQuoteIssue] = useState<string | null>(null);
   const syncHash = useRef(true);
   const prevStep = useRef(state.step);
 
@@ -173,23 +185,15 @@ export default function BookingApp({
     [strings],
   );
 
-  const quoteBody = () => {
-    // Distance quotes still need zone codes on the booking row; Google picks leave zones
-    // empty, so fill bookkeeping defaults. Server prices by km unless places match zone anchors.
-    const zones = state.options?.zones ?? [];
-    const search = {
-      ...state.search,
-      fromZone: state.search.fromZone || zones[0]?.code || '',
-      toZone:
-        state.search.type === 'transfer'
-          ? state.search.toZone || zones[1]?.code || zones[0]?.code || ''
-          : state.search.toZone,
-    };
-    return quoteRequestBody(search, undefined, {
-      pickupPlace: state.details.pickupPlace,
-      dropoffPlace: state.details.dropoffPlace,
-    });
-  };
+  // FIX-2: never invent zones. Distance pricing sends the places only; zone modes send the
+  // zones the customer chose (empty ones are omitted).
+  const quoteBody = () =>
+    quoteRequestBody(
+      state.search,
+      undefined,
+      { pickupPlace: state.details.pickupPlace, dropoffPlace: state.details.dropoffPlace },
+      distancePricing,
+    );
 
   const submitQuote = async (opts?: { refresh?: boolean }) => {
     // Catch incomplete journey fields here so we never POST a Zod-invalid /api/quote body (400).
@@ -243,7 +247,7 @@ export default function BookingApp({
         (state.search.returnPickupLocal ?? '') <= state.search.pickupLocal
       ) {
         missing.returnPickupLocal = msg(
-          'booking.return.tooSoon',
+          'error.return_before_outbound',
           'Return must be later than the outbound pick-up.',
         );
       }
@@ -255,6 +259,7 @@ export default function BookingApp({
     }
     dispatch({ type: 'BUSY', busy: true });
     dispatch({ type: 'CLEAR_ERRORS' });
+    setQuoteIssue(null);
     try {
       const body = quoteBody();
       const { data } = await bookingApi.quote(body, corporate?.accessToken);
@@ -295,6 +300,9 @@ export default function BookingApp({
         });
       } else {
         const err = mapApiError(e);
+        if (e instanceof BookingApiError && isQuoteRequestError(e.body.error)) {
+          setQuoteIssue(e.body.error);
+        }
         dispatch({ type: 'SET_ERRORS', ...err });
         focusErrorSummary();
       }
@@ -664,6 +672,8 @@ export default function BookingApp({
         addressAutocomplete={addressAutocomplete}
         distancePricing={distancePricing}
         whatsappHref={whatsappHref}
+        quoteRequestHref={quoteIssue ? requestQuoteTripHref(state.search, state.details) : null}
+        routeDurationMin={state.quote?.durationMin ?? null}
         widget
         onChange={(patch) => dispatch({ type: 'SET_SEARCH', patch })}
         onChangeDetails={(patch) => dispatch({ type: 'SET_DETAILS', patch })}

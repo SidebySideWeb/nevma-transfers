@@ -114,6 +114,14 @@ Site settings · UI strings · Pages · Routes · Vehicle classes · **Forms and
 | errors | `error.lead_time` | Please choose a pick-up time at least {hours} hours from now, or contact us. |
 | errors | `error.hours_range` | Please choose between {min} and {max} hours. |
 | errors | `error.turnstile` | We could not verify that you are human. Please try again. |
+| errors | `error.return_before_outbound` | Return must be later than the outbound pick-up. |
+| errors | `error.pickup_too_soon` | Choose a pick-up time later than {hours} hours from now. |
+| errors | `error.outside_area` | This trip is outside our service area. Request a quote. |
+| errors | `error.no_route` | We can't find a road route between these places. |
+| errors | `error.quote_only_distance` | This trip needs a custom quote. Request a quote. |
+| errors | `error.not_priced` | We can't price this trip online. Request a quote. |
+| errors | `error.service_unavailable` | We couldn't price this trip right now. Try again or call us. |
+| booking | `booking.quote.request` | Request a quote |
 | emails | `email.confirmation.subject` | Your booking {reference} is confirmed |
 | emails | `email.confirmation.body` | Thank you for booking with us. Your booking {reference} is confirmed for {pickupAt}. |
 | emails | `email.confirmation.vip` | VIP security is included in this booking. The office will contact you with the details. |

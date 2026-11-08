@@ -30,10 +30,12 @@ export class PlacesError extends Error {
 }
 
 export class RouteUnavailable extends Error {
-  constructor(message = 'We couldn\'t calculate this route. Try again or contact us.') {
+  /** @param {'no_route'|'routing_failed'} [reason] no_route = Google found no road route. */
+  constructor(message = 'We couldn\'t calculate this route. Try again or contact us.', reason = 'routing_failed') {
     super(message);
     this.name = 'RouteUnavailable';
     this.code = 'route_unavailable';
+    this.reason = reason;
   }
 }
 
@@ -334,7 +336,9 @@ export async function route(o) {
   const r0 = data.routes?.[0];
   const meters = r0?.distanceMeters;
   const duration = r0?.duration; // e.g. "1234s"
-  if (!Number.isFinite(meters) || typeof duration !== 'string') throw new RouteUnavailable();
+  if (!Number.isFinite(meters) || typeof duration !== 'string') {
+    throw new RouteUnavailable(undefined, 'no_route');
+  }
   const seconds = Number(duration.replace(/s$/i, ''));
   if (!Number.isFinite(seconds) || seconds < 0) throw new RouteUnavailable();
 

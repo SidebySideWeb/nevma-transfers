@@ -13,9 +13,9 @@ export async function assertInServiceArea(points: LatLng[]): Promise<void> {
   const area = features().serviceArea || 'attica';
   for (const p of points) {
     if (!inServiceArea(p, area)) {
-      throw new BookingError('invalid_request', {
-        stringKey: 'error.invalid_request',
-        message: 'outside_service_area',
+      throw new BookingError('outside_area', {
+        stringKey: 'error.outside_area',
+        message: 'outside_area',
       });
     }
   }
@@ -82,9 +82,9 @@ export async function routeDistance(input: {
 }): Promise<{ distanceKm: number; durationMin: number }> {
   const key = process.env.GOOGLE_MAPS_SERVER_KEY;
   if (!key) {
-    throw new BookingError('invalid_request', {
-      stringKey: 'error.invalid_request',
-      message: 'maps_key_missing',
+    throw new BookingError('service_unavailable', {
+      stringKey: 'error.service_unavailable',
+      message: 'routing_failed',
     });
   }
   try {
@@ -98,9 +98,11 @@ export async function routeDistance(input: {
     });
   } catch (e) {
     if (e instanceof RouteUnavailable) {
-      throw new BookingError('unavailable', {
-        stringKey: 'booking.route.unavailable',
-        message: e.message,
+      // Google found no road route → no_route (422); timeout / 5xx / quota → service_unavailable (503).
+      const noRoute = e.reason === 'no_route';
+      throw new BookingError(noRoute ? 'no_route' : 'service_unavailable', {
+        stringKey: noRoute ? 'error.no_route' : 'error.service_unavailable',
+        message: noRoute ? 'no_route' : 'routing_failed',
       });
     }
     throw e;

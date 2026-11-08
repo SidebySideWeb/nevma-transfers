@@ -192,6 +192,16 @@ function prefillTransfer(form: HTMLFormElement) {
   const fromEl = form.elements.namedItem('fromZone');
   const toEl = form.elements.namedItem('toZone');
   const classEl = form.elements.namedItem('vehicleClass');
+  // FIX-2 "Request a quote" hand-off from the booking widget: time and passengers.
+  const time = q.get('time');
+  const timeEl = form.elements.namedItem('pickupTime');
+  if (time && /^\d{2}:\d{2}$/.test(time) && timeEl instanceof HTMLInputElement) timeEl.value = time;
+  const pax = Number(q.get('passengers'));
+  const paxEl = form.elements.namedItem('passengers');
+  if (Number.isInteger(pax) && pax >= 1 && pax <= 60 && paxEl instanceof HTMLInputElement) {
+    paxEl.value = String(pax);
+    paxEl.parentElement?.querySelector('span')?.replaceChildren(String(pax));
+  }
   if (from && fromEl instanceof HTMLSelectElement) {
     if ([...fromEl.options].some((o) => o.value === from)) {
       fromEl.value = from;

@@ -406,6 +406,13 @@ export function priceTrip(input) {
       cents = applyFactor(cents, periodF);
       breakdown.push({ code: 'period', label: 'Special period', amount: cents - before });
     }
+    // FIX-2: optional long-distance surcharge (settings.long_distance = { over_km, factor }).
+    const ld = settings.long_distance;
+    if (ld && Number(ld.factor) > 1 && Number(trip.distanceKm) > Number(ld.over_km)) {
+      const before = cents;
+      cents = applyFactor(cents, ld.factor);
+      breakdown.push({ code: 'long_distance', label: 'Long distance', amount: cents - before });
+    }
     // Demand never applies to company bookings.
     const demandF = isCompany
       ? 1

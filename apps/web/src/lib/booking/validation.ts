@@ -23,33 +23,55 @@ const placePayload = z
   .strict()
   .optional();
 
+/** Quote place (FIX-2): coordinates decide everything; placeId and address are optional. */
+const quotePlace = z.object({
+  placeId: z.string().min(10).optional(),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  address: z.string().max(300).optional(),
+});
+const quoteStops = z
+  .array(z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }))
+  .max(5)
+  .optional();
+
+// fromZone/toZone stay optional: zones/hybrid pricing still reads them, distance pricing ignores them.
 const quoteTransfer = z
   .object({
     type: z.literal('transfer'),
-    fromZone: zoneCode,
-    toZone: zoneCode,
+    fromZone: zoneCode.optional(),
+    toZone: zoneCode.optional(),
     pickupLocal,
     passengers: z.number().int().positive(),
     luggage: z.number().int().nonnegative(),
     return: returnLeg.optional(),
-    pickupPlace: placePayload,
-    dropoffPlace: placePayload,
+    pickupPlace: quotePlace.optional(),
+    dropoffPlace: quotePlace.optional(),
+    stops: quoteStops,
   })
   .strict();
 
 const quoteHourly = z
   .object({
     type: z.literal('hourly'),
-    fromZone: zoneCode,
+    fromZone: zoneCode.optional(),
     hours: z.number().int().positive(),
     pickupLocal,
     passengers: z.number().int().positive(),
     luggage: z.number().int().nonnegative(),
-    pickupPlace: placePayload,
+    pickupPlace: quotePlace.optional(),
   })
   .strict();
 
 export const QuoteRequest = z.discriminatedUnion('type', [quoteTransfer, quoteHourly]);
+
+/** PRICING_MODE=distance: the places are the whole request (transfer: both, hourly: pick-up). */
+export const QuoteRequestDistance = QuoteRequest.superRefine((b, ctx) => {
+  if (!b.pickupPlace) ctx.addIssue({ code: 'custom', path: ['pickupPlace'], message: 'pickupPlace required' });
+  if (b.type === 'transfer' && !b.dropoffPlace) {
+    ctx.addIssue({ code: 'custom', path: ['dropoffPlace'], message: 'dropoffPlace required' });
+  }
+});
 
 const holdTransfer = z
   .object({

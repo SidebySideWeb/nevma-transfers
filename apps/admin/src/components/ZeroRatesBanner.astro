@@ -1,0 +1,26 @@
+---
+// FIX-2: with distance pricing on, all-zero class rates mean every quote fails ("not_priced").
+import { features } from '@tem/features';
+import Banner from './Banner.astro';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+let allZero = false;
+if (features().distancePricing) {
+  const supabase = createSupabaseServerClient(Astro.cookies);
+  const { data } = await supabase
+    .from('current_class_rates')
+    .select('base_fare, per_km, per_min, minimum_fare');
+  allZero = (data ?? []).every(
+    (r) => !r.base_fare && !r.per_km && !r.per_min && !r.minimum_fare,
+  );
+}
+---
+
+{
+  allZero && (
+    <Banner tone="danger" tag="Prices not set" role="alert">
+      Every vehicle class has zero distance rates, so customers cannot get a price.{' '}
+      <a href="/pricing/rates">Set the rates</a>.
+    </Banner>
+  )
+}

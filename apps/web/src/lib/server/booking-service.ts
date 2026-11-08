@@ -11,6 +11,7 @@ import {
   HoldRequest,
   QuoteCheckoutRequest,
   QuoteRequest,
+  QuoteRequestDistance,
   rejectMoneyFields,
 } from '../booking/validation';
 import { bookingDb, type BookingDb } from './db';
@@ -26,6 +27,7 @@ import { mapPgBookingError } from './http';
 import { fireOnCancelled } from './hooks';
 import { getPaymentProvider } from './payments';
 import { parsePlace, placeColumns, PlacesError } from '@tem/places';
+import { logQuoteFailure, quoteDistanceFirst, type QuoteFailureCtx } from './quote-distance';
 import { hashIp, quoteSigningSecret, signQuote, verifyQuoteSignature } from './quote-crypto';
 import { assertRateLimit, RATE } from './rate-limit';
 import { assertReturnAfterOutbound, mergeReturnOption } from './return-pricing';
@@ -288,10 +290,33 @@ export type QuoteOpts = {
   } | null;
 };
 
+/** Route failures that fall back to the fixed zone price (hybrid / zones only). */
+const ROUTE_FALLBACK_CODES = new Set(['unavailable', 'service_unavailable', 'no_route']);
+
 export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
+  const ctx: QuoteFailureCtx = {};
+  try {
+    return await quoteInner(raw, ip, opts, ctx);
+  } catch (e) {
+    // FIX-2: every failed distance quote is logged (reason, status, coordinates; no personal data).
+    const sim = opts.simulate === true || (raw as { simulate?: unknown } | null)?.simulate === true;
+    if (features().pricingMode === 'distance' && !sim) await logQuoteFailure(raw, e, ip, ctx);
+    throw e;
+  }
+}
+
+async function quoteInner(raw: unknown, ip: string | undefined, opts: QuoteOpts, ctx: QuoteFailureCtx) {
   rejectMoneyFields(raw, ['overrides']);
-  const rawObj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const rawObj: Record<string, unknown> =
+    raw && typeof raw === 'object' ? { ...(raw as Record<string, unknown>) } : {};
   const simulate = opts.simulate === true || rawObj.simulate === true;
+  const distanceMode = features().pricingMode === 'distance';
+  if (distanceMode && ('fromZone' in rawObj || 'toZone' in rawObj)) {
+    // Zones play no part in distance pricing: ignore old clients that still send them.
+    console.warn(JSON.stringify({ level: 'warn', code: 'client sent zones' }));
+    delete rawObj.fromZone;
+    delete rawObj.toZone;
+  }
   if (rawObj.overrides != null && !opts.isStaff) {
     const err = new BookingError('invalid_request', {
       stringKey: 'error.invalid_request',
@@ -305,16 +330,8 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     await assertRateLimit(`quote:ip:${ip}`, lim.windowSeconds, lim.max);
   }
 
-  // Places stay on `raw` for distance/hybrid pricing below; the core quote schema is zones + time.
-  const {
-    simulate: _s,
-    overrides: _o,
-    pickupPlace: _pp,
-    dropoffPlace: _dp,
-    stops: _st,
-    ...quoteRaw
-  } = rawObj;
-  const parsed = QuoteRequest.safeParse(quoteRaw);
+  const { simulate: _s, overrides: _o, ...quoteRaw } = rawObj;
+  const parsed = (distanceMode ? QuoteRequestDistance : QuoteRequest).safeParse(quoteRaw);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     const field =
@@ -344,23 +361,55 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
           settings?: Record<string, unknown>;
         })
       : null;
+  if (distanceMode) {
+    return quoteDistanceFirst({
+      body,
+      ip,
+      simulate,
+      overrides,
+      company:
+        features().corporate && opts.company
+          ? { prices: opts.company.prices, discountPct: opts.company.discountPct }
+          : null,
+      companyId: opts.company?.id ?? null,
+      ctx,
+    });
+  }
+
   const settings = await getSettings();
   const pickup = localToInstant(body.pickupLocal, settings.timezone);
   assertLeadTime(pickup, new Date(), settings.minLeadMinutes);
 
-  const from = await zoneByCode(body.fromZone, 'fromZone');
+  // Zones / hybrid pricing still prices from zone codes.
+  if (!body.fromZone) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'fromZone required',
+      field: 'fromZone',
+    });
+  }
+  if (body.type === 'transfer' && !body.toZone) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'toZone required',
+      field: 'toZone',
+    });
+  }
+  const fromZone = body.fromZone;
+  const toZone = body.type === 'transfer' ? body.toZone! : '';
+  const from = await zoneByCode(fromZone, 'fromZone');
   let toId: string | null = null;
   let durationMinutes: number;
 
   if (body.type === 'transfer') {
-    if (body.fromZone === body.toZone) {
+    if (fromZone === toZone) {
       throw new BookingError('invalid_request', {
         stringKey: 'error.invalid_request',
         message: 'from and to must differ',
         field: 'toZone',
       });
     }
-    const to = await zoneByCode(body.toZone, 'toZone');
+    const to = await zoneByCode(toZone, 'toZone');
     toId = to.id;
     durationMinutes = await routeDuration(from.id, to.id);
   } else {
@@ -566,10 +615,10 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     );
     const byCode = new Map(anchors.map((a) => [a.code, a.display_place_id]));
     zoneAnchors =
-      Boolean(byCode.get(body.fromZone)) &&
-      byCode.get(body.fromZone) === rawPlaces.pickupPlace.placeId &&
-      Boolean(byCode.get(body.toZone)) &&
-      byCode.get(body.toZone) === rawPlaces.dropoffPlace.placeId;
+      Boolean(byCode.get(fromZone)) &&
+      byCode.get(fromZone) === rawPlaces.pickupPlace.placeId &&
+      Boolean(byCode.get(toZone)) &&
+      byCode.get(toZone) === rawPlaces.dropoffPlace.placeId;
   }
   const hybridFixedRoute =
     zoneAnchors &&
@@ -698,7 +747,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         // Only fall back to fixed matrix when the customer actually picked zone anchors.
         if (
           !(e instanceof BookingError) ||
-          e.code !== 'unavailable' ||
+          !ROUTE_FALLBACK_CODES.has(e.code) ||
           !zoneAnchors ||
           !(f.pricingMode === 'hybrid' || f.pricingMode === 'zones') ||
           !anyPrice
@@ -764,7 +813,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       } catch (e) {
         if (
           !(e instanceof BookingError) ||
-          e.code !== 'unavailable' ||
+          !ROUTE_FALLBACK_CODES.has(e.code) ||
           !zoneAnchors ||
           !(f.pricingMode === 'hybrid' || f.pricingMode === 'zones')
         ) {
@@ -980,8 +1029,8 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       body.type === 'hourly' ? body.hours : null,
       distanceKm,
       durationMin,
-      body.fromZone,
-      body.type === 'transfer' ? body.toZone : null,
+      fromZone,
+      body.type === 'transfer' ? toZone : null,
       body.passengers,
       body.luggage,
       JSON.stringify(prices),

@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from '../layouts/AdminLayout.astro';
 import Banner from '../components/Banner.astro';
+import ZeroRatesBanner from '../components/ZeroRatesBanner.astro';
 import { athensDateKey, athensLocalMs, shiftDate } from '../lib/calendar-position';
 import { features } from '@tem/features';
 import {
@@ -124,6 +125,7 @@ const fleetHtml = renderFleetNowTbody(fleet, { hideDrivers: !showDrivers });
 ---
 
 <AdminLayout title="Today" current="today" staffEmail={staff.email}>
+  <ZeroRatesBanner />
   <div class="row" slot="actions">
     <a class="btn btn-secondary" href="/calendar">Fleet calendar</a>
     <a class="btn" href="/bookings/new">New booking</a>

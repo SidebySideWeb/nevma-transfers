@@ -5,6 +5,7 @@ import {
   CancelRequest,
   HoldRequest,
   QuoteRequest,
+  QuoteRequestDistance,
   rejectMoneyFields,
 } from './validation';
 
@@ -49,6 +50,43 @@ describe('zod request schemas', () => {
       expect(parsed.pickupPlace?.placeId).toBe('ChIJabcdefghij');
       expect(parsed.return?.pickupLocal).toBe('2026-12-08T19:30');
     }
+  });
+
+  it('FIX-2 distance quote: zones are optional, places are required, placeId is optional', () => {
+    const base = {
+      type: 'transfer' as const,
+      pickupLocal: '2026-12-01T10:00',
+      passengers: 2,
+      luggage: 1,
+    };
+    const ok = QuoteRequestDistance.parse({
+      ...base,
+      pickupPlace: { lat: 37.95, lng: 23.71, address: 'Hilton Garden Inn' },
+      dropoffPlace: { placeId: 'ChIJklmnopqrst', lat: 37.69, lng: 24.05 },
+    });
+    expect(ok.type).toBe('transfer');
+    // no places → rejected by the distance schema, accepted by the zones schema
+    expect(() => QuoteRequestDistance.parse(base)).toThrow();
+    expect(QuoteRequest.parse({ ...base, fromZone: 'a', toZone: 'b' }).type).toBe('transfer');
+    // hourly needs only the pick-up place
+    expect(
+      QuoteRequestDistance.parse({
+        type: 'hourly',
+        hours: 4,
+        pickupLocal: '2026-12-01T10:00',
+        passengers: 2,
+        luggage: 0,
+        pickupPlace: { lat: 37.95, lng: 23.71 },
+      }).type,
+    ).toBe('hourly');
+    // a place without coordinates is invalid
+    expect(() =>
+      QuoteRequestDistance.parse({
+        ...base,
+        pickupPlace: { placeId: 'ChIJabcdefghij' },
+        dropoffPlace: { lat: 37.69, lng: 24.05 },
+      }),
+    ).toThrow();
   });
 
   it('parses an hourly hold request', () => {

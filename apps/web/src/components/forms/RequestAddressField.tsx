@@ -1,7 +1,9 @@
 import { AddressField, type PlaceValue } from '../booking/AddressField';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type Props = {
+  /** URL query parameter that may preset the address text (e.g. `pickup`). */
+  query?: string;
   id: string;
   name: 'pickupAddress' | 'dropoffAddress';
   placePrefix: 'pickup' | 'dropoff';
@@ -14,6 +16,7 @@ type Props = {
 
 /** Island wrapper so EnquiryForm keeps SSR labels/values while suggestions run client-side. */
 export default function RequestAddressField({
+  query,
   id,
   name,
   placePrefix,
@@ -25,6 +28,10 @@ export default function RequestAddressField({
 }: Props) {
   const [value, setValue] = useState(initialValue);
   const [place, setPlace] = useState<PlaceValue>(null);
+  useEffect(() => {
+    const q = query ? new URLSearchParams(window.location.search).get(query) : null;
+    if (q && !initialValue) setValue(q.slice(0, 200));
+  }, []); // once on mount
 
   return (
     <AddressField

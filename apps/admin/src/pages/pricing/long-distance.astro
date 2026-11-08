@@ -1,0 +1,100 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Banner from '../../components/Banner.astro';
+import PricingSaveBar from '../../components/PricingSaveBar.astro';
+import { distancePricingOrRedirect } from '../../lib/require-distance';
+import { createSupabaseServerClient } from '../../lib/supabase';
+
+const redirected = distancePricingOrRedirect(Astro.redirect);
+if (redirected) return redirected;
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+const pageError = actionErr(Astro.getActionResult?.(actions.savePricingSettings));
+
+const { data: settingsRow } = await supabase.from('current_pricing_settings').select('doc').maybeSingle();
+const doc = (settingsRow?.doc ?? {}) as Record<string, unknown>;
+const ld = doc.long_distance as { over_km?: number; factor?: number } | null | undefined;
+const quoteOver = doc.quote_only_over_km as number | null | undefined;
+const surchargePct = ld?.factor ? Math.round((Number(ld.factor) - 1) * 10000) / 100 : 0;
+---
+
+<AdminLayout title="Long distance" current="pricing-long-distance" staffEmail={staff.email}>
+  {
+    pageError && (
+      <Banner tone="danger" role="alert">
+        {pageError}
+      </Banner>
+    )
+  }
+  <p class="muted">
+    Optional. Save inserts a new settings version — past bookings keep their breakdown. Leave a field empty
+    to switch it off.
+  </p>
+  <form method="POST" action={actions.savePricingSettings} id="ld-form" class="stack">
+    <input type="hidden" name="docJson" id="docJson" value={JSON.stringify(doc)} />
+    <section class="panel">
+      <div class="panel-head"><h2>Long-distance surcharge</h2></div>
+      <div class="panel-body stack">
+        <div class="field">
+          <label for="ld-over">Applies to trips longer than</label>
+          <div class="unit-control">
+            <input id="ld-over" class="input" type="number" min="0" step="1" value={ld?.over_km ?? ''} data-ld-over />
+            <span class="muted small">km</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="ld-pct">Surcharge on the price</label>
+          <div class="unit-control">
+            <input id="ld-pct" class="input" type="number" min="0" step="0.5" value={ld ? surchargePct : ''} data-ld-pct />
+            <span class="muted small">%</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Request a quote instead of a price</h2></div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="ld-quote">Trips longer than</label>
+          <div class="unit-control">
+            <input id="ld-quote" class="input" type="number" min="0" step="1" value={quoteOver ?? ''} data-ld-quote />
+            <span class="muted small">km</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </form>
+  <PricingSaveBar formId="ld-form" />
+</AdminLayout>
+
+<script is:inline>
+  (function () {
+    const docInput = document.getElementById('docJson');
+    const form = document.getElementById('ld-form');
+    const base = JSON.parse(docInput.value || '{}');
+    const num = (sel) => {
+      const n = Number(document.querySelector(sel).value);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+    function sync() {
+      const over = num('[data-ld-over]');
+      const pct = Number(document.querySelector('[data-ld-pct]').value);
+      base.long_distance =
+        over && Number.isFinite(pct) && pct > 0 ? { over_km: over, factor: Math.round((1 + pct / 100) * 10000) / 10000 } : null;
+      base.quote_only_over_km = num('[data-ld-quote]');
+      docInput.value = JSON.stringify(base);
+    }
+    form?.addEventListener('input', sync);
+    form?.addEventListener('submit', sync);
+  })();
+</script>

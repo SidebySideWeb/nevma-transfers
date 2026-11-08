@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DateField } from '../DateField';
 
 type Props = {
+  /** URL query parameter (`YYYY-MM-DD`) that may preset the date (e.g. `date`). */
+  query?: string;
   id: string;
   name: string;
   label: string;
@@ -17,6 +19,7 @@ type Props = {
 
 /** DateField with own state for static Astro forms (hidden input posts `name`). */
 export default function FormDateField({
+  query,
   id,
   name,
   label,
@@ -29,6 +32,10 @@ export default function FormDateField({
   placeholder,
 }: Props) {
   const [value, setValue] = useState(initial);
+  useEffect(() => {
+    const q = query ? new URLSearchParams(window.location.search).get(query) : null;
+    if (q && /^\d{4}-\d{2}-\d{2}$/.test(q) && (!min || q >= min)) setValue(q);
+  }, []); // once on mount
   const errId = error ? `${errorKey ?? name}-err` : undefined;
   return (
     <DateField

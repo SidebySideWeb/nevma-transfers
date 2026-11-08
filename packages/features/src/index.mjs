@@ -249,6 +249,18 @@ export const ADMIN_NAV = Object.freeze([
         features: ['distancePricing', 'demandPricing'],
       }),
       Object.freeze({
+        href: '/pricing/long-distance',
+        id: 'pricing-long-distance',
+        label: 'Long distance',
+        feature: 'distancePricing',
+      }),
+      Object.freeze({
+        href: '/pricing/quote-failures',
+        id: 'pricing-quote-failures',
+        label: 'Quote failures',
+        feature: 'distancePricing',
+      }),
+      Object.freeze({
         href: '/pricing/simulator',
         id: 'pricing-simulator',
         label: 'Simulator',

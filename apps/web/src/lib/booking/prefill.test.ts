@@ -126,4 +126,27 @@ describe('quoteRequestBody', () => {
     });
     expect(JSON.stringify(hourly)).not.toMatch(/"price"|"amount"|"total"/);
   });
+
+  it('FIX-2 distance pricing: places only, never zones; empty zones are omitted otherwise', () => {
+    const search = {
+      type: 'transfer' as const,
+      fromZone: 'ath-airport',
+      toZone: 'athens-centre',
+      hours: 3,
+      pickupLocal: '2026-12-01T10:00',
+      passengers: 2,
+      luggage: 1,
+    };
+    const places = {
+      pickupPlace: { placeId: 'ChIJabcdefghij', lat: 37.95, lng: 23.71 },
+      dropoffPlace: { placeId: 'ChIJklmnopqrst', lat: 37.69, lng: 24.05 },
+    };
+    const distance = quoteRequestBody(search, undefined, places, true);
+    expect(distance).not.toHaveProperty('fromZone');
+    expect(distance).not.toHaveProperty('toZone');
+    expect(distance).toMatchObject(places);
+    const google = quoteRequestBody({ ...search, fromZone: '', toZone: '' }, undefined, places);
+    expect(google).not.toHaveProperty('fromZone');
+    expect(google).not.toHaveProperty('toZone');
+  });
 });

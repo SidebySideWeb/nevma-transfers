@@ -738,7 +738,9 @@ export function SearchWidget(props: SearchWidgetProps) {
                       {r.from.name} → {r.to.name}
                       <small>{s.approx.replace('{min}', String(r.durationMin))}</small>
                     </span>
-                    <span className="ep-sw-price">{s.fromPrice.replace('{price}', formatEuroV2(r.fromPriceCents))}</span>
+                    {r.fromPriceCents > 0 ? (
+                      <span className="ep-sw-price">{s.fromPrice.replace('{price}', formatEuroV2(r.fromPriceCents))}</span>
+                    ) : null}
                   </button>
                 </li>
               ))}

@@ -1,4 +1,4 @@
-import type { BookingStrings, OptionsData, SearchState } from '../types';
+import type { BookingStrings, DetailsState, OptionsData, SearchState } from '../types';
 
 /** `YYYY-MM-DDTHH:mm` (Athens wall time, as the API wants it) <-> the design's separate date and time inputs. */
 export function splitLocal(pickupLocal: string): { date: string; time: string } {
@@ -66,6 +66,41 @@ export function routeLines(
     second: `${strings['booking.toggle.hourly'] ?? ''} · ${hours}`,
     text: `${from} · ${hours}`,
   };
+}
+
+/** `YYYY-MM-DDTHH:mm` + minutes, as wall time (no zone, no DST: it only sets a field minimum). */
+export function addMinutesLocal(local: string, minutes: number): string {
+  const m = LOCAL_RE.exec(local);
+  if (!m) return local;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]!.slice(0, 2)), Number(m[4]!.slice(3))));
+  return new Date(d.getTime() + minutes * 60_000).toISOString().slice(0, 16);
+}
+
+/** Error codes that end in a "Request a quote" button instead of a price (FIX-2). */
+export const QUOTE_REQUEST_ERRORS = ['outside_area', 'quote_only_distance', 'not_priced'] as const;
+
+/**
+ * `/request-a-transfer` prefilled from the trip: both addresses (and place IDs), date, time, passengers.
+ * Never carries a name, email or phone.
+ */
+export function requestQuoteTripHref(
+  search: Pick<SearchState, 'type' | 'pickupLocal' | 'passengers'>,
+  details: Pick<DetailsState, 'pickupAddress' | 'dropoffAddress' | 'pickupPlace' | 'dropoffPlace'>,
+): string {
+  const q = new URLSearchParams();
+  if (details.pickupAddress.trim()) q.set('pickup', details.pickupAddress.trim().slice(0, 200));
+  if (search.type === 'transfer' && details.dropoffAddress.trim()) {
+    q.set('dropoff', details.dropoffAddress.trim().slice(0, 200));
+  }
+  if (details.pickupPlace?.placeId) q.set('pickupPlaceId', details.pickupPlace.placeId);
+  if (search.type === 'transfer' && details.dropoffPlace?.placeId) {
+    q.set('dropoffPlaceId', details.dropoffPlace.placeId);
+  }
+  const { date, time } = splitLocal(search.pickupLocal);
+  if (date) q.set('date', date);
+  if (time) q.set('time', time);
+  q.set('passengers', String(search.passengers));
+  return `/request-a-transfer?${q.toString()}`;
 }
 
 export function requestQuoteHref(search: SearchState, classKey?: string): string {

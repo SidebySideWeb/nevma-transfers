@@ -8,6 +8,13 @@ const STATUS: Record<ErrorCode, number> = {
   unavailable: 409,
   payment_failed: 502,
   quote_expired: 409,
+  return_before_outbound: 400,
+  pickup_too_soon: 400,
+  outside_area: 422,
+  no_route: 422,
+  quote_only_distance: 422,
+  not_priced: 422,
+  service_unavailable: 503,
 };
 
 export function json(data: unknown, status = 200, headers: HeadersInit = {}): Response {
@@ -22,7 +29,7 @@ export function json(data: unknown, status = 200, headers: HeadersInit = {}): Re
   });
 }
 
-function statusFor(error: BookingError, httpOverride?: number): number {
+export function statusFor(error: BookingError, httpOverride?: number): number {
   if (httpOverride != null) return httpOverride;
   const marked = (error as BookingError & { httpStatus?: number }).httpStatus;
   if (marked != null) return marked;

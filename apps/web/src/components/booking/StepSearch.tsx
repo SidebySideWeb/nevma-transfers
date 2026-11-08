@@ -9,7 +9,14 @@ import {
 import { BrandDropdown } from '../v2/BrandDropdown';
 import { DateField } from '../v2/DateField';
 import { TimeField } from '../v2/TimeField';
-import { joinLocal, requestQuoteHref, splitLocal, zoneName } from './v2/journey';
+import {
+  addMinutesLocal,
+  isPickupLocal,
+  joinLocal,
+  requestQuoteHref,
+  splitLocal,
+  zoneName,
+} from './v2/journey';
 import { AddressField } from './AddressField';
 import { SearchWidget, type SearchWidgetPayload } from './SearchWidget';
 import type { BookingStrings, DetailsState, OptionsData, SearchState } from './types';
@@ -32,6 +39,10 @@ type Props = {
   /** FEATURE_DISTANCE_PRICING: Attica check + out-of-area message under the field. */
   distancePricing?: boolean;
   whatsappHref?: string | null;
+  /** FIX-2: set after outside_area / quote_only_distance / not_priced → "Request a quote" button. */
+  quoteRequestHref?: string | null;
+  /** Driving minutes of the last quote (return time minimum = outbound + this + 30). */
+  routeDurationMin?: number | null;
   /** B4b: render the shared expanding SearchWidget instead of the legacy bar. */
   widget?: boolean;
   onChange: (patch: Partial<SearchState>) => void;
@@ -48,6 +59,7 @@ const FIELD_ID: Record<string, string> = {
   pickupAddress: 'b-pick',
   dropoffAddress: 'b-drop',
   pickupLocal: 'b-date',
+  returnPickupLocal: 'b-return-date',
   flightNumber: 'b-flight',
 };
 
@@ -102,12 +114,32 @@ export function StepSearch({
   addressAutocomplete,
   distancePricing = false,
   whatsappHref = null,
+  quoteRequestHref = null,
+  routeDurationMin = null,
   widget = false,
-  onChange,
+  onChange: onChangeRaw,
   onChangeDetails,
   onSubmit,
 }: Props) {
   const [pickupAreaKind, setPickupAreaKind] = useState<string | null>(null);
+  // Set when moving the outbound later than the return cleared the return (FIX-2 C).
+  const [returnCleared, setReturnCleared] = useState(false);
+  const onChange = (patch: Partial<SearchState>) => {
+    const ret = search.returnPickupLocal ?? '';
+    if (
+      patch.pickupLocal &&
+      search.returnOn &&
+      isPickupLocal(ret) &&
+      isPickupLocal(patch.pickupLocal) &&
+      patch.pickupLocal >= ret
+    ) {
+      setReturnCleared(true);
+      onChangeRaw({ ...patch, returnPickupLocal: '' });
+      return;
+    }
+    if (patch.returnPickupLocal) setReturnCleared(false);
+    onChangeRaw(patch);
+  };
   const [showHourlyDropoff, setShowHourlyDropoff] = useState(Boolean(details.dropoffAddress));
 
   const hourBounds = options.classes.reduce(
@@ -134,6 +166,21 @@ export function StepSearch({
     () => earliestPickupLocal(new Date(), options.minLeadMinutes, options.timezone),
     [options.minLeadMinutes, options.timezone],
   );
+
+  // Return minimum: outbound + route duration + 30 min once a quote gave the duration,
+  // otherwise just "after the outbound" (the server checks the same rule).
+  const returnMin = isPickupLocal(search.pickupLocal)
+    ? addMinutesLocal(search.pickupLocal, routeDurationMin ? routeDurationMin + 30 : 0)
+    : earliest;
+  const setReturn = (next: string) => {
+    if (isPickupLocal(next) && (next <= search.pickupLocal || next < returnMin)) {
+      setReturnCleared(true);
+      onChangeRaw({ returnPickupLocal: '' });
+      return;
+    }
+    setReturnCleared(false);
+    onChangeRaw({ returnPickupLocal: next });
+  };
 
   const applyWidget = (p: SearchWidgetPayload) => {
     // Always apply zone fields so a Google pick clears a previous fixed-zone choice.
@@ -257,6 +304,22 @@ export function StepSearch({
           </ul>
         </div>
       )}
+
+      {quoteRequestHref ? (
+        <p className="ep-quote-request" data-v2-extra>
+          <a className="btn btn-gold" href={quoteRequestHref}>
+            {strings['booking.quote.request'] ?? 'Request a quote'}
+          </a>
+          {whatsappHref ? (
+            <>
+              {' '}
+              <a className="sd347e" href={whatsappHref} rel="noopener">
+                {strings['booking.serviceArea.whatsapp'] ?? 'WhatsApp'}
+              </a>
+            </>
+          ) : null}
+        </p>
+      ) : null}
 
       {widget ? (
         <SearchWidget
@@ -566,17 +629,14 @@ export function StepSearch({
             <input
               type="checkbox"
               checked={returnOn}
-              onChange={(e) =>
+              onChange={(e) => {
+                // No default return date or time: both stay empty until the customer picks them.
+                setReturnCleared(false);
                 onChange({
                   returnOn: e.target.checked,
-                  ...(e.target.checked
-                    ? {
-                        returnPickupLocal:
-                          search.returnPickupLocal || joinLocal(date || earliest.slice(0, 10), time || '12:00'),
-                      }
-                    : { returnPickupLocal: '', returnFlightNumber: '' }),
-                })
-              }
+                  ...(e.target.checked ? {} : { returnPickupLocal: '', returnFlightNumber: '' }),
+                });
+              }}
             />
             <span>{strings['booking.return.add'] ?? 'Add return'}</span>
           </label>
@@ -586,18 +646,25 @@ export function StepSearch({
                 id="b-return-date"
                 label={strings['booking.return.date'] ?? 'Return date'}
                 value={returnDate}
-                min={date || earliest.slice(0, 10)}
-                onChange={(d) => onChange({ returnPickupLocal: joinLocal(d, returnTime || time || '12:00') })}
+                min={returnMin.slice(0, 10)}
+                onChange={(d) => setReturn(joinLocal(d, returnTime))}
                 fieldClass={wrapClass('f2 ep-return-date', 'returnPickupLocal')}
                 {...invalid('returnPickupLocal', 'b-return-date')}
               >
-                {err('returnPickupLocal', 'b-return-date')}
+                {err('returnPickupLocal', 'b-return-date') ??
+                  (returnCleared ? (
+                    <span className="error" id="b-return-date-err" role="alert">
+                      {strings['error.return_before_outbound'] ??
+                        'Return must be later than the outbound pick-up.'}
+                    </span>
+                  ) : null)}
               </DateField>
               <TimeField
                 id="b-return-time"
                 label={strings['booking.return.time'] ?? 'Return time'}
-                value={returnTime || time || '12:00'}
-                onChange={(t) => onChange({ returnPickupLocal: joinLocal(returnDate || date, t) })}
+                value={returnTime}
+                allowEmpty
+                onChange={(t) => setReturn(joinLocal(returnDate, t))}
                 fieldClass={wrapClass('f2 ep-return-time', 'returnPickupLocal')}
                 {...invalid('returnPickupLocal', 'b-return-time')}
               />

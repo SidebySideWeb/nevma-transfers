@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { features } from '@tem/features';
 import { createSanityClient, sanityConfigured } from '../../../lib/sanity/client';
 import { listFeaturedRoutes } from '../../../lib/server/featured-routes';
 import { fail, json } from '../../../lib/server/http';
@@ -21,7 +22,10 @@ async function maxPopularRoutes(): Promise<number> {
 export const GET: APIRoute = async () => {
   try {
     const limit = await maxPopularRoutes();
-    const routes = await listFeaturedRoutes(limit);
+    const listed = await listFeaturedRoutes(limit);
+    // FIX-2: in distance pricing the zone fixed fare is not a price: show the route only.
+    const routes =
+      features().pricingMode === 'distance' ? listed.map((r) => ({ ...r, fromPriceCents: 0 })) : listed;
     return json(
       { routes },
       200,

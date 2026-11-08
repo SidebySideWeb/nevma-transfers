@@ -4,6 +4,7 @@ export const prerender = false;
 import { actions } from 'astro:actions';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Banner from '../../components/Banner.astro';
+import ZeroRatesBanner from '../../components/ZeroRatesBanner.astro';
 import PricingSaveBar from '../../components/PricingSaveBar.astro';
 import { centsToEuroInput } from '../../lib/money';
 import { exampleTripCents, formatEuroCents } from '../../lib/pricing-example';
@@ -51,6 +52,7 @@ const shortName = (name: string) => name.replace(/^DEMO\s+/i, '').split(/\s+/)[0
 ---
 
 <AdminLayout title="Rates" current="pricing-rates" staffEmail={staff.email}>
+  <ZeroRatesBanner />
   {
     pageError && (
       <Banner tone="danger" role="alert">

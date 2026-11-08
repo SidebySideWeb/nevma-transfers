@@ -217,3 +217,7 @@ Zones get a display place for the expanding search widget. `zone_routes.featured
 ## 0035 — Restore pricing RLS policies (8 Nov 2026)
 
 Recreates the 0025 staff policies on `class_rates`, `pricing_settings`, `pricing_periods`, and `pricing_areas`. Without them, RLS + `security_invoker` on `current_class_rates` / `current_pricing_settings` hid every row from the admin (Rates page always showed €0.00 / “Not priced yet” after a successful save).
+
+## 0036 — Distance-first quotes (8 Nov 2026)
+
+FIX-2. (Kit file number was 0034; this repo already used 0034/0035.) `zones.area` is an optional GeoJSON Polygon (`[lng, lat]`, closed ring, inside Greece; `geojson_polygon_valid`). It is used only in `PRICING_MODE=hybrid`; with `PRICING_MODE=distance` zones are ignored by the quote and every price is Google km and minutes times the class rates. `pricing_settings.doc` gains two optional keys, validated when present: `long_distance` (`{ "over_km", "factor" }` or null, applied by `priceTrip` as a `long_distance` breakdown line) and `quote_only_over_km` (number or null; longer trips get `quote_only_distance` instead of a price). New `quote_failures` table (staff read, service-role write, 30-day cleanup): one row per failed `/api/quote` with `reason`, `http_status`, `distance_km`, `duration_min`, a PII-free `request` (coordinates, times, passengers only) and `ip_hash`. Admin pages: `/pricing/long-distance` (appends a settings version), read-only `/pricing/quote-failures`.

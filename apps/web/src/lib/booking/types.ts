@@ -7,7 +7,15 @@ export type ErrorCode =
   | 'no_price'
   | 'unavailable'
   | 'payment_failed'
-  | 'quote_expired';
+  | 'quote_expired'
+  // FIX-2 distance-first quotes (docs/API.md)
+  | 'return_before_outbound'
+  | 'pickup_too_soon'
+  | 'outside_area'
+  | 'no_route'
+  | 'quote_only_distance'
+  | 'not_priced'
+  | 'service_unavailable';
 
 
 export class BookingError extends Error {
