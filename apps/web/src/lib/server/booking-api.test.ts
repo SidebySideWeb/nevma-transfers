@@ -16,8 +16,10 @@ import {
 import { dbFromPool, setBookingDb } from './db';
 import { fail } from './http';
 import { FakePaymentProvider, resetPaymentProvider } from './payments';
+import { RATE } from './rate-limit';
 import { clearSettingsCache } from './settings';
 import { resetTurnstileVerifier, setTurnstileVerifier } from './turnstile';
+import { features } from '@tem/features';
 
 type TestDb = Awaited<ReturnType<typeof createTestDb>>;
 
@@ -510,38 +512,29 @@ describe.skipIf(!hasDatabaseUrl)('booking API (prompt 06)', () => {
     ).rejects.toMatchObject({ message: 'turnstile_failed' });
 
     setTurnstileVerifier(async () => true);
-    // Exhaust quote limit (30/min) quickly with a unique IP
+    // Exhaust the quote IP limit. Allow up to 2×max+1 so a fixed-window roll
+    // mid-burst cannot leave the next call still under the cap (AC-23 flake).
     const limitIp = '198.51.100.99';
-    for (let i = 0; i < 30; i++) {
-      await quote(
-        {
-          type: 'transfer',
-          fromZone: 'demo-airport',
-          toZone: 'demo-centre',
-          pickupLocal: futureLocal(),
-          passengers: 2,
-          luggage: 2,
-        },
-        limitIp,
-      );
+    const lim = features().distancePricing ? RATE.quotePerIpDistance : RATE.quotePerIp;
+    const quoteBody = {
+      type: 'transfer' as const,
+      fromZone: 'demo-airport',
+      toZone: 'demo-centre',
+      pickupLocal: futureLocal(),
+      passengers: 2,
+      luggage: 2,
+    };
+    let limited: unknown;
+    for (let i = 0; i < lim.max * 2 + 1; i++) {
+      try {
+        await quote(quoteBody, limitIp);
+      } catch (e) {
+        limited = e;
+        break;
+      }
     }
-    try {
-      await quote(
-        {
-          type: 'transfer',
-          fromZone: 'demo-airport',
-          toZone: 'demo-centre',
-          pickupLocal: futureLocal(),
-          passengers: 2,
-          luggage: 2,
-        },
-        limitIp,
-      );
-      expect.fail('expected rate limit');
-    } catch (e) {
-      const res = fail(e);
-      expect(res.status).toBe(429);
-    }
+    expect(limited).toMatchObject({ message: 'rate_limit' });
+    expect(fail(limited).status).toBe(429);
 
     // missing turnstile token on requireTurnstile
     await expect(requireTurnstile(undefined)).rejects.toMatchObject({ message: 'turnstile_failed' });
