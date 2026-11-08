@@ -67,6 +67,9 @@ const codeKey = z
   .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Lower-case letters, numbers and hyphens.');
 const vehicleStatus = z.enum(['active', 'maintenance', 'retired']);
 
+/** Create forms omit id; Astro/Zod may still pass null. Empty → create, uuid → update. */
+const optionalFormUuid = z.union([z.string().uuid(), z.literal(''), z.null()]).optional();
+
 const pickupLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
 
 const tripInput = z.object({
@@ -1057,7 +1060,7 @@ export const server = {
   saveCompany: defineAction({
     accept: 'form',
     input: z.object({
-      id: z.string().uuid().optional().or(z.literal('')),
+      id: optionalFormUuid,
       name: z.string().trim().min(1).max(200),
       kind: z.enum(['hotel', 'agency', 'company']),
       vatNumber: z.string().trim().max(40).optional(),
@@ -2182,7 +2185,7 @@ export const server = {
   savePricingPeriod: defineAction({
     accept: 'form',
     input: z.object({
-      id: z.string().uuid().optional().or(z.literal('')),
+      id: optionalFormUuid,
       label: z.string().min(1),
       startsOn: z.string().min(1),
       endsOn: z.string().min(1),
