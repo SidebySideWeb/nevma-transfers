@@ -136,7 +136,14 @@ export function StepSearch({
   );
 
   const applyWidget = (p: SearchWidgetPayload) => {
-    onChange(p.search);
+    // Always apply zone fields so a Google pick clears a previous fixed-zone choice.
+    onChange({
+      ...p.search,
+      fromZone: p.search.fromZone ?? '',
+      ...(p.search.type === 'transfer' || search.type === 'transfer'
+        ? { toZone: p.search.toZone ?? '' }
+        : {}),
+    });
     onChangeDetails(p.details);
   };
 

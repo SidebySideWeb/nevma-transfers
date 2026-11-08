@@ -549,8 +549,8 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     };
   }
 
-  // Distance / hybrid: when the switch is on and places are supplied, re-price with Routes + priceTrip.
-  // Hybrid/zones with a full fixed-route matrix skip Google Routes (BOOKING-V2-PLAN §3 step 2).
+  // Distance / hybrid: places + Routes. Fixed zone prices only when both placeIds are the
+  // zones' display anchors (chip / popular route). Any Google address → km rates.
   let distanceKm: number | null = null;
   let durationMin = durationMinutes;
   const rawPlaces = raw as {
@@ -558,7 +558,21 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
     dropoffPlace?: { lat?: number; lng?: number; placeId?: string };
     stops?: { lat: number; lng: number }[];
   };
+  let zoneAnchors = false;
+  if (body.type === 'transfer' && toId && rawPlaces.pickupPlace?.placeId && rawPlaces.dropoffPlace?.placeId) {
+    const { rows: anchors } = await db().query<{ code: string; display_place_id: string | null }>(
+      `select code, display_place_id from public.zones where id = any($1::uuid[])`,
+      [[from.id, toId]],
+    );
+    const byCode = new Map(anchors.map((a) => [a.code, a.display_place_id]));
+    zoneAnchors =
+      Boolean(byCode.get(body.fromZone)) &&
+      byCode.get(body.fromZone) === rawPlaces.pickupPlace.placeId &&
+      Boolean(byCode.get(body.toZone)) &&
+      byCode.get(body.toZone) === rawPlaces.dropoffPlace.placeId;
+  }
   const hybridFixedRoute =
+    zoneAnchors &&
     (f.pricingMode === 'hybrid' || f.pricingMode === 'zones') &&
     options.length > 0 &&
     options.every((o) => o.baseCents != null);
@@ -600,9 +614,12 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
           ...ctx.settings,
           ...(overrides?.settings ?? {}),
         } as typeof ctx.settings;
+        // Google address (not a zone chip): never use the fixed matrix — km / hybrid distance path.
         const zonePriceMap = new Map<string, number | null>();
-        for (const c of classes) {
-          zonePriceMap.set(c.key, await zonePriceCents(from.id, toId, c.id));
+        if (zoneAnchors) {
+          for (const c of classes) {
+            zonePriceMap.set(c.key, await zonePriceCents(from.id, toId, c.id));
+          }
         }
         const demandSnaps = await demandFactorsForClasses({
           classes: classes.map((c) => ({ id: c.id, key: c.key })),
@@ -628,8 +645,8 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
           settings: settingsDoc,
           periods: ctx.periods,
           areas: ctx.areas,
-          mode: f.pricingMode,
-          zonePrice: (key) => zonePriceMap.get(key) ?? null,
+          mode: zoneAnchors ? f.pricingMode : 'distance',
+          zonePrice: (key) => (zoneAnchors ? (zonePriceMap.get(key) ?? null) : null),
           demand: demandByClass,
           company,
           vatRateBp: ctx.vatRateBp,
@@ -678,10 +695,11 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         ttlMin = ctx.settings.quote_ttl_min ?? ttlMin;
         (pricingVersionExtras as { rateIds?: Record<string, string> }).rateIds = ctx.rateIds;
       } catch (e) {
-        // Hybrid/zones: keep the fixed-route quote when Google Routes is down.
+        // Only fall back to fixed matrix when the customer actually picked zone anchors.
         if (
           !(e instanceof BookingError) ||
           e.code !== 'unavailable' ||
+          !zoneAnchors ||
           !(f.pricingMode === 'hybrid' || f.pricingMode === 'zones') ||
           !anyPrice
         ) {
@@ -747,6 +765,7 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         if (
           !(e instanceof BookingError) ||
           e.code !== 'unavailable' ||
+          !zoneAnchors ||
           !(f.pricingMode === 'hybrid' || f.pricingMode === 'zones')
         ) {
           throw e;
@@ -780,8 +799,10 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
       } as typeof ctx.settings;
       returnDiscountPct = Number(settingsDoc.return_discount_pct) || returnDiscountPct;
       const zonePriceMap = new Map<string, number | null>();
-      for (const c of classes) {
-        zonePriceMap.set(c.key, await zonePriceCents(toId, from.id, c.id));
+      if (zoneAnchors) {
+        for (const c of classes) {
+          zonePriceMap.set(c.key, await zonePriceCents(toId, from.id, c.id));
+        }
       }
       const demandSnaps = await demandFactorsForClasses({
         classes: classes.map((c) => ({ id: c.id, key: c.key })),
@@ -813,8 +834,8 @@ export async function quote(raw: unknown, ip?: string, opts: QuoteOpts = {}) {
         settings: settingsDoc,
         periods: ctx.periods,
         areas: ctx.areas,
-        mode: f.pricingMode,
-        zonePrice: (key) => zonePriceMap.get(key) ?? null,
+        mode: zoneAnchors ? f.pricingMode : 'distance',
+        zonePrice: (key) => (zoneAnchors ? (zonePriceMap.get(key) ?? null) : null),
         demand: demandByClass,
         company,
         vatRateBp: ctx.vatRateBp,

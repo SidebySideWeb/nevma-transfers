@@ -62,6 +62,7 @@ const DEFAULTS = {
   nextMonth: 'Next month',
   outOfArea: 'We only serve Athens and Attica. For other destinations, contact us.',
   popularRoutes: 'Popular routes',
+  fixedZones: 'Fixed zones',
   emptyMessage: "Set your pick-up anywhere in Athens and Attica. We'll be there on time.",
 };
 export type SearchWidgetStrings = Partial<Record<keyof typeof DEFAULTS, string>>;
@@ -261,14 +262,15 @@ export function SearchWidget(props: SearchWidgetProps) {
   const timeDisabled = (t: string) => Boolean(date && earliest) && !meetsMinNotice(`${date}T${t}`, earliest);
 
   // ---- payload ----
+  // Zones only when a zone chip / popular route set them; Google picks clear them ('').
   const payload = useMemo<SearchWidgetPayload>(
     () => ({
       search: {
         type,
         ...(type === 'hourly' ? { hours } : {}),
         pickupLocal: date ? `${date}T${time}` : '',
-        ...(pickup.zone ? { fromZone: pickup.zone } : {}),
-        ...(type === 'transfer' && dropoff.zone ? { toZone: dropoff.zone } : {}),
+        fromZone: pickup.zone ?? '',
+        ...(type === 'transfer' ? { toZone: dropoff.zone ?? '' } : {}),
       },
       details: {
         pickupAddress: pickup.text,
@@ -309,12 +311,34 @@ export function SearchWidget(props: SearchWidgetProps) {
 
   const pickupZone =
     pickup.zone ?? routes.find((r) => r.from.placeId && r.from.placeId === pickup.place?.placeId)?.from.code ?? null;
+  /** Unique zone anchors for the focused field (from featured routes). */
+  const shownZones: FeaturedPlace[] = useMemo(() => {
+    if (type !== 'transfer') return [];
+    const byCode = new Map<string, FeaturedPlace>();
+    const add = (p: FeaturedPlace) => {
+      if (p.code && p.placeId && !byCode.has(p.code)) byCode.set(p.code, p);
+    };
+    if (focus === 'dropoff' && pickupZone) {
+      for (const r of routes) if (r.from.code === pickupZone) add(r.to);
+    } else if (focus === 'dropoff') {
+      for (const r of routes) add(r.to);
+    } else {
+      for (const r of routes) {
+        add(r.from);
+        add(r.to);
+      }
+    }
+    return [...byCode.values()];
+  }, [type, focus, routes, pickupZone]);
+  /** Full A→B rows only when both ends are still empty (quick fill). */
   const shownRoutes =
     type !== 'transfer'
       ? []
-      : focus === 'dropoff' && pickup.text.trim()
-        ? routes.filter((r) => pickupZone !== null && r.from.code === pickupZone)
-        : routes;
+      : focus === 'pickup' && !pickup.text.trim() && !dropoff.text.trim()
+        ? routes
+        : focus === 'dropoff' && pickupZone
+          ? routes.filter((r) => r.from.code === pickupZone)
+          : [];
 
   useEffect(() => {
     if (!addressAutocomplete || q.length < 3) {
@@ -399,16 +423,23 @@ export function SearchWidget(props: SearchWidgetProps) {
     setSuggestions([]);
     advance(f);
   };
+  const placePt = (p: FeaturedPlace): Pt => ({
+    text: p.address || p.name,
+    place: { placeId: p.placeId, lat: p.lat, lng: p.lng },
+    zone: p.code,
+    kind: p.kind,
+    typed: false,
+  });
+  /** Fixed zone for the focused field only — other end stays as-is. */
+  const pickZone = (f: 'pickup' | 'dropoff', p: FeaturedPlace) => {
+    setPt(f, placePt(p));
+    setOutOfArea(null);
+    setSuggestions([]);
+    advance(f);
+  };
   const pickRoute = (r: FeaturedRoute) => {
-    const pt = (p: FeaturedPlace): Pt => ({
-      text: p.address || p.name,
-      place: { placeId: p.placeId, lat: p.lat, lng: p.lng },
-      zone: p.code,
-      kind: p.kind,
-      typed: false,
-    });
-    setPickup(pt(r.from));
-    setDropoff(pt(r.to));
+    setPickup(placePt(r.from));
+    setDropoff(placePt(r.to));
     setOutOfArea(null);
     focusField('date');
   };
@@ -435,9 +466,15 @@ export function SearchWidget(props: SearchWidgetProps) {
     (props.navigate ?? ((h) => window.location.assign(h)))(searchWidgetQuery(payload, passengers));
   };
 
+  const zoneItems: Item[] =
+    panelKind === 'routes' && focus && (focus === 'pickup' || focus === 'dropoff')
+      ? shownZones.map((z) => ({ pick: () => pickZone(focus, z) }))
+      : [];
+  const routeItems: Item[] =
+    panelKind === 'routes' ? shownRoutes.map((r) => ({ pick: () => pickRoute(r) })) : [];
   const items: Item[] =
     panelKind === 'routes'
-      ? shownRoutes.map((r) => ({ pick: () => pickRoute(r) }))
+      ? [...zoneItems, ...routeItems]
       : panelKind === 'suggest'
         ? suggestions.map((sg) => ({ pick: () => void pickSuggestion(focus as 'pickup' | 'dropoff', sg) }))
         : panelKind === 'duration'
@@ -648,27 +685,54 @@ export function SearchWidget(props: SearchWidgetProps) {
     );
   };
 
+  const zonesTitle = s.fixedZones;
   let content: React.ReactNode = message(emptyMessage);
-  if (panelKind === 'routes' && shownRoutes.length) {
+  if (panelKind === 'routes' && (shownZones.length || shownRoutes.length)) {
     content = (
       <>
-        <h3 className="ep-sw-title">{routesTitle}</h3>
-        <ul role="listbox" id={listId} aria-label={routesTitle} className="ep-sw-list">
-          {shownRoutes.map((r, i) => (
-            <li key={`${r.from.code}-${r.to.code}`} role="presentation">
-              <button type="button" className="ep-sw-opt" {...pick(i)}>
-                <span className="ep-sw-ico" aria-hidden="true">
-                  {ICON[r.from.kind] ?? '📍'}
-                </span>
-                <span className="ep-sw-main">
-                  {r.from.name} → {r.to.name}
-                  <small>{s.approx.replace('{min}', String(r.durationMin))}</small>
-                </span>
-                <span className="ep-sw-price">{s.fromPrice.replace('{price}', formatEuroV2(r.fromPriceCents))}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        {shownZones.length ? (
+          <>
+            <h3 className="ep-sw-title">{zonesTitle}</h3>
+            <ul role="listbox" id={listId} aria-label={zonesTitle} className="ep-sw-list">
+              {shownZones.map((z, i) => (
+                <li key={z.code} role="presentation">
+                  <button type="button" className="ep-sw-opt" {...pick(i)}>
+                    <span className="ep-sw-ico" aria-hidden="true">
+                      {ICON[z.kind] ?? '📍'}
+                    </span>
+                    <span className="ep-sw-main">{z.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        {shownRoutes.length ? (
+          <>
+            <h3 className="ep-sw-title">{routesTitle}</h3>
+            <ul
+              role="listbox"
+              id={shownZones.length ? undefined : listId}
+              aria-label={routesTitle}
+              className="ep-sw-list"
+            >
+              {shownRoutes.map((r, i) => (
+                <li key={`${r.from.code}-${r.to.code}`} role="presentation">
+                  <button type="button" className="ep-sw-opt" {...pick(shownZones.length + i)}>
+                    <span className="ep-sw-ico" aria-hidden="true">
+                      {ICON[r.from.kind] ?? '📍'}
+                    </span>
+                    <span className="ep-sw-main">
+                      {r.from.name} → {r.to.name}
+                      <small>{s.approx.replace('{min}', String(r.durationMin))}</small>
+                    </span>
+                    <span className="ep-sw-price">{s.fromPrice.replace('{price}', formatEuroV2(r.fromPriceCents))}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
         {focus === 'dropoff' && pickup.text.trim() ? <p className="ep-sw-any">{s.anyAddress}</p> : null}
       </>
     );

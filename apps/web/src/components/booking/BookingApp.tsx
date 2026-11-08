@@ -173,11 +173,23 @@ export default function BookingApp({
     [strings],
   );
 
-  const quoteBody = () =>
-    quoteRequestBody(state.search, undefined, {
+  const quoteBody = () => {
+    // Distance quotes still need zone codes on the booking row; Google picks leave zones
+    // empty, so fill bookkeeping defaults. Server prices by km unless places match zone anchors.
+    const zones = state.options?.zones ?? [];
+    const search = {
+      ...state.search,
+      fromZone: state.search.fromZone || zones[0]?.code || '',
+      toZone:
+        state.search.type === 'transfer'
+          ? state.search.toZone || zones[1]?.code || zones[0]?.code || ''
+          : state.search.toZone,
+    };
+    return quoteRequestBody(search, undefined, {
       pickupPlace: state.details.pickupPlace,
       dropoffPlace: state.details.dropoffPlace,
     });
+  };
 
   const submitQuote = async (opts?: { refresh?: boolean }) => {
     // Catch incomplete journey fields here so we never POST a Zod-invalid /api/quote body (400).

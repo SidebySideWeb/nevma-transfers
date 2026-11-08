@@ -77,10 +77,11 @@ describe('SearchWidget', () => {
     await user.click(pickup);
     expect(pickup.getAttribute('aria-expanded')).toBe('true');
     expect(pickup.getAttribute('aria-controls')).toBe(document.querySelector('.ep-sw-panel')!.id);
+    expect(screen.getByText('Fixed zones')).toBeTruthy();
     expect(screen.getByText('Popular routes')).toBeTruthy();
     await user.keyboard('{Escape}');
     expect(pickup.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByText('Popular routes')).toBeNull();
+    expect(screen.queryByText('Fixed zones')).toBeNull();
 
     await user.click(pickup);
     expect(pickup.getAttribute('aria-expanded')).toBe('true');
@@ -132,17 +133,18 @@ describe('SearchWidget', () => {
     });
   });
 
-  it('drop-off focus lists only routes from the chosen pick-up zone', async () => {
+  it('drop-off focus lists fixed zones from the chosen pick-up', async () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByLabelText('Pick-up'));
+    expect(screen.getByRole('option', { name: 'Athens Airport' })).toBeTruthy();
     expect(routeOpt(/Athens Airport → Syntagma/)).toBeTruthy();
-    expect(routeOpt(/Piraeus Port → Syntagma/)).toBeTruthy();
-    await user.click(routeOpt(/Athens Airport → Syntagma/)!);
+    await user.click(screen.getByRole('option', { name: 'Athens Airport' }));
 
+    expect((screen.getByLabelText('Pick-up') as HTMLInputElement).value).toBe(aia.address);
     await user.click(screen.getByLabelText('Drop-off'));
-    expect(routeOpt(/Athens Airport → Syntagma/)).toBeTruthy();
-    expect(routeOpt(/Piraeus Port → Syntagma/)).toBeNull();
+    expect(screen.getByRole('option', { name: 'Syntagma' })).toBeTruthy();
+    expect(screen.queryByRole('option', { name: 'Piraeus Port' })).toBeNull();
     expect(screen.getByText(/Any address/)).toBeTruthy();
   });
 
