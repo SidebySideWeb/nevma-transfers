@@ -80,7 +80,9 @@ export async function routeDistance(input: {
   stops?: LatLng[];
   departAt: Date;
 }): Promise<{ distanceKm: number; durationMin: number }> {
-  const key = process.env.GOOGLE_MAPS_SERVER_KEY;
+  // Prefer the Routes key; fall back to Places (often the same GCP key once Routes API is enabled).
+  const key =
+    (process.env.GOOGLE_MAPS_SERVER_KEY || process.env.GOOGLE_PLACES_API_KEY || '').trim();
   if (!key) {
     throw new BookingError('service_unavailable', {
       stringKey: 'error.service_unavailable',

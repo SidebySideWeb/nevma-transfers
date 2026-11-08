@@ -300,9 +300,11 @@ export async function route(o) {
   if (stops.length) {
     body.intermediates = stops.map(latLngBody);
   }
+  // TRAFFIC_UNAWARE rejects departureTime (Google 400). Only send it with traffic-aware routing.
   if (o.departAt) {
     const dep = o.departAt instanceof Date ? o.departAt : new Date(o.departAt);
     if (Number.isFinite(dep.getTime()) && dep.getTime() > Date.now()) {
+      body.routingPreference = 'TRAFFIC_AWARE';
       body.departureTime = dep.toISOString();
     }
   }
@@ -320,9 +322,11 @@ export async function route(o) {
 
   let data;
   let lastErr;
+  let lastStatus = 0;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await fetchImpl(ROUTES_URL, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+      lastStatus = res.status;
       if (!res.ok) throw new Error(`status ${res.status}`);
       data = await res.json();
       lastErr = null;
@@ -331,7 +335,15 @@ export async function route(o) {
       lastErr = e;
     }
   }
-  if (lastErr || !data) throw new RouteUnavailable();
+  if (lastErr || !data) {
+    if (lastStatus) {
+      console.error(JSON.stringify({ level: 'error', code: 'routes_api', status: lastStatus }));
+    }
+    throw new RouteUnavailable(
+      lastStatus ? `Google Routes answered ${lastStatus}` : undefined,
+      'routing_failed',
+    );
+  }
 
   const r0 = data.routes?.[0];
   const meters = r0?.distanceMeters;

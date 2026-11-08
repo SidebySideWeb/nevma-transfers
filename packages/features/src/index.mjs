@@ -45,9 +45,10 @@ export function features(env = process.env, log = console) {
 
   let distancePricing = isOn(env.FEATURE_DISTANCE_PRICING);
   if (distancePricing) {
-    if (!env.GOOGLE_MAPS_SERVER_KEY || !env.QUOTE_SIGNING_SECRET) {
+    const mapsKey = (env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_PLACES_API_KEY || '').trim();
+    if (!mapsKey || !env.QUOTE_SIGNING_SECRET) {
       error(
-        'FEATURE_DISTANCE_PRICING=true needs GOOGLE_MAPS_SERVER_KEY and QUOTE_SIGNING_SECRET; distance pricing stays off.',
+        'FEATURE_DISTANCE_PRICING=true needs GOOGLE_MAPS_SERVER_KEY (or GOOGLE_PLACES_API_KEY) and QUOTE_SIGNING_SECRET; distance pricing stays off.',
       );
       distancePricing = false;
     }

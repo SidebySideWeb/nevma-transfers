@@ -29,7 +29,7 @@ function spy(body, { status = 200, ok = true, failTimes = 0 } = {}) {
   return f;
 }
 
-test('route sends computeRoutes with DRIVE, TRAFFIC_UNAWARE, field mask and future departureTime', async () => {
+test('route sends computeRoutes with DRIVE; future departureTime uses TRAFFIC_AWARE', async () => {
   const departAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
   const f = spy({ routes: [{ distanceMeters: 35421, duration: '2345s' }] });
   const r = await route({
@@ -48,11 +48,19 @@ test('route sends computeRoutes with DRIVE, TRAFFIC_UNAWARE, field mask and futu
   assert.equal(init.headers['X-Goog-FieldMask'], 'routes.distanceMeters,routes.duration');
   const body = JSON.parse(init.body);
   assert.equal(body.travelMode, 'DRIVE');
-  assert.equal(body.routingPreference, 'TRAFFIC_UNAWARE');
+  assert.equal(body.routingPreference, 'TRAFFIC_AWARE');
   assert.equal(body.departureTime, departAt);
   assert.equal(body.origin.location.latLng.latitude, ORIGIN.lat);
   assert.equal(body.destination.location.latLng.longitude, DEST.lng);
   assert.equal(body.intermediates.length, 1);
+});
+
+test('route without departAt stays TRAFFIC_UNAWARE and omits departureTime', async () => {
+  const f = spy({ routes: [{ distanceMeters: 1000, duration: '60s' }] });
+  await route({ origin: ORIGIN, destination: DEST, apiKey: KEY, fetch: f });
+  const body = JSON.parse(f.calls[0].init.body);
+  assert.equal(body.routingPreference, 'TRAFFIC_UNAWARE');
+  assert.equal(body.departureTime, undefined);
 });
 
 test('route rounds distance to 1 decimal and duration up to whole minutes', async () => {
