@@ -493,8 +493,7 @@ export function SearchWidget(props: SearchWidgetProps) {
       panelKind === 'time' ? TIMES.indexOf(time) : panelKind === 'duration' ? hours - hourBounds.min : panelKind === 'suggest' ? 0 : -1,
     );
     if (panelKind === 'date') setView(null);
-    // Initial highlight only when the panel content changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Initial highlight only when the panel content changes (omit time/hours from deps on purpose).
   }, [panelKind]);
 
   // Open lists at the current value; keep the active row in view.

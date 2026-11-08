@@ -39,7 +39,6 @@ export async function quoteDistanceFirst(a: {
   const { body, ip, simulate, overrides, company, companyId, ctx } = a;
   const db = bookingDb();
   const settings = await getSettings();
-  const transfer = body.type === 'transfer';
   const pickup = localToInstant(body.pickupLocal, settings.timezone);
   const returnLeg = features().returnTrip && body.type === 'transfer' ? (body.return ?? null) : null;
   const returnPickup = returnLeg ? localToInstant(returnLeg.pickupLocal, settings.timezone) : null;
