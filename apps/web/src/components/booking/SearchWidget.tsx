@@ -523,6 +523,18 @@ export function SearchWidget(props: SearchWidgetProps) {
     return () => document.removeEventListener('mousedown', away);
   }, [open]);
 
+  // Mobile sheet: lock page scroll so the picker, not the page, scrolls.
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return;
+    const mq = window.matchMedia?.('(max-width: 767px)');
+    if (!mq?.matches) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const t = e.target as HTMLElement;
     if (e.key === 'Escape' && open) {
@@ -811,6 +823,7 @@ export function SearchWidget(props: SearchWidgetProps) {
       role="search"
       aria-label={s.widgetLabel}
       data-open={open ? '1' : '0'}
+      data-focus={open && focus ? focus : undefined}
       data-type={type}
       onKeyDown={onKeyDown}
     >
