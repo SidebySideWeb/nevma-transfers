@@ -2,7 +2,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-width: 12rem;
+  min-width: 13.5rem;
+  position: relative;
+  z-index: 1;
+}
+.ep-time-field:focus-within {
+  z-index: 40;
 }
 .ep-time-label {
   font-family: 'Jost', sans-serif;
@@ -14,11 +19,12 @@
 }
 .ep-time-row {
   display: grid;
-  grid-template-columns: minmax(5.5rem, 1fr) minmax(4.25rem, 5rem);
-  gap: 8px;
+  grid-template-columns: minmax(3.25rem, 1fr) minmax(3.25rem, 1fr) minmax(3.5rem, 1fr);
+  gap: 6px;
   align-items: stretch;
 }
 .ep-time-row .field {
+  position: relative;
   margin: 0;
   border-right: 0;
   border-bottom: 0;
@@ -31,11 +37,18 @@
   height: 30px;
   min-height: 30px;
   border-bottom: 1px solid rgba(207, 164, 95, 0.55);
+  font-size: 16px;
 }
 .f2.ep-time-field .ep-time-row .dd-btn {
   height: 50px;
   min-height: 50px;
   font-size: 18px;
+}
+/* Cap open lists so they don't cover the whole form. */
+.ep-time-row .ddl {
+  max-height: 14rem;
+  overflow-y: auto;
+  z-index: 50;
 }
 .ep-time-field .js-hint {
   font-size: 12px;

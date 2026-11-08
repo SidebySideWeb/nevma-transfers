@@ -1,18 +1,15 @@
 import { BrandDropdown } from './BrandDropdown';
 import './TimeField.css';
 
-/** 12-hour clock face values with :00 / :30 — short list + AM/PM. */
-export const HOUR12_OPTIONS: { value: string; label: string }[] = (() => {
-  const out: { value: string; label: string }[] = [];
-  for (const h of [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
-    for (const m of [0, 30]) {
-      const mm = String(m).padStart(2, '0');
-      const label = `${h}:${mm}`;
-      out.push({ value: label, label });
-    }
-  }
-  return out;
-})();
+/** Clock hours 1–12 only — keep the open list short; minutes and AM/PM are separate. */
+export const HOUR_OPTIONS: { value: string; label: string }[] = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(
+  (h) => ({ value: String(h), label: String(h) }),
+);
+
+export const MINUTE_OPTIONS = [
+  { value: '00', label: '00' },
+  { value: '30', label: '30' },
+] as const;
 
 export const PERIOD_OPTIONS = [
   { value: 'AM', label: 'AM' },
@@ -21,30 +18,29 @@ export const PERIOD_OPTIONS = [
 
 export type Period = 'AM' | 'PM';
 
-/** Snap HH:mm (24h) to nearest :00 / :30 and split into 12h + period. */
-export function splitTime12(hhmm: string): { hour12: string; period: Period } {
+export type Time12Parts = { hour: string; minute: string; period: Period };
+
+/** Snap HH:mm (24h) to nearest :00 / :30 and split into hour + minute + AM/PM. */
+export function splitTime12(hhmm: string): Time12Parts {
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
-  if (!m) return { hour12: '12:00', period: 'PM' };
+  if (!m) return { hour: '12', minute: '00', period: 'PM' };
   let h = Number(m[1]);
   let min = Number(m[2]);
-  if (!Number.isFinite(h) || !Number.isFinite(min)) return { hour12: '12:00', period: 'PM' };
+  if (!Number.isFinite(h) || !Number.isFinite(min)) return { hour: '12', minute: '00', period: 'PM' };
   h = ((h % 24) + 24) % 24;
   min = min < 15 ? 0 : min < 45 ? 30 : 0;
   if (min === 0 && Number(m[2]) >= 45) h = (h + 1) % 24;
   const period: Period = h >= 12 ? 'PM' : 'AM';
   let h12 = h % 12;
   if (h12 === 0) h12 = 12;
-  return { hour12: `${h12}:${String(min).padStart(2, '0')}`, period };
+  return { hour: String(h12), minute: String(min).padStart(2, '0'), period };
 }
 
-/** Combine 12h face + AM/PM → HH:mm (24h). */
-export function joinTime12(hour12: string, period: Period): string {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(hour12.trim());
-  if (!m) return '12:00';
-  let h = Number(m[1]);
-  const min = Number(m[2]);
+/** Combine hour + minute + AM/PM → HH:mm (24h). */
+export function joinTime12(hour: string, minute: string, period: Period): string {
+  let h = Number(hour);
   if (!Number.isFinite(h) || h < 1 || h > 12) h = 12;
-  const mm = min === 30 ? 30 : 0;
+  const mm = minute === '30' ? 30 : 0;
   if (period === 'AM') {
     h = h === 12 ? 0 : h;
   } else {
@@ -65,7 +61,7 @@ export type TimeFieldProps = {
   'aria-describedby'?: string;
 };
 
-/** Hour (12h :00/:30) + AM/PM — shorter than a full 24×5-minute list. */
+/** Hour (1–12) + minutes (:00/:30) + AM/PM — three short lists. */
 export function TimeField({
   id,
   label,
@@ -77,7 +73,7 @@ export function TimeField({
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedBy,
 }: TimeFieldProps) {
-  const { hour12, period } = splitTime12(value || '12:00');
+  const { hour, minute, period } = splitTime12(value || '12:00');
   const described =
     [ariaDescribedBy, hint ? `${id}-hint` : null, error ? `${id}-err` : null]
       .filter(Boolean)
@@ -92,12 +88,23 @@ export function TimeField({
         <BrandDropdown
           id={`${id}-hour`}
           label="Hour"
-          options={HOUR12_OPTIONS}
-          value={HOUR12_OPTIONS.some((o) => o.value === hour12) ? hour12 : '12:00'}
-          onChange={(h) => onChange(joinTime12(h, period))}
+          options={HOUR_OPTIONS}
+          value={HOUR_OPTIONS.some((o) => o.value === hour) ? hour : '12'}
+          onChange={(h) => onChange(joinTime12(h, minute, period))}
           fieldClass="field ep-time-hour"
           hideLabel
           error={error ? '' : null}
+          aria-invalid={ariaInvalid}
+          aria-describedby={described}
+        />
+        <BrandDropdown
+          id={`${id}-min`}
+          label="Minutes"
+          options={[...MINUTE_OPTIONS]}
+          value={minute === '30' ? '30' : '00'}
+          onChange={(mm) => onChange(joinTime12(hour, mm, period))}
+          fieldClass="field ep-time-min"
+          hideLabel
           aria-invalid={ariaInvalid}
           aria-describedby={described}
         />
@@ -106,7 +113,7 @@ export function TimeField({
           label="AM/PM"
           options={[...PERIOD_OPTIONS]}
           value={period}
-          onChange={(p) => onChange(joinTime12(hour12, p as Period))}
+          onChange={(p) => onChange(joinTime12(hour, minute, p as Period))}
           fieldClass="field ep-time-period"
           hideLabel
           aria-invalid={ariaInvalid}

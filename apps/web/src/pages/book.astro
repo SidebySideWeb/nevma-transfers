@@ -246,18 +246,26 @@ const header = {
     color: #0a0a0b;
   }
   [data-block='appBody'] .ep-time-field {
-    min-width: 12rem;
+    min-width: 13.5rem;
+    position: relative;
   }
+  [data-block='appBody'] .ep-time-field:focus-within { z-index: 40; }
   [data-block='appBody'] .ep-time-row {
     display: grid;
-    grid-template-columns: minmax(5.5rem, 1fr) minmax(4.25rem, 5rem);
-    gap: 8px;
+    grid-template-columns: minmax(3.25rem, 1fr) minmax(3.25rem, 1fr) minmax(3.5rem, 1fr);
+    gap: 6px;
   }
   [data-block='appBody'] .ep-time-row .field {
+    position: relative;
     margin: 0;
     padding: 0;
     border: 0;
     gap: 0;
+  }
+  [data-block='appBody'] .ep-time-row .ddl {
+    max-height: 14rem;
+    overflow-y: auto;
+    z-index: 50;
   }
   [data-block='appBody'] .ep-bar-field.ep-time-field .ep-time-row .dd-btn {
     height: 30px;
