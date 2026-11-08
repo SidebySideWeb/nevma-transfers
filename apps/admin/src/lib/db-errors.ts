@@ -95,6 +95,20 @@ export function mapDbError(
     return opts.fieldValidationText?.trim() || 'That value is outside the allowed range.';
   }
 
+  if (
+    code === '42501' ||
+    /permission denied|row-level security|forbidden/i.test(haystack)
+  ) {
+    if (/staff_save_class_rate|class_rates/i.test(haystack)) {
+      return 'Could not save rates. Sign out and back in, then apply migration 0034 if this keeps failing.';
+    }
+    return 'You are not allowed to do that. Sign out and back in, then try again.';
+  }
+
+  if (/staff_save_class_rate|Could not find the function.*staff_save_class_rate/i.test(message)) {
+    return 'The database is behind the app. Apply migration 0034_staff_save_class_rate on this project.';
+  }
+
   if (code === '23P01' || /exclusion|overlap/i.test(haystack)) {
     if (/bookings_no_driver_overlap/.test(haystack)) {
       const name = opts.driverName?.trim();

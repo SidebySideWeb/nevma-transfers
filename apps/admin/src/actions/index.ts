@@ -423,15 +423,14 @@ export const server = {
           } catch {
             throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid extra km rate' });
           }
-          const { error: rateErr } = await supabase.from('class_rates').insert({
-            class_key: row.classKey,
-            base_fare: cur?.base_fare ?? 0,
-            per_km: cur?.per_km ?? 0,
-            per_min: cur?.per_min ?? 0,
-            minimum_fare: cur?.minimum_fare ?? 0,
-            km_per_hour,
-            extra_km_rate,
-            created_by: staff.userId,
+          const { error: rateErr } = await supabase.rpc('staff_save_class_rate', {
+            p_class_key: row.classKey,
+            p_base_fare: cur?.base_fare ?? 0,
+            p_per_km: cur?.per_km ?? 0,
+            p_per_min: cur?.per_min ?? 0,
+            p_minimum_fare: cur?.minimum_fare ?? 0,
+            p_km_per_hour: km_per_hour,
+            p_extra_km_rate: extra_km_rate,
           });
           if (rateErr) throwDb(rateErr);
         }
@@ -2117,17 +2116,27 @@ export const server = {
         } catch {
           throw new ActionError({ code: 'BAD_REQUEST', message: `Invalid euros for ${row.classKey}` });
         }
-        const { error } = await supabase.from('class_rates').insert({
-          class_key: row.classKey,
-          base_fare,
-          per_km,
-          per_min,
-          minimum_fare,
-          km_per_hour,
-          extra_km_rate,
-          created_by: staff.userId,
+        const { error } = await supabase.rpc('staff_save_class_rate', {
+          p_class_key: row.classKey,
+          p_base_fare: base_fare,
+          p_per_km: per_km,
+          p_per_min: per_min,
+          p_minimum_fare: minimum_fare,
+          p_km_per_hour: km_per_hour,
+          p_extra_km_rate: extra_km_rate,
         });
-        if (error) throwDb(error);
+        if (error) {
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              code: 'save_class_rates',
+              classKey: row.classKey,
+              pg: error.code,
+              detail: String(error.message ?? '').slice(0, 180),
+            }),
+          );
+          throwDb(error);
+        }
       }
       await logAdminActivity(supabase, {
         actorId: staff.userId,

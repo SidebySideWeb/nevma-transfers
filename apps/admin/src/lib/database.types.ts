@@ -942,6 +942,9 @@ isOneToOne: false
 "auto_assign_enabled":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"staff_save_class_rate":
+{ Args: { "p_base_fare": number,"p_class_key": string,"p_extra_km_rate"?: number,"p_km_per_hour"?: number,"p_minimum_fare": number,"p_per_km": number,"p_per_min": number }; Returns: string
+                           },
 "blocked_range_for":
 { Args: { "p_buffer_minutes": number,"p_duration_minutes": number,"p_pickup": string }; Returns: unknown
                            },

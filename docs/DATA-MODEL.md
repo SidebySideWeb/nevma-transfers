@@ -209,3 +209,7 @@ Post-review fixes for 0024–0031 (do not edit earlier migrations). Distance-pri
 ## 0033 — Booking widget popular routes (8 Nov 2026)
 
 Zones get a display place for the expanding search widget. `zone_routes.featured` / `featured_order` mark popular routes. View `featured_routes` (security_invoker): featured pairs where both zones are active with a display place and at least one priced active class; returns lowest `from_price_cents`. Anon cannot select the view; the site reads it with the service role / `DATABASE_URL`.
+
+## 0034 — Staff save class rate (8 Nov 2026)
+
+`staff_save_class_rate(...)` — security definer RPC for the admin Rates / Hourly pages. Checks `is_staff()`, appends a `class_rates` row (never updates). Re-grants `select, insert` on `class_rates` to `authenticated`.
