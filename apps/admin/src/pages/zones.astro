@@ -242,17 +242,22 @@ const zoneList = withDemoOfflineLast(zones ?? []);
 
   document.querySelectorAll('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.getElementById(btn.getAttribute('data-open')!)?.showModal();
+      const id = btn.getAttribute('data-open');
+      const d = id && document.getElementById(id);
+      if (d instanceof HTMLDialogElement) d.showModal();
     });
   });
   document.querySelectorAll('[data-close]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.getElementById(btn.getAttribute('data-close')!)?.close();
+      const id = btn.getAttribute('data-close');
+      const d = id && document.getElementById(id);
+      if (d instanceof HTMLDialogElement) d.close();
     });
   });
   document.querySelectorAll('[data-confirm]').forEach((btn) => {
     btn.addEventListener('click', (event) => {
-      if (!window.confirm(btn.getAttribute('data-confirm'))) event.preventDefault();
+      const msg = btn.getAttribute('data-confirm') ?? '';
+      if (!window.confirm(msg)) event.preventDefault();
     });
   });
 
