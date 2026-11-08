@@ -118,25 +118,25 @@ function accentLink(href: string, label: string): string {
   return `<a href="${escapeHtml(href)}" style="color:${th.accent};text-decoration:none;">${escapeHtml(label)}</a>`;
 }
 
-const WA_GREEN = '#25D366';
-
-/** Green bulletproof WhatsApp button (VML for Outlook) + plain link fallback. */
+/** Site-gold WhatsApp button (matches btn-gold) + plain link fallback. */
 export function whatsappBlockHtml(wa: EmailWhatsapp): string {
   const label = (wa.label && wa.label.trim()) || t('email.whatsapp.button');
   const url = wa.url;
+  const fill = th.accent;
+  const ink = th.onAccent;
   return `
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin:20px 0 8px;">
       <tr>
         <td align="left">
           <!--[if mso]>
-          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(url)}" style="height:44px;v-text-anchor:middle;width:260px;" arcsize="10%" stroke="f" fillcolor="${WA_GREEN}">
+          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(url)}" style="height:44px;v-text-anchor:middle;width:260px;" arcsize="10%" stroke="f" fillcolor="${fill}">
             <w:anchorlock/>
-            <center style="color:#ffffff;font-family:sans-serif;font-size:15px;font-weight:600;">${escapeHtml(label)}</center>
+            <center style="color:${ink};font-family:sans-serif;font-size:15px;font-weight:600;">${escapeHtml(label)}</center>
           </v:roundrect>
           <![endif]-->
           <!--[if !mso]><!-->
           <a href="${escapeHtml(url)}"
-             style="background-color:${WA_GREEN};border-radius:6px;color:#ffffff;display:inline-block;font-family:${th.font};font-size:15px;font-weight:600;line-height:44px;text-align:center;text-decoration:none;width:260px;-webkit-text-size-adjust:none;mso-hide:all;">
+             style="background-color:${fill};border-radius:6px;color:${ink};display:inline-block;font-family:${th.font};font-size:15px;font-weight:600;line-height:44px;text-align:center;text-decoration:none;width:260px;-webkit-text-size-adjust:none;mso-hide:all;">
             ${escapeHtml(label)}
           </a>
           <!--<![endif]-->

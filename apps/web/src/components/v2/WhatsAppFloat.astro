@@ -23,7 +23,6 @@ const { href, label = 'WhatsApp' } = Astro.props;
 
 <style is:global>
   .ep-wa-float {
-    --wa-green: #25d366;
     position: fixed;
     z-index: 18;
     right: 16px;
@@ -31,13 +30,16 @@ const { href, label = 'WhatsApp' } = Astro.props;
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: var(--wa-green);
-    color: #fff;
+    background: #e7c687;
+    color: #0a0a0b;
     display: none;
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
     text-decoration: none;
+  }
+  .ep-wa-float:hover {
+    background: #f2ddae;
   }
   @media (max-width: 1023px) {
     .ep-wa-float {

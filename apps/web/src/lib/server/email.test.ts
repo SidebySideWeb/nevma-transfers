@@ -184,7 +184,7 @@ describe('emails (prompt 08)', () => {
     };
     const conf = confirmationEmail({ ...baseConfirm, whatsapp: wa });
     expect(conf.html).toContain('wa.me');
-    expect(conf.html).toContain('#25D366');
+    expect(conf.html).toContain('#e7c687');
     expect(conf.text).toContain('WhatsApp: https://wa.me/306900000000');
     expect(Buffer.byteLength(conf.html, 'utf8')).toBeLessThan(102 * 1024);
     expect(Buffer.byteLength(conf.text, 'utf8')).toBeLessThan(102 * 1024);
