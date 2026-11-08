@@ -386,7 +386,10 @@
   .ep-sw-bar {
     flex-direction: column;
   }
-  .ep-sw-field--date {
+  .ep-sw-field--date,
+  .ep-sw-field--duration {
+    flex: 1 1 auto;
+    max-width: none;
     border-left: 0;
   }
   .ep-sw-field + .ep-sw-field {
