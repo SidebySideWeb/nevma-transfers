@@ -213,3 +213,7 @@ Zones get a display place for the expanding search widget. `zone_routes.featured
 ## 0034 — Staff save class rate (8 Nov 2026)
 
 `staff_save_class_rate(...)` — security definer RPC for the admin Rates / Hourly pages. Checks `is_staff()`, appends a `class_rates` row (never updates). Re-grants `select, insert` on `class_rates` to `authenticated`.
+
+## 0035 — Restore pricing RLS policies (8 Nov 2026)
+
+Recreates the 0025 staff policies on `class_rates`, `pricing_settings`, `pricing_periods`, and `pricing_areas`. Without them, RLS + `security_invoker` on `current_class_rates` / `current_pricing_settings` hid every row from the admin (Rates page always showed €0.00 / “Not priced yet” after a successful save).
