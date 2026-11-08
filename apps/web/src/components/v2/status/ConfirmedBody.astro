@@ -1,5 +1,5 @@
 ---
-import { formatEuro, formatVatRate } from '../../../lib/booking/pricing';
+import { formatEuro } from '../../../lib/booking/pricing';
 import { t } from '../../../lib/strings';
 
 interface Line {
@@ -18,8 +18,6 @@ interface Props {
   manageHref: string;
   calendarHref?: string;
   lines: Line[];
-  vatRateBp: number;
-  vatCents: number;
   totalCents: number;
   phone: string;
   emailContact: string;
@@ -36,8 +34,6 @@ const {
   manageHref,
   calendarHref,
   lines,
-  vatRateBp,
-  vatCents,
   totalCents,
   phone,
   emailContact,
@@ -128,10 +124,6 @@ const paidByParts = t('booking.confirmed.paidBy', { link: '___' }).split('___');
           </div>
         ))
       }
-      <div class="srow">
-        <span>VAT {formatVatRate(vatRateBp)}</span>
-        <span>{formatEuro(vatCents)}</span>
-      </div>
       <div class="scfd62">
         <span class="s276eb">{t('booking.total')}</span>
         <span class="s50d22">{formatEuro(totalCents)}</span>

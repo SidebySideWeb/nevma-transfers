@@ -1,5 +1,5 @@
 ---
-import { formatEuro, formatVatRate } from '../../../lib/booking/pricing';
+import { formatEuro } from '../../../lib/booking/pricing';
 import { t, type UiStringKey } from '../../../lib/strings';
 
 interface TimelineStep {
@@ -20,8 +20,6 @@ interface Props {
   photoUrl: string | null;
   typeLabel: string;
   baseCents: number;
-  vatRateBp: number;
-  vatCents: number;
   totalCents: number;
   reference: string;
   officeEmail: string;
@@ -41,8 +39,6 @@ const {
   photoUrl,
   typeLabel,
   baseCents,
-  vatRateBp,
-  vatCents,
   totalCents,
   reference,
   officeEmail,
@@ -105,10 +101,6 @@ const textKey = (key: string): UiStringKey =>
         <div class="srow">
           <span>{typeLabel}</span>
           <span>{formatEuro(baseCents)}</span>
-        </div>
-        <div class="srow">
-          <span>VAT {formatVatRate(vatRateBp)}</span>
-          <span>{formatEuro(vatCents)}</span>
         </div>
         <div class="scfd62">
           <span>{t('manage.paid')}</span>
