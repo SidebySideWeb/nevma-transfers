@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -124,7 +124,9 @@ describe('QuickBooking', () => {
     expect(see.getAttribute('href')).toContain('to=athens-centre');
     await user.click(screen.getByRole('button', { name: labels.hourly }));
     expect(screen.queryByRole('button', { name: /To/i })).toBeNull();
-    expect(screen.getByText('4')).toBeTruthy();
+    // Hours stepper shows 4; TimeField also has a hidden <option>4</option>, so don't use getByText('4').
+    const hours = screen.getByRole('group', { name: /Hours/i });
+    expect(within(hours).getByText('4')).toBeTruthy();
     expect(see.getAttribute('href')).toContain('type=hourly');
     expect(see.getAttribute('href')).toContain('hours=4');
     expect(see.getAttribute('href')).not.toContain('to=');
