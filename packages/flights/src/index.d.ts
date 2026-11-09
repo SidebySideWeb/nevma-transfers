@@ -12,6 +12,7 @@ export type FlightLookup = {
   origin?: string | null;
   originCountry?: string | null;
   schedArr?: string | null;
+  schedDep?: string | null;
   eta?: string | null;
   status?: FlightStatus | string;
   terminal?: string | null;
@@ -24,6 +25,8 @@ export type FlightProvider = {
   name: string;
   lookup(input: LookupInput): Promise<FlightLookup>;
 };
+
+export type FlightCheckPoint = { at: Date; kind: string };
 
 export function normalizeFlightNumber(raw: string | null | undefined): string;
 export function compactFlightNumber(raw: string | null | undefined): string;
@@ -52,12 +55,41 @@ export function pickupBufferMin(
   buffers?: { domestic?: number; international?: number },
 ): number;
 export function suggestedPickupAt(arrivalIso: string | Date, bufferMin: number): Date | null;
+
+export function planFlightChecks(input: {
+  bookedAt?: Date | string | null;
+  schedArr?: Date | string | null;
+  schedDep?: Date | string | null;
+  eta?: Date | string | null;
+  status?: string | null;
+  includeBookingCheck?: boolean;
+}): FlightCheckPoint[];
+
+export function computeNextFlightCheckAt(input: {
+  bookedAt?: Date | string | null;
+  schedArr?: Date | string | null;
+  schedDep?: Date | string | null;
+  eta?: Date | string | null;
+  status?: string | null;
+  after?: Date | string | null;
+  lastCheckedAt?: Date | string | null;
+  force?: boolean;
+  includeBookingCheck?: boolean;
+}): Date | null;
+
 export function shouldPollFlight(input: {
   flightStatus?: string | null;
-  arrivalAt: Date | string | null;
+  nextFlightCheckAt?: Date | string | null;
+  schedArr?: Date | string | null;
+  schedDep?: Date | string | null;
+  eta?: Date | string | null;
+  arrivalAt?: Date | string | null;
   lastCheckedAt?: Date | string | null;
+  bookedAt?: Date | string | null;
   now?: Date;
-}): { poll: boolean; reason?: string; intervalMin?: number };
+  force?: boolean;
+}): { poll: boolean; reason?: string; intervalMin?: number; nextAt?: string };
+
 export function etaMovedEnough(
   prevEta: string | Date | null | undefined,
   nextEta: string | Date | null | undefined,

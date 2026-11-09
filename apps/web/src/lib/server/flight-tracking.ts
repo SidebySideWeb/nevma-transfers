@@ -1,5 +1,6 @@
 import 'server-only';
 import {
+  computeNextFlightCheckAt,
   createFlightProvider,
   etaMovedEnough,
   normalizeFlightNumber,
@@ -12,6 +13,35 @@ import { features } from '@tem/features';
 import { BookingError } from '../booking/types';
 import { bookingDb } from './db';
 import { sendEmail } from './email';
+
+function nextCheckIso(input: {
+  bookedAt: Date | string;
+  result: FlightLookup;
+  lastCheckedAt: Date | string;
+  force?: boolean;
+}): string | null {
+  const status = (input.result.status || '').toLowerCase();
+  if (status === 'landed' || status === 'cancelled') return null;
+  const next = computeNextFlightCheckAt({
+    bookedAt: input.bookedAt,
+    schedArr: input.result.schedArr,
+    schedDep: input.result.schedDep,
+    eta: input.result.eta || input.result.schedArr,
+    status: input.result.status,
+    after: input.lastCheckedAt,
+    lastCheckedAt: input.lastCheckedAt,
+    force: input.force,
+    includeBookingCheck: false,
+  });
+  return next ? next.toISOString() : null;
+}
+
+async function setNextFlightCheck(bookingId: string, nextIso: string | null): Promise<void> {
+  await bookingDb().query(
+    `update public.bookings set next_flight_check_at = $2::timestamptz where id = $1::uuid`,
+    [bookingId, nextIso],
+  );
+}
 
 type FlightSettings = {
   bufferDomestic: number;
@@ -35,7 +65,8 @@ async function flightSettings(): Promise<FlightSettings> {
     bufferDomestic: Number(map.get('flight_buffer_domestic_min') ?? 15) || 15,
     bufferInternational: Number(map.get('flight_buffer_international_min') ?? 30) || 30,
     dailyCallCap: Number(map.get('flight_daily_call_cap') ?? 200) || 200,
-    emailCustomer: map.get('email_customer_on_flight_change') === true,
+    // Default on: only an explicit false in settings opts out.
+    emailCustomer: map.get('email_customer_on_flight_change') !== false,
   };
 }
 
@@ -116,14 +147,23 @@ export async function applyFlightLookupToBooking(
     flight_status: string | null;
     pickup_at: Date;
     customer_email: string;
+    created_at: Date;
   }>(
-    `select reference, flight_number, flight_eta, flight_sched_arr, flight_status, pickup_at, customer_email
+    `select reference, flight_number, flight_eta, flight_sched_arr, flight_status, pickup_at,
+            customer_email, created_at
        from public.bookings where id = $1::uuid`,
     [bookingId],
   );
   const b = before[0];
   if (!b) return { shifted: false };
   const flightLabel = normalizeFlightNumber(b.flight_number) || b.flight_number || 'flight';
+
+  const checkedAt = new Date();
+  const nextIso = nextCheckIso({
+    bookedAt: b.created_at,
+    result,
+    lastCheckedAt: checkedAt,
+  });
 
   await bookingDb().query(
     `update public.bookings set
@@ -133,7 +173,8 @@ export async function applyFlightLookupToBooking(
        flight_terminal = coalesce($5, flight_terminal),
        flight_origin = coalesce($6, flight_origin),
        flight_airline = coalesce($7, flight_airline),
-       flight_checked_at = now()
+       flight_checked_at = $8::timestamptz,
+       next_flight_check_at = $9::timestamptz
      where id = $1::uuid`,
     [
       bookingId,
@@ -143,6 +184,8 @@ export async function applyFlightLookupToBooking(
       result.terminal,
       result.origin,
       result.airline,
+      checkedAt.toISOString(),
+      nextIso,
     ],
   );
 
@@ -153,15 +196,29 @@ export async function applyFlightLookupToBooking(
       bookingId,
       result.status || null,
       result.eta,
-      JSON.stringify(result.raw ?? {}),
+      JSON.stringify({ ...(result.raw as object | null), schedDep: result.schedDep ?? null }),
       source,
     ],
   );
 
   const status = (result.status || '').toLowerCase();
-  if (status === 'cancelled' || status === 'diverted') {
+  if (status === 'cancelled' || status === 'diverted' || status === 'landed') {
+    if (status === 'landed') {
+      await setNextFlightCheck(bookingId, null);
+      return { shifted: false };
+    }
+    await setNextFlightCheck(bookingId, null);
     const alert = `Flight ${flightLabel} ${status}: ${b.reference}. Do not move the booking automatically.`;
     await emailOffice(alert, b.reference);
+    await emailCustomerFlightChange({
+      to: b.customer_email,
+      enabled: fs.emailCustomer,
+      reference: b.reference,
+      subject: `Flight ${status} · ${b.reference}`,
+      text: `Your flight ${flightLabel} is marked ${status}. Your pick-up time is unchanged for now — our office will contact you. Reference ${b.reference}.`,
+      html: `<p>Your flight <strong>${flightLabel}</strong> is marked <strong>${status}</strong>.</p><p>Your pick-up time is unchanged for now — our office will contact you.</p><p>Reference ${b.reference}.</p>`,
+      tag: 'flight_status',
+    });
     return { shifted: false, alert };
   }
 
@@ -184,6 +241,15 @@ export async function applyFlightLookupToBooking(
   if (!shift?.ok) {
     const alert = `Flight ${flightLabel} delay conflict for ${b.reference}: could not move pick-up (${shift?.reason || 'unknown'}).`;
     await emailOffice(alert, b.reference);
+    await emailCustomerFlightChange({
+      to: b.customer_email,
+      enabled: fs.emailCustomer,
+      reference: b.reference,
+      subject: `Flight delay · ${b.reference}`,
+      text: `Your flight ${flightLabel} is delayed, but we could not automatically move your pick-up. Our office will contact you shortly. Reference ${b.reference}.`,
+      html: `<p>Your flight <strong>${flightLabel}</strong> is delayed, but we could not automatically move your pick-up.</p><p>Our office will contact you shortly.</p><p>Reference ${b.reference}.</p>`,
+      tag: 'flight_conflict',
+    });
     return { shifted: false, conflict: true, alert };
   }
 
@@ -192,16 +258,15 @@ export async function applyFlightLookupToBooking(
   const alert = `Flight ${flightLabel} delayed: pick-up moved ${prev} → ${next}, ${b.reference}`;
   await emailOffice(alert, b.reference);
 
-  if (fs.emailCustomer && b.customer_email) {
-    await sendEmail({
-      to: b.customer_email,
-      subject: `Pick-up time updated · ${b.reference}`,
-      text: `Your pick-up time moved from ${prev} to ${next} (Athens) because of a flight delay. Reference ${b.reference}.`,
-      html: `<p>Your pick-up time moved from <strong>${prev}</strong> to <strong>${next}</strong> (Athens) because of a flight delay.</p><p>Reference ${b.reference}.</p>`,
-      tag: 'flight_shift',
-      reference: b.reference,
-    }).catch(() => undefined);
-  }
+  await emailCustomerFlightChange({
+    to: b.customer_email,
+    enabled: fs.emailCustomer,
+    reference: b.reference,
+    subject: `Pick-up time updated · ${b.reference}`,
+    text: `Your pick-up time moved from ${prev} to ${next} (Athens) because of a flight delay. Reference ${b.reference}.`,
+    html: `<p>Your pick-up time moved from <strong>${prev}</strong> to <strong>${next}</strong> (Athens) because of a flight delay.</p><p>Reference ${b.reference}.</p>`,
+    tag: 'flight_shift',
+  });
 
   if (features().drivers) {
     try {
@@ -249,6 +314,34 @@ async function emailOffice(text: string, reference: string): Promise<void> {
   });
 }
 
+async function emailCustomerFlightChange(input: {
+  to: string | null | undefined;
+  enabled: boolean;
+  reference: string;
+  subject: string;
+  text: string;
+  html: string;
+  tag: string;
+}): Promise<void> {
+  if (!input.enabled || !input.to?.trim()) return;
+  await sendEmail({
+    to: input.to.trim(),
+    subject: input.subject,
+    text: input.text,
+    html: input.html,
+    tag: input.tag,
+    reference: input.reference,
+  }).catch((e) => {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        code: 'flight_customer_email_failed',
+        detail: e instanceof Error ? e.message.slice(0, 120) : 'unknown',
+      }),
+    );
+  });
+}
+
 /** Cron: poll active flight bookings in the next 24 h. */
 export async function runFlightCron(now = new Date()): Promise<{
   checked: number;
@@ -276,18 +369,20 @@ export async function runFlightCron(now = new Date()): Promise<{
     flight_eta: Date | null;
     flight_sched_arr: Date | null;
     flight_checked_at: Date | null;
+    next_flight_check_at: Date | null;
     pickup_at: Date;
   }>(
     `select id, flight_number, flight_date::text, flight_status, flight_eta, flight_sched_arr,
-            flight_checked_at, pickup_at
+            flight_checked_at, next_flight_check_at, pickup_at
        from public.bookings
       where flight_number is not null and trim(flight_number) <> ''
         and status not in ('cancelled', 'expired', 'completed')
-        and pickup_at <= $1::timestamptz
-        and pickup_at >= $2::timestamptz
-      order by pickup_at asc
+        and next_flight_check_at is not null
+        and next_flight_check_at <= $1::timestamptz
+        and coalesce(flight_status, '') not in ('landed', 'cancelled')
+      order by next_flight_check_at asc
       limit 100`,
-    [new Date(now.getTime() + 24 * 3600_000).toISOString(), now.toISOString()],
+    [now.toISOString()],
   );
 
   let checked = 0;
@@ -296,10 +391,12 @@ export async function runFlightCron(now = new Date()): Promise<{
   const prov = provider();
 
   for (const row of rows) {
-    const arrival = row.flight_eta || row.flight_sched_arr || row.pickup_at;
     const decision = shouldPollFlight({
       flightStatus: row.flight_status,
-      arrivalAt: arrival,
+      nextFlightCheckAt: row.next_flight_check_at,
+      arrivalAt: row.flight_eta || row.flight_sched_arr || row.pickup_at,
+      schedArr: row.flight_sched_arr,
+      eta: row.flight_eta,
       lastCheckedAt: row.flight_checked_at,
       now,
     });
@@ -372,6 +469,7 @@ export async function checkBookingFlightNow(bookingId: string): Promise<{
   const date =
     b.flight_date ||
     new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }).format(new Date(b.pickup_at));
+  // Check now: bypass the 30-minute cooldown.
   const result = await provider().lookup({ number: b.flight_number, date });
   const apply = await applyFlightLookupToBooking(bookingId, result, provider().name);
   return { result, apply };
@@ -409,13 +507,27 @@ export async function manualSetDelay(
   const newPickup = suggestedPickupAt(eta, buffer);
   if (!newPickup) return { shifted: false };
 
+  const checkedAt = new Date();
+  const nextIso = nextCheckIso({
+    bookedAt: checkedAt,
+    result: {
+      found: true,
+      status: 'delayed',
+      eta,
+      schedArr: eta,
+      schedDep: null,
+    },
+    lastCheckedAt: checkedAt,
+    force: true,
+  });
   await bookingDb().query(
     `update public.bookings set
        flight_status = 'delayed',
        flight_eta = $2::timestamptz,
-       flight_checked_at = now()
+       flight_checked_at = $3::timestamptz,
+       next_flight_check_at = $4::timestamptz
      where id = $1::uuid`,
-    [bookingId, eta],
+    [bookingId, eta, checkedAt.toISOString(), nextIso],
   );
   await bookingDb().query(
     `insert into public.flight_events (booking_id, status, eta, raw, source)
@@ -430,21 +542,39 @@ export async function manualSetDelay(
     newPickup.toISOString(),
   ]);
   const shift = shiftRows[0]?.j;
-  if (!shift?.ok) {
-    const alert = `Flight delay conflict for ${b.reference}: could not move pick-up (${shift?.reason || 'unknown'}).`;
-    await emailOffice(alert, b.reference);
-    return { shifted: false, conflict: true, alert };
-  }
-  const prev = formatAthensHm(shift.previous_pickup_at || b.pickup_at);
-  const next = formatAthensHm(shift.pickup_at || newPickup);
   const { rows: numRows } = await bookingDb().query<{ flight_number: string | null }>(
     `select flight_number from public.bookings where id = $1::uuid`,
     [bookingId],
   );
   const flightLabel =
     normalizeFlightNumber(numRows[0]?.flight_number) || numRows[0]?.flight_number || 'flight';
+  if (!shift?.ok) {
+    const alert = `Flight delay conflict for ${b.reference}: could not move pick-up (${shift?.reason || 'unknown'}).`;
+    await emailOffice(alert, b.reference);
+    await emailCustomerFlightChange({
+      to: b.customer_email,
+      enabled: fs.emailCustomer,
+      reference: b.reference,
+      subject: `Flight delay · ${b.reference}`,
+      text: `Your flight ${flightLabel} is delayed, but we could not automatically move your pick-up. Our office will contact you shortly. Reference ${b.reference}.`,
+      html: `<p>Your flight <strong>${flightLabel}</strong> is delayed, but we could not automatically move your pick-up.</p><p>Our office will contact you shortly.</p><p>Reference ${b.reference}.</p>`,
+      tag: 'flight_conflict',
+    });
+    return { shifted: false, conflict: true, alert };
+  }
+  const prev = formatAthensHm(shift.previous_pickup_at || b.pickup_at);
+  const next = formatAthensHm(shift.pickup_at || newPickup);
   const alert = `Flight ${flightLabel} delayed: pick-up moved ${prev} → ${next}, ${b.reference}`;
   await emailOffice(alert, b.reference);
+  await emailCustomerFlightChange({
+    to: b.customer_email,
+    enabled: fs.emailCustomer,
+    reference: b.reference,
+    subject: `Pick-up time updated · ${b.reference}`,
+    text: `Your pick-up time moved from ${prev} to ${next} (Athens) because of a flight delay. Reference ${b.reference}.`,
+    html: `<p>Your pick-up time moved from <strong>${prev}</strong> to <strong>${next}</strong> (Athens) because of a flight delay.</p><p>Reference ${b.reference}.</p>`,
+    tag: 'flight_shift',
+  });
   if (features().drivers) {
     try {
       const { internalDriverNotify } = await import('./driver-notify');
@@ -467,13 +597,30 @@ export async function stampFlightAtBooking(
   const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }).format(
     new Date(pickupAt),
   );
+  const bookedAt = new Date();
   await bookingDb().query(
     `update public.bookings set flight_number = $2, flight_date = $3::date where id = $1::uuid`,
     [bookingId, number, date],
   );
   try {
     const result = await provider().lookup({ number, date });
-    if (!result.found) return;
+    if (!result.found) {
+      // Still schedule from pick-up as a stand-in arrival so cron can retry later.
+      const fallbackArr = new Date(pickupAt).toISOString();
+      const nextIso = nextCheckIso({
+        bookedAt,
+        result: { found: false, status: 'unknown', schedArr: fallbackArr, eta: fallbackArr },
+        lastCheckedAt: bookedAt,
+      });
+      await setNextFlightCheck(bookingId, nextIso);
+      return;
+    }
+    const checkedAt = new Date();
+    const nextIso = nextCheckIso({
+      bookedAt,
+      result,
+      lastCheckedAt: checkedAt,
+    });
     await bookingDb().query(
       `update public.bookings set
          flight_status = $2,
@@ -482,7 +629,8 @@ export async function stampFlightAtBooking(
          flight_terminal = $5,
          flight_origin = $6,
          flight_airline = $7,
-         flight_checked_at = now()
+         flight_checked_at = $8::timestamptz,
+         next_flight_check_at = $9::timestamptz
        where id = $1::uuid`,
       [
         bookingId,
@@ -492,6 +640,8 @@ export async function stampFlightAtBooking(
         result.terminal,
         result.origin,
         result.airline,
+        checkedAt.toISOString(),
+        nextIso,
       ],
     );
     await bookingDb().query(
@@ -501,7 +651,7 @@ export async function stampFlightAtBooking(
         bookingId,
         result.status || null,
         result.eta || result.schedArr,
-        JSON.stringify(result.raw ?? {}),
+        JSON.stringify({ ...(result.raw as object | null), schedDep: result.schedDep ?? null }),
         provider().name,
       ],
     );

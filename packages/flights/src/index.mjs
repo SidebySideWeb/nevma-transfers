@@ -8,8 +8,10 @@ export {
 } from './adapters.mjs';
 export { parseAerodatabox, parseFlightaware, parseManual } from './parse.mjs';
 export {
+  computeNextFlightCheckAt,
   etaMovedEnough,
   pickupBufferMin,
+  planFlightChecks,
   shouldPollFlight,
   suggestedPickupAt,
 } from './polling.mjs';

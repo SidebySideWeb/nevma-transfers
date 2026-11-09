@@ -1,6 +1,6 @@
 /**
  * Provider response → normalised lookup result. Keep parsing here with fixtures.
- * @typedef {{ found: boolean, airline?: string|null, origin?: string|null, originCountry?: string|null, schedArr?: string|null, eta?: string|null, status?: string, terminal?: string|null, raw?: unknown }} FlightLookup
+ * @typedef {{ found: boolean, airline?: string|null, origin?: string|null, originCountry?: string|null, schedArr?: string|null, schedDep?: string|null, eta?: string|null, status?: string, terminal?: string|null, raw?: unknown }} FlightLookup
  */
 
 const ADB_STATUS = {
@@ -59,6 +59,11 @@ export function parseAerodatabox(body) {
     arrival.scheduledTimeUtc ||
     arrival.scheduledTimeLocal ||
     null;
+  const schedDep =
+    departure.scheduledTime?.utc ||
+    departure.scheduledTimeUtc ||
+    departure.scheduledTimeLocal ||
+    null;
   const eta =
     arrival.revisedTime?.utc ||
     arrival.predictedTime?.utc ||
@@ -72,6 +77,7 @@ export function parseAerodatabox(body) {
     origin: departure.airport?.iata || departure.airport?.icao || null,
     originCountry: departure.airport?.countryCode || departure.airport?.country?.code || null,
     schedArr: isoOrNull(sched),
+    schedDep: isoOrNull(schedDep),
     eta: isoOrNull(eta),
     status,
     terminal: arrival.terminal || null,
@@ -108,7 +114,8 @@ export function parseFlightaware(body, dateYmd) {
           ? 'landed'
           : 'scheduled');
 
-  const sched = f.scheduled_on || f.scheduled_in || f.scheduled_off || null;
+  const sched = f.scheduled_on || f.scheduled_in || null;
+  const schedDep = f.scheduled_off || f.scheduled_out || null;
   const eta = f.estimated_on || f.estimated_in || f.actual_on || f.actual_in || sched;
 
   return {
@@ -117,6 +124,7 @@ export function parseFlightaware(body, dateYmd) {
     origin: f.origin?.code_iata || f.origin?.code || f.origin?.code_icao || null,
     originCountry: f.origin?.timezone?.includes('/') ? null : f.origin?.country || null,
     schedArr: isoOrNull(sched),
+    schedDep: isoOrNull(schedDep),
     eta: isoOrNull(eta),
     status,
     terminal: f.terminal_destination || f.gate_destination || null,
@@ -131,6 +139,7 @@ export function parseManual() {
     origin: null,
     originCountry: null,
     schedArr: null,
+    schedDep: null,
     eta: null,
     status: 'unknown',
     terminal: null,

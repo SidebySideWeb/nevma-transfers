@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import {
   compactFlightNumber,
+  computeNextFlightCheckAt,
   createFlightProvider,
   createManualAdapter,
   etaMovedEnough,
@@ -13,6 +14,7 @@ import {
   parseFlightaware,
   parseManual,
   pickupBufferMin,
+  planFlightChecks,
   shouldPollFlight,
   suggestedPickupAt,
 } from '../src/index.mjs';
@@ -39,6 +41,7 @@ describe('provider parsing fixtures', () => {
     assert.equal(r.originCountry, 'GR');
     assert.equal(r.terminal, '1');
     assert.equal(r.schedArr, '2026-11-08T16:30:00.000Z');
+    assert.equal(r.schedDep, '2026-11-08T15:20:00.000Z');
     assert.equal(r.eta, '2026-11-08T17:10:00.000Z');
   });
 
@@ -65,39 +68,136 @@ describe('provider parsing fixtures', () => {
   });
 });
 
-describe('polling schedule', () => {
-  it('skips landed; 30 min then 10 min intervals', () => {
-    assert.equal(shouldPollFlight({ flightStatus: 'landed', arrivalAt: new Date() }).poll, false);
+describe('event flight check schedule', () => {
+  const bookedAt = '2026-11-01T10:00:00Z';
+  // Arr 18:00, dep 12:00 → dep+30m is far from arr−6h (12:00), so check 3 is kept.
+  // For the on-time 4-call case, put dep close to arr−6h so check 3 is skipped.
+  const schedArr = '2026-11-08T18:00:00Z';
+  const schedDepNear = '2026-11-08T11:45:00Z'; // +30m = 12:15; arr−6h = 12:00 → within 1h → skip
+  const schedDepFar = '2026-11-08T10:00:00Z'; // +30m = 10:30; far from 12:00
 
-    const arrival = new Date('2026-11-08T18:00:00Z');
-    const far = new Date(arrival.getTime() - 5 * 3600_000);
-    const near = new Date(arrival.getTime() - 2 * 3600_000);
+  it('on-time flight makes 4 provider calls (dep+30 skipped when near arr−6h)', () => {
+    const base = {
+      bookedAt,
+      schedArr,
+      schedDep: schedDepNear,
+      eta: schedArr,
+      status: 'scheduled',
+    };
+    const kinds = ['booking'];
+    let lastChecked = new Date(bookedAt);
+    let status = 'scheduled';
+    for (let i = 0; i < 10; i++) {
+      const next = computeNextFlightCheckAt({
+        ...base,
+        status,
+        after: lastChecked,
+        lastCheckedAt: lastChecked,
+        includeBookingCheck: false,
+      });
+      if (!next) break;
+      const plan = planFlightChecks({ ...base, status, includeBookingCheck: false });
+      const hit = plan.find((p) => p.at.getTime() > lastChecked.getTime());
+      assert.ok(hit, 'expected a planned check after lastChecked');
+      kinds.push(hit.kind);
+      lastChecked = hit.at;
+      if (hit.kind === 'eta_plus_10m') status = 'landed';
+    }
+    assert.deepEqual(kinds, ['booking', 'arr_minus_6h', 'eta_minus_60m', 'eta_plus_10m']);
+    assert.equal(kinds.length, 4);
+  });
 
-    const a = shouldPollFlight({
-      flightStatus: 'scheduled',
-      arrivalAt: arrival,
-      lastCheckedAt: null,
-      now: far,
+  it('90 min delay moves checks 4 and 5 with the new ETA', () => {
+    const onTime = planFlightChecks({
+      bookedAt,
+      schedArr,
+      schedDep: schedDepFar,
+      eta: schedArr,
+      status: 'delayed',
+      includeBookingCheck: false,
     });
-    assert.equal(a.poll, true);
-    assert.equal(a.intervalMin, 30);
-
-    const b = shouldPollFlight({
-      flightStatus: 'delayed',
-      arrivalAt: arrival,
-      lastCheckedAt: new Date(far.getTime() - 5 * 60_000),
-      now: far,
+    const delayedEta = '2026-11-08T19:30:00Z'; // +90 min
+    const delayed = planFlightChecks({
+      bookedAt,
+      schedArr,
+      schedDep: schedDepFar,
+      eta: delayedEta,
+      status: 'delayed',
+      includeBookingCheck: false,
     });
-    assert.equal(b.poll, false);
+    const onTime4 = onTime.find((c) => c.kind === 'eta_minus_60m');
+    const onTime5 = onTime.find((c) => c.kind === 'eta_plus_10m');
+    const d4 = delayed.find((c) => c.kind === 'eta_minus_60m');
+    const d5 = delayed.find((c) => c.kind === 'eta_plus_10m');
+    assert.ok(onTime4 && onTime5 && d4 && d5);
+    assert.equal(d4.at.getTime() - onTime4.at.getTime(), 90 * 60_000);
+    assert.equal(d5.at.getTime() - onTime5.at.getTime(), 90 * 60_000);
+  });
 
-    const c = shouldPollFlight({
-      flightStatus: 'delayed',
-      arrivalAt: arrival,
-      lastCheckedAt: null,
-      now: near,
+  it('cancelled flight stops after the check that sees it', () => {
+    const next = computeNextFlightCheckAt({
+      bookedAt,
+      schedArr,
+      schedDep: schedDepFar,
+      eta: schedArr,
+      status: 'cancelled',
+      after: bookedAt,
+      lastCheckedAt: bookedAt,
     });
-    assert.equal(c.poll, true);
-    assert.equal(c.intervalMin, 10);
+    assert.equal(next, null);
+    assert.equal(
+      shouldPollFlight({
+        flightStatus: 'cancelled',
+        nextFlightCheckAt: '2026-11-08T12:00:00Z',
+        now: new Date('2026-11-08T12:05:00Z'),
+      }).poll,
+      false,
+    );
+  });
+
+  it('respects 30 min cooldown unless force (Check now)', () => {
+    const now = new Date('2026-11-08T12:00:00Z');
+    const due = '2026-11-08T12:00:00Z';
+    const recent = '2026-11-08T11:45:00Z';
+    assert.equal(
+      shouldPollFlight({
+        flightStatus: 'scheduled',
+        nextFlightCheckAt: due,
+        lastCheckedAt: recent,
+        now,
+      }).poll,
+      false,
+    );
+    assert.equal(
+      shouldPollFlight({
+        flightStatus: 'scheduled',
+        nextFlightCheckAt: due,
+        lastCheckedAt: recent,
+        now,
+        force: true,
+      }).poll,
+      true,
+    );
+  });
+
+  it('cron due when next_flight_check_at <= now', () => {
+    assert.equal(
+      shouldPollFlight({
+        flightStatus: 'scheduled',
+        nextFlightCheckAt: '2026-11-08T11:50:00Z',
+        lastCheckedAt: '2026-11-08T10:00:00Z',
+        now: new Date('2026-11-08T12:00:00Z'),
+      }).poll,
+      true,
+    );
+    assert.equal(
+      shouldPollFlight({
+        flightStatus: 'landed',
+        nextFlightCheckAt: '2026-11-08T11:50:00Z',
+        now: new Date('2026-11-08T12:00:00Z'),
+      }).poll,
+      false,
+    );
   });
 });
 

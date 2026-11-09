@@ -4,7 +4,8 @@
     "status": 7,
     "airline": { "name": "Aegean Airlines", "iata": "A3", "icao": "AEE" },
     "departure": {
-      "airport": { "iata": "SKG", "icao": "LGTS", "countryCode": "GR" }
+      "airport": { "iata": "SKG", "icao": "LGTS", "countryCode": "GR" },
+      "scheduledTimeUtc": "2026-11-08T15:20:00Z"
     },
     "arrival": {
       "airport": { "iata": "ATH", "icao": "LGAV" },
