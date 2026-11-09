@@ -8,6 +8,7 @@ import {
 import { DOW, MONTHS, isoToDdMmYyyy, monthCells, toIso } from '../v2/DateField';
 import { postJson, type PlaceValue } from './AddressField';
 import { formatEuroV2 } from './format';
+import { PlaceKindIcon } from './PlaceKindIcon';
 import type { DetailsState, SearchState } from './types';
 import './SearchWidget.css';
 
@@ -18,7 +19,7 @@ export type FeaturedPlace = {
   placeId: string;
   lat: number;
   lng: number;
-  /** airport | port | station | hotel | area */
+  /** airport | port | station | landmark | square | hotel | venue | area */
   kind: string;
 };
 export type FeaturedRoute = {
@@ -113,10 +114,15 @@ export type SearchWidgetProps = {
 
 type Field = 'pickup' | 'dropoff' | 'date' | 'time' | 'duration' | 'flight';
 type Pt = { text: string; place: PlaceValue; zone: string | null; kind: string | null; typed: boolean };
-type Suggestion = { placeId: string; label: string; main: string; secondary: string };
+type Suggestion = {
+  placeId: string;
+  label?: string;
+  main: string;
+  secondary: string;
+  kind?: string;
+};
 type Item = { disabled?: boolean; pick: () => void };
 
-const ICON: Record<string, string> = { airport: '✈', port: '⚓', station: '🚆', hotel: '🏨' };
 const TIMES = Array.from({ length: 144 }, (_, i) => {
   const m = i * 10;
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
@@ -249,6 +255,8 @@ export function SearchWidget(props: SearchWidgetProps) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [pinnedPlaces, setPinnedPlaces] = useState<FeaturedPlace[]>([]);
+  const pinnedFetched = useRef(false);
   const [outOfArea, setOutOfArea] = useState<'pickup' | 'dropoff' | null>(null);
   const [fetchedRoutes, setFetchedRoutes] = useState<FeaturedRoute[]>([]);
   const [view, setView] = useState<{ y: number; m: number } | null>(null);
@@ -311,13 +319,19 @@ export function SearchWidget(props: SearchWidgetProps) {
 
   const pickupZone =
     pickup.zone ?? routes.find((r) => r.from.placeId && r.from.placeId === pickup.place?.placeId)?.from.code ?? null;
-  /** Unique zone anchors for the focused field (from featured routes). */
+  /** Unique zone anchors for the focused field (pinned public places first, then featured routes). */
   const shownZones: FeaturedPlace[] = useMemo(() => {
     if (type !== 'transfer') return [];
     const byCode = new Map<string, FeaturedPlace>();
     const add = (p: FeaturedPlace) => {
       if (p.code && p.placeId && !byCode.has(p.code)) byCode.set(p.code, p);
     };
+    // Empty field: pinned library places (airport, Piraeus, Acropolis, Sounio, Syntagma).
+    const fieldEmpty =
+      (focus === 'pickup' && !pickup.text.trim()) || (focus === 'dropoff' && !dropoff.text.trim());
+    if (fieldEmpty) {
+      for (const p of pinnedPlaces) add(p);
+    }
     if (focus === 'dropoff' && pickupZone) {
       for (const r of routes) if (r.from.code === pickupZone) add(r.to);
     } else if (focus === 'dropoff') {
@@ -329,7 +343,7 @@ export function SearchWidget(props: SearchWidgetProps) {
       }
     }
     return [...byCode.values()];
-  }, [type, focus, routes, pickupZone]);
+  }, [type, focus, routes, pickupZone, pinnedPlaces, pickup.text, dropoff.text]);
   /** Full A→B rows only when both ends are still empty (quick fill). */
   const shownRoutes =
     type !== 'transfer'
@@ -373,6 +387,23 @@ export function SearchWidget(props: SearchWidgetProps) {
       })
       .catch(() => {});
   }, [open, props.routes, routesUrl]);
+
+  useEffect(() => {
+    if (!open || !addressAutocomplete || pinnedFetched.current) return;
+    pinnedFetched.current = true;
+    fetch('/api/places/pinned', { headers: { accept: 'application/json' }, credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const list = Array.isArray(d?.places) ? d.places : [];
+        setPinnedPlaces(
+          list.filter(
+            (p: FeaturedPlace) =>
+              p && typeof p.placeId === 'string' && typeof p.name === 'string' && p.lat != null,
+          ),
+        );
+      })
+      .catch(() => {});
+  }, [open, addressAutocomplete]);
 
   // ---- actions ----
   const enter = (f: Field) => {
@@ -418,7 +449,10 @@ export function SearchWidget(props: SearchWidgetProps) {
       }
       kind = c.ok ? (c.data.kind ?? null) : null;
     }
-    setPt(f, emptyPt(sug.label || (d.ok ? d.data.address : ''), place, kind));
+    setPt(
+      f,
+      emptyPt(sug.label || sug.main || (d.ok ? d.data.address : ''), place, sug.kind ?? kind),
+    );
     setOutOfArea(null);
     setSuggestions([]);
     advance(f);
@@ -426,7 +460,8 @@ export function SearchWidget(props: SearchWidgetProps) {
   const placePt = (p: FeaturedPlace): Pt => ({
     text: p.address || p.name,
     place: { placeId: p.placeId, lat: p.lat, lng: p.lng },
-    zone: p.code,
+    // Zone codes (ath-airport); saved-place pins use a uuid id — never send that as a zone.
+    zone: /^[0-9a-f-]{36}$/i.test(p.code) ? null : p.code,
     kind: p.kind,
     typed: false,
   });
@@ -709,7 +744,7 @@ export function SearchWidget(props: SearchWidgetProps) {
                 <li key={z.code} role="presentation">
                   <button type="button" className="ep-sw-opt" {...pick(i)}>
                     <span className="ep-sw-ico" aria-hidden="true">
-                      {ICON[z.kind] ?? '📍'}
+                      <PlaceKindIcon kind={z.kind} />
                     </span>
                     <span className="ep-sw-main">{z.name}</span>
                   </button>
@@ -731,7 +766,7 @@ export function SearchWidget(props: SearchWidgetProps) {
                 <li key={`${r.from.code}-${r.to.code}`} role="presentation">
                   <button type="button" className="ep-sw-opt" {...pick(shownZones.length + i)}>
                     <span className="ep-sw-ico" aria-hidden="true">
-                      {ICON[r.from.kind] ?? '📍'}
+                      <PlaceKindIcon kind={r.from.kind} />
                     </span>
                     <span className="ep-sw-main">
                       {r.from.name} → {r.to.name}
@@ -757,7 +792,7 @@ export function SearchWidget(props: SearchWidgetProps) {
             <li key={sg.placeId} role="presentation">
               <button type="button" className="ep-sw-opt" {...pick(i)}>
                 <span className="ep-sw-ico" aria-hidden="true">
-                  📍
+                  <PlaceKindIcon kind={sg.kind} />
                 </span>
                 <span className="ep-sw-main">
                   {sg.main}

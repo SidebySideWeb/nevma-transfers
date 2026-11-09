@@ -44,6 +44,7 @@ import type { Json } from '../lib/database.types';
 import { createSupabaseServerClient } from '../lib/supabase';
 import { athensLocalToInstant } from '../lib/time';
 import { signWithEnv } from '../lib/signing';
+import { PUBLIC_PLACE_KINDS } from '../lib/place-kinds';
 
 function requireStaff(locals: App.Locals) {
   if (!locals.staff) {
@@ -2494,6 +2495,88 @@ export const server = {
           .eq('key', r.key);
         if (error) throw new ActionError({ code: 'BAD_REQUEST', message: error.message });
       }
+      return { ok: true };
+    },
+  }),
+
+  // ---------------------------------------------------------------------------
+  // B11b: public places library (saved_places)
+  // ---------------------------------------------------------------------------
+  saveSavedPlace: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid(),
+      label: z.string().trim().min(1).max(200),
+      kind: z.enum([...PUBLIC_PLACE_KINDS, 'address']),
+      pinned: z.string().optional(),
+      hidden: z.string().optional(),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!features().places) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      // saved_places: 0037 — until Database types include it.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const db = supabase as any;
+      const { data: cur } = await db.from('saved_places').select('is_public').eq('id', input.id).maybeSingle();
+      if (cur?.is_public && input.kind === 'address') {
+        throw new ActionError({
+          code: 'BAD_REQUEST',
+          message: 'Public places need a type other than address.',
+        });
+      }
+      const { error } = await db
+        .from('saved_places')
+        .update({
+          label: input.label,
+          kind: input.kind,
+          pinned: input.pinned === 'true' || input.pinned === 'on',
+          hidden: input.hidden === 'true' || input.hidden === 'on',
+        })
+        .eq('id', input.id);
+      if (error) throwDb(error);
+      return { ok: true };
+    },
+  }),
+
+  makePlacePublic: defineAction({
+    accept: 'form',
+    input: z.object({
+      id: z.string().uuid(),
+      kind: z.enum(PUBLIC_PLACE_KINDS),
+    }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!features().places) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      // Set kind + public in one update so address→public never violates the check.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('saved_places')
+        .update({
+          kind: input.kind,
+          is_public: true,
+          source: 'office',
+        })
+        .eq('id', input.id);
+      if (error) throwDb(error);
+      return { ok: true };
+    },
+  }),
+
+  makePlacePrivate: defineAction({
+    accept: 'form',
+    input: z.object({ id: z.string().uuid() }),
+    async handler(input, ctx) {
+      requireStaff(ctx.locals);
+      if (!features().places) throw new ActionError({ code: 'NOT_FOUND', message: 'Not found' });
+      const supabase = createSupabaseServerClient(ctx.cookies);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('saved_places')
+        .update({ is_public: false, pinned: false })
+        .eq('id', input.id);
+      if (error) throwDb(error);
       return { ok: true };
     },
   }),

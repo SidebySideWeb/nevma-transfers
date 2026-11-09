@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node run-tests.mjs",
-    "import:feed": "node scripts/import-fleet-feed.mjs --file ../../data/fleet-feed.json"
+    "import:feed": "node scripts/import-fleet-feed.mjs --file ../../data/fleet-feed.json",
+    "seed:places": "node scripts/seed-public-places.mjs"
   },
   "devDependencies": {
     "pg": "^8.16.0"

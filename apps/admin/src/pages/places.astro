@@ -1,0 +1,203 @@
+---
+export const prerender = false;
+
+import { actions } from 'astro:actions';
+import { features } from '@tem/features';
+import AdminLayout from '../layouts/AdminLayout.astro';
+import { PUBLIC_PLACE_KINDS, PUBLIC_PLACE_KIND_LABELS } from '../lib/place-kinds';
+import { createSupabaseServerClient } from '../lib/supabase';
+
+if (!features().places) {
+  return new Response(null, { status: 404, statusText: 'Not Found' });
+}
+
+const staff = Astro.locals.staff!;
+const supabase = createSupabaseServerClient(Astro.cookies);
+
+function actionErr(result: { error?: { message?: string } | Error } | undefined): string | null {
+  if (!result || !('error' in result) || !result.error) return null;
+  const e = result.error;
+  return typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
+}
+
+const pageError =
+  actionErr(Astro.getActionResult?.(actions.saveSavedPlace)) ||
+  actionErr(Astro.getActionResult?.(actions.makePlacePublic)) ||
+  actionErr(Astro.getActionResult?.(actions.makePlacePrivate));
+
+const filter = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 80);
+const tab = Astro.url.searchParams.get('tab') === 'private' ? 'private' : 'public';
+
+type SavedPlaceRow = {
+  id: string;
+  label: string;
+  address: string;
+  kind: string;
+  is_public: boolean;
+  pinned: boolean;
+  hidden: boolean;
+  source: string;
+  use_count: number;
+  place_id: string | null;
+};
+
+// saved_places from 0037 — not in generated Database types yet.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let q: any = (supabase as any)
+  .from('saved_places')
+  .select('id, label, address, kind, is_public, pinned, hidden, source, use_count, place_id')
+  .eq('is_public', tab === 'public')
+  .order('pinned', { ascending: false })
+  .order('use_count', { ascending: false })
+  .order('label')
+  .limit(200);
+if (filter) {
+  const safe = filter.replace(/[%_,()]/g, ' ');
+  q = q.or(`label.ilike.%${safe}%,address.ilike.%${safe}%`);
+}
+const { data: places, error } = (await q) as {
+  data: SavedPlaceRow[] | null;
+  error: { message: string } | null;
+};
+---
+
+<AdminLayout title="Places & routes" current="places" staffEmail={staff.email}>
+  {
+    pageError && (
+      <div class="banner banner-danger" role="alert">
+        <p>{pageError}</p>
+      </div>
+    )
+  }
+  {
+    error && (
+      <div class="banner banner-danger" role="alert">
+        <p>Could not load places: {error.message}</p>
+      </div>
+    )
+  }
+
+  <form class="filters" method="get" aria-label="Find places">
+    <input type="hidden" name="tab" value={tab} />
+    <label class="sr-only" for="places-q">Search</label>
+    <input class="input" id="places-q" name="q" value={filter} placeholder="Search label or address" />
+    <button class="btn btn-quiet btn-sm" type="submit">Search</button>
+    {filter ? <a class="btn btn-quiet btn-sm" href={`/places?tab=${tab}`}>Clear</a> : null}
+  </form>
+
+  <div class="tabs" role="tablist" aria-label="Public or private">
+    <a class="tab" href="/places?tab=public" aria-current={tab === 'public' ? 'page' : undefined}>Public</a>
+    <a class="tab" href="/places?tab=private" aria-current={tab === 'private' ? 'page' : undefined}>Private (learnt)</a>
+  </div>
+
+  <p class="muted small">
+    Public places are suggested in the booking widget. Private ones come from quotes and bookings and stay hidden from customers. An address can never be public — choose a type first, then Make public.
+  </p>
+
+  <div class="table-wrap" role="region" tabindex="0" aria-labelledby="places-cap">
+    <table class="table table-cards">
+      <caption id="places-cap" class="sr-only">Saved places</caption>
+      <thead>
+        <tr>
+          <th scope="col">Place</th>
+          <th scope="col">Kind</th>
+          <th scope="col">Pinned</th>
+          <th scope="col">Hidden</th>
+          <th scope="col" class="num">Uses</th>
+          <th scope="col" class="actions"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          (places ?? []).length === 0 ? (
+            <tr>
+              <td colspan="6" class="muted">No places yet. Seed with <code>pnpm --filter @tem/db seed:places -- --apply</code>.</td>
+            </tr>
+          ) : (
+            (places ?? []).map((p) => {
+              const kindOptions =
+                p.kind === 'address' && !p.is_public
+                  ? (['address', ...PUBLIC_PLACE_KINDS] as const)
+                  : PUBLIC_PLACE_KINDS;
+              return (
+                <tr class:list={[{ 'is-muted': p.hidden }]}>
+                  <td class="card-title" data-label="Place">
+                    <form method="POST" action={actions.saveSavedPlace} class="stack-sm" id={`f-${p.id}`}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <input class="input" name="label" value={p.label} aria-label="Label" required maxlength="200" />
+                      <div class="muted small">{p.address}</div>
+                    </form>
+                  </td>
+                  <td data-label="Kind">
+                    <select class="input" name="kind" form={`f-${p.id}`} aria-label="Kind">
+                      {
+                        kindOptions.map((k) => (
+                          <option value={k} selected={p.kind === k || undefined}>
+                            {k === 'address' ? 'Address (private)' : PUBLIC_PLACE_KIND_LABELS[k as keyof typeof PUBLIC_PLACE_KIND_LABELS]}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </td>
+                  <td data-label="Pinned">
+                    {
+                      p.is_public ? (
+                        <label class="switch">
+                          <input type="checkbox" name="pinned" form={`f-${p.id}`} value="true" checked={p.pinned || undefined} />
+                          <span class="switch-label">{p.pinned ? 'On' : 'Off'}</span>
+                        </label>
+                      ) : (
+                        <span class="muted">—</span>
+                      )
+                    }
+                  </td>
+                  <td data-label="Hidden">
+                    <label class="switch">
+                      <input type="checkbox" name="hidden" form={`f-${p.id}`} value="true" checked={p.hidden || undefined} />
+                      <span class="switch-label">{p.hidden ? 'Yes' : 'No'}</span>
+                    </label>
+                  </td>
+                  <td class="num" data-label="Uses">{p.use_count}</td>
+                  <td class="actions" data-label="Actions">
+                    <button class="btn btn-quiet btn-sm" type="submit" form={`f-${p.id}`}>Save</button>
+                    {
+                      p.is_public ? (
+                        <form method="POST" action={actions.makePlacePrivate} class="inline">
+                          <input type="hidden" name="id" value={p.id} />
+                          <button class="btn btn-quiet btn-sm" type="submit">Make private</button>
+                        </form>
+                      ) : (
+                        <form method="POST" action={actions.makePlacePublic} class="inline stack-sm">
+                          <input type="hidden" name="id" value={p.id} />
+                          <label class="sr-only" for={`pub-kind-${p.id}`}>Public type</label>
+                          <select class="input" id={`pub-kind-${p.id}`} name="kind" required>
+                            {
+                              PUBLIC_PLACE_KINDS.map((k) => (
+                                <option value={k} selected={p.kind === k || undefined}>
+                                  {PUBLIC_PLACE_KIND_LABELS[k]}
+                                </option>
+                              ))
+                            }
+                          </select>
+                          <button class="btn btn-sm" type="submit">Make public</button>
+                        </form>
+                      )
+                    }
+                  </td>
+                </tr>
+              );
+            })
+          )
+        }
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>
+
+<style>
+  .tabs { display: flex; gap: 0.75rem; margin: 1rem 0; }
+  .tab { text-decoration: none; padding: 0.35rem 0.75rem; border-radius: 4px; }
+  .tab[aria-current='page'] { background: var(--color-surface-2, #1a1a1a); font-weight: 600; }
+  .inline { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+  .stack-sm { display: flex; flex-direction: column; gap: 0.35rem; }
+</style>

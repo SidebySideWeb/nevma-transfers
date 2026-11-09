@@ -275,6 +275,12 @@ export const ADMIN_NAV = Object.freeze([
     items: Object.freeze([
       Object.freeze({ href: '/fleet', id: 'fleet', label: 'Fleet' }),
       Object.freeze({ href: '/zones', id: 'zones', label: 'Zones' }),
+      Object.freeze({
+        href: '/places',
+        id: 'places',
+        label: 'Places & routes',
+        feature: 'places',
+      }),
       Object.freeze({ href: '/settings', id: 'settings', label: 'Settings' }),
     ]),
   }),

@@ -12,6 +12,7 @@ import { getPublicEnv } from '../env';
 import { assertRateLimit } from './rate-limit';
 import { assertSameOrigin, placesApiKey, placesBias, placesEnabled } from './places-config';
 import { json } from './http';
+import { pinnedPublicPlaces, searchPublicPlaces } from './saved-places';
 
 const NO_STORE = { 'cache-control': 'no-store' };
 
@@ -68,8 +69,10 @@ export async function handleAutocomplete(
     await assertRateLimit(`places-ac-day:vid:${visitorKey}`, 86400, 300);
 
     const f = features();
-    const suggestions = await placesAutocomplete({
-      input: String(body.input ?? ''),
+    const input = String(body.input ?? '');
+    const saved = await searchPublicPlaces(input, 6);
+    const google = await placesAutocomplete({
+      input,
       sessionToken: String(body.sessionToken ?? ''),
       apiKey: placesApiKey(),
       ...(f.distancePricing
@@ -79,7 +82,49 @@ export async function handleAutocomplete(
           }
         : { bias: placesBias() }),
     });
-    return json({ suggestions }, 200, NO_STORE);
+    // Our public library first (with kind for icons); Google fills the rest, de-duped by placeId.
+    const seen = new Set(saved.map((s) => s.placeId).filter(Boolean) as string[]);
+    const fromSaved = saved
+      .filter((s) => s.placeId)
+      .map((s) => ({
+        placeId: s.placeId!,
+        main: s.label,
+        secondary: s.address,
+        kind: s.kind,
+      }));
+    const fromGoogle = google
+      .filter((s) => !seen.has(s.placeId))
+      .map((s) => ({ ...s, kind: undefined as string | undefined }));
+    return json({ suggestions: [...fromSaved, ...fromGoogle].slice(0, 8) }, 200, NO_STORE);
+  } catch (e) {
+    return placesFail(e);
+  }
+}
+
+/** Pinned PUBLIC places for an empty widget field (airport, Piraeus, Acropolis, …). */
+export async function handlePinnedPlaces(
+  request: Request,
+  allowedOrigin: string,
+): Promise<Response> {
+  if (!placesEnabled()) return placesOffResponse();
+  try {
+    assertSameOrigin(request, allowedOrigin);
+    const places = await pinnedPublicPlaces(8);
+    return json(
+      {
+        places: places.map((p) => ({
+          code: p.id,
+          name: p.label,
+          address: p.address,
+          placeId: p.placeId,
+          lat: p.lat,
+          lng: p.lng,
+          kind: p.kind,
+        })),
+      },
+      200,
+      NO_STORE,
+    );
   } catch (e) {
     return placesFail(e);
   }

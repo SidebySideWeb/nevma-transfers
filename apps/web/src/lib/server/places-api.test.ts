@@ -37,6 +37,11 @@ vi.mock('./places-config', async () => {
   };
 });
 
+vi.mock('./saved-places', () => ({
+  searchPublicPlaces: vi.fn(async () => []),
+  pinnedPublicPlaces: vi.fn(async () => []),
+}));
+
 import { features } from '@tem/features';
 import { PlacesError } from '@tem/places';
 import { autocomplete as placesAutocomplete } from '@tem/places';

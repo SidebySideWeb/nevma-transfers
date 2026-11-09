@@ -1,0 +1,55 @@
+{
+  "note": "Starter list of public places for the booking widget (Athens and Attica). The script looks each one up once with Google Places Text Search and stores its exact place ID, address and coordinates. Check the dry-run output before --apply. Hotels change names: edit freely.",
+  "places": [
+    { "query": "Athens International Airport Eleftherios Venizelos", "label": "Athens International Airport (ATH)", "kind": "airport", "pinned": true },
+
+    { "query": "Port of Piraeus passenger terminal", "label": "Piraeus Port", "kind": "port", "pinned": true },
+    { "query": "Piraeus Cruise Terminal", "label": "Piraeus Cruise Terminal", "kind": "port" },
+    { "query": "Port of Rafina", "label": "Rafina Port", "kind": "port" },
+    { "query": "Port of Lavrio", "label": "Lavrio Port", "kind": "port" },
+
+    { "query": "Athens Railway Station Larissis", "label": "Athens Railway Station (Larissis)", "kind": "station" },
+    { "query": "KTEL Kifisou bus station Athens", "label": "Kifisos Bus Station", "kind": "station" },
+
+    { "query": "Acropolis of Athens", "label": "Acropolis", "kind": "landmark", "pinned": true },
+    { "query": "Acropolis Museum", "label": "Acropolis Museum", "kind": "landmark" },
+    { "query": "Temple of Poseidon Sounion", "label": "Temple of Poseidon, Sounio", "kind": "landmark", "pinned": true },
+    { "query": "Ancient Agora of Athens", "label": "Ancient Agora", "kind": "landmark" },
+    { "query": "Panathenaic Stadium", "label": "Panathenaic Stadium", "kind": "landmark" },
+    { "query": "Temple of Olympian Zeus Athens", "label": "Temple of Olympian Zeus", "kind": "landmark" },
+    { "query": "Lycabettus Hill", "label": "Lycabettus Hill", "kind": "landmark" },
+    { "query": "National Archaeological Museum Athens", "label": "National Archaeological Museum", "kind": "landmark" },
+    { "query": "Lake Vouliagmeni", "label": "Lake Vouliagmeni", "kind": "landmark" },
+
+    { "query": "Syntagma Square Athens", "label": "Syntagma Square", "kind": "square", "pinned": true },
+    { "query": "Monastiraki Square Athens", "label": "Monastiraki Square", "kind": "square" },
+    { "query": "Omonia Square Athens", "label": "Omonia Square", "kind": "square" },
+    { "query": "Kolonaki Square Athens", "label": "Kolonaki Square", "kind": "square" },
+
+    { "query": "Plaka Athens", "label": "Plaka", "kind": "area" },
+    { "query": "Glyfada centre Athens", "label": "Glyfada", "kind": "area" },
+    { "query": "Vouliagmeni Athens", "label": "Vouliagmeni", "kind": "area" },
+    { "query": "Kifisia Athens", "label": "Kifisia", "kind": "area" },
+
+    { "query": "Stavros Niarchos Foundation Cultural Center", "label": "Stavros Niarchos Foundation Cultural Center", "kind": "venue" },
+    { "query": "Megaron Athens Concert Hall", "label": "Megaron Athens Concert Hall", "kind": "venue" },
+    { "query": "Olympic Athletic Center of Athens OAKA", "label": "Olympic Stadium (OAKA)", "kind": "venue" },
+    { "query": "Metropolitan Expo Athens", "label": "Metropolitan Expo", "kind": "venue" },
+    { "query": "The Mall Athens Marousi", "label": "The Mall Athens", "kind": "venue" },
+
+    { "query": "Hotel Grande Bretagne Athens", "label": "Hotel Grande Bretagne", "kind": "hotel" },
+    { "query": "King George Hotel Athens Syntagma", "label": "King George Hotel", "kind": "hotel" },
+    { "query": "Four Seasons Astir Palace Hotel Athens Vouliagmeni", "label": "Four Seasons Astir Palace", "kind": "hotel" },
+    { "query": "Hilton Athens Vasilissis Sofias", "label": "Hilton Athens", "kind": "hotel" },
+    { "query": "Athenaeum InterContinental Athens", "label": "InterContinental Athenaeum", "kind": "hotel" },
+    { "query": "Divani Caravel Hotel Athens", "label": "Divani Caravel", "kind": "hotel" },
+    { "query": "Divani Apollon Palace Vouliagmeni", "label": "Divani Apollon Palace", "kind": "hotel" },
+    { "query": "Electra Palace Athens Plaka", "label": "Electra Palace Athens", "kind": "hotel" },
+    { "query": "NJV Athens Plaza Syntagma", "label": "NJV Athens Plaza", "kind": "hotel" },
+    { "query": "St. George Lycabettus Hotel", "label": "St. George Lycabettus", "kind": "hotel" },
+    { "query": "Athens Marriott Hotel Syngrou", "label": "Athens Marriott", "kind": "hotel" },
+    { "query": "Sofitel Athens Airport", "label": "Sofitel Athens Airport", "kind": "hotel" },
+    { "query": "The Margi Hotel Vouliagmeni", "label": "The Margi", "kind": "hotel" },
+    { "query": "Hilton Garden Inn Athens Syggrou", "label": "Hilton Garden Inn Athens", "kind": "hotel" }
+  ]
+}
