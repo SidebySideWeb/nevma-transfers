@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOUR_OPTIONS, joinTime12, splitTime12 } from './TimeField';
+import { HOUR_OPTIONS, TIME_OPTIONS, joinTime12, splitTime12 } from './TimeField';
 
 describe('TimeField 12h helpers', () => {
   it('keeps the hour list to 12 values', () => {
@@ -18,6 +18,13 @@ describe('TimeField 12h helpers', () => {
       '10',
       '11',
     ]);
+  });
+
+  it('offers 48 half-hour slots with 12h labels', () => {
+    expect(TIME_OPTIONS).toHaveLength(48);
+    expect(TIME_OPTIONS[0]).toEqual({ value: '00:00', label: '12:00 AM' });
+    expect(TIME_OPTIONS[28]).toEqual({ value: '14:00', label: '2:00 PM' });
+    expect(TIME_OPTIONS[47]).toEqual({ value: '23:30', label: '11:30 PM' });
   });
 
   it('round-trips common times', () => {

@@ -19,6 +19,7 @@ describe('vehicle gallery index (V2-4)', () => {
   });
 
   it('formats photoCount template', () => {
-    expect(formatPhotoCount('{n} / {total}', 1, 10)).toBe('1 / 10');
+    expect(formatPhotoCount('{n} / {total}', 1, 10)).toBe('01 / 10');
+    expect(formatPhotoCount('{n} of {total}', 2, 6)).toBe('2 of 6');
   });
 });

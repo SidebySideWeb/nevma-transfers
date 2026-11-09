@@ -15,5 +15,8 @@ export function galleryStep(index: number, length: number, action: GalleryKey): 
 }
 
 export function formatPhotoCount(tpl: string, n: number, total: number): string {
+  const pad = (x: number) => String(x).padStart(2, '0');
+  // Prefer compact 01 / 06 when the CMS string is the default "{n} / {total}".
+  if (tpl.trim() === '{n} / {total}') return `${pad(n)} / ${pad(total)}`;
   return tpl.replaceAll('{n}', String(n)).replaceAll('{total}', String(total));
 }

@@ -20,7 +20,7 @@ const show = settings.showFromPrices !== false;
 const eyebrow = typeof section.eyebrow === 'string' ? section.eyebrow : '';
 const heading = section.heading as DisplayHeading | undefined;
 const options = Array.isArray(section.options) ? (section.options as Option[]) : [];
-const numerals = ['i.', 'ii.', 'iii.', 'iv.', 'v.', 'vi.'] as const;
+const indexMark = (i: number) => String(i + 1).padStart(2, '0');
 
 let labels = { fromTransfer: '—', fromHourly: '—' };
 try {
@@ -40,7 +40,7 @@ try {
     {
       options.map((opt, i) => (
         <div class="card s3a1c8">
-          <span class="sbfcc8">{numerals[i] ?? `${i + 1}.`}</span>
+          <span class="sbfcc8">{indexMark(i)}</span>
           <h3 class="s0f85e">{opt.title ?? ''}</h3>
           <p class="se404f">{opt.text ?? ''}</p>
           <span class="s7e51b">{fillBookingOptionNote(opt.priceNote || '', labels)}</span>

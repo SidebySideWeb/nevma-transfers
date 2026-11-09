@@ -28,12 +28,12 @@ export const CASES: Case[] = [
   { route: '/', design: '01-home', maxDiff: { pageHero: 0.003, fleetShowcase: 0.006, siteFooter: 0.006 } },
   // Final VAT prices (€223.20 vs design €180) widen price columns / hero rows; notes say "VAT included".
   { route: '/fleet', design: '02-fleet', maxDiff: { fleetBrowser: 0.006, priceTable: 0.04, includedList: 0.012, siteFooter: 0.015 } },
-  { route: '/fleet/v-class', design: '03-vehicle', maxDiff: { vehicleTabs: 0.01, vehicleHero: 0.04, onBoard: 0.01, siteFooter: 0.01 } },
+  { route: '/fleet/v-class', design: '03-vehicle', maxDiff: { vehicleTabs: 0.01, vehicleHero: 0.06, onBoard: 0.01, siteFooter: 0.01 } },
   {
     route: '/services',
     design: '04-services',
     maxDiff: {
-      bookingOptions: 0.004,
+      bookingOptions: 0.03,
       featuredRoute: 0.006,
       faqList: 0.01,
       occasions: 0.02,

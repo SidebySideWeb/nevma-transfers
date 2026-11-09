@@ -1,21 +1,6 @@
 import { BrandDropdown } from './BrandDropdown';
 import './TimeField.css';
 
-/** Clock hours 1–12 only — keep the open list short; minutes and AM/PM are separate. */
-export const HOUR_OPTIONS: { value: string; label: string }[] = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(
-  (h) => ({ value: String(h), label: String(h) }),
-);
-
-export const MINUTE_OPTIONS = [
-  { value: '00', label: '00' },
-  { value: '30', label: '30' },
-] as const;
-
-export const PERIOD_OPTIONS = [
-  { value: 'AM', label: 'AM' },
-  { value: 'PM', label: 'PM' },
-] as const;
-
 export type Period = 'AM' | 'PM';
 
 export type Time12Parts = { hour: string; minute: string; period: Period };
@@ -49,6 +34,24 @@ export function joinTime12(hour: string, minute: string, period: Period): string
   return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
+function label12(hhmm: string): string {
+  const { hour, minute, period } = splitTime12(hhmm);
+  return `${hour}:${minute} ${period}`;
+}
+
+/** Every :00 / :30 in 24h values, shown as 12h + AM/PM (one list, one field). */
+export const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const m = i % 2 === 0 ? '00' : '30';
+  const value = `${String(h).padStart(2, '0')}:${m}`;
+  return { value, label: label12(value) };
+});
+
+/** Kept for tests / callers that still split the clock face. */
+export const HOUR_OPTIONS: { value: string; label: string }[] = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(
+  (h) => ({ value: String(h), label: String(h) }),
+);
+
 export type TimeFieldProps = {
   id: string;
   label: string;
@@ -59,11 +62,11 @@ export type TimeFieldProps = {
   error?: string | null;
   'aria-invalid'?: boolean | 'true' | 'false';
   'aria-describedby'?: string;
-  /** An empty `value` shows blank lists (no 12:00 default) until the customer picks a time. */
+  /** An empty `value` shows a blank list until the customer picks a time. */
   allowEmpty?: boolean;
 };
 
-/** Hour (1–12) + minutes (:00/:30) + AM/PM — three short lists. */
+/** Single brand dropdown of half-hour times (same field pattern as DateField / zones). */
 export function TimeField({
   id,
   label,
@@ -76,8 +79,9 @@ export function TimeField({
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedBy,
 }: TimeFieldProps) {
-  const { hour, minute, period } = splitTime12(value || '12:00');
-  const blank = allowEmpty && !value;
+  const snapped = value ? splitTime12(value) : null;
+  const selected = snapped ? joinTime12(snapped.hour, snapped.minute, snapped.period) : '';
+  const options = allowEmpty ? [{ value: '', label: '' }, ...TIME_OPTIONS] : TIME_OPTIONS;
   const described =
     [ariaDescribedBy, hint ? `${id}-hint` : null, error ? `${id}-err` : null]
       .filter(Boolean)
@@ -85,45 +89,17 @@ export function TimeField({
 
   return (
     <div className={`${fieldClass} ep-time-field`.trim()} data-v2-extra>
-      <span className="ep-time-label" id={`${id}-label`}>
-        {label}
-      </span>
-      <div className="ep-time-row" role="group" aria-labelledby={`${id}-label`}>
-        <BrandDropdown
-          id={`${id}-hour`}
-          label="Hour"
-          options={HOUR_OPTIONS}
-          value={blank ? '' : HOUR_OPTIONS.some((o) => o.value === hour) ? hour : '12'}
-          onChange={(h) => onChange(joinTime12(h, minute, period))}
-          fieldClass="field ep-time-hour"
-          hideLabel
-          error={error ? '' : null}
-          aria-invalid={ariaInvalid}
-          aria-describedby={described}
-        />
-        <BrandDropdown
-          id={`${id}-min`}
-          label="Minutes"
-          options={[...MINUTE_OPTIONS]}
-          value={blank ? '' : minute === '30' ? '30' : '00'}
-          onChange={(mm) => onChange(joinTime12(hour, mm, period))}
-          fieldClass="field ep-time-min"
-          hideLabel
-          aria-invalid={ariaInvalid}
-          aria-describedby={described}
-        />
-        <BrandDropdown
-          id={`${id}-period`}
-          label="AM/PM"
-          options={[...PERIOD_OPTIONS]}
-          value={blank ? '' : period}
-          onChange={(p) => onChange(joinTime12(hour, minute, p as Period))}
-          fieldClass="field ep-time-period"
-          hideLabel
-          aria-invalid={ariaInvalid}
-          aria-describedby={described}
-        />
-      </div>
+      <BrandDropdown
+        id={id}
+        label={label}
+        options={options}
+        value={allowEmpty && !value ? '' : selected || TIME_OPTIONS[24]?.value || '12:00'}
+        onChange={onChange}
+        fieldClass="field ep-time-select"
+        error={error ? '' : null}
+        aria-invalid={ariaInvalid}
+        aria-describedby={described}
+      />
       {hint ? (
         <span className="js-hint" id={`${id}-hint`}>
           {hint}
