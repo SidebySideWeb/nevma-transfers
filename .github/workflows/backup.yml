@@ -128,22 +128,28 @@ jobs:
           aws s3 cp backup-out/ "${WEEKLY}/" --recursive \
             --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto
 
+          # R2 often rejects s3api head-object; list the object instead.
+          assert_object() {
+            local uri="$1"
+            local line size
+            line=$(aws s3 ls "$uri" --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto) || {
+              echo "Missing object: ${uri}" >&2
+              exit 1
+            }
+            size=$(printf '%s\n' "$line" | awk '{print $3}')
+            if [ -z "$size" ] || [ "$size" -le 0 ]; then
+              echo "Empty object: ${uri}" >&2
+              exit 1
+            fi
+            echo "OK ${uri##*/} (${size} bytes)"
+          }
+
           EXPECTED=(
             "sanity-${STAMP}.tar.gz.age"
             "postgres-${STAMP}.dump.age"
           )
           for f in "${EXPECTED[@]}"; do
-            SIZE=$(aws s3api head-object \
-              --bucket "$BACKUP_S3_BUCKET" \
-              --key "${BACKUP_PREFIX}/weekly/${YEAR_WEEK}/${f}" \
-              --endpoint-url "$BACKUP_S3_ENDPOINT" \
-              --region auto \
-              --query ContentLength --output text)
-            if [ -z "$SIZE" ] || [ "$SIZE" = "None" ] || [ "$SIZE" -le 0 ]; then
-              echo "Missing or empty object: ${WEEKLY}/${f}" >&2
-              exit 1
-            fi
-            echo "OK ${f} (${SIZE} bytes)"
+            assert_object "${WEEKLY}/${f}"
           done
 
           if [ "$DOM" -le 7 ]; then
@@ -152,37 +158,27 @@ jobs:
             aws s3 cp backup-out/ "${MONTHLY}/" --recursive \
               --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto
             for f in "${EXPECTED[@]}"; do
-              SIZE=$(aws s3api head-object \
-                --bucket "$BACKUP_S3_BUCKET" \
-                --key "${BACKUP_PREFIX}/monthly/${YEAR_MONTH}/${f}" \
-                --endpoint-url "$BACKUP_S3_ENDPOINT" \
-                --region auto \
-                --query ContentLength --output text)
-              if [ -z "$SIZE" ] || [ "$SIZE" = "None" ] || [ "$SIZE" -le 0 ]; then
-                echo "Missing or empty object: ${MONTHLY}/${f}" >&2
-                exit 1
-              fi
-              echo "OK monthly ${f} (${SIZE} bytes)"
+              assert_object "${MONTHLY}/${f}"
             done
           fi
 
           echo "Retention: keep 8 weekly, 12 monthly (deletes may fail under object lock)…"
-          aws s3 ls "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/weekly/" \
-            --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto \
-            | awk '/PRE / {print $2}' | sed 's|/$||' | sort -r | tail -n +9 \
-            | while read -r d; do
+          # aws s3 ls exits 1 when a prefix is empty — tolerate that for retention only.
+          prune_old() {
+            local prefix="$1"
+            local keep="$2"
+            local listing
+            listing=$(aws s3 ls "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/${prefix}/" \
+              --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto || true)
+            printf '%s\n' "$listing" | awk '/PRE / {print $2}' | sed 's|/$||' | sort -r \
+              | tail -n "+$((keep + 1))" | while read -r d; do
                 [ -z "$d" ] && continue
-                aws s3 rm "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/weekly/${d}/" \
+                aws s3 rm "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/${prefix}/${d}/" \
                   --recursive --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto || true
               done
-          aws s3 ls "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/monthly/" \
-            --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto \
-            | awk '/PRE / {print $2}' | sed 's|/$||' | sort -r | tail -n +13 \
-            | while read -r d; do
-                [ -z "$d" ] && continue
-                aws s3 rm "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/monthly/${d}/" \
-                  --recursive --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto || true
-              done
+          }
+          prune_old weekly 8
+          prune_old monthly 12
 
       - name: Healthcheck success
         env:
