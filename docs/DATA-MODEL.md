@@ -221,3 +221,7 @@ Recreates the 0025 staff policies on `class_rates`, `pricing_settings`, `pricing
 ## 0036 — Distance-first quotes (8 Nov 2026)
 
 FIX-2. (Kit file number was 0034; this repo already used 0034/0035.) `zones.area` is an optional GeoJSON Polygon (`[lng, lat]`, closed ring, inside Greece; `geojson_polygon_valid`). It is used only in `PRICING_MODE=hybrid`; with `PRICING_MODE=distance` zones are ignored by the quote and every price is Google km and minutes times the class rates. `pricing_settings.doc` gains two optional keys, validated when present: `long_distance` (`{ "over_km", "factor" }` or null, applied by `priceTrip` as a `long_distance` breakdown line) and `quote_only_over_km` (number or null; longer trips get `quote_only_distance` instead of a price). New `quote_failures` table (staff read, service-role write, 30-day cleanup): one row per failed `/api/quote` with `reason`, `http_status`, `distance_km`, `duration_min`, a PII-free `request` (coordinates, times, passengers only) and `ip_hash`. Admin pages: `/pricing/long-distance` (appends a settings version), read-only `/pricing/quote-failures`.
+
+## 0041 — Company quote checkout (13 Nov 2026)
+
+`create_booking_from_company_quote(...)` lets the authenticated business checkout sell a quote whose `company_id` matches the member’s company. Public `create_booking_from_quote` still raises `invalid_request: company quote`. Corporate `/api/corporate/book-on-account` and `book-card` pass `companyId` into booking creation.

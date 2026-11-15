@@ -47,12 +47,14 @@ async function postInternal(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    const parsed = data as { message?: string; detail?: string; error?: string; fields?: Record<string, string> };
     return {
       ok: false,
       status: res.status,
-      message: (data as { message?: string }).message || `HTTP ${res.status}`,
-      code: (data as { error?: string }).error,
-      fields: (data as { fields?: Record<string, string> }).fields,
+      // Prefer server `detail` (technical) over the generic public `message`.
+      message: parsed.detail || parsed.message || `HTTP ${res.status}`,
+      code: parsed.error,
+      fields: parsed.fields,
     };
   }
   return { ok: true, data };

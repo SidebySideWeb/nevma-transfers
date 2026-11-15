@@ -151,7 +151,9 @@ export const BookingRequest = z
   })
   .strict();
 
-/** Checkout from a signed quote (B3). Browser-sent price/amount is rejected by rejectMoneyFields. */
+/** Checkout from a signed quote (B3). Browser-sent price/amount is rejected by rejectMoneyFields.
+ * turnstileToken is optional for authenticated corporate book-on-account / book-card (skipTurnstile);
+ * public /api/bookings still enforces it in requireTurnstile. */
 export const QuoteCheckoutRequest = z
   .object({
     quoteId: uuid,
@@ -169,7 +171,7 @@ export const QuoteCheckoutRequest = z
     notes: z.string().optional(),
     invoice: invoiceField,
     consent: z.literal(true),
-    turnstileToken,
+    turnstileToken: turnstileToken.optional(),
   })
   .strict();
 

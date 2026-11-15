@@ -49,7 +49,7 @@ export const POST: APIRoute = async ({ request, cookies, clientAddress }) => {
       toQuoteCheckout(body, member),
       getOrSetVisitorKey(cookies),
       clientAddress,
-      { skipPayment: true, skipTurnstile: true },
+      { skipPayment: true, skipTurnstile: true, companyId: member.companyId },
     );
     const bookingId = (created as { bookingId?: string }).bookingId;
     if (!bookingId) {

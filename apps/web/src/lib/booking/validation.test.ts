@@ -4,6 +4,7 @@ import {
   BookingRequest,
   CancelRequest,
   HoldRequest,
+  QuoteCheckoutRequest,
   QuoteRequest,
   QuoteRequestDistance,
   rejectMoneyFields,
@@ -121,6 +122,22 @@ describe('zod request schemas', () => {
     expect(
       CancelRequest.parse({ token: 'abc', turnstileToken: 'tok' }).token,
     ).toBe('abc');
+
+    // Corporate book-on-account maps to quote checkout without a Turnstile token.
+    expect(
+      QuoteCheckoutRequest.parse({
+        quoteId: '00000000-0000-4000-8000-000000000001',
+        signature: 'a'.repeat(64),
+        classKey: 'vito',
+        pickupAddress: 'Attiki Odos, Spata 19019',
+        dropoffAddress: 'Athens 105 58',
+        passengers: 2,
+        luggage: 2,
+        extras: [],
+        customer: { name: 'Guest', email: 'booker@example.com', phone: '+302155307945' },
+        consent: true,
+      }).consent,
+    ).toBe(true);
   });
 });
 

@@ -327,9 +327,12 @@ export function StepSearch({
           strings={{
             tabRoute: oneWay,
             tabHour: byHour,
-            pickup: strings['booking.pickup.address'],
-            dropoff: strings['booking.dropoff.address'],
+            // Short bar labels (Sanity may store long “address or hotel” on *.address).
+            pickup: strings['booking.pickup.zone'] ?? 'Pick-up',
+            dropoff: strings['booking.dropoff.zone'] ?? 'Drop-off',
+            placeholder: strings['booking.widget.placeholder'] ?? 'Address, airport, hotel, …',
             date: strings['booking.date'],
+            datePlaceholder: strings['booking.widget.datePlaceholder'] ?? 'Select a date',
             time: strings['booking.time'],
             duration: strings['booking.hours.duration'],
             flight: strings['booking.flight'],

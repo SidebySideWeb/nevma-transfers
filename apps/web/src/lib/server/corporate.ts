@@ -228,6 +228,13 @@ export async function sendCorporateMagicLink(email: string, redirectTo: string):
       message: 'magic_link_failed',
     });
   }
+  // Supabase rewrites redirect_to to Auth Site URL when the target is not allow-listed.
+  if (!action.includes(encodeURIComponent(redirectTo)) && !action.includes(redirectTo)) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'auth_redirect_not_allowed',
+    });
+  }
   // Email via existing sendEmail when OFFICE configured; always log action for demos.
   const { sendEmail } = await import('./email');
   await sendEmail({
@@ -247,25 +254,32 @@ export async function inviteCompanyUser(input: {
 }): Promise<{ userId: string }> {
   const email = input.email.trim().toLowerCase();
   const supabase = getServiceClient();
-  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    redirectTo: input.redirectTo,
-  });
-  // Existing auth users: invite may fail; fall back to generateLink + lookup via company_users insert needing user id.
-  let userId = data?.user?.id ?? null;
+
+  // Never inviteUserByEmail: Supabase sends its own mail and falls back to Auth Site URL
+  // (often the admin host) when redirectTo is not allow-listed. We create the user and
+  // e-mail a magic link ourselves with redirectTo = PUBLIC_SITE_URL/business/app.
+  const { rows: existing } = await bookingDb().query<{ id: string }>(
+    `select id::text from auth.users where lower(email) = $1 limit 1`,
+    [email],
+  );
+  let userId = existing[0]?.id ?? null;
+  let lastErr: string | undefined;
+
   if (!userId) {
-    const { data: linkData } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
+    const { data: created, error: createErr } = await supabase.auth.admin.createUser({
       email,
-      options: { redirectTo: input.redirectTo },
+      email_confirm: true,
     });
-    userId = linkData?.user?.id ?? null;
+    userId = created?.user?.id ?? null;
+    lastErr = createErr?.message;
   }
   if (!userId) {
     throw new BookingError('invalid_request', {
       stringKey: 'error.invalid_request',
-      message: error?.message || 'invite_failed',
+      message: (lastErr || 'invite_failed').slice(0, 160),
     });
   }
+
   await bookingDb().query(
     `insert into public.company_users (company_id, user_id, email, role)
      values ($1::uuid, $2::uuid, $3, $4)
@@ -273,6 +287,35 @@ export async function inviteCompanyUser(input: {
        user_id = excluded.user_id, role = excluded.role, active = true`,
     [input.companyId, userId, email, input.role],
   );
+
+  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+    options: { redirectTo: input.redirectTo },
+  });
+  const action = linkData?.properties?.action_link;
+  if (!action) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: (linkErr?.message || 'magic_link_failed').slice(0, 160),
+    });
+  }
+  // Guard: if Auth Site URL / allow-list is wrong, Supabase rewrites redirect_to to the admin host.
+  if (!action.includes(encodeURIComponent(input.redirectTo)) && !action.includes(input.redirectTo)) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'auth_redirect_not_allowed',
+    });
+  }
+  const { sendEmail } = await import('./email');
+  await sendEmail({
+    to: email,
+    subject: 'Business invitation · Elite Protection',
+    text: `Sign in: ${action}`,
+    html: `<p><a href="${action}">Open your business account</a></p>`,
+    tag: 'corporate_invite',
+  }).catch(() => undefined);
+
   return { userId };
 }
 

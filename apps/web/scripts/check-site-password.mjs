@@ -64,8 +64,18 @@ process.env.SITE_PASSWORD = 'test';
 }
 
 {
+  const res = middleware(req('/api/corporate/login'));
+  assert.notEqual(res.status, 401, 'corporate api excluded');
+}
+
+{
+  const res = middleware(req('/business'));
+  assert.notEqual(res.status, 401, 'business login excluded');
+}
+
+{
   const res = middleware(req('/api/quote'));
-  assert.equal(res.status, 401, 'public api still protected');
+  assert.notEqual(res.status, 401, 'quote api open for booking islands');
 }
 
 {

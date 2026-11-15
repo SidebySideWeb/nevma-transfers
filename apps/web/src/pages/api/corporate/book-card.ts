@@ -34,7 +34,7 @@ export const POST: APIRoute = async ({ request, cookies, clientAddress }) => {
       toQuoteCheckout(parsed.data, member),
       getOrSetVisitorKey(cookies),
       clientAddress,
-      { skipTurnstile: true },
+      { skipTurnstile: true, companyId: member.companyId },
     );
     const bookingId = (created as { bookingId?: string }).bookingId;
     if (bookingId) await tagCompanyBooking(bookingId, member, parsed.data);

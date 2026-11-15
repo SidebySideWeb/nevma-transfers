@@ -1,15 +1,16 @@
-# Weekly encrypted Sanity + Postgres backups (prompt 13 / ARCHITECTURE §9).
-# Required repository secrets (never commit values):
-#   SANITY_AUTH_TOKEN       — token that can export the production dataset
-#   SANITY_PROJECT_ID
-#   SANITY_DATASET          — usually "production"
-#   DATABASE_URL            — production Postgres connection string
-#   AGE_RECIPIENT           — age public key (client holds the private key)
-#   BACKUP_S3_BUCKET        — destination bucket name
-#   BACKUP_S3_ENDPOINT      — optional (R2 / MinIO); omit for AWS
-#   BACKUP_AWS_ACCESS_KEY_ID
-#   BACKUP_AWS_SECRET_ACCESS_KEY
-#   BACKUP_AWS_REGION       — default eu-central-1
+# Weekly encrypted Sanity + Postgres backups → Cloudflare R2 (prompt 13 / ARCHITECTURE §9).
+#
+# DATABASE_URL must be the Supabase *session pooler* URI (IPv4). The direct
+# database host is IPv6-only; GitHub-hosted runners cannot reach it.
+#
+# Repository secrets (never commit values):
+#   SANITY_AUTH_TOKEN, SANITY_PROJECT_ID, SANITY_DATASET,
+#   DATABASE_URL, AGE_RECIPIENT,
+#   BACKUP_S3_BUCKET, BACKUP_S3_ENDPOINT,
+#   BACKUP_AWS_ACCESS_KEY_ID, BACKUP_AWS_SECRET_ACCESS_KEY,
+#   HEALTHCHECK_URL
+# Repository variable:
+#   BACKUP_PREFIX  — e.g. "transfers"
 name: Backups
 
 on:
@@ -21,9 +22,14 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: backups
+  cancel-in-progress: false
+
 jobs:
   backup:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -33,11 +39,19 @@ jobs:
 
       - name: Install tools
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y postgresql-client age
-          npm install -g @sanity/cli@3
-          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
-          chmod +x /usr/local/bin/mc
+          sudo apt-get install -y curl ca-certificates gnupg lsb-release age
+          # supabase/config.toml major_version = 17; noble's default client is older.
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          pg_dump --version
+          age --version
+          aws --version
 
       - name: Export and encrypt
         env:
@@ -50,50 +64,135 @@ jobs:
           set -euo pipefail
           STAMP=$(date -u +%Y%m%d)
           mkdir -p backup-out
-          echo "Exporting Sanity dataset (no token logged)…"
-          sanity dataset export "$SANITY_DATASET" "backup-out/sanity-${STAMP}.tar.gz" \
+
+          echo "Exporting Sanity dataset (assets + drafts; token not logged)…"
+          # Pin to the same major.minor as apps/studio (sanity ^6.21.0).
+          npx --yes sanity@6.21.0 dataset export "$SANITY_DATASET" \
+            "backup-out/sanity-${STAMP}.tar.gz" \
             --project "$SANITY_PROJECT_ID"
+          ENTRIES=$(tar -tzf "backup-out/sanity-${STAMP}.tar.gz" | wc -l)
+          if [ "$ENTRIES" -lt 1 ]; then
+            echo "Sanity archive is empty" >&2
+            exit 1
+          fi
+          echo "Sanity archive entries: ${ENTRIES}"
+
           echo "Dumping Postgres public schema (custom format)…"
-          pg_dump --format=custom --no-owner --no-acl --schema=public --file="backup-out/postgres-${STAMP}.dump" "$DATABASE_URL"
+          pg_dump --format=custom --no-owner --no-acl --schema=public \
+            --file="backup-out/postgres-${STAMP}.dump" "$DATABASE_URL"
+          LIST_LINES=$(pg_restore --list "backup-out/postgres-${STAMP}.dump" | wc -l)
+          if [ "$LIST_LINES" -lt 1 ]; then
+            echo "Postgres dump TOC is empty" >&2
+            exit 1
+          fi
+          echo "Postgres dump TOC lines: ${LIST_LINES}"
+
           echo "Encrypting with age…"
-          age -r "$AGE_RECIPIENT" -o "backup-out/sanity-${STAMP}.tar.gz.age" "backup-out/sanity-${STAMP}.tar.gz"
-          age -r "$AGE_RECIPIENT" -o "backup-out/postgres-${STAMP}.dump.age" "backup-out/postgres-${STAMP}.dump"
+          age -r "$AGE_RECIPIENT" -o "backup-out/sanity-${STAMP}.tar.gz.age" \
+            "backup-out/sanity-${STAMP}.tar.gz"
+          age -r "$AGE_RECIPIENT" -o "backup-out/postgres-${STAMP}.dump.age" \
+            "backup-out/postgres-${STAMP}.dump"
           rm -f "backup-out/sanity-${STAMP}.tar.gz" "backup-out/postgres-${STAMP}.dump"
+
+          echo "Encrypted files (names and sizes only):"
           ls -la backup-out
 
-      - name: Upload to object storage
+      - name: Upload to Cloudflare R2
         env:
           BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
           BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
-          BACKUP_AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
-          BACKUP_AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
-          BACKUP_AWS_REGION: ${{ secrets.BACKUP_AWS_REGION }}
+          BACKUP_PREFIX: ${{ vars.BACKUP_PREFIX }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
         run: |
           set -euo pipefail
-          REGION="${BACKUP_AWS_REGION:-eu-central-1}"
-          if [ -n "${BACKUP_S3_ENDPOINT:-}" ]; then
-            mc alias set backup "$BACKUP_S3_ENDPOINT" "$BACKUP_AWS_ACCESS_KEY_ID" "$BACKUP_AWS_SECRET_ACCESS_KEY"
-          else
-            mc alias set backup "https://s3.${REGION}.amazonaws.com" "$BACKUP_AWS_ACCESS_KEY_ID" "$BACKUP_AWS_SECRET_ACCESS_KEY"
-          fi
+          : "${BACKUP_S3_BUCKET:?}"
+          : "${BACKUP_S3_ENDPOINT:?}"
+          : "${BACKUP_PREFIX:?}"
+
           STAMP=$(date -u +%Y%m%d)
-          YEAR=$(date -u +%Y)
-          MONTH=$(date -u +%m)
-          WEEK=$(date -u +%V)
-          # Weekly path
-          mc cp --recursive backup-out/ "backup/${BACKUP_S3_BUCKET}/weekly/${YEAR}-W${WEEK}/"
-          # Monthly snapshot on the first Sunday of the month (day-of-month 1–7)
+          YEAR_WEEK=$(date -u +%G-W%V)
+          YEAR_MONTH=$(date -u +%Y-%m)
           DOM=$(date -u +%-d)
+
+          WEEKLY="s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/weekly/${YEAR_WEEK}"
+          echo "Uploading to ${WEEKLY}/ …"
+          aws s3 cp backup-out/ "${WEEKLY}/" --recursive \
+            --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto
+
+          EXPECTED=(
+            "sanity-${STAMP}.tar.gz.age"
+            "postgres-${STAMP}.dump.age"
+          )
+          for f in "${EXPECTED[@]}"; do
+            SIZE=$(aws s3api head-object \
+              --bucket "$BACKUP_S3_BUCKET" \
+              --key "${BACKUP_PREFIX}/weekly/${YEAR_WEEK}/${f}" \
+              --endpoint-url "$BACKUP_S3_ENDPOINT" \
+              --region auto \
+              --query ContentLength --output text)
+            if [ -z "$SIZE" ] || [ "$SIZE" = "None" ] || [ "$SIZE" -le 0 ]; then
+              echo "Missing or empty object: ${WEEKLY}/${f}" >&2
+              exit 1
+            fi
+            echo "OK ${f} (${SIZE} bytes)"
+          done
+
           if [ "$DOM" -le 7 ]; then
-            mc cp --recursive backup-out/ "backup/${BACKUP_S3_BUCKET}/monthly/${YEAR}-${MONTH}/"
+            MONTHLY="s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/monthly/${YEAR_MONTH}"
+            echo "First-week-of-month run: copying to ${MONTHLY}/ …"
+            aws s3 cp backup-out/ "${MONTHLY}/" --recursive \
+              --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto
+            for f in "${EXPECTED[@]}"; do
+              SIZE=$(aws s3api head-object \
+                --bucket "$BACKUP_S3_BUCKET" \
+                --key "${BACKUP_PREFIX}/monthly/${YEAR_MONTH}/${f}" \
+                --endpoint-url "$BACKUP_S3_ENDPOINT" \
+                --region auto \
+                --query ContentLength --output text)
+              if [ -z "$SIZE" ] || [ "$SIZE" = "None" ] || [ "$SIZE" -le 0 ]; then
+                echo "Missing or empty object: ${MONTHLY}/${f}" >&2
+                exit 1
+              fi
+              echo "OK monthly ${f} (${SIZE} bytes)"
+            done
           fi
-          # Retention: keep 8 weekly, 12 monthly
-          mc ls "backup/${BACKUP_S3_BUCKET}/weekly/" | awk '{print $NF}' | sort -r | tail -n +9 | while read -r d; do
-            [ -n "$d" ] && mc rm --recursive --force "backup/${BACKUP_S3_BUCKET}/weekly/${d}" || true
-          done
-          mc ls "backup/${BACKUP_S3_BUCKET}/monthly/" | awk '{print $NF}' | sort -r | tail -n +13 | while read -r d; do
-            [ -n "$d" ] && mc rm --recursive --force "backup/${BACKUP_S3_BUCKET}/monthly/${d}" || true
-          done
+
+          echo "Retention: keep 8 weekly, 12 monthly (deletes may fail under object lock)…"
+          aws s3 ls "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/weekly/" \
+            --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto \
+            | awk '/PRE / {print $2}' | sed 's|/$||' | sort -r | tail -n +9 \
+            | while read -r d; do
+                [ -z "$d" ] && continue
+                aws s3 rm "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/weekly/${d}/" \
+                  --recursive --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto || true
+              done
+          aws s3 ls "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/monthly/" \
+            --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto \
+            | awk '/PRE / {print $2}' | sed 's|/$||' | sort -r | tail -n +13 \
+            | while read -r d; do
+                [ -z "$d" ] && continue
+                aws s3 rm "s3://${BACKUP_S3_BUCKET}/${BACKUP_PREFIX}/monthly/${d}/" \
+                  --recursive --endpoint-url "$BACKUP_S3_ENDPOINT" --region auto || true
+              done
+
+      - name: Healthcheck success
+        env:
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 "$HEALTHCHECK_URL"
+
+      - name: Healthcheck fail
+        if: failure()
+        env:
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 "${HEALTHCHECK_URL}/fail" || true
 
       - name: Open GitHub issue on failure
         if: failure()

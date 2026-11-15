@@ -42,18 +42,24 @@ export function fail(error: BookingError | unknown, httpOverride?: number): Resp
     const body: {
       error: ErrorCode;
       message: string;
+      /** Server/internal detail (e.g. invite_failed); public UIs use `message`. */
+      detail?: string;
       fields?: Record<string, string>;
       reference?: string;
     } = {
       error: error.code,
       message: t(error.stringKey, error.vars),
     };
+    if (
+      error.message &&
+      error.message !== error.code &&
+      error.message !== 'invalid_request'
+    ) {
+      body.detail = error.message.slice(0, 200);
+    }
     if (error.field) {
       // Prefer the specific message when the server set one (e.g. Zod / zone errors).
-      const detail =
-        error.message && error.message !== error.code && error.message !== 'invalid_request'
-          ? error.message
-          : body.message;
+      const detail = body.detail ?? body.message;
       body.fields = { [error.field]: detail };
     }
     const ref = (error as BookingError & { reference?: string }).reference;

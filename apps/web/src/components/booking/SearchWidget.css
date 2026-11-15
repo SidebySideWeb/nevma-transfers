@@ -165,6 +165,54 @@
   flex: 0 1 380px;
 }
 
+/*
+ * /book (and business) sits in a ~half-width column beside the summary.
+ * A single flex row of pickup|dropoff|date|time|CTA truncates placeholders —
+ * stack into a 2-column grid instead. Home hero keeps the wide single bar.
+ */
+.ep-sw--book {
+  max-width: none;
+}
+.ep-sw--book .ep-sw-tabs {
+  margin-left: 0;
+}
+.ep-sw--book .ep-sw-bar:not(.ep-sw-bar--flight) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+}
+.ep-sw--book .ep-sw-bar:not(.ep-sw-bar--flight) .ep-sw-field {
+  flex: none;
+  max-width: none;
+  min-width: 0;
+  border-left: 0;
+}
+.ep-sw--book .ep-sw-bar:not(.ep-sw-bar--flight) .ep-sw-field:nth-child(2n) {
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+.ep-sw--book .ep-sw-bar:not(.ep-sw-bar--flight) .ep-sw-field:nth-child(n + 3) {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.ep-sw--book .ep-sw-cta {
+  grid-column: 1 / -1;
+  justify-content: stretch;
+  padding: 14px 18px;
+  border-left: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.ep-sw--book .ep-sw-submit {
+  width: 100%;
+}
+.ep-sw--book .ep-sw-bar--flight .ep-sw-field {
+  flex: 1 1 auto;
+  max-width: none;
+}
+.ep-sw--book .ep-sw-field label {
+  white-space: normal;
+  line-height: 1.35;
+  letter-spacing: 0.1em;
+}
+
 /* expanding panel: ~480px total with the bar, 200ms ease-out */
 .ep-sw-panel {
   position: absolute;
@@ -392,6 +440,12 @@
 @media (max-width: 767px) {
   .ep-sw-bar {
     flex-direction: column;
+  }
+  .ep-sw--book .ep-sw-bar:not(.ep-sw-bar--flight) {
+    grid-template-columns: 1fr;
+  }
+  .ep-sw--book .ep-sw-bar:not(.ep-sw-bar--flight) .ep-sw-field:nth-child(2n) {
+    border-left: 0;
   }
   .ep-sw-field--date,
   .ep-sw-field--duration {

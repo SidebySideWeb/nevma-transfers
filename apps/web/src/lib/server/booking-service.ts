@@ -1152,7 +1152,7 @@ async function createBookingFromQuote(
   raw: unknown,
   visitorKey: string,
   ip?: string,
-  opts?: { skipPayment?: boolean; skipTurnstile?: boolean },
+  opts?: { skipPayment?: boolean; skipTurnstile?: boolean; companyId?: string },
 ) {
   const parsed = QuoteCheckoutRequest.safeParse(raw);
   if (!parsed.success) {
@@ -1255,32 +1255,43 @@ async function createBookingFromQuote(
     currency: string;
   };
   try {
-    const { rows } = await db().query<{ j: typeof created }>(
-      `select public.create_booking_from_quote(
-         $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::int, $7::int, $8::text, $9::text,
-         $10::text[], $11::text, $12::text, $13::text,
-         $14::text, $15::text, $16::text, $17::text
-       ) as j`,
-      [
-        body.quoteId,
-        body.classKey,
-        visitorKey,
-        body.pickupAddress,
-        body.dropoffAddress ?? null,
-        body.passengers,
-        body.luggage,
-        body.flightNumber ?? null,
-        body.notes ?? null,
-        expandExtraCodes(normaliseExtraChoices(body.extras)),
-        body.customer.name,
-        body.customer.email,
-        body.customer.phone,
-        inv?.company ?? null,
-        inv?.vat ?? null,
-        inv?.taxOffice ?? null,
-        inv?.address ?? null,
-      ],
-    );
+    const extras = expandExtraCodes(normaliseExtraChoices(body.extras));
+    const args = [
+      body.quoteId,
+      body.classKey,
+      visitorKey,
+      body.pickupAddress,
+      body.dropoffAddress ?? null,
+      body.passengers,
+      body.luggage,
+      body.flightNumber ?? null,
+      body.notes ?? null,
+      extras,
+      body.customer.name,
+      body.customer.email,
+      body.customer.phone,
+      inv?.company ?? null,
+      inv?.vat ?? null,
+      inv?.taxOffice ?? null,
+      inv?.address ?? null,
+    ] as const;
+    const { rows } = opts?.companyId
+      ? await db().query<{ j: typeof created }>(
+          `select public.create_booking_from_company_quote(
+             $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::int, $7::int, $8::text, $9::text,
+             $10::text[], $11::text, $12::text, $13::text,
+             $14::text, $15::text, $16::text, $17::text, $18::uuid
+           ) as j`,
+          [...args, opts.companyId],
+        )
+      : await db().query<{ j: typeof created }>(
+          `select public.create_booking_from_quote(
+             $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::int, $7::int, $8::text, $9::text,
+             $10::text[], $11::text, $12::text, $13::text,
+             $14::text, $15::text, $16::text, $17::text
+           ) as j`,
+          [...args],
+        );
     created = rows[0]!.j;
   } catch (e) {
     throw mapPgBookingError(e);
@@ -1464,7 +1475,7 @@ export async function createBooking(
   raw: unknown,
   visitorKey: string,
   ip?: string,
-  opts?: { skipPayment?: boolean; skipTurnstile?: boolean },
+  opts?: { skipPayment?: boolean; skipTurnstile?: boolean; companyId?: string },
 ) {
   rejectMoneyFields(raw);
   if (raw && typeof raw === 'object' && 'quoteId' in (raw as object)) {

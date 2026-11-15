@@ -13,9 +13,12 @@ export const config = {
 /** Paths that must stay reachable without a browser password prompt. */
 function isExcluded(pathname: string): boolean {
   return (
-    pathname === '/api/webhooks/viva' ||
-    pathname.startsWith('/api/cron/') ||
-    pathname.startsWith('/api/internal/') ||
+    // All APIs: booking/corporate islands call these without Basic Auth
+    // (company bookers only have a magic-link session, not SITE_PASSWORD).
+    pathname.startsWith('/api/') ||
+    // Company bookers sign in here; they do not have the demo SITE_PASSWORD.
+    pathname === '/business' ||
+    pathname.startsWith('/business/') ||
     // Email clients (and Gmail's image proxy) cannot send Basic Auth.
     pathname === '/images/v2/logo-white.png' ||
     pathname === '/logo-white.png'
