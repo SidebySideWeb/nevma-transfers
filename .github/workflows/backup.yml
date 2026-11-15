@@ -49,7 +49,10 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
-          pg_dump --version
+          # Runner images also ship client 16 on PATH; force 17 ahead of it.
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          pg_dump --version | grep -E '^pg_dump \(PostgreSQL\) 17\.'
           age --version
           aws --version
 
@@ -62,6 +65,7 @@ jobs:
           AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
         run: |
           set -euo pipefail
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
           STAMP=$(date -u +%Y%m%d)
           mkdir -p backup-out
 
@@ -78,6 +82,7 @@ jobs:
           echo "Sanity archive entries: ${ENTRIES}"
 
           echo "Dumping Postgres public schema (custom format)…"
+          pg_dump --version
           pg_dump --format=custom --no-owner --no-acl --schema=public \
             --file="backup-out/postgres-${STAMP}.dump" "$DATABASE_URL"
           LIST_LINES=$(pg_restore --list "backup-out/postgres-${STAMP}.dump" | wc -l)
