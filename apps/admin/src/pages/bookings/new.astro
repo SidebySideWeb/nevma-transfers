@@ -126,9 +126,20 @@ const savedRoutes: SavedRouteOpt[] = distancePricing
       ).data ?? []
     )
       .filter(
-        (r) =>
-          r.from_place_id &&
-          r.to_place_id &&
+        (r): r is typeof r & {
+          from_code: string;
+          to_code: string;
+          from_place_id: string;
+          to_place_id: string;
+          from_lat: number;
+          from_lng: number;
+          to_lat: number;
+          to_lng: number;
+        } =>
+          Boolean(r.from_code) &&
+          Boolean(r.to_code) &&
+          Boolean(r.from_place_id) &&
+          Boolean(r.to_place_id) &&
           r.from_lat != null &&
           r.from_lng != null &&
           r.to_lat != null &&
@@ -136,18 +147,18 @@ const savedRoutes: SavedRouteOpt[] = distancePricing
       )
       .map((r) => ({
         id: `${r.from_code}__${r.to_code}`,
-        label: `${String(r.from_name).replace(/^DEMO\s+/i, '')} → ${String(r.to_name).replace(/^DEMO\s+/i, '')}`,
+        label: `${String(r.from_name ?? r.from_code).replace(/^DEMO\s+/i, '')} → ${String(r.to_name ?? r.to_code).replace(/^DEMO\s+/i, '')}`,
         fromZone: r.from_code,
         toZone: r.to_code,
-        fromAddress: r.from_address || r.from_name,
-        toAddress: r.to_address || r.to_name,
+        fromAddress: r.from_address || r.from_name || r.from_code,
+        toAddress: r.to_address || r.to_name || r.to_code,
         fromPlace: {
-          placeId: r.from_place_id!,
+          placeId: r.from_place_id,
           lat: Number(r.from_lat),
           lng: Number(r.from_lng),
         },
         toPlace: {
-          placeId: r.to_place_id!,
+          placeId: r.to_place_id,
           lat: Number(r.to_lat),
           lng: Number(r.to_lng),
         },
