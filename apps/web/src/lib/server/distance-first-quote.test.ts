@@ -14,7 +14,7 @@ const KALLITHEA = { placeId: 'ChIJkallithea0001', lat: 37.9516513, lng: 23.70958
 const SOUNIO = { placeId: 'ChIJsounio0000001', lat: 37.6870154, lng: 24.0523991, address: 'Sounio Poseidon Villa' };
 const SYNTAGMA = { placeId: 'ChIJsyntagma00001', lat: 37.9755, lng: 23.7348 };
 const GLYFADA = { lat: 37.8758, lng: 23.7464 }; // inside no zone area, no placeId
-const CORINTH = { placeId: 'ChIJcorinth0000001', lat: 37.9407, lng: 22.9322 };
+const THESSALONIKI = { placeId: 'ChIJthessaloniki01', lat: 40.6401, lng: 22.9444 };
 
 /** Athens wall clock `YYYY-MM-DDTHH:mm`, `hours` from now, snapped to 12:00 when `noon`. */
 function athens(hours: number, noon = false): string {
@@ -193,8 +193,8 @@ describe.skipIf(!hasDatabaseUrl)('FIX-2 distance-first quotes', () => {
     expect(Number(rows[0].distance_km)).toBeGreaterThan(50);
   });
 
-  it('CR-12 a Corinth address → 422 outside_area, before any Google call', async () => {
-    const r = await failure(quote(base({ dropoffPlace: CORINTH }), ip));
+  it('CR-12 a Thessaloniki address → 422 outside_area, before any Google call', async () => {
+    const r = await failure(quote(base({ dropoffPlace: THESSALONIKI }), ip));
     expect(r.status).toBe(422);
     expect(r.body.error).toBe('outside_area');
     expect(googleCalls).toBe(0);

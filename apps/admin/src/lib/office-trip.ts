@@ -12,7 +12,8 @@ type Db = SupabaseClient<Database>;
 export type TripInput = {
   pickupLocal: string;
   type: 'transfer' | 'hourly';
-  fromZone: string;
+  /** Required for the classic zone path; places-only trips use simulateQuote in the form. */
+  fromZone?: string;
   toZone?: string;
   hours?: number;
   passengers: number;
@@ -53,6 +54,7 @@ export async function tripDuration(
   supabase: Db,
   input: Pick<TripInput, 'type' | 'fromZone' | 'toZone' | 'hours'>,
 ): Promise<{ durationMinutes: number; fromId: string; toId: string | null }> {
+  if (!input.fromZone) throw new TripError('Choose the pick-up zone');
   const { data: zones } = await supabase
     .from('zones')
     .select('id, code')

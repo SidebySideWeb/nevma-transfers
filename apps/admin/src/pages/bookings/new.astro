@@ -89,6 +89,8 @@ const addressAutocomplete =
   (import.meta.env.PUBLIC_ADDRESS_AUTOCOMPLETE ?? process.env.PUBLIC_ADDRESS_AUTOCOMPLETE) === 'true' &&
   Boolean(import.meta.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_PLACES_API_KEY);
 
+const distancePricing = features().distancePricing;
+
 // B9: active companies for the company picker (only when FEATURE_CORPORATE is on).
 const corporate = features().corporate;
 const companies = corporate
@@ -101,13 +103,67 @@ const companies = corporate
     ).data ?? []) as { id: string; name: string; pay_on_account: boolean }[])
   : [];
 
+type SavedRouteOpt = {
+  id: string;
+  label: string;
+  fromZone: string;
+  toZone: string;
+  fromAddress: string;
+  toAddress: string;
+  fromPlace: { placeId: string; lat: number; lng: number } | null;
+  toPlace: { placeId: string; lat: number; lng: number } | null;
+};
+const savedRoutes: SavedRouteOpt[] = distancePricing
+  ? (
+      (
+        await supabase
+          .from('featured_routes')
+          .select(
+            'from_code, from_name, to_code, to_name, from_address, to_address, from_place_id, from_lat, from_lng, to_place_id, to_lat, to_lng, featured_order',
+          )
+          .order('featured_order')
+          .limit(40)
+      ).data ?? []
+    )
+      .filter(
+        (r) =>
+          r.from_place_id &&
+          r.to_place_id &&
+          r.from_lat != null &&
+          r.from_lng != null &&
+          r.to_lat != null &&
+          r.to_lng != null,
+      )
+      .map((r) => ({
+        id: `${r.from_code}__${r.to_code}`,
+        label: `${String(r.from_name).replace(/^DEMO\s+/i, '')} → ${String(r.to_name).replace(/^DEMO\s+/i, '')}`,
+        fromZone: r.from_code,
+        toZone: r.to_code,
+        fromAddress: r.from_address || r.from_name,
+        toAddress: r.to_address || r.to_name,
+        fromPlace: {
+          placeId: r.from_place_id!,
+          lat: Number(r.from_lat),
+          lng: Number(r.from_lng),
+        },
+        toPlace: {
+          placeId: r.to_place_id!,
+          lat: Number(r.to_lat),
+          lng: Number(r.to_lng),
+        },
+      }))
+  : [];
+
 const pageData = {
   companies: companies.map((c) => ({ id: c.id, payOnAccount: c.pay_on_account })),
   vehicleId: prefillVehicle?.id ?? '',
   holdText,
   extras: extras.map((e) => ({ code: e.code, name: e.name, priceCents: e.price_cents })),
+  classNames: Object.fromEntries(classes.map((c) => [c.key, c.name])),
   customer: prefillCustomer,
   addressAutocomplete,
+  distancePricing,
+  savedRoutes,
 };
 ---
 
@@ -159,7 +215,7 @@ const pageData = {
               <p class="error-text" id="nb-name-err" hidden></p>
             </div>
             <div class="field">
-              <label for="nb-mail">E-mail</label>
+              <label for="nb-mail">E-mail <span class="muted">(optional)</span></label>
               <input id="nb-mail" class="input" type="email" autocomplete="off" aria-describedby="nb-mail-err" />
               <p class="error-text" id="nb-mail-err" hidden></p>
             </div>
@@ -229,30 +285,31 @@ const pageData = {
           </fieldset>
         </div>
         <div class="panel-body stack-sm">
+          {
+            distancePricing && savedRoutes.length > 0 ? (
+              <div class="field">
+                <label for="nb-route">Saved route (optional)</label>
+                <Select
+                  id="nb-route"
+                  options={[
+                    { value: '', label: 'Type addresses or pick a saved route', selected: true },
+                    ...savedRoutes.map((r) => ({ value: r.id, label: r.label })),
+                  ]}
+                />
+                <p class="help">Fills pick-up, drop-off and zones when the route is on the fixed list.</p>
+              </div>
+            ) : null
+          }
           <div class="grid-fields">
             <div class="field">
-              <label for="nb-from">From zone</label>
-              <Select
-                id="nb-from"
-                aria-describedby="nb-from-err"
-                options={[
-                  { value: '', label: 'Choose a zone', selected: true },
-                  ...zones.map((z) => ({ value: z.code, label: z.name })),
-                ]}
-              />
-              <p class="error-text" id="nb-from-err" hidden></p>
+              <label for="nb-pa">Pick-up address</label>
+              <input id="nb-pa" class="input" aria-describedby="nb-pa-err" />
+              <p class="error-text" id="nb-pa-err" hidden></p>
             </div>
-            <div class="field" id="nb-to-field">
-              <label for="nb-to">To zone</label>
-              <Select
-                id="nb-to"
-                aria-describedby="nb-to-err"
-                options={[
-                  { value: '', label: 'Choose a zone', selected: true },
-                  ...zones.map((z) => ({ value: z.code, label: z.name })),
-                ]}
-              />
-              <p class="error-text" id="nb-to-err" hidden></p>
+            <div class="field" id="nb-da-field">
+              <label for="nb-da">Drop-off address</label>
+              <input id="nb-da" class="input" aria-describedby="nb-da-err" />
+              <p class="error-text" id="nb-da-err" hidden></p>
             </div>
             <div class="field" id="nb-hours-field" hidden>
               <label for="nb-hours">Hours</label>
@@ -282,22 +339,51 @@ const pageData = {
                 </div>
               </div>
             </div>
-          </div>
-          <div class="grid-fields">
-            <div class="field">
-              <label for="nb-pa">Pick-up address</label>
-              <input id="nb-pa" class="input" aria-describedby="nb-pa-err" />
-              <p class="error-text" id="nb-pa-err" hidden></p>
-            </div>
-            <div class="field" id="nb-da-field">
-              <label for="nb-da">Drop-off address</label>
-              <input id="nb-da" class="input" />
-            </div>
             <div class="field">
               <label for="nb-fl">Flight (optional)</label>
               <input id="nb-fl" class="input" />
             </div>
           </div>
+          <details class="stack-sm" id="nb-zones" open={!distancePricing}>
+            <summary>{distancePricing ? 'Zones (optional)' : 'Zones'}</summary>
+            <p class="help" hidden={!distancePricing}>
+              Optional shortcut for fixed-zone fares. Leave empty to price from the map addresses.
+            </p>
+            <div class="grid-fields">
+              <div class="field">
+                <label for="nb-from">From zone</label>
+                <Select
+                  id="nb-from"
+                  aria-describedby="nb-from-err"
+                  options={[
+                    {
+                      value: '',
+                      label: distancePricing ? 'No zone (use address)' : 'Choose a zone',
+                      selected: true,
+                    },
+                    ...zones.map((z) => ({ value: z.code, label: z.name })),
+                  ]}
+                />
+                <p class="error-text" id="nb-from-err" hidden></p>
+              </div>
+              <div class="field" id="nb-to-field">
+                <label for="nb-to">To zone</label>
+                <Select
+                  id="nb-to"
+                  aria-describedby="nb-to-err"
+                  options={[
+                    {
+                      value: '',
+                      label: distancePricing ? 'No zone (use address)' : 'Choose a zone',
+                      selected: true,
+                    },
+                    ...zones.map((z) => ({ value: z.code, label: z.name })),
+                  ]}
+                />
+                <p class="error-text" id="nb-to-err" hidden></p>
+              </div>
+            </div>
+          </details>
           <div class="grid-fields trip-counts">
             <div class="field">
               <label for="nb-px">Passengers</label>

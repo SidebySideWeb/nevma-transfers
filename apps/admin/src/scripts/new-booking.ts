@@ -24,11 +24,24 @@ type Hit = {
   bookings_count: number;
   last_booking_at: string | null;
 };
+type SavedRoute = {
+  id: string;
+  label: string;
+  fromZone: string;
+  toZone: string;
+  fromAddress: string;
+  toAddress: string;
+  fromPlace: { placeId: string; lat: number; lng: number } | null;
+  toPlace: { placeId: string; lat: number; lng: number } | null;
+};
 type PageData = {
   companies?: { id: string; payOnAccount: boolean }[];
   vehicleId: string;
   extras: { code: string; name: string; priceCents: number }[];
+  classNames?: Record<string, string>;
   addressAutocomplete?: boolean;
+  distancePricing?: boolean;
+  savedRoutes?: SavedRoute[];
   customer?: {
     id: string;
     name: string;
@@ -241,17 +254,23 @@ function tripInput() {
   const hours = Number($('nb-hours').value);
   const passengers = Number($('nb-px').value);
   const luggage = Number($('nb-lg').value);
-  if (!pickupLocal() || !from) return null;
+  const placesOk =
+    Boolean(data.distancePricing) &&
+    Boolean(pickupPlace) &&
+    (type() === 'hourly' || Boolean(dropoffPlace));
+  const zonesOk = Boolean(from) && (type() === 'hourly' || (Boolean(to) && to !== from));
+  if (!pickupLocal() || (!zonesOk && !placesOk)) return null;
   if (!Number.isInteger(passengers) || passengers < 1 || !Number.isInteger(luggage) || luggage < 0) return null;
   if (type() === 'transfer') {
-    if (!to || to === from) return null;
     return {
       pickupLocal: pickupLocal(),
       type: 'transfer' as const,
-      fromZone: from,
-      toZone: to,
+      fromZone: from || undefined,
+      toZone: to || undefined,
       passengers,
       luggage,
+      pickupPlace: pickupPlace ?? undefined,
+      dropoffPlace: dropoffPlace ?? undefined,
       companyId: companyId(),
     };
   }
@@ -259,10 +278,11 @@ function tripInput() {
   return {
     pickupLocal: pickupLocal(),
     type: 'hourly' as const,
-    fromZone: from,
+    fromZone: from || undefined,
     hours,
     passengers,
     luggage,
+    pickupPlace: pickupPlace ?? undefined,
     companyId: companyId(),
   };
 }
@@ -312,11 +332,50 @@ async function loadAvailability() {
   if (!trip) {
     offers = [];
     durationMinutes = 0;
-    $('nb-cls-help').textContent = 'Fill in the trip and time to see free vehicles and the list price.';
+    $('nb-cls-help').textContent = data.distancePricing
+      ? 'Pick addresses (or a saved route) and the time to see free vehicles and the list price.'
+      : 'Fill in the trip and time to see free vehicles and the list price.';
     renderSummary();
     return loadVehicles();
   }
-  const { data: res, error } = await actions.classAvailabilityForTrip(trip);
+
+  // Zones → classic availability. Places-only → distance simulate (same stack as Pricing simulator).
+  if (trip.fromZone) {
+    const { data: res, error } = await actions.classAvailabilityForTrip(trip);
+    if (mine !== availSeq) return;
+    if (error) {
+      offers = [];
+      durationMinutes = 0;
+      $('nb-cls-help').textContent = error.message;
+      renderSummary();
+      return;
+    }
+    offers = res.classes;
+    durationMinutes = res.durationMinutes;
+    rebuildClasses();
+    renderSummary();
+    await loadVehicles();
+    return;
+  }
+
+  const { data: sim, error } = await actions.simulateQuote({
+    type: trip.type,
+    hours: trip.type === 'hourly' ? trip.hours : undefined,
+    pickupLocal: trip.pickupLocal,
+    passengers: trip.passengers,
+    luggage: trip.luggage,
+    pickupPlace: trip.pickupPlace
+      ? { placeId: trip.pickupPlace.placeId, lat: trip.pickupPlace.lat, lng: trip.pickupPlace.lng }
+      : undefined,
+    dropoffPlace:
+      trip.type === 'transfer' && trip.dropoffPlace
+        ? {
+            placeId: trip.dropoffPlace.placeId,
+            lat: trip.dropoffPlace.lat,
+            lng: trip.dropoffPlace.lng,
+          }
+        : undefined,
+  });
   if (mine !== availSeq) return;
   if (error) {
     offers = [];
@@ -325,8 +384,24 @@ async function loadAvailability() {
     renderSummary();
     return;
   }
-  offers = res.classes;
-  durationMinutes = res.durationMinutes;
+  const opts =
+    (sim as {
+      options?: {
+        classKey: string;
+        baseCents?: number | null;
+        total?: number | null;
+        available?: boolean;
+      }[];
+      durationMinutes?: number;
+    }) || {};
+  durationMinutes = opts.durationMinutes ?? 0;
+  offers = (opts.options ?? []).map((o) => ({
+    key: o.classKey,
+    name: data.classNames?.[o.classKey] || o.classKey,
+    free: o.available === false ? 0 : 1,
+    priceCents: o.total ?? o.baseCents ?? null,
+    fits: true,
+  }));
   rebuildClasses();
   renderSummary();
   await loadVehicles();
@@ -528,18 +603,45 @@ function validate(): [string, string][] {
     if (!$(id).value.trim()) errs.push([id, msg]);
   };
   need('nb-name', 'Enter the customer name.');
-  if (!/^\S+@\S+\.\S+$/.test($('nb-mail').value.trim())) errs.push(['nb-mail', 'Enter a valid e-mail address.']);
+  const mail = $('nb-mail').value.trim();
+  if (mail && !/^\S+@\S+\.\S+$/.test(mail)) errs.push(['nb-mail', 'Enter a valid e-mail address.']);
+  const wantsMail =
+    $('nb-email').checked ||
+    (document.querySelector('input[name="nb-pay"]:checked') as HTMLInputElement | null)?.value ===
+      'link';
+  if (wantsMail && !mail) {
+    errs.push(['nb-mail', 'E-mail is needed for a payment link or to e-mail the customer.']);
+  }
   need('nb-tel', 'Enter a phone number.');
-  need('nb-from', type() === 'hourly' ? 'Choose the pick-up zone.' : 'Choose the from zone.');
-  if (type() === 'transfer') {
-    if (!$('nb-to').value) errs.push(['nb-to', 'Choose the to zone.']);
-    else if ($('nb-to').value === $('nb-from').value) errs.push(['nb-to', 'Choose a different zone from the pick-up zone.']);
-  } else if (!(Number($('nb-hours').value) >= 1)) {
+  const from = $('nb-from').value;
+  const to = $('nb-to').value;
+  const placesOk =
+    Boolean(data.distancePricing) &&
+    Boolean(pickupPlace) &&
+    (type() === 'hourly' || Boolean(dropoffPlace));
+  const zonesOk = Boolean(from) && (type() === 'hourly' || (Boolean(to) && to !== from));
+  if (!zonesOk && !placesOk) {
+    if (data.distancePricing) {
+      need('nb-pa', 'Choose a pick-up address from the suggestions.');
+      if (type() === 'transfer' && !dropoffPlace) {
+        errs.push(['nb-da', 'Choose a drop-off address from the suggestions.']);
+      }
+    } else {
+      need('nb-from', type() === 'hourly' ? 'Choose the pick-up zone.' : 'Choose the from zone.');
+      if (type() === 'transfer') {
+        if (!to) errs.push(['nb-to', 'Choose the to zone.']);
+        else if (to === from) errs.push(['nb-to', 'Choose a different zone from the pick-up zone.']);
+      }
+    }
+  } else if (zonesOk && type() === 'transfer' && to === from) {
+    errs.push(['nb-to', 'Choose a different zone from the pick-up zone.']);
+  }
+  if (type() === 'hourly' && !(Number($('nb-hours').value) >= 1)) {
     errs.push(['nb-hours', 'Enter a whole number of hours.']);
   }
   need('nb-date', 'Choose the pick-up date.');
   need('nb-time', 'Choose the pick-up time.');
-  need('nb-pa', 'Enter the pick-up address.');
+  if (!data.distancePricing || zonesOk) need('nb-pa', 'Enter the pick-up address.');
   need('nb-cls', 'Choose a vehicle class with a free vehicle.');
   const inv = ['nb-inv-company', 'nb-inv-vat', 'nb-inv-tax', 'nb-inv-addr'].map((id) => $(id).value.trim());
   if (inv.some(Boolean) && !inv.every(Boolean)) {
@@ -581,8 +683,8 @@ form.addEventListener('submit', async (e) => {
     },
     bookingType: type(),
     classKey: $('nb-cls').value,
-    fromZone: $('nb-from').value,
-    toZone: hourly ? undefined : $('nb-to').value,
+    fromZone: $('nb-from').value || undefined,
+    toZone: hourly ? undefined : $('nb-to').value || undefined,
     hours: hourly ? Number($('nb-hours').value) : undefined,
     pickupLocal: pickupLocal(),
     pickupAddress: $('nb-pa').value,
@@ -638,13 +740,32 @@ enhanceAddressField($('nb-pa'), {
   enabled: Boolean(data.addressAutocomplete),
   onPlace: (p) => {
     pickupPlace = p;
+    scheduleAvailability();
   },
 });
 enhanceAddressField($('nb-da'), {
   enabled: Boolean(data.addressAutocomplete),
   onPlace: (p) => {
     dropoffPlace = p;
+    scheduleAvailability();
   },
+});
+
+const routeSel = document.getElementById('nb-route') as HTMLSelectElement | null;
+routeSel?.addEventListener('change', () => {
+  const hit = (data.savedRoutes ?? []).find((r) => r.id === routeSel.value);
+  if (!hit) return;
+  $('nb-pa').value = hit.fromAddress;
+  $('nb-da').value = hit.toAddress;
+  pickupPlace = hit.fromPlace;
+  dropoffPlace = hit.toPlace;
+  const from = $<HTMLSelectElement>('nb-from');
+  const to = $<HTMLSelectElement>('nb-to');
+  from.value = hit.fromZone;
+  to.value = hit.toZone;
+  refreshSelect(from);
+  refreshSelect(to);
+  scheduleAvailability();
 });
 
 renderType();

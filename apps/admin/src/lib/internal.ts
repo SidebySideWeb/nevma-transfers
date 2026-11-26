@@ -90,7 +90,7 @@ export type OfficeBookingBody = {
   customer: { name: string; email: string; phone: string };
   bookingType: 'transfer' | 'hourly';
   classKey: string;
-  fromZone: string;
+  fromZone?: string;
   toZone?: string;
   hours?: number;
   pickupLocal: string;

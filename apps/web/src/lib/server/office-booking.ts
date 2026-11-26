@@ -12,7 +12,7 @@ import { bookingDb } from './db';
 import { mapPgBookingError } from './http';
 import { getPaymentProvider } from './payments';
 import { getSettings } from './settings';
-import { quoteTrip, sumExtras } from './trip-quote';
+import { quoteTrip, quoteTripFromPlaces, sumExtras } from './trip-quote';
 
 const placePayload = z
   .object({ placeId: z.string().min(10), lat: z.number(), lng: z.number() })
@@ -32,13 +32,15 @@ const OfficeBookingBody = z
     customer: z
       .object({
         name: z.string().min(1),
-        email: z.email(),
+        /** Optional for walk-in / phone office bookings; required when emailing or payment link. */
+        email: z.union([z.literal(''), z.email()]).default(''),
         phone: z.string().min(1),
       })
       .strict(),
     bookingType: z.enum(['transfer', 'hourly']),
     classKey: z.string().min(1),
-    fromZone: z.string().min(1),
+    /** Optional when distance pricing + Places pins are set. */
+    fromZone: z.string().min(1).optional(),
     toZone: z.string().min(1).optional(),
     hours: z.number().int().positive().optional(),
     pickupLocal,
@@ -71,7 +73,17 @@ const OfficeBookingBody = z
   })
   .strict()
   .superRefine((v, ctx) => {
-    if (v.bookingType === 'transfer' && !v.toZone) {
+    const zonesOk = Boolean(v.fromZone) && (v.bookingType === 'hourly' || Boolean(v.toZone));
+    const placesOk =
+      Boolean(v.pickupPlace) && (v.bookingType === 'hourly' || Boolean(v.dropoffPlace));
+    if (!zonesOk && !placesOk) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'zones_or_places_required',
+        path: [v.fromZone ? 'toZone' : 'fromZone'],
+      });
+    }
+    if (v.bookingType === 'transfer' && zonesOk && !v.toZone) {
       ctx.addIssue({ code: 'custom', message: 'toZone required', path: ['toZone'] });
     }
     if (v.bookingType === 'hourly' && v.hours == null) {
@@ -92,6 +104,13 @@ const OfficeBookingBody = z
         code: 'custom',
         message: 'dropoff place not allowed on hourly',
         path: ['dropoffPlace'],
+      });
+    }
+    if (!v.customer.email && (v.payment === 'link' || v.emailCustomer)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'email required for payment link or customer e-mail',
+        path: ['customer', 'email'],
       });
     }
   });
@@ -166,15 +185,30 @@ export async function createOfficeBooking(
   const pickup = localToInstant(body.pickupLocal, settings.timezone);
   assertLeadTime(pickup, new Date(), settings.minLeadMinutes);
 
-  const trip = await quoteTrip({
-    type: body.bookingType,
-    classKey: body.classKey,
-    fromZone: body.fromZone,
-    toZone: body.toZone,
-    hours: body.hours,
-    passengers: body.passengers,
-    luggage: body.luggage,
-  });
+  const usePlaces =
+    Boolean(body.pickupPlace) &&
+    (body.bookingType === 'hourly' || Boolean(body.dropoffPlace)) &&
+    !body.fromZone;
+  const trip = usePlaces
+    ? await quoteTripFromPlaces({
+        type: body.bookingType,
+        classKey: body.classKey,
+        hours: body.hours,
+        passengers: body.passengers,
+        luggage: body.luggage,
+        pickupPlace: body.pickupPlace!,
+        dropoffPlace: body.dropoffPlace ?? null,
+        pickupAt: pickup,
+      })
+    : await quoteTrip({
+        type: body.bookingType,
+        classKey: body.classKey,
+        fromZone: body.fromZone!,
+        toZone: body.toZone,
+        hours: body.hours,
+        passengers: body.passengers,
+        luggage: body.luggage,
+      });
   const extras = await sumExtras(body.extras);
 
   // B9: a company's fixed price (per hour when hourly) beats its discount; extras are not discounted.
@@ -270,6 +304,34 @@ export async function createOfficeBooking(
     payment_status: string;
   };
 
+  let pickupPlace;
+  let dropoffPlace;
+  try {
+    pickupPlace = parsePlace(body.pickupPlace ?? null);
+    dropoffPlace =
+      body.bookingType === 'transfer' ? parsePlace(body.dropoffPlace ?? null) : null;
+  } catch (e) {
+    if (e instanceof PlacesError) {
+      throw new BookingError('invalid_request', {
+        stringKey: 'error.invalid_request',
+        message: e.message,
+      });
+    }
+    throw e;
+  }
+  // bookings_type_fields needs lat (+ distance_km) on the same INSERT as distance-priced rows.
+  const pickCols = placeColumns('pickup', pickupPlace);
+  const dropCols = placeColumns('dropoff', dropoffPlace);
+  const dropoffAddress =
+    body.bookingType === 'transfer' ? body.dropoffAddress?.trim() || null : null;
+  if (body.bookingType === 'transfer' && !dropoffAddress) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'dropoff_address required',
+      field: 'dropoffAddress',
+    });
+  }
+
   try {
     await bookingDb().query('begin');
     const { rows } = await bookingDb().query<{
@@ -285,7 +347,10 @@ export async function createOfficeBooking(
          base_price_cents, price_cents, list_price_cents, price_override_reason,
          status, hold_expires_at, payment_status, payment_method,
          invoice_status, invoice_company, invoice_vat, invoice_tax_office, invoice_address,
-         visitor_key, cancel_token_hash, source, created_by, vip_security, vehicle_id, company_id
+         visitor_key, cancel_token_hash, source, created_by, vip_security, vehicle_id, company_id,
+         distance_km,
+         pickup_place_id, pickup_lat, pickup_lng,
+         dropoff_place_id, dropoff_lat, dropoff_lng
        ) values (
          $1::public.booking_type, $2::uuid, $3::uuid, $4::uuid,
          $5, $6, $7::timestamptz, $8::int, $9::int, $10::tstzrange,
@@ -293,7 +358,10 @@ export async function createOfficeBooking(
          $18::int, $19::int, $20::int, $21,
          $22::public.booking_status, $23::timestamptz, $24::public.payment_status, $25,
          $26::public.invoice_status, $27, $28, $29, $30,
-         $31, $32, 'office', $33::uuid, $34, $35::uuid, $36::uuid
+         $31, $32, 'office', $33::uuid, $34, $35::uuid, $36::uuid,
+         $37::numeric,
+         $38, $39::float8, $40::float8,
+         $41, $42::float8, $43::float8
        )
        returning id, reference, status, payment_status`,
       [
@@ -302,7 +370,7 @@ export async function createOfficeBooking(
         trip.fromId,
         trip.toId,
         body.pickupAddress,
-        body.bookingType === 'transfer' ? (body.dropoffAddress ?? null) : null,
+        dropoffAddress,
         pickup.toISOString(),
         trip.hours,
         trip.durationMinutes,
@@ -333,34 +401,7 @@ export async function createOfficeBooking(
         extras.vipSecurity,
         body.vehicleId ?? null,
         companyId,
-      ],
-    );
-    booking = rows[0]!;
-
-    let pickupPlace;
-    let dropoffPlace;
-    try {
-      pickupPlace = parsePlace(body.pickupPlace ?? null);
-      dropoffPlace =
-        body.bookingType === 'transfer' ? parsePlace(body.dropoffPlace ?? null) : null;
-    } catch (e) {
-      if (e instanceof PlacesError) {
-        throw new BookingError('invalid_request', {
-          stringKey: 'error.invalid_request',
-          message: e.message,
-        });
-      }
-      throw e;
-    }
-    const pickCols = placeColumns('pickup', pickupPlace);
-    const dropCols = placeColumns('dropoff', dropoffPlace);
-    await bookingDb().query(
-      `update public.bookings set
-         pickup_place_id = $2, pickup_lat = $3, pickup_lng = $4,
-         dropoff_place_id = $5, dropoff_lat = $6, dropoff_lng = $7
-       where id = $1::uuid`,
-      [
-        booking.id,
+        trip.distanceKm ?? null,
         pickCols.pickup_place_id,
         pickCols.pickup_lat,
         pickCols.pickup_lng,
@@ -369,6 +410,7 @@ export async function createOfficeBooking(
         dropCols.dropoff_lng,
       ],
     );
+    booking = rows[0]!;
 
     for (const line of extras.lines) {
       await bookingDb().query(

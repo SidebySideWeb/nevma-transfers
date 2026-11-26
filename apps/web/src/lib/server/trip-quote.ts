@@ -1,7 +1,10 @@
 import 'server-only';
+import { features } from '@tem/features';
+import { priceTrip } from '@tem/pricing';
 import { normaliseExtraChoices, quoteHourly, quoteTransfer } from '../booking/pricing';
 import { BookingError } from '../booking/types';
 import { bookingDb, type BookingDb } from './db';
+import { assertInServiceArea, loadPricingContext, routeDistance } from './distance-quote';
 
 export type TripClassRow = {
   id: string;
@@ -17,12 +20,16 @@ export type TripClassRow = {
 
 export type TripQuote = {
   classRow: TripClassRow;
-  fromId: string;
+  fromId: string | null;
   toId: string | null;
   durationMinutes: number;
   hours: number | null;
   baseCents: number;
+  /** Set when priced by Google distance (office places path). */
+  distanceKm?: number | null;
 };
+
+type PlacePin = { placeId: string; lat: number; lng: number };
 
 function db(): BookingDb {
   return bookingDb();
@@ -93,6 +100,106 @@ export function assertClassCapacity(
       field: 'classKey',
     });
   }
+}
+
+/**
+ * Office / distance path: price one class from Places pins (no zones).
+ * Uses the same Maps + class_rates stack as public distance quotes.
+ */
+export async function quoteTripFromPlaces(input: {
+  type: 'transfer' | 'hourly';
+  classKey: string;
+  hours?: number;
+  passengers: number;
+  luggage: number;
+  pickupPlace: PlacePin;
+  dropoffPlace?: PlacePin | null;
+  pickupAt: Date;
+}): Promise<TripQuote> {
+  if (!features().distancePricing) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'zones_required',
+      field: 'fromZone',
+    });
+  }
+  const classRow = await loadActiveClass(input.classKey);
+  assertClassCapacity(classRow, input.passengers, input.luggage);
+
+  const origin = { lat: input.pickupPlace.lat, lng: input.pickupPlace.lng };
+  const destination =
+    input.type === 'transfer' && input.dropoffPlace
+      ? { lat: input.dropoffPlace.lat, lng: input.dropoffPlace.lng }
+      : null;
+  if (input.type === 'transfer' && !destination) {
+    throw new BookingError('invalid_request', {
+      stringKey: 'error.invalid_request',
+      message: 'dropoffPlace required',
+      field: 'dropoffPlace',
+    });
+  }
+  await assertInServiceArea(destination ? [origin, destination] : [origin]);
+
+  let distanceKm: number | null = null;
+  let durationMinutes = input.type === 'hourly' ? (input.hours ?? 0) * 60 : 0;
+  if (input.type === 'transfer' && destination) {
+    const routed = await routeDistance({
+      origin,
+      destination,
+      departAt: input.pickupAt,
+    });
+    distanceKm = routed.distanceKm;
+    durationMinutes = routed.durationMin;
+  } else if (input.type === 'hourly') {
+    if (input.hours == null) {
+      throw new BookingError('invalid_request', {
+        stringKey: 'error.invalid_request',
+        message: 'hours required',
+        field: 'hours',
+      });
+    }
+  }
+
+  const pctx = await loadPricingContext();
+  const priced = priceTrip({
+    trip: {
+      type: input.type,
+      pickupAt: input.pickupAt,
+      distanceKm,
+      durationMin: durationMinutes,
+      hours: input.type === 'hourly' ? input.hours! : null,
+      stops: [],
+      pickup: origin,
+      dropoff: destination,
+    },
+    classes: [
+      {
+        key: classRow.key,
+        hourlyRateCents: classRow.rate_cents,
+        minHours: classRow.min_hours,
+        maxHours: classRow.max_hours,
+      },
+    ],
+    rates: pctx.rates,
+    settings: pctx.settings,
+    periods: pctx.periods,
+    areas: pctx.areas,
+    mode: 'distance',
+    vatRateBp: pctx.vatRateBp,
+  });
+  const line = priced.perClass[classRow.key];
+  if (!line?.available || line.total == null) {
+    throw new BookingError('no_price', { stringKey: 'error.no_price', message: 'no_price' });
+  }
+  return {
+    classRow,
+    fromId: null,
+    toId: null,
+    durationMinutes,
+    hours: input.type === 'hourly' ? input.hours! : null,
+    baseCents: line.total,
+    distanceKm,
+  };
 }
 
 /** Server-side trip price + duration (shared by online holds and office bookings). */

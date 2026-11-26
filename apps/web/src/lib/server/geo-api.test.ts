@@ -64,12 +64,12 @@ describe('/api/geo/check', () => {
     expect(body).toHaveProperty('kind');
   });
 
-  it('returns inArea false for Corinth when on', async () => {
+  it('returns inArea false for Thessaloniki when on', async () => {
     vi.mocked(features).mockReturnValue({
       distancePricing: true,
       serviceArea: 'attica',
     } as ReturnType<typeof features>);
-    const res = await handleGeoCheck(req({ lat: 37.9386, lng: 22.9322 }), 'vid', '1.1.1.1', ORIGIN);
+    const res = await handleGeoCheck(req({ lat: 40.6401, lng: 22.9444 }), 'vid', '1.1.1.1', ORIGIN);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.inArea).toBe(false);

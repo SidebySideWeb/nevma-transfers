@@ -73,14 +73,21 @@ const optionalFormUuid = z.union([z.string().uuid(), z.literal(''), z.null()]).o
 
 const pickupLocal = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
 
+const placePin = z
+  .object({ placeId: z.string().min(10), lat: z.number(), lng: z.number() })
+  .strict()
+  .optional();
+
 const tripInput = z.object({
   pickupLocal,
   type: z.enum(['transfer', 'hourly']),
-  fromZone: z.string().min(1),
+  fromZone: z.string().optional(),
   toZone: z.string().optional(),
   hours: z.number().int().positive().optional(),
   passengers: z.number().int().positive(),
   luggage: z.number().int().nonnegative(),
+  pickupPlace: placePin,
+  dropoffPlace: placePin,
   companyId: z.uuid().optional(),
 });
 
@@ -1356,25 +1363,19 @@ export const server = {
       idempotencyKey: z.uuid().optional(),
       customer: z.object({
         name: z.string().trim().min(1),
-        email: z.email(),
+        email: z.union([z.literal(''), z.email()]).default(''),
         phone: z.string().trim().min(1),
       }),
       bookingType: z.enum(['transfer', 'hourly']),
       classKey: z.string().min(1),
-      fromZone: z.string().min(1),
+      fromZone: z.string().optional(),
       toZone: z.string().optional(),
       hours: z.number().int().positive().optional(),
       pickupLocal,
       pickupAddress: z.string().trim().min(1),
       dropoffAddress: z.string().trim().optional(),
-      pickupPlace: z
-        .object({ placeId: z.string().min(10), lat: z.number(), lng: z.number() })
-        .strict()
-        .optional(),
-      dropoffPlace: z
-        .object({ placeId: z.string().min(10), lat: z.number(), lng: z.number() })
-        .strict()
-        .optional(),
+      pickupPlace: placePin,
+      dropoffPlace: placePin,
       flightNumber: z.string().trim().optional(),
       passengers: z.number().int().positive(),
       luggage: z.number().int().nonnegative(),
@@ -2262,7 +2263,7 @@ export const server = {
     accept: 'json',
     input: z.object({
       type: z.enum(['transfer', 'hourly']),
-      fromZone: z.string().min(1),
+      fromZone: z.string().optional(),
       toZone: z.string().optional(),
       hours: z.number().int().positive().optional(),
       pickupLocal: pickupLocal,

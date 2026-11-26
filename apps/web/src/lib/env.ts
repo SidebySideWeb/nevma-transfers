@@ -11,6 +11,8 @@ export const webPublicEnvSchema = z.object({
 export const webServerEnvSchema = webPublicEnvSchema.extend({
   SUPABASE_URL: z.url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  /** Anon key for Auth token refresh (corporate /business). Server-only — never PUBLIC_. */
+  SUPABASE_ANON_KEY: z.string().min(1).optional(),
   SANITY_PROJECT_ID: z.string().min(1),
   SANITY_DATASET: z.string().min(1),
   SANITY_READ_TOKEN: z.string().min(1),
@@ -47,6 +49,7 @@ function rawServer(): Record<string, string | undefined> {
     ...rawPublic(),
     SUPABASE_URL: import.meta.env.SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY: import.meta.env.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_ANON_KEY: import.meta.env.SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY,
     SANITY_PROJECT_ID: import.meta.env.SANITY_PROJECT_ID,
     SANITY_DATASET: import.meta.env.SANITY_DATASET,
     SANITY_READ_TOKEN: import.meta.env.SANITY_READ_TOKEN,

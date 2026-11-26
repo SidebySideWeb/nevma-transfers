@@ -21,6 +21,12 @@ const routes: { name: string; load: () => Promise<Mod>; method: string; path: st
   { name: 'login', load: () => import('../../pages/api/corporate/login'), method: 'POST', path: '/api/corporate/login' },
   { name: 'me', load: () => import('../../pages/api/corporate/me'), method: 'GET', path: '/api/corporate/me' },
   {
+    name: 'refresh',
+    load: () => import('../../pages/api/corporate/refresh'),
+    method: 'POST',
+    path: '/api/corporate/refresh',
+  },
+  {
     name: 'book-on-account',
     load: () => import('../../pages/api/corporate/book-on-account'),
     method: 'POST',

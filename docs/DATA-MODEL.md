@@ -225,3 +225,15 @@ FIX-2. (Kit file number was 0034; this repo already used 0034/0035.) `zones.area
 ## 0041 — Company quote checkout (13 Nov 2026)
 
 `create_booking_from_company_quote(...)` lets the authenticated business checkout sell a quote whose `company_id` matches the member’s company. Public `create_booking_from_quote` still raises `invalid_request: company quote`. Corporate `/api/corporate/book-on-account` and `book-card` pass `companyId` into booking creation.
+
+## 0042 — `driver_jobs` place bookings (26 Nov 2026)
+
+`driver_jobs(date, date)` uses `LEFT JOIN` on zones so address-only / distance bookings with null `from_zone_id` still appear for the assigned driver.
+
+## 0043 — Optional customer e-mail (26 Nov 2026)
+
+`link_booking_customer` returns without linking when `customer_email` is blank after trim, so walk-in office bookings do not create a shared empty-email customer row.
+
+## 0044 — Driver booking-change notices (26 Nov 2026)
+
+`bookings.name_sign`; tables `booking_changes` / `booking_change_acks`; trigger `bookings_record_changes` (vehicle only when `old.vehicle_id` is set — first assign is silent); `driver_ack_change`; `driver_me.unacknowledgedChanges` counts only `confirmed` / `assigned` / `cancelled` jobs.

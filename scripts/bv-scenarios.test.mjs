@@ -88,9 +88,9 @@ describe('B10 BV unit coverage (full pricing rules)', () => {
     assert.equal(r.perClass.e.total, roundUpEuros(6600, 1));
   });
 
-  it('BV-03 Corinth is outside Attica', () => {
-    // Corinth centre ≈ 37.938, 22.932
-    assert.equal(inServiceArea({ lat: 37.938, lng: 22.932 }, 'attica'), false);
+  it('BV-03 Thessaloniki is outside the service area; Corinth and Syntagma are inside', () => {
+    assert.equal(inServiceArea({ lat: 40.6401, lng: 22.9444 }, 'attica'), false);
+    assert.equal(inServiceArea({ lat: 37.938, lng: 22.932 }, 'attica'), true);
     assert.equal(inServiceArea({ lat: 37.9755, lng: 23.7348 }, 'attica'), true);
   });
 

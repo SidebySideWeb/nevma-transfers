@@ -1,7 +1,15 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import BookingApp, { type BookingAppProps } from '../booking/BookingApp';
 import { formatEuroV2 } from '../booking/format';
 import { fill } from '../booking/v2/journey';
+import {
+  captureMagicLink,
+  clearSession,
+  parseAuthHash,
+  readSession,
+  refreshSession,
+  type BizSession,
+} from './session';
 
 type Me = {
   companyName: string;
@@ -29,8 +37,6 @@ type Statement = {
 };
 type CompanyUser = { id: string; email: string; role: 'admin' | 'booker'; active: boolean };
 
-const TOKEN_KEY = 'biz-token';
-
 export type BusinessAppProps = Omit<BookingAppProps, 'corporate' | 'initialVehicleQuery'>;
 
 const when = (iso: string) =>
@@ -41,18 +47,24 @@ const when = (iso: string) =>
     hour12: false,
   }).format(new Date(iso)) + ' (Athens)';
 
-/**
- * Magic-link sign-in lands here with `#access_token=...`. The token lives in sessionStorage only and is
- * sent as a Bearer header; the server resolves the member on every call. ponytail: no refresh token,
- * so a session lasts the Supabase access-token lifetime (1 hour default), then the member signs in again.
- */
-function takeToken(): { token: string | null; linkError: boolean } {
-  const hash = new URLSearchParams(window.location.hash.slice(1));
-  const fromLink = hash.get('access_token');
-  const linkError = hash.has('error');
-  if (fromLink || linkError) window.history.replaceState(null, '', window.location.pathname);
-  if (fromLink) sessionStorage.setItem(TOKEN_KEY, fromLink);
-  return { token: sessionStorage.getItem(TOKEN_KEY), linkError };
+async function exchangeRefresh(refreshToken: string): Promise<{
+  accessToken: string;
+  refreshToken: string;
+}> {
+  const res = await fetch('/api/corporate/refresh', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+  if (!res.ok) throw new Error('refresh_failed');
+  const data = (await res.json()) as { accessToken?: string; refreshToken?: string };
+  if (!data.accessToken || !data.refreshToken) throw new Error('refresh_incomplete');
+  return { accessToken: data.accessToken, refreshToken: data.refreshToken };
+}
+
+/** Silent refresh; returns the new session or null (caller signs out). */
+async function tryRefresh(): Promise<BizSession | null> {
+  return refreshSession(window.localStorage, exchangeRefresh);
 }
 
 export default function BusinessApp(props: BusinessAppProps) {
@@ -61,50 +73,90 @@ export default function BusinessApp(props: BusinessAppProps) {
   const [me, setMe] = useState<Me | null>(null);
   const [phase, setPhase] = useState<'loading' | 'ready' | 'out'>('loading');
   const [tab, setTab] = useState<Tab>('book');
+  const tokenRef = useRef<string | null>(null);
+  tokenRef.current = token;
 
   const signOut = useCallback(() => {
-    sessionStorage.removeItem(TOKEN_KEY);
+    clearSession(window.localStorage, window.sessionStorage);
+    tokenRef.current = null;
     setToken(null);
     setMe(null);
     setPhase('out');
   }, []);
 
-  /** Authenticated fetch; a 401 ends the session. */
+  const applySession = useCallback((session: BizSession) => {
+    tokenRef.current = session.accessToken;
+    setToken(session.accessToken);
+  }, []);
+
+  /** Authenticated fetch; on 401 try one refresh then retry; still 401 → sign out. */
   const api = useCallback(
     async (path: string, init: RequestInit = {}) => {
-      const res = await fetch(path, {
-        ...init,
-        headers: {
-          ...(init.body ? { 'content-type': 'application/json' } : {}),
-          ...init.headers,
-          authorization: `Bearer ${token}`,
-        },
+      const headers = (access: string) => ({
+        ...(init.body ? { 'content-type': 'application/json' } : {}),
+        ...init.headers,
+        authorization: `Bearer ${access}`,
       });
+      const access = tokenRef.current;
+      if (!access) {
+        signOut();
+        return new Response(null, { status: 401 });
+      }
+      let res = await fetch(path, { ...init, headers: headers(access) });
+      if (res.status !== 401) return res;
+
+      const next = await tryRefresh();
+      if (!next) {
+        signOut();
+        return res;
+      }
+      applySession(next);
+      res = await fetch(path, { ...init, headers: headers(next.accessToken) });
       if (res.status === 401) signOut();
       return res;
     },
-    [token, signOut],
+    [signOut, applySession],
   );
 
   useEffect(() => {
-    const { token: t, linkError } = takeToken();
-    if (!t || linkError) {
+    const hash = window.location.hash;
+    const linkError = parseAuthHash(hash).error;
+    const fromLink = captureMagicLink(window.localStorage, hash, {
+      stripHash: () => window.history.replaceState(null, '', window.location.pathname),
+      sessionStorageLike: window.sessionStorage,
+    });
+    // Drop legacy access-only sessionStorage so we never pretend that is a session.
+    window.sessionStorage.removeItem('biz-token');
+
+    let session = fromLink ?? readSession(window.localStorage);
+    if (!session || linkError) {
+      if (linkError) clearSession(window.localStorage, window.sessionStorage);
       setPhase('out');
       return;
     }
+
     (async () => {
+      const loadMe = async (access: string) =>
+        fetch('/api/corporate/me', { headers: { authorization: `Bearer ${access}` } });
+
       try {
-        const res = await fetch('/api/corporate/me', { headers: { authorization: `Bearer ${t}` } });
+        let res = await loadMe(session!.accessToken);
+        if (res.status === 401) {
+          const next = await tryRefresh();
+          if (!next) throw new Error('me');
+          session = next;
+          res = await loadMe(next.accessToken);
+        }
         if (!res.ok) throw new Error('me');
         setMe((await res.json()) as Me);
-        setToken(t);
+        applySession(session!);
         setPhase('ready');
       } catch {
-        sessionStorage.removeItem(TOKEN_KEY);
+        clearSession(window.localStorage, window.sessionStorage);
         setPhase('out');
       }
     })();
-  }, []);
+  }, [applySession]);
 
   if (phase === 'loading') {
     return (
@@ -175,7 +227,10 @@ export default function BusinessApp(props: BusinessAppProps) {
         <BookingApp
           {...props}
           corporate={{
-            accessToken: token,
+            // Live read so a silent refresh updates Bearer without remounting the book tab.
+            get accessToken() {
+              return readSession(window.localStorage)?.accessToken ?? token;
+            },
             payOnAccount: me.payOnAccount,
             companyName: me.companyName,
           }}
