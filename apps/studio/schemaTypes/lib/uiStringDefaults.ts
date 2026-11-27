@@ -760,6 +760,17 @@ export const uiStringDefaults: UiStringDefault[] = [
     key: 'email.driver.invite.body',
     value: 'Hello {name}. Your driver account is ready. Use this link to sign in: {link}',
   },
+  {
+    area: 'emails',
+    key: 'email.driver.reset.subject',
+    value: 'Reset your Elite Protection driver password',
+  },
+  {
+    area: 'emails',
+    key: 'email.driver.reset.body',
+    value:
+      'Hello {name}. Use this link to set a new password for the driver app. If you did not ask for a reset, you can ignore this email. {link}',
+  },
 ];
 
 export type UiStringKey = (typeof uiStringDefaults)[number]['key'];

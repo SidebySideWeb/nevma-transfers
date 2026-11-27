@@ -19,6 +19,23 @@ paths:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/NotADriver' }
+  /password-reset:
+    post:
+      summary: Email a recovery link aimed at DRIVER_APP_URL (proxies to the booking site)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: Always ok (no email enumeration), content: { application/json: { schema: { type: object, properties: { ok: { type: boolean } } } } } }
+        '400': { description: invalid_request, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: rate limit }
   /vehicles:
     get:
       summary: Vehicles the driver can start the day with (active and not in another open shift)
@@ -167,6 +184,7 @@ components:
         customerName: { type: string }
         customerPhone: { type: [string, 'null'], description: 'Only from 24 hours before pick-up to 6 hours after the trip ends' }
         notes: { type: [string, 'null'] }
+        voucherCode: { type: [string, 'null'], description: 'Travel voucher code; omit UI when null' }
         className: { type: string }
         vehicleLabel: { type: [string, 'null'] }
         vipSecurity: { type: boolean }

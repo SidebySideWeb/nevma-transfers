@@ -30,10 +30,36 @@ function officeBooking(o = {}) {
     blocked_range_for($${cols.indexOf('pickup_at') + 1}::timestamptz, $${cols.indexOf('duration_minutes') + 1}::int, 30)) returning *`, Object.values(b)).then((r) => r[0]);
 }
 
-test('office booking: a price different from the list needs a reason; a discount below base is allowed for office only', async () => {
-  await assert.rejects(officeBooking({ price_cents: 7000, pickup_at: '2026-12-05T08:00:00+02:00' }), (e) => e.code === '23514');
-  const ok = await officeBooking({ price_cents: 7000, price_override_reason: 'Hotel partner rate', pickup_at: '2026-12-05T08:00:00+02:00' });
+test('office booking: voucher_code optional, max 64 chars; staff may update it', async () => {
+  const ok = await officeBooking({ voucher_code: 'EMP-2026-OK', pickup_at: '2026-12-04T10:00:00+02:00' });
+  assert.equal(ok.voucher_code, 'EMP-2026-OK');
+  const empty = await officeBooking({ voucher_code: null, pickup_at: '2026-12-04T11:00:00+02:00' });
+  assert.equal(empty.voucher_code, null);
+  await assert.rejects(
+    officeBooking({ voucher_code: 'x'.repeat(65), pickup_at: '2026-12-04T12:00:00+02:00' }),
+    (e) => e.code === '23514',
+  );
+  // 0047 column grant — office notes save needs update (voucher_code).
+  // asRole rolls back; assert inside the role session.
+  await asRole(db.pool, 'authenticated', staffId, async (c) => {
+    await c.query(`update bookings set voucher_code = 'EMP-EDIT' where id = $1`, [ok.id]);
+    const row = (await c.query(`select voucher_code from bookings where id = $1`, [ok.id])).rows[0];
+    assert.equal(row.voucher_code, 'EMP-EDIT');
+  });
+});
+
+test('office booking: price may differ from the list without a reason; a discount below base is allowed for office only', async () => {
+  // 0045: override reason is optional for office bookings.
+  const noReason = await officeBooking({ price_cents: 7000, pickup_at: '2026-12-05T08:00:00+02:00' });
+  assert.equal(noReason.price_cents, 7000);
+  assert.equal(noReason.price_override_reason, null);
+  const ok = await officeBooking({
+    price_cents: 6500,
+    price_override_reason: 'Hotel partner rate',
+    pickup_at: '2026-12-05T09:00:00+02:00',
+  });
   assert.equal(ok.source, 'office');
+  assert.equal(ok.price_override_reason, 'Hotel partner rate');
   await assert.rejects(officeBooking({ source: 'online', created_by: null, payment_method: 'viva', price_cents: 7000, list_price_cents: null, pickup_at: '2026-12-05T12:00:00+02:00' }), (e) => e.code === '23514');
   await assert.rejects(officeBooking({ created_by: null, pickup_at: '2026-12-05T14:00:00+02:00' }), (e) => e.code === '23514');
 });

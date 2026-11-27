@@ -80,9 +80,11 @@ test('a driver starts the day with a free vehicle; one open shift per driver and
 });
 
 test('drivers see only their own jobs, without prices; the customer phone only near the trip', async () => {
+  await q(`update bookings set voucher_code = 'EMP-DRV-01' where id = $1`, [f.b1.id]);
   const jobs = await asDriver(userA, async (c) => (await c.query(`select * from driver_jobs('2026-12-01', '2026-12-07')`)).rows);
   assert.deepEqual(jobs.map((j) => j.reference), [f.b1.reference]);
   assert.equal(jobs[0].from_zone, 'Athens International Airport (AIA)');
+  assert.equal(jobs[0].voucher_code, 'EMP-DRV-01');
   assert.equal(jobs[0].customer_phone, null);           // the trip is not within 24 h of now
   assert.ok(!('price_cents' in jobs[0]));
   const near = await booking({ pickup_at: new Date(Date.now() + 2 * 3600e3).toISOString(), driver_id: f.alex });

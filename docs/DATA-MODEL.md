@@ -119,7 +119,7 @@ Rules: `docs/OFFICE-BOOKINGS.md`.
 
 | Object | What |
 | --- | --- |
-| `bookings` | new columns `source` (`online` / `office`), `created_by` (staff), `list_price_cents`, `price_override_reason` (required when the office price differs from the list), `payment_method` (`viva`, `cash`, `bank_transfer`, `on_account`), `customer_id`; office bookings may be discounted below the base price |
+| `bookings` | new columns `source` (`online` / `office`), `created_by` (staff), `list_price_cents`, `price_override_reason` (optional note when the office price differs from the list), `payment_method` (`viva`, `cash`, `bank_transfer`, `on_account`), `customer_id`; office bookings may be discounted below the base price |
 | `payments` | new columns `method`, `note`; offline payments and refunds carry no Viva fields; the refund limit applies to all |
 | `customers` | one row per e-mail (case-insensitive): name, phone, last invoice details, staff-only notes, booking count, first and last booking; filled by a trigger on every new booking; staff read and edit name, phone, invoice details and notes only |
 | `create_office_hold()` | class hold for office bookings (service role only): same class lock, no per-visitor limit, `settings.office_link_hold_minutes` (DEMO 240) |
@@ -232,8 +232,20 @@ FIX-2. (Kit file number was 0034; this repo already used 0034/0035.) `zones.area
 
 ## 0043 — Optional customer e-mail (26 Nov 2026)
 
-`link_booking_customer` returns without linking when `customer_email` is blank after trim, so walk-in office bookings do not create a shared empty-email customer row.
+`link_booking_customer` returns without linking when `customer_email` is blank after trim, so walk-in office bookings do not create a shared empty-email customer row. `bookings.customer_email` stays `text not null` (empty string for walk-ins). Office new-booking may omit e-mail unless payment is a link or “e-mail the customer” is on. Zero-fare `offline_paid` (price override `0`) keeps `payment_status = paid` and skips the `payments` insert (`payments.amount_cents > 0`).
 
 ## 0044 — Driver booking-change notices (26 Nov 2026)
 
 `bookings.name_sign`; tables `booking_changes` / `booking_change_acks`; trigger `bookings_record_changes` (vehicle only when `old.vehicle_id` is set — first assign is silent); `driver_ack_change`; `driver_me.unacknowledgedChanges` counts only `confirmed` / `assigned` / `cancelled` jobs.
+
+## 0045 — Optional office price-override reason (27 Nov 2026)
+
+Drops `bookings_override_needs_reason`. Office bookings may set `price_cents` different from `list_price_cents` with or without `price_override_reason`.
+
+## 0046 — Booking travel voucher code (27 Nov 2026)
+
+`bookings.voucher_code` (nullable text, max 64). Staff set it on create/edit; `driver_jobs` exposes it so the drivers’ app can show it offline.
+
+## 0047 — Staff update grant for `voucher_code` (27 Nov 2026)
+
+`grant update (voucher_code) on public.bookings to authenticated` so office notes save can persist the field (RLS still staff-only).

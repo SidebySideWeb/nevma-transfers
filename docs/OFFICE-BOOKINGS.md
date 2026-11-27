@@ -10,7 +10,7 @@ Decided by the user on 1 Nov 2026: staff can add bookings by hand (phone, e-mail
 
 **Server rules.**
 1. Same validation as `POST /api/bookings` (zones, class capacity, whole hours, lead time, Athens time conversion), except the per-visitor hold limit and Turnstile.
-2. Price from the price list → `list_price_cents`. With an override, `price_cents` = override and `price_override_reason` is required (database check). Overrides may go below the base price for office bookings only.
+2. Price from the price list → `list_price_cents`. With an override, `price_cents` = override; `price_override_reason` is optional. Overrides may go below the base price for office bookings only.
 3. Hold with `create_office_hold(classKey, pickup, duration, staffUserId)`: same class lock as online holds; duration `settings.office_link_hold_minutes` (DEMO 240) for payment links; for offline bookings the hold is converted to the booking immediately.
 4. Booking columns: `source = 'office'`, `created_by = staffUserId`, `payment_method` (`viva` for links, else the offline method).
 5. `link`: status `pending`, `hold_expires_at` = hold end; create the Viva order with `paymentTimeout` = seconds left on the hold (if Viva's maximum order timeout is lower than the setting, use Viva's maximum and say so in the admin); e-mail `email.paymentLink.*` with the Viva checkout URL. The verified Viva webhook confirms it exactly like an online booking; expiry releases it like an online booking.

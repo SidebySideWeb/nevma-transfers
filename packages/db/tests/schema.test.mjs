@@ -188,6 +188,18 @@ test('booking references look like EP-XXXXXX without ambiguous characters', asyn
   assert.match(b.reference, /^EP-[A-HJ-NP-Z2-9]{6}$/);
 });
 
+test('0043 blank customer_email skips customers link', async () => {
+  const b = await insertBooking(db.pool, booking(ids, {
+    pickup_at: '2026-12-15T10:00:00+02:00',
+    customer_email: '',
+    customer_name: 'Walk-in',
+  }));
+  assert.equal(b.customer_email, '');
+  assert.equal(b.customer_id, null);
+  const { rows } = await db.pool.query(`select count(*)::int n from customers where email = ''`);
+  assert.equal(rows[0].n, 0);
+});
+
 test('AC-37: 0010 VAT — € 220.00 → € 177.42 + € 42.58; rate change leaves past bookings', async () => {
   const b = await insertBooking(db.pool, booking(ids, {
     pickup_at: '2026-12-14T10:00:00+02:00',

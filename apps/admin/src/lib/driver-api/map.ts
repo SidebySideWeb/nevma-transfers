@@ -20,6 +20,7 @@ type JobRow = {
   customer_name: string;
   customer_phone: string | null;
   notes: string | null;
+  voucher_code?: string | null;
   class_name: string;
   vehicle_label: string | null;
   vip_security: boolean;
@@ -51,6 +52,7 @@ export function mapJob(r: JobRow) {
     customerName: r.customer_name,
     customerPhone: r.customer_phone,
     notes: r.notes,
+    voucherCode: r.voucher_code?.trim() ? r.voucher_code.trim() : null,
     className: r.class_name,
     vehicleLabel: r.vehicle_label,
     vipSecurity: r.vip_security,

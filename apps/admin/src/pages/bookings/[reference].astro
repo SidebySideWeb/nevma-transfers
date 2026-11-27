@@ -1003,6 +1003,18 @@ const bookingSubtitle = booking
                       {booking.security_notes ?? ''}
                     </textarea>
                   </div>
+                  <div class="field">
+                    <label for="voucher">Travel voucher (code)</label>
+                    <input
+                      id="voucher"
+                      class="input"
+                      name="voucherCode"
+                      maxlength="64"
+                      placeholder="e.g. EMP-2026-XXXXXX"
+                      value={booking.voucher_code ?? ''}
+                      autocomplete="off"
+                    />
+                  </div>
                   <p class="eyebrow">Invoice</p>
                   {booking.invoice_company && (
                     <p class="muted small">

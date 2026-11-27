@@ -63,8 +63,15 @@ const OfficeBookingBody = z
       .strict()
       .optional(),
     notes: z.string().optional(),
+    /** Optional travel voucher code (office / partners); max 64 chars. */
+    voucherCode: z
+      .string()
+      .trim()
+      .max(64)
+      .optional()
+      .transform((v) => (v ? v : undefined)),
     priceOverrideCents: z.number().int().nonnegative().optional(),
-    priceOverrideReason: z.string().min(1).optional(),
+    priceOverrideReason: z.string().optional(),
     payment: z.enum(['link', 'offline_paid', 'offline_collect']),
     offlineMethod: OfflineMethod.optional(),
     /** B9: company account; its fixed price or discount replaces the public list price. */
@@ -88,13 +95,6 @@ const OfficeBookingBody = z
     }
     if (v.bookingType === 'hourly' && v.hours == null) {
       ctx.addIssue({ code: 'custom', message: 'hours required', path: ['hours'] });
-    }
-    if (v.priceOverrideCents != null && !v.priceOverrideReason?.trim()) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'priceOverrideReason required',
-        path: ['priceOverrideReason'],
-      });
     }
     if (v.payment !== 'link' && !v.offlineMethod) {
       ctx.addIssue({ code: 'custom', message: 'offlineMethod required', path: ['offlineMethod'] });
@@ -257,7 +257,7 @@ export async function createOfficeBooking(
   }
   const overrideReason =
     body.priceOverrideCents != null && body.priceOverrideCents !== listPriceCents
-      ? body.priceOverrideReason!.trim()
+      ? body.priceOverrideReason?.trim() || null
       : null;
 
   const wantedHoldMinutes =
@@ -344,6 +344,7 @@ export async function createOfficeBooking(
          booking_type, class_id, from_zone_id, to_zone_id,
          pickup_address, dropoff_address, pickup_at, hours, duration_minutes, blocked_range,
          passengers, luggage, flight_number, customer_name, customer_email, customer_phone, notes,
+         voucher_code,
          base_price_cents, price_cents, list_price_cents, price_override_reason,
          status, hold_expires_at, payment_status, payment_method,
          invoice_status, invoice_company, invoice_vat, invoice_tax_office, invoice_address,
@@ -355,13 +356,14 @@ export async function createOfficeBooking(
          $1::public.booking_type, $2::uuid, $3::uuid, $4::uuid,
          $5, $6, $7::timestamptz, $8::int, $9::int, $10::tstzrange,
          $11::int, $12::int, $13, $14, $15, $16, $17,
-         $18::int, $19::int, $20::int, $21,
-         $22::public.booking_status, $23::timestamptz, $24::public.payment_status, $25,
-         $26::public.invoice_status, $27, $28, $29, $30,
-         $31, $32, 'office', $33::uuid, $34, $35::uuid, $36::uuid,
-         $37::numeric,
-         $38, $39::float8, $40::float8,
-         $41, $42::float8, $43::float8
+         $18,
+         $19::int, $20::int, $21::int, $22,
+         $23::public.booking_status, $24::timestamptz, $25::public.payment_status, $26,
+         $27::public.invoice_status, $28, $29, $30, $31,
+         $32, $33, 'office', $34::uuid, $35, $36::uuid, $37::uuid,
+         $38::numeric,
+         $39, $40::float8, $41::float8,
+         $42, $43::float8, $44::float8
        )
        returning id, reference, status, payment_status`,
       [
@@ -382,6 +384,7 @@ export async function createOfficeBooking(
         body.customer.email,
         body.customer.phone,
         body.notes ?? null,
+        body.voucherCode ?? null,
         baseCents,
         priceCents,
         listPriceCents,
@@ -447,7 +450,9 @@ export async function createOfficeBooking(
       [booking.id, hold.id],
     );
 
-    if (body.payment === 'offline_paid') {
+    // Zero-fare office bookings (partner / monthly clearance): mark paid, no payments row
+    // (payments_amount_cents_check requires amount_cents > 0).
+    if (body.payment === 'offline_paid' && priceCents > 0) {
       await bookingDb().query(
         `insert into public.payments (
            booking_id, kind, status, amount_cents, method, note, created_by, idempotency_key
@@ -604,19 +609,21 @@ export async function recordOfflinePayment(raw: unknown, staffUserId: string) {
   }
 
   const amount = body.amountCents ?? booking.price_cents;
-  try {
-    await bookingDb().query(
-      `insert into public.payments (
-         booking_id, kind, status, amount_cents, method, note, created_by, idempotency_key
-       ) values ($1::uuid, 'payment', 'succeeded', $2::int, $3, $4, $5::uuid, $6)`,
-      [booking.id, amount, body.method, body.note ?? null, staffUserId, body.idempotencyKey],
-    );
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes('unique') || msg.includes('duplicate')) {
-      return { paymentStatus: 'paid', amountCents: amount };
+  if (amount > 0) {
+    try {
+      await bookingDb().query(
+        `insert into public.payments (
+           booking_id, kind, status, amount_cents, method, note, created_by, idempotency_key
+         ) values ($1::uuid, 'payment', 'succeeded', $2::int, $3, $4, $5::uuid, $6)`,
+        [booking.id, amount, body.method, body.note ?? null, staffUserId, body.idempotencyKey],
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('unique') || msg.includes('duplicate')) {
+        return { paymentStatus: 'paid', amountCents: amount };
+      }
+      throw e;
     }
-    throw e;
   }
 
   await bookingDb().query(

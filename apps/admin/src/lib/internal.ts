@@ -105,6 +105,7 @@ export type OfficeBookingBody = {
   vehicleId?: string;
   invoice?: { company: string; vat: string; taxOffice: string; address: string };
   notes?: string;
+  voucherCode?: string;
   priceOverrideCents?: number;
   priceOverrideReason?: string;
   payment: 'link' | 'offline_paid' | 'offline_collect';

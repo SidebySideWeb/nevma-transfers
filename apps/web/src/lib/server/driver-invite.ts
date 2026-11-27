@@ -4,25 +4,11 @@ import { BookingError } from '../booking/types';
 import { getSiteSettings, loadUiStrings } from '../sanity/content';
 import { bookingDb } from './db';
 import { sendEmail } from './email';
+import { driverAuthCallbackUrl } from './driver-password-reset';
 import { driverInviteEmail } from './email-templates';
 import { getServiceClient } from './supabase';
 
 const InviteBody = z.object({ driverId: z.string().uuid() }).strict();
-
-function redirectTo(): string {
-  const driverApp = (
-    import.meta.env.DRIVER_APP_URL ||
-    process.env.DRIVER_APP_URL ||
-    ''
-  ).trim();
-  if (driverApp) return driverApp.replace(/\/$/, '');
-  const admin = (
-    import.meta.env.PUBLIC_ADMIN_URL ||
-    process.env.PUBLIC_ADMIN_URL ||
-    'http://localhost:4322'
-  ).replace(/\/$/, '');
-  return `${admin}/driver-welcome`;
-}
 
 export type InviteResult = { status: 'invited' | 'linked' };
 
@@ -91,7 +77,7 @@ export async function internalDriverInvite(raw: unknown): Promise<InviteResult> 
   );
 
   const supabase = getServiceClient();
-  const to = redirectTo();
+  const to = driverAuthCallbackUrl();
 
   if (existing[0]) {
     const userId = existing[0].id;
@@ -114,17 +100,24 @@ export async function internalDriverInvite(raw: unknown): Promise<InviteResult> 
       email,
       options: { redirectTo: to },
     });
-    const action = linkData?.properties?.action_link;
-    if (!linkErr && action) {
-      await sendMagicLink(email, driver.full_name, action);
+    const token = linkData?.properties?.hashed_token;
+    if (!linkErr && token) {
+      // Direct drivers-app link — avoids Supabase Site URL (www / apex).
+      await sendMagicLink(
+        email,
+        driver.full_name,
+        `${to}?token_hash=${encodeURIComponent(token)}&type=magiclink`,
+      );
     }
     return { status: 'linked' };
   }
 
-  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    redirectTo: to,
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { redirectTo: to },
   });
-  if (error || !data.user) {
+  if (error || !data?.user || !data.properties?.hashed_token) {
     throw new BookingError('invalid_request', {
       stringKey: 'error.invalid_request',
       message: error?.message || 'invite_failed',
@@ -134,5 +127,10 @@ export async function internalDriverInvite(raw: unknown): Promise<InviteResult> 
     data.user.id,
     driverId,
   ]);
+  await sendMagicLink(
+    email,
+    driver.full_name,
+    `${to}?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=invite`,
+  );
   return { status: 'invited' };
 }

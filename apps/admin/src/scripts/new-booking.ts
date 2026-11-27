@@ -64,7 +64,8 @@ const idempotencyKey = crypto.randomUUID();
 
 const checked = (name: string) => form.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`);
 const type = () => (checked('nb-type')?.value ?? 'transfer') as 'transfer' | 'hourly';
-const payment = () => (checked('nb-pay')?.value ?? 'link') as 'link' | 'offline_paid' | 'offline_collect';
+const payment = () =>
+  (checked('nb-pay')?.value ?? 'offline_paid') as 'link' | 'offline_paid' | 'offline_collect';
 /** B9: chosen company (undefined when the picker is off or "No company"). */
 const companyId = () => document.querySelector<HTMLSelectElement>('#nb-co')?.value || undefined;
 const selectedText = (id: string) => ($<HTMLSelectElement>(id).selectedOptions[0]?.textContent ?? '').trim();
@@ -648,9 +649,8 @@ function validate(): [string, string][] {
     $<HTMLDetailsElement>('nb-inv').open = true;
     errs.push(['nb-inv-addr', 'Fill company, VAT number, tax office and address, or clear all four.']);
   }
-  if ($('nb-ovr').checked) {
-    if (overrideCents() == null) errs.push(['nb-ov', 'Enter the price in euros, for example 200.00.']);
-    need('nb-why', 'A reason is required when the price differs from the list.');
+  if ($('nb-ovr').checked && overrideCents() == null) {
+    errs.push(['nb-ov', 'Enter the price in euros, for example 200.00.']);
   }
   return errs;
 }
@@ -700,8 +700,11 @@ form.addEventListener('submit', async (e) => {
       ? { company: inv[0]!, vat: inv[1]!, taxOffice: inv[2]!, address: inv[3]! }
       : undefined,
     notes: maybe($('nb-notes').value),
+    voucherCode: maybe($('nb-voucher').value),
     priceOverrideEuros: $('nb-ovr').checked ? $('nb-ov').value : undefined,
-    priceOverrideReason: $('nb-ovr').checked ? $('nb-why').value : undefined,
+    priceOverrideReason: $('nb-ovr').checked
+      ? $('nb-why').value.trim() || undefined
+      : undefined,
     payment: payment(),
     offlineMethod: payment() === 'link' ? undefined : ($('nb-meth').value as 'cash'),
     companyId: companyId(),

@@ -785,6 +785,32 @@ export function driverInviteEmail(input: DriverInviteInput): EmailParts {
   };
 }
 
+export type DriverPasswordResetInput = DriverInviteInput;
+
+export function driverPasswordResetEmail(input: DriverPasswordResetInput): EmailParts {
+  const subject = t('email.driver.reset.subject');
+  const body = t('email.driver.reset.body', { name: input.name, link: input.link });
+  const text = [body, '', companyFooter(input)].join('\n');
+  const htmlBody = `
+    <p style="margin:0 0 16px;">${escapeHtml(body)}</p>
+    <p style="margin:0;">
+      <a href="${escapeHtml(input.link)}"
+         style="display:inline-block;padding:12px 20px;background:${th.accent};color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
+        Set a new password
+      </a>
+    </p>
+  `;
+  return {
+    subject,
+    text,
+    html: wrapHtml(subject, htmlBody, {
+      name: input.companyName,
+      phone: input.companyPhone,
+      email: input.companyEmail,
+    }),
+  };
+}
+
 export type FormAnswerLine = { key: string; label: string; value: string };
 
 export type FormOfficeInput = {

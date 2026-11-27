@@ -192,18 +192,31 @@ export const server = {
     input: z.object({
       reference: z.string().min(1),
       securityNotes: z.string().optional(),
+      voucherCode: z.string().optional(),
       invoiceStatus: z.enum(['not_required', 'requested', 'issued']).optional(),
       invoiceNumber: z.string().optional(),
     }),
     async handler(input, ctx) {
       requireStaff(ctx.locals);
       const supabase = createSupabaseServerClient(ctx.cookies);
+      let voucherCode: string | null | undefined;
+      if (input.voucherCode !== undefined) {
+        const trimmed = input.voucherCode.trim();
+        if (trimmed.length > 64) {
+          throw new ActionError({
+            code: 'BAD_REQUEST',
+            message: 'Voucher code must be 64 characters or fewer.',
+          });
+        }
+        voucherCode = trimmed || null;
+      }
       const { error } = await supabase
         .from('bookings')
         .update({
           ...(input.securityNotes !== undefined
             ? { security_notes: input.securityNotes || null }
             : {}),
+          ...(voucherCode !== undefined ? { voucher_code: voucherCode } : {}),
           ...(input.invoiceStatus ? { invoice_status: input.invoiceStatus } : {}),
           ...(input.invoiceNumber !== undefined
             ? { invoice_number: input.invoiceNumber || null }
@@ -1390,6 +1403,12 @@ export const server = {
         })
         .optional(),
       notes: z.string().trim().optional(),
+      voucherCode: z
+        .string()
+        .trim()
+        .max(64)
+        .optional()
+        .transform((v) => (v ? v : undefined)),
       /** Euros typed by staff; converted here. The web app still prices the booking itself. */
       priceOverrideEuros: z.string().trim().optional(),
       priceOverrideReason: z.string().trim().optional(),
@@ -1412,15 +1431,15 @@ export const server = {
         if (priceOverrideCents < 0) {
           throw new ActionError({ code: 'BAD_REQUEST', message: 'Invalid price' });
         }
-        if (!input.priceOverrideReason) {
-          throw new ActionError({ code: 'BAD_REQUEST', message: 'Give a reason for the different price' });
-        }
       }
       const result = await callInternalBooking(
         {
           ...rest,
           priceOverrideCents,
-          priceOverrideReason: priceOverrideCents == null ? undefined : input.priceOverrideReason,
+          priceOverrideReason:
+            priceOverrideCents == null
+              ? undefined
+              : input.priceOverrideReason?.trim() || undefined,
           idempotencyKey: idempotencyKey ?? randomUUID(),
           staffUserId: staff.userId,
         },

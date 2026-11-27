@@ -63,7 +63,7 @@ const companyLabel =
 
 const selectCols = `
     reference, pickup_at, booking_type, duration_minutes, price_cents, status, payment_status,
-    customer_name, trip_group_id, leg, pickup_shift_min, original_pickup_at, flight_status,
+    customer_name, trip_group_id, leg, pickup_shift_min, original_pickup_at, flight_status, voucher_code,
     from_zone:zones!bookings_from_zone_id_fkey(name),
     to_zone:zones!bookings_to_zone_id_fkey(name),
     class:vehicle_classes!bookings_class_id_fkey(key, name)${
@@ -120,6 +120,7 @@ type BookingRow = {
   pickup_shift_min: number | null;
   original_pickup_at: string | null;
   flight_status: string | null;
+  voucher_code: string | null;
   from_zone: { name?: string } | null;
   to_zone: { name?: string } | null;
   class: { key?: string; name?: string } | null;
@@ -401,6 +402,9 @@ function qs(overrides: Record<string, string | null>): string {
                           {' '}
                           ⇄
                         </span>
+                      ) : null}
+                      {b.voucher_code ? (
+                        <span class="badge s-completed" title={b.voucher_code}>Voucher</span>
                       ) : null}
                     </td>
                     <td data-label="Pick-up">

@@ -6,6 +6,10 @@ import { corsHeaders, mergeCors, preflight } from './cors';
 import { jsonError, mapDbErrorToResponse, notADriver, rateLimited } from './errors';
 import { mapEarningLine, mapJob, mapShift, mapVehicle } from './map';
 
+function siteUrl(): string {
+  return (import.meta.env.PUBLIC_SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
+}
+
 async function assertRateLimit(client: DriverClient, userId: string): Promise<Response | null> {
   const { data, error } = await client.rpc('hit_rate_limit', {
     p_key: `driver:${userId}`,
@@ -205,5 +209,59 @@ export async function handleEarnings(ctx: APIContext): Promise<Response> {
   const lines = (data ?? []).map(mapEarningLine);
   const totalCents = lines.reduce((s, l) => s + l.amountCents, 0);
   return finish(jsonOk({ totalCents, lines }), ctx.request);
+}
+
+/** Unauthenticated: proxy to web so reset emails link to the drivers PWA, not Site URL. */
+export async function handlePasswordReset(ctx: APIContext): Promise<Response> {
+  if (ctx.request.method === 'OPTIONS') return preflight(ctx.request);
+  if (ctx.request.method !== 'POST') {
+    return finish(jsonError(405, 'invalid_request', 'Method not allowed.'), ctx.request);
+  }
+
+  const base = siteUrl();
+  if (!base) {
+    return finish(
+      jsonError(500, 'server_error', 'PUBLIC_SITE_URL is not set on the admin app.'),
+      ctx.request,
+    );
+  }
+
+  let bodyText: string;
+  try {
+    bodyText = await ctx.request.text();
+  } catch {
+    return finish(jsonError(400, 'invalid_request', 'Invalid body.'), ctx.request);
+  }
+
+  const forwardHeaders: Record<string, string> = {
+    'content-type': 'application/json',
+  };
+  const fwd = ctx.request.headers.get('x-forwarded-for');
+  if (fwd) forwardHeaders['x-forwarded-for'] = fwd;
+  const realIp = ctx.request.headers.get('x-real-ip');
+  if (realIp) forwardHeaders['x-real-ip'] = realIp;
+
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/driver/password-reset`, {
+      method: 'POST',
+      headers: forwardHeaders,
+      body: bodyText,
+    });
+  } catch {
+    return finish(
+      jsonError(502, 'server_error', 'Could not reach the booking site to send the reset email.'),
+      ctx.request,
+    );
+  }
+
+  const text = await res.text();
+  return finish(
+    new Response(text, {
+      status: res.status,
+      headers: { 'Content-Type': res.headers.get('Content-Type') || 'application/json' },
+    }),
+    ctx.request,
+  );
 }
 

@@ -474,14 +474,14 @@ const pageData = {
           <fieldset class="choices">
             <legend class="sr-only">How the customer pays</legend>
             <label class="choice">
-              <input type="radio" name="nb-pay" value="link" checked />
+              <input type="radio" name="nb-pay" value="link" />
               <strong>Send a Viva payment link</strong>
               <span>
                 Vehicle held for {holdText}. Confirmed and e-mailed when paid; released if not.
               </span>
             </label>
             <label class="choice">
-              <input type="radio" name="nb-pay" value="offline_paid" />
+              <input type="radio" name="nb-pay" value="offline_paid" checked />
               <strong>Paid offline</strong>
               <span>Cash, bank transfer or on account. Confirmed now.</span>
             </label>
@@ -491,7 +491,7 @@ const pageData = {
               <span>Confirmed now; record the payment later on the booking.</span>
             </label>
           </fieldset>
-          <div class="grid-fields" id="nb-meth-field" hidden>
+          <div class="grid-fields" id="nb-meth-field">
             <div class="field">
               <label for="nb-meth">Offline method</label>
               <Select
@@ -505,8 +505,18 @@ const pageData = {
             </div>
           </div>
           <label class="check">
-            <input type="checkbox" id="nb-email" checked /> E-mail the customer (payment link or confirmation)
+            <input type="checkbox" id="nb-email" /> E-mail the customer (payment link or confirmation)
           </label>
+          <div class="field">
+            <label for="nb-voucher">Travel voucher (code)</label>
+            <input
+              id="nb-voucher"
+              class="input"
+              maxlength="64"
+              placeholder="e.g. EMP-2026-XXXXXX"
+              autocomplete="off"
+            />
+          </div>
           <div class="field">
             <label for="nb-notes">Notes for the office (not sent)</label>
             <textarea id="nb-notes" class="input" style="min-height:64px"></textarea>
@@ -526,9 +536,9 @@ const pageData = {
             <div class="grand"><dt>Price list total</dt><dd>-</dd></div>
           </dl>
           <label class="switch">
-            <input type="checkbox" id="nb-ovr" /> Use a different price
+            <input type="checkbox" id="nb-ovr" checked /> Use a different price
           </label>
-          <div id="nb-ovr-fields" class="stack-sm" hidden>
+          <div id="nb-ovr-fields" class="stack-sm">
             <div class="grid-fields">
               <div class="field">
                 <label for="nb-ov">Price to charge</label>
@@ -537,8 +547,8 @@ const pageData = {
               </div>
             </div>
             <div class="field">
-              <label for="nb-why">Reason (required, kept on the booking)</label>
-              <input id="nb-why" class="input" aria-required="true" aria-describedby="nb-why-err" />
+              <label for="nb-why">Reason (optional, kept on the booking)</label>
+              <input id="nb-why" class="input" aria-describedby="nb-why-err" />
               <p class="error-text" id="nb-why-err" hidden></p>
             </div>
           </div>
@@ -547,7 +557,7 @@ const pageData = {
             <span id="nb-pays">-</span>
           </div>
           <button class="btn" type="submit" id="nb-submit" style="width:100%">
-            Create and send payment link
+            Create booking (paid offline)
           </button>
           <p class="help">
             The server rechecks the price and the free vehicles when you press the button. The final price

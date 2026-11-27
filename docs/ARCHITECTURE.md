@@ -127,7 +127,7 @@ Every variable is listed in `.env.example`. Where each is used:
 | `FLIGHT_PROVIDER_KEY` | server only | server only | | required except for `manual` |
 | `DRIVER_APP_ORIGIN` | | server | | CORS allow-list for `/api/driver/v1` (exact origin); empty = no CORS headers |
 | `DRIVER_EARNINGS_VISIBLE` | | server | | `true` to expose `GET /api/driver/v1/earnings`; default `false` |
-| `DRIVER_APP_URL` | | server | | public URL of the drivers’ web app (links / future deep links) |
+| `DRIVER_APP_URL` | | server | | public URL of the drivers’ web app (invite / password-reset callback origin; appends `/auth/callback`) |
 | `GOOGLE_PLACES_API_KEY` | server only | server only | | address autocomplete (`docs/ADDRESS-AUTOCOMPLETE.md`); never `PUBLIC_` |
 | `PUBLIC_ADDRESS_AUTOCOMPLETE` | yes | yes | | `true` to show suggestions; needs the server key |
 | `PLACES_BIAS_LAT`, `PLACES_BIAS_LNG`, `PLACES_BIAS_RADIUS_M` | server | server | | optional Athens bias for Places Autocomplete |

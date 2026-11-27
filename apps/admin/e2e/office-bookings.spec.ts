@@ -89,7 +89,7 @@ test('office booking paid offline from the calendar empty-time popover', async (
   await fillBooking(page, { name: 'E2E Calendar', payment: 'offline_paid', note: 'e2e-office from calendar' });
   // The vehicle from the calendar stays selected once its class is free.
   await expect(page.locator('#nb-veh')).not.toHaveValue('', { timeout: 20_000 });
-  await expect(page.locator('#nb-submit')).toHaveText('Create booking, paid offline');
+  await expect(page.locator('#nb-submit')).toHaveText('Create booking (paid offline)');
   await page.locator('#nb-submit').click();
 
   await expect(page).toHaveURL(/\/bookings\/((?:ELP|EP|TEM)-[A-Z0-9]+)\?toast=created/, { timeout: 60_000 });
@@ -171,14 +171,23 @@ test('a class with no free vehicle shows 0 free, is disabled, and the calendar s
 test('validation errors stay next to the fields', async ({ page }) => {
   await login(page);
   await page.goto('/bookings/new');
+  // Defaults: offline_paid + e-mail unchecked → blank e-mail is allowed.
+  await expect(page.getByRole('radio', { name: /Paid offline/ })).toBeChecked();
+  await expect(page.locator('#nb-email')).not.toBeChecked();
+  await expect(page.locator('#nb-submit')).toHaveText('Create booking (paid offline)');
   await page.locator('#nb-submit').click();
   await expect(page.locator('#nb-name-err')).toBeVisible();
-  await expect(page.locator('#nb-mail-err')).toBeVisible();
+  await expect(page.locator('#nb-mail-err')).toBeHidden();
   await expect(page.locator('#nb-cls-err')).toBeVisible();
   await expect(page.locator('#nb-name')).toBeFocused();
-  await page.locator('#nb-ovr').check();
+  await page.getByRole('radio', { name: /Send a Viva payment link/ }).check();
   await page.locator('#nb-submit').click();
-  await expect(page.locator('#nb-why-err')).toContainText(/reason is required/i);
+  await expect(page.locator('#nb-mail-err')).toContainText(/e-mail is needed/i);
+  // Override is on by default; reason is optional — empty amount still errors.
+  await expect(page.locator('#nb-ovr')).toBeChecked();
+  await page.locator('#nb-submit').click();
+  await expect(page.locator('#nb-ov-err')).toContainText(/price in euros/i);
+  await expect(page.locator('#nb-why-err')).toBeHidden();
 });
 
 test('customer lookup finds a previous customer and fills the form', async ({ page }) => {

@@ -8,7 +8,7 @@ Decided by the user on 1 Nov 2026 for a second client (same industry), built int
 
 - Name, e-mail (unique), phone, employee or freelancer, active, licence number and expiry, professional permit expiry, staff notes.
 - Drivers are switched off, never deleted. The admin warns 30 days before a licence or permit expires and on any booking after the expiry date.
-- **Login:** the office presses "Invite to the driver app". The admin calls the web app's signed internal route `POST /api/internal/drivers/invite` (same signing as refunds), which uses the service role to invite the e-mail through Supabase Auth and sets `drivers.user_id`. A driver login is never a staff login (the admin middleware already signs out non-staff).
+- **Login:** the office presses "Invite to the driver app". The admin calls the web app's signed internal route `POST /api/internal/drivers/invite` (same signing as refunds), which uses the service role to generate an Auth invite/magic link aimed at `DRIVER_APP_URL/auth/callback?token_hash=…` (not the public Site URL) and sets `drivers.user_id`. Forgot-password: unauthenticated `POST /api/driver/password-reset` on web (admin proxies `/api/driver/v1/password-reset`) emails a recovery link to the same callback. A driver login is never a staff login (the admin middleware already signs out non-staff).
 
 ## 2. Assignment
 
@@ -42,8 +42,8 @@ Week, month, quarter or custom range: **Driver pay** (jobs, days, shift hours, t
 
 ## 8. Driver API v1 (for the app built later)
 
-- `apps/admin` serves `/api/driver/v1/*` (OpenAPI in `docs/driver-api/openapi.yaml`): me, vehicles, shift start and end, jobs (day or week), one job, job status, earnings (only if `DRIVER_EARNINGS_VISIBLE=true`).
-- Auth: `Authorization: Bearer <Supabase access token>`; the route creates a Supabase client with that token (anon key + user session, never the service role) and calls the 0015 functions. Not a driver → 403 `not_a_driver`.
+- `apps/admin` serves `/api/driver/v1/*` (OpenAPI in `docs/driver-api/openapi.yaml`): me, vehicles, shift start and end, jobs (day or week), one job, job status, earnings (only if `DRIVER_EARNINGS_VISIBLE=true`), and unauthenticated `password-reset` (proxies to web).
+- Auth: `Authorization: Bearer <Supabase access token>`; the route creates a Supabase client with that token (anon key + user session, never the service role) and calls the 0015 functions. Not a driver → 403 `not_a_driver`. Password-reset is the exception (no bearer).
 - CORS: only `DRIVER_APP_ORIGIN`. Rate limit 60 requests per minute per driver (`hit_rate_limit`). Errors: `{ error, message }` with the codes in the OpenAPI file; database messages are mapped, never passed raw.
 - Privacy: no prices or payment data; the customer's phone only from 24 hours before pick-up until 6 hours after the trip.
 
